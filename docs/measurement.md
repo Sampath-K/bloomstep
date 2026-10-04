@@ -1,8 +1,8 @@
 # Consent-scoped observation contracts
 
 This source is instrumentation, not proof of users, a complete funnel, a
-crash-free population or a completed experiment. Preview.2 predates receipt
-import; a newer verified candidate is needed before using the new controls.
+crash-free population or a completed experiment. Verified `v0.1.0-preview.3`
+contains these controls; preview.2 predates receipt import.
 
 ## Source of truth and explicit linkage
 
