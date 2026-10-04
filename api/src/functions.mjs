@@ -1,10 +1,11 @@
-import { app } from '@azure/functions';
+import azureFunctions from '@azure/functions';
 import { CosmosClient } from '@azure/cosmos';
 import { createRemoteJWKSet, jwtVerify } from 'jose';
 import { accountKey, isAdmin } from './contracts.mjs';
 import { createHandlers, ServiceError } from './backend.mjs';
 import { requestBearer } from './auth-transport.mjs';
 import { createAggregateAuthenticator } from './aggregate-auth.mjs';
+const { app } = azureFunctions;
 
 const issuer = process.env.OIDC_ISSUER;
 const audience = process.env.OIDC_API_AUDIENCE;

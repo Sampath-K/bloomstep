@@ -4,7 +4,8 @@ import { execFileSync } from 'node:child_process';
 
 test('actual ESM entrypoint registers only host-valid routes and guarded handlers', () => {
   const script = `
-    import { app, HttpRequest } from '@azure/functions';
+    import azureFunctions from '@azure/functions';
+    const { app, HttpRequest } = azureFunctions;
     for (const key of ['OIDC_ISSUER','OIDC_API_AUDIENCE','OIDC_JWKS_URI','COSMOS_CONNECTION_STRING']) delete process.env[key];
     const registrations = [];
     app.http = (name, options) => registrations.push({ name, ...options });
@@ -34,7 +35,8 @@ test('actual ESM entrypoint registers only host-valid routes and guarded handler
 
 test('configured entrypoint rejects platform-only auth on every served handler before network access', () => {
   const script = `
-    import { app, HttpRequest } from '@azure/functions';
+    import azureFunctions from '@azure/functions';
+    const { app, HttpRequest } = azureFunctions;
     process.env.OIDC_ISSUER = 'https://broker.example.invalid/tenant/v2.0';
     process.env.OIDC_API_AUDIENCE = 'test-api';
     process.env.OIDC_JWKS_URI = 'https://broker.example.invalid/keys';

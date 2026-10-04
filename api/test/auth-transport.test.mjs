@@ -1,7 +1,8 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { HttpRequest } from '@azure/functions';
+import azureFunctions from '@azure/functions';
 import { requestBearer } from '../src/auth-transport.mjs';
+const { HttpRequest } = azureFunctions;
 
 const request = headers => new HttpRequest({ url: 'https://example.invalid/api/sync', method: 'GET', headers });
 test('only the explicit Bloomstep transport supplies the broker bearer token', () => {
