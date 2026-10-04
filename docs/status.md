@@ -10,17 +10,17 @@ This ledger is updated with verified outcomes, not inferred from source code.
 | 1 | Plant first habit | SQLite tests and real widget journey pass: five starters, four recipe fields, three species, practiced celebration, restart-safe storage. |
 | 2 | Check in | Tests pass for did/more/rest, idempotency, append edits/undo, local midnight. Widget tap/celebration/undo pass. Native measured latency pending. |
 | 3 | Visual garden | Newer true ARM64 synthetic profile `f92473d` launched and app-only capture inspected: readable banner and reserved Plant bar fixes observed. Responsive/200%-text regressions pass. Native screen-reader evidence remains pending; UIAutomation did not expose button controls in the current OS mode. |
-| 4 | Local reminders | Windows plugin APIs verified in installed packages; toast/tray/autostart opt-in wired. Quiet-hour/cap/backoff rules tested. Real minimized/closed/restarted delivery and OS Focus observation pending; no success claim yet. |
+| 4 | Local reminders | Real Windows plugin/tray wiring plus durable targeted Later, account-scoped IDs, Off/focus recovery, seven-unanswered pause/reset and personalized-timing control are source-tested. Separate release-forbidden runtime probe checks real OS history/tray/hide/caps/cleanup; actual run and popup/Focus/restart evidence remain pending. |
 | 5 | Sign in | Email OTP, Google and Microsoft personal-account providers are now created AND enabled on the actual native/console user flow. MSA issuer/discovery/client/scope/auth type and both callbacks verified; real PKCE sign-in page HTTP200 includes all three options. Actual provider login/token exchanges remain unobserved, not inferred from setup. No fake login. |
 | 6 | Sync | Personal SWA Free/Cosmos free tier provisioned; live unauthenticated sync API returns 401. SQLite v4 preserves durable fingerprints and adds typed event properties; partial upload/concurrent edits, consent purge and account isolation tested. Live probes exposed SWA replacing Authorization and reserved admin routes: dedicated client-token header and team routes fixed in source, deployment smoke gate added. Actual authenticated two-account/device/offline round trips remain pending. |
 | 7 | Funnel | Versioned48-event registry and strict optional metadata; four typed dashboards with minimum50 contributors. Persisted completed-day snapshots are now consumed by the console, distinctly from on-demand windows, with generation/deletion validation and no median/user-count summation. Real resource-directory worker/FIC/role provisioned; manual run proof pending and cron needs default-branch merge. Acquisition/install/auth/OS-delivery instrumentation remains incomplete; absent observations stay null. |
 | 8 | Feedback | Private queue/status/replies; audited pagination/retry/deletion protections tested. Real browser PKCE operator source and separately registered SPA/consent/flow binding now prepared; credentials memory-only, no pasted token. Actual selected customer Admin and feedback/rating round trip still pending. |
-| 9 | Invite | Copy/email/QR and safe static invitation link. Native OS share/deep-link install attribution and mutual reward pending. |
+| 9 | Invite | Authenticated opaque invitations, server-owned attribution, first-positive-practice mutual cosmetic saga and owner-only receipts implemented/tested. Native copy/email/QR/Windows Share UI, opt-in recipe card, accept/decline, cached retry IDs and export integrated. Per-user protocol and private IPC/inbox preserve intent across install/sign-in; web handoff/storage is explicit. Live customer reward and OS-share observations remain pending. |
 | 10 | Reflection | Weekly deterministic Doctor works independently of fortnight naturalness sliders; cooldown checked before collecting scores. Real SQLite graduation/spacing tests pass. Not a validated SRBAI instrument. Native learning interaction still pending. |
 | 11 | Reconnect | Three/seven-day rule, max two/absence, activity reset and scheduler shared quiet-hour/day caps implemented; rules tested. Windows delivery and closed-app behavior not observed. |
 | 12 | Website/update | Live SWA landing/config HTTP200 and public engineering prerelease with ARM64/x64 installers/checksums. Manual trusted version/channel checks tested, never auto-execute. Actual local upgrade/SmartScreen observation pending. |
 | 13 | Rating/privacy | Positive-moment prompts wait for celebration and persist a 120-day cadence even when dismissed; rating text optional. Export/account isolation/cleanup tested. Cloud deletion tombstone/races tested against backend fixtures, not live Cosmos user deletion. |
-| 14 | Experiment | Bounded static config authored, intentionally disabled. Fetch/cache/experiment telemetry/guardrails and deployed live A/B pending. |
+| 14 | Experiment | Strict schema2/checksum, monotonic version, account cache, seven-day expiry and explicit control-mode warnings tested; compiled API origin, device timing toggle and actual-callback-only exposure. Bounded copy experiment remains OFF until genuine reviewed cohort/guardrail evidence, not fabricated data. |
 
 ## Current external gates
 
@@ -35,13 +35,18 @@ This ledger is updated with verified outcomes, not inferred from source code.
 - Fresh live Cosmos census was empty; required feedback composite index and a
   conservative reserved preview-volume ledger were then provisioned. Finite
   quotas and API/engagement kill switches are source-tested, not monetary hard
-  caps. Azure budget notifications/automatic spend-triggered action still pending.
+  caps. Dedicated free resource-tenant guard/FIC and least-reader roles are now
+  provisioned; one-way operational pause and reviewed Admin resume source tested.
+  Its actual run remains pending. Current Cost Management query is unavailable
+  for this new subscription, not zero cost. Trial spending limit On/free SKUs are
+  verified; billing/trial expiration approval remains a launch gate.
 
 ## Latest verification
 
-80-test full serial Flutter suite passes, including durable capped reminder
-snooze/action/pause behavior, active-session expiry/resume and last-observed clock
-checks. Full analyzer is clean. Node22 API suite now passes68; operator console/auth suite passes13.
+114-test full serial Flutter suite passes, including invitation retries/export,
+opaque intent IPC, capped reminders and active-session clock boundaries.
+Full analyzer is clean. API suite passes90; browser suite passes16; spend-guard
+policy suite passes8. Native Share bridge compiles with the existing ARM64 SDK.
 Live popup/API proof is
 pending. No test fixture is represented as a real user login.
 The offline window expires at exactly 30 days and checks a secure-storage

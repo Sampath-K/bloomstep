@@ -5,23 +5,26 @@ import 'package:path_provider/path_provider.dart';
 import '../core/garden_store.dart';
 import '../features/garden/garden_screen.dart';
 import '../services/identity.dart';
+import '../services/invitation_intent.dart';
 import 'theme.dart';
 import 'session_boundary.dart';
 
 class BloomstepApp extends StatelessWidget {
-  const BloomstepApp({super.key});
+  const BloomstepApp({super.key, this.invitationInbox});
+  final InvitationInbox? invitationInbox;
   @override
   Widget build(BuildContext context) => MaterialApp(
     title: 'Bloomstep',
     debugShowCheckedModeBanner: false,
     theme: BloomstepTheme.light(),
     darkTheme: BloomstepTheme.dark(),
-    home: const SignInScreen(),
+    home: SignInScreen(invitationInbox: invitationInbox),
   );
 }
 
 class SignInScreen extends StatefulWidget {
-  const SignInScreen({super.key});
+  const SignInScreen({super.key, this.invitationInbox});
+  final InvitationInbox? invitationInbox;
   @override
   State<SignInScreen> createState() => _SignInScreenState();
 }
@@ -67,7 +70,11 @@ class _SignInScreenState extends State<SignInScreen> {
             isValid: () => identity.hasValidSession,
             onExpired: _expire,
             onCheckpoint: identity.checkpoint,
-            child: GardenScreen(store: store, identity: identity),
+            child: GardenScreen(
+              store: store,
+              identity: identity,
+              invitationInbox: widget.invitationInbox,
+            ),
           ),
         ),
       );

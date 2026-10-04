@@ -1,12 +1,16 @@
 {
-  "schemaVersion": 1,
-  "version": 1,
+  "schemaVersion": 2,
+  "version": 2,
+  "issuedAt": "2026-10-04T15:45:00.000Z",
+  "expiresAt": "2026-10-11T15:45:00.000Z",
+  "checksum": "8f8778d536cdf5f531b746a78e589b53e0a46ef4ed70700b9a39380da5c2003d",
   "experiment": {
     "id": "gentle-reminder-copy-v1",
     "enabled": false,
     "treatmentPercent": 25,
     "control": "A tiny step is enough",
     "treatment": "Your next tiny step is here",
-    "guardrails": ["reminder_opt_out", "fewer_reminders", "pushy_feedback"]
+    "guardrails": ["reminder_opt_out", "fewer_reminders", "pushy_feedback"],
+    "review": null
   }
 }

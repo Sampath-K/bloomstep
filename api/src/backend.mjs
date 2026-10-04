@@ -4,6 +4,7 @@ import { aggregateEvents, previewLimits, feedbackQuerySchema, metricsQuerySchema
 import { dashboardSummaries, addDays } from './dashboards.mjs';
 import { registryVersion } from './event_registry.g.mjs';
 import { dailySnapshotRecordSchema, snapshotMetadataSchema } from './snapshot-contracts.mjs';
+import { createInvitations } from './invitations.mjs';
 import { z } from 'zod';
 
 export class ServiceError extends Error {
@@ -16,14 +17,17 @@ export class ServiceError extends Error {
  * supplies the real strict JWT verifier and provisioned Cosmos container.
  * @param {{
  * container: () => import('@azure/cosmos').Container,
- * authenticate: (request: import('@azure/functions').HttpRequest) => Promise<{userId: string, roles: unknown}>,
+ * authenticate: (request: import('@azure/functions').HttpRequest) => Promise<{userId: string, roles: unknown, scopes?: string[]}>,
  * authenticateAggregate?: (request: import('@azure/functions').HttpRequest) => Promise<{userId: string, roles: unknown}>,
+ * authenticateSpend?: (request: import('@azure/functions').HttpRequest) => Promise<{userId: string, roles: unknown}>,
  * clock?: () => Date,
  * environment?: () => NodeJS.ProcessEnv,
  * limits?: typeof previewLimits
  * }} dependencies
  */
-export function createHandlers({ container, authenticate, authenticateAggregate = authenticate, clock = () => new Date(), environment = () => process.env, limits = previewLimits }) {
+export function createHandlers({ container, authenticate, authenticateAggregate = authenticate,
+  authenticateSpend = async () => { throw new ServiceError(503, 'Spend guard identity is not provisioned.'); },
+  clock = () => new Date(), environment = () => process.env, limits = previewLimits }) {
   const budgetPartition = '__preview_budget';
   const rawTtl = 34214400;
   const auditTtl = 2592000;
@@ -33,7 +37,17 @@ export function createHandlers({ container, authenticate, authenticateAggregate 
   /** @param {import('@azure/functions').HttpRequest} request */
   async function gardenActor(request) {
     const actor = await authenticate(request);
-    if (workerOnly(actor.roles)) throw new ServiceError(403, 'Aggregate worker cannot access customer records.');
+    if (workerOnly(actor.roles) || Array.isArray(actor.roles) && actor.roles.includes('Bloomstep.SpendGuard')) throw new ServiceError(403, 'Operational roles cannot access customer records.');
+    return actor;
+  }
+  /** @param {import('@azure/functions').HttpRequest} request */
+  async function invitationActor(request) {
+    const actor = await gardenActor(request);
+    if (!actor.scopes?.includes('Garden.ReadWrite')) throw new ServiceError(403, 'Customer Garden.ReadWrite scope required.');
+    apiEnabled();
+    await operationalEnabled();
+    engagementEnabled();
+    if (['true', '1'].includes((environment().BLOOMSTEP_INVITATIONS_DISABLED ?? '').toLowerCase())) throw new ServiceError(503, 'Invitations are paused.');
     return actor;
   }
   const gateBody = (/** @type {any} */ gate) => ({ ...gate, revision: randomUUID() });
@@ -44,6 +58,53 @@ export function createHandlers({ container, authenticate, authenticateAggregate 
   }
   function apiEnabled() {
     if (['true', '1'].includes((environment().BLOOMSTEP_API_DISABLED ?? '').toLowerCase())) throw new ServiceError(503, 'API is paused by the operator; account deletion remains available.');
+  }
+  async function operationalEnabled() {
+    const gate = (await container().item('budget', budgetPartition).read()).resource;
+    if (gate?.operationalPause?.paused === true) throw new ServiceError(503, 'Remote writes and team engagement are paused for spending review; export and deletion remain available.');
+  }
+  /** @param {import('@azure/functions').HttpRequest} request */
+  async function operationalPause(request) {
+    const actor = await authenticateSpend(request);
+    if (!Array.isArray(actor.roles) || !actor.roles.includes('Bloomstep.SpendGuard')) throw new ServiceError(403, 'Explicit SpendGuard role required.');
+    const schema = z.strictObject({ requestId: z.uuid(), reason: z.enum(['paid_sku', 'spending_limit_off', 'positive_cost', 'configuration_unknown']) });
+    const parsed = schema.safeParse(await body(request));
+    if (!parsed.success) throw new ServiceError(400, 'Invalid operational pause request.');
+    const item = container().item('budget', budgetPartition);
+    const { resource } = await item.read();
+    const previous = resource?.operationalPause;
+    if (previous?.requestId === parsed.data.requestId && previous.reason !== parsed.data.reason) throw new ServiceError(409, 'Pause request ID reused with a different reason.');
+    if (previous?.paused) return { jsonBody: previous };
+    const pause = { paused: true, requestId: parsed.data.requestId, reason: parsed.data.reason, pausedAt: clock().toISOString() };
+    const document = { ...(resource ?? { id: 'budget', userId: budgetPartition, type: 'budget', ttl: -1 }),
+      operationalPause: pause, pauseActor: actor.userId, pauseOperations: Math.min(Number(resource?.pauseOperations ?? 0) + 1, 11) };
+    try {
+      if (resource) await item.replace(document, { accessCondition: { type: 'IfMatch', condition: resource._etag } });
+      else await container().items.create(document);
+    } catch (error) {
+      if (conflict(error)) throw new ServiceError(409, 'Concurrent pause; retry same request.');
+      throw error;
+    }
+    return { jsonBody: pause };
+  }
+  /** @param {import('@azure/functions').HttpRequest} request */
+  async function operationalResume(request) {
+    const actor = await gardenActor(request);
+    if (!isAdmin(actor.roles) || !actor.scopes?.includes('Garden.ReadWrite')) throw new ServiceError(403, 'Selected customer Admin and Garden scope required.');
+    const parsed = z.strictObject({ requestId: z.uuid(), reviewedPauseRequestId: z.uuid(),
+      confirmation: z.literal('reviewed-free-tier-and-spending-limit') }).safeParse(await body(request));
+    if (!parsed.success) throw new ServiceError(400, 'Explicit spending review confirmation required.');
+    const item = container().item('budget', budgetPartition);
+    const { resource } = await item.read();
+    if (!resource?.operationalPause?.paused && resource?.pauseReview?.requestId === parsed.data.requestId &&
+        resource.pauseReview.reviewedPauseRequestId === parsed.data.reviewedPauseRequestId) return { jsonBody: { paused: false } };
+    if (!resource?.operationalPause?.paused || resource.operationalPause.requestId !== parsed.data.reviewedPauseRequestId) throw new ServiceError(409, 'Pause changed; review the current pause.');
+    if (Number(resource.pauseResumes ?? 0) >= 10) throw new ServiceError(429, 'Manual resume lifetime cap reached.');
+    const document = { ...resource, operationalPause: null, pauseResumes: Number(resource.pauseResumes ?? 0) + 1,
+      pauseReview: { ...parsed.data, actor: actor.userId, reviewedAt: clock().toISOString() } };
+    try { await item.replace(document, { accessCondition: { type: 'IfMatch', condition: resource._etag } }); }
+    catch (error) { if (conflict(error)) throw new ServiceError(409, 'Pause changed during review.'); throw error; }
+    return { jsonBody: { paused: false } };
   }
   /** @param {number} records @param {number} accounts @param {keyof typeof limits.adminActions | undefined} action */
   async function reserve(records = 0, accounts = 0, action = undefined) {
@@ -63,7 +124,7 @@ export function createHandlers({ container, authenticate, authenticateAggregate 
         || daily + 1 > limits.operationsPerDay
         || Number(resource?.records ?? 0) + records > limits.lifetimeRecords
         || Number(resource?.accounts ?? 0) + accounts > limits.accounts) throw new ServiceError(429, 'Preview volume cap reached; operator review required.');
-    const document = { id: 'budget', userId: budgetPartition, type: 'budget', day,
+    const document = { ...resource, id: 'budget', userId: budgetPartition, type: 'budget', day,
       daily: daily + 1, operations: Number(resource?.operations ?? 0) + 1,
       records: Number(resource?.records ?? 0) + records, accounts: Number(resource?.accounts ?? 0) + accounts, actions, ttl: -1 };
     try {
@@ -159,6 +220,7 @@ export function createHandlers({ container, authenticate, authenticateAggregate 
   async function sync(request) {
     const { userId } = await gardenActor(request);
     apiEnabled();
+    if (request.method !== 'GET') await operationalEnabled();
     const parsed = request.method === 'GET' ? null : syncSchema.safeParse(await body(request));
     if (parsed && !parsed.success) throw new ServiceError(400, 'Sync payload failed validation.');
     if (parsed?.success && (parsed.data.events.length || parsed.data.voice.length)) engagementEnabled();
@@ -199,16 +261,29 @@ export function createHandlers({ container, authenticate, authenticateAggregate 
         const gate = await assertActive(userId, false);
         const updated = resource ? gateBody(gate) : await nextGate(userId, type, gate, existing);
         const ttl = type === 'events' ? Math.max(1, Math.ceil((Date.parse(record.ts) + rawTtl * 1000 - clock().getTime()) / 1000)) : -1;
+        /** @type {Record<string, string | boolean>} */
+        const practiceProof = type === 'checkins' ? {
+          receivedAt: clock().toISOString(),
+          referralEligible: ['did', 'didMore'].includes(record.result) &&
+            record.day <= clock().toISOString().slice(0, 10) && Date.parse(record.ts) <= clock().getTime() + 300000,
+        } : {};
+        if (practiceProof.referralEligible) updated.gardenPositiveSeen = true;
         await reserve(resource ? 0 : 1);
+        await operationalEnabled();
         await batch([
           { operationType: 'Replace', id: 'account', ifMatch: gate._etag, resourceBody: updated },
           resource
             ? { operationType: 'Replace', id, ifMatch: resource._etag, resourceBody: { id, userId, type, record, ttl } }
-            : { operationType: 'Create', resourceBody: { id, userId, type, record, ttl } },
+            : { operationType: 'Create', resourceBody: { id, userId, type, record, ...practiceProof, ttl } },
         ], userId);
       }
     }
     const garden = await readGarden(userId);
+    await invitations.observePractice(userId, garden.checkins);
+    if (!['true', '1'].includes((environment().BLOOMSTEP_ENGAGEMENT_DISABLED ?? '').toLowerCase()) &&
+        !['true', '1'].includes((environment().BLOOMSTEP_INVITATIONS_DISABLED ?? '').toLowerCase())) {
+      await invitations.resume(userId);
+    }
     await assertActive(userId, false);
     return { jsonBody: { ...garden, acknowledgedEvents: incoming.events.map(event => event.id) } };
   }
@@ -220,12 +295,14 @@ export function createHandlers({ container, authenticate, authenticateAggregate 
     let current = (await item.read()).resource;
     if (!current) current = await assertActive(userId);
     try {
-      await item.replace({ ...gateBody(current), deleted: true, ttl: -1 }, { accessCondition: { type: 'IfMatch', condition: current._etag } });
+      await item.replace({ id: 'account', userId, type: 'account', revision: randomUUID(), deleted: true, ttl: -1 },
+        { accessCondition: { type: 'IfMatch', condition: current._etag } });
     } catch (error) {
       if (conflict(error)) throw new ServiceError(409, 'Concurrent update; retry deletion.');
       throw error;
     }
     await invalidateSnapshots();
+    await invitations.deleteLinks(userId);
     // Repeated bounded drains make deletion retryable without a cross-partition scan.
     for (;;) {
       const { resources } = await container().items.query({
@@ -245,8 +322,9 @@ export function createHandlers({ container, authenticate, authenticateAggregate 
   /** @param {import('@azure/functions').HttpRequest} request */
   async function team(request) {
     const actor = await authenticate(request);
-    if (!isAdmin(actor.roles)) throw new ServiceError(403, 'Product team role required.');
+    if (!isAdmin(actor.roles) || Array.isArray(actor.roles) && actor.roles.includes('Bloomstep.SpendGuard')) throw new ServiceError(403, 'Product team role required.');
     apiEnabled();
+    await operationalEnabled();
     engagementEnabled();
     return actor;
   }
@@ -466,5 +544,11 @@ export function createHandlers({ container, authenticate, authenticateAggregate 
     await batch(operations, aggregatePartition);
     return { jsonBody: { registryVersion, snapshots: result, experimentEnabled: false } };
   }
-  return { sync, deleteAccount, admin, metrics, aggregates };
+  const invitations = createInvitations({
+    container, clock, active: assertActive, batch, reserve, gateBody, ServiceError,
+    actor: invitationActor, body, rateLimit, readGarden,
+  });
+  return { sync, deleteAccount, admin, metrics, aggregates, operationalPause, operationalResume,
+    createInvitation: invitations.createInvitation, redeemInvitation: invitations.redeemInvitation,
+    invitationStatus: invitations.invitationStatus };
 }

@@ -169,7 +169,7 @@ function initialize() {
     return null;
   });
   element('origin').value = location.origin;
-  if (new URLSearchParams(location.search).get('invite') === 'garden') element('invitation').hidden = false;
+  initializeInvitationLanding();
 
   async function request(path, body) {
     if(!auth) throw new Error('Sign in to the operator console first.');
@@ -319,3 +319,4 @@ function initialize() {
 }
 
 if (typeof document !== 'undefined') initialize();
+import { initializeInvitationLanding } from './invitation-landing.mjs';

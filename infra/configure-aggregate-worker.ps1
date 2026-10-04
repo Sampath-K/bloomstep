@@ -49,6 +49,11 @@ foreach ($branch in @('main', $FeatureBranch)) {
 }
 $subjectPolicy = Github "repos/$Repository/actions/oidc/customization/sub"
 if (-not $subjectPolicy.use_default) { throw 'Repository custom OIDC subjects are enabled; this FIC requires the default environment subject.' }
+$repositoryInfo = Github "repos/$Repository"
+if ($repositoryInfo.full_name -ne $Repository -or
+    -not $repositoryInfo.id -or -not $repositoryInfo.owner.id) {
+  throw 'Repository immutable identity could not be verified.'
+}
 
 # Azure CLI makes --tenant and --subscription mutually exclusive for token acquisition.
 $token = & az account get-access-token --tenant $ResourceTenantId --resource https://graph.microsoft.com --query accessToken -o tsv --only-show-errors 2>$null
@@ -153,7 +158,8 @@ try {
       principalId = $principal.id; resourceId = $principal.id; appRoleId = $roleId
     }
   }
-  $subject = "repo:$Repository`:environment:$Environment"
+  $subject = "repo:$($repositoryInfo.owner.login)@$($repositoryInfo.owner.id)/$($repositoryInfo.name)@$($repositoryInfo.id):environment:$Environment"
+  $legacySubject = "repo:$Repository`:environment:$Environment"
   $federated = @(GraphList "applications/$($worker.id)/federatedIdentityCredentials")
   if (@($federated | Where-Object name -ne 'bloomstep-operations-github').Count) { throw 'Unexpected worker federated credentials; review manually.' }
   $ficBody = @{
@@ -162,8 +168,12 @@ try {
   }
   if ($federated.Count) {
     $fic = $federated[0]
-    if ($fic.issuer -ne $ficBody.issuer -or $fic.subject -ne $subject -or @($fic.audiences).Count -ne 1 -or $fic.audiences[0] -ne 'api://AzureADTokenExchange') {
+    if ($fic.issuer -ne $ficBody.issuer -or $fic.subject -notin @($subject, $legacySubject) -or @($fic.audiences).Count -ne 1 -or $fic.audiences[0] -ne 'api://AzureADTokenExchange') {
       throw 'Existing FIC trust differs; review rather than silently widening it.'
+    }
+    if ($fic.subject -eq $legacySubject) {
+      # Newly created GitHub repositories bind the default subject to immutable IDs.
+      $null = Graph "applications/$($worker.id)/federatedIdentityCredentials/$($fic.id)" 'PATCH' @{ subject = $subject }
     }
   } else { $null = Graph "applications/$($worker.id)/federatedIdentityCredentials" 'POST' $ficBody }
 

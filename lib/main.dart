@@ -7,12 +7,24 @@ import 'package:window_manager/window_manager.dart';
 
 import 'app/bloomstep_app.dart';
 import 'services/single_instance.dart';
+import 'services/invitation_intent.dart';
 
-Future<void> main() async {
+Future<void> main(List<String> arguments) async {
   WidgetsFlutterBinding.ensureInitialized();
+  InvitationInbox? invitations;
   if (Platform.isWindows) {
     try {
       final directory = await getApplicationSupportDirectory();
+      invitations = InvitationInbox(p.join(directory.path, 'invitations'));
+      InvitationIntent? invitation;
+      if (arguments.isNotEmpty) {
+        if (arguments.length != 1) {
+          throw const FormatException(
+            'Only one invitation may be opened at a time.',
+          );
+        }
+        invitation = InvitationIntent.parseNative(Uri.parse(arguments.single));
+      }
       final instance = SingleInstance(
         p.join(directory.path, 'instance'),
         () async {
@@ -21,8 +33,9 @@ Future<void> main() async {
           await windowManager.focus();
         },
         (message) => debugPrint(message),
+        onInvitation: invitations.save,
       );
-      if (!await instance.start()) exit(0);
+      if (!await instance.start(invitation: invitation)) exit(0);
     } catch (_) {
       runApp(
         const MaterialApp(
@@ -31,7 +44,7 @@ Future<void> main() async {
               child: Padding(
                 padding: EdgeInsets.all(32),
                 child: SelectableText(
-                  'Bloomstep could not safely open its single app window. Close an existing Bloomstep window and retry. No new garden or session was opened.',
+                  'Bloomstep could not safely process this invitation or open its app window. Use a valid Bloomstep link, or close an existing Bloomstep window and retry. No new garden or session was opened.',
                 ),
               ),
             ),
@@ -41,5 +54,5 @@ Future<void> main() async {
       return;
     }
   }
-  runApp(const BloomstepApp());
+  runApp(BloomstepApp(invitationInbox: invitations));
 }

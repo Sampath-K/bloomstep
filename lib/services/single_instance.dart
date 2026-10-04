@@ -6,11 +6,19 @@ import 'dart:math';
 
 import 'package:path/path.dart' as p;
 
+import 'invitation_intent.dart';
+
 class SingleInstance {
-  SingleInstance(this.directory, this.activate, this.reportError);
+  SingleInstance(
+    this.directory,
+    this.activate,
+    this.reportError, {
+    this.onInvitation,
+  });
   final String directory;
   final Future<void> Function() activate;
   final void Function(String) reportError;
+  final Future<void> Function(InvitationIntent)? onInvitation;
   RandomAccessFile? _lock;
   ServerSocket? _server;
   final _clients = <Socket>{};
@@ -18,7 +26,7 @@ class SingleInstance {
   bool _closed = false;
   String get _descriptor => p.join(directory, 'instance.json');
 
-  Future<bool> start() async {
+  Future<bool> start({InvitationIntent? invitation}) async {
     if (_closed || _lock != null) {
       throw StateError('Instance coordinator is already used.');
     }
@@ -30,7 +38,7 @@ class SingleInstance {
     } on FileSystemException catch (error) {
       await lock.close();
       if (![11, 32, 33].contains(error.osError?.errorCode)) rethrow;
-      await _activateExisting();
+      await _activateExisting(invitation);
       return false;
     }
     _lock = lock;
@@ -59,6 +67,12 @@ class SingleInstance {
         flush: true,
       );
       await next.rename(_descriptor);
+      if (invitation != null) {
+        if (onInvitation == null) {
+          throw StateError('This app cannot receive invitations.');
+        }
+        await onInvitation!(invitation);
+      }
       return true;
     } catch (_) {
       await close();
@@ -91,11 +105,27 @@ class SingleInstance {
     try {
       final packet = await _packet(socket).timeout(const Duration(seconds: 2));
       if (_closed ||
-          packet.length != 2 ||
+          (packet.length != 2 && packet.length != 4) ||
+          packet.keys.any(
+            (key) => !{'command', 'token', 'code', 'channel'}.contains(key),
+          ) ||
           packet['command'] != 'activate' ||
           packet['token'] is! String ||
           !_sameToken(packet['token'] as String)) {
         throw const FormatException('Invalid local activation request.');
+      }
+      if (packet.length == 4) {
+        if (packet['code'] is! String ||
+            packet['channel'] is! String ||
+            onInvitation == null) {
+          throw const FormatException('Invalid local invitation activation.');
+        }
+        await onInvitation!(
+          InvitationIntent(
+            packet['code'] as String,
+            packet['channel'] as String,
+          ),
+        );
       }
       await activate();
       socket.writeln(jsonEncode({'ok': true}));
@@ -126,7 +156,7 @@ class SingleInstance {
     return difference == 0;
   }
 
-  Future<void> _activateExisting() async {
+  Future<void> _activateExisting(InvitationIntent? invitation) async {
     Map<String, dynamic>? descriptor;
     for (var attempt = 0; attempt < 10; attempt++) {
       try {
@@ -169,7 +199,12 @@ class SingleInstance {
     ).timeout(const Duration(seconds: 2));
     try {
       socket.writeln(
-        jsonEncode({'command': 'activate', 'token': descriptor['token']}),
+        jsonEncode({
+          'command': 'activate',
+          'token': descriptor['token'],
+          if (invitation != null) 'code': invitation.code,
+          if (invitation != null) 'channel': invitation.channel,
+        }),
       );
       await socket.flush();
       final response = await _packet(socket)

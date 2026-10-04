@@ -45,6 +45,15 @@
   watermark; token refresh never extends the 30-day offline authorization window.
 - Real browser PKCE product-team sign-in source, memory-only credentials and a
   separately provisioned public SPA; no pasted bearer-token workflow.
+- Authenticated private invitation receipts and idempotent mutual cosmetic
+  rewards; explicit recipe-card sharing, deferred protocol/inbox handoff and
+  native Windows Share contract integration. No contacts or automatic email.
+- Strict expiring/checksummed remote configuration and source-reviewed bounded
+  experiment gates; no fabricated cohort, crash-free or notification delivery.
+- Real daily worker token/snapshot write observed; customer/team issuer isolation
+  verified. GitHub's immutable OIDC subject is pinned, not recyclable repo names.
+- Dedicated least-reader free-tier guard with one-way pause; unknown billing
+  data is disclosed, never reported as zero or a monetary hard cap.
 
 No user feedback item is marked shipped yet. This is not a full authenticated
 MVP; deployment/native delivery and remaining loops are tracked in `docs/status.md`.

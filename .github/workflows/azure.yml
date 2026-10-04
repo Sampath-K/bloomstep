@@ -27,7 +27,7 @@ jobs:
           API_ORIGIN: ${{ vars.API_ORIGIN }}
         run: |
           npm --prefix site ci
-          node --test site/test/operator-auth.test.mjs test/site_console_test.mjs
+          node --test site/test/*.test.mjs test/site_console_test.mjs
           npm --prefix site run build
           mkdir deploy-site
           cp site/index.html site/config.json site/staticwebapp.config.json site/operator-callback.html site/operator-config.json deploy-site/

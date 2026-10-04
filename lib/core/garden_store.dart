@@ -680,6 +680,35 @@ class GardenStore {
     });
   }
 
+  Future<void> saveInvitationState(
+    String value, {
+    String? acceptedChannel,
+  }) async {
+    final account = _account;
+    await _db.transaction((txn) async {
+      await txn.insert('settings', {
+        'account': account,
+        'key': 'invitationState',
+        'value': value,
+        'updated': DateTime.now().toUtc().toIso8601String(),
+      }, conflictAlgorithm: ConflictAlgorithm.replace);
+      if (acceptedChannel != null) {
+        await _trackWith(
+          txn,
+          account,
+          'invite_accepted',
+          properties: {
+            // Current registry lacks qr/native enums; do not invent taxonomy.
+            'channel': ['link', 'email'].contains(acceptedChannel)
+                ? acceptedChannel
+                : 'invite',
+            'platform': telemetryPlatform,
+          },
+        );
+      }
+    });
+  }
+
   Future<void> track(String name, {Map<String, Object?>? properties}) async {
     _validateEventProperties(name, properties);
     final copy = properties == null
@@ -776,6 +805,24 @@ class GardenStore {
 
   Future<Map<String, Object?>> export() async {
     final data = <String, Object?>{'schemaVersion': 1};
+    final invitations = await setting('invitationState');
+    if (invitations != null) {
+      final state = jsonDecode(invitations) as Map<String, dynamic>;
+      data['invitationReceipts'] = {
+        'version': state['version'],
+        'creations': [
+          for (final row in state['creations'] as List)
+            {
+              'requestId': row['payload']['requestId'],
+              'channel': row['payload']['channel'],
+              if (row['receipt'] != null)
+                'receipt': {...row['receipt'] as Map}..remove('token'),
+            },
+        ],
+        'redemptionReceipt': state['redemption']?['receipt'],
+        'status': state['status'],
+      };
+    }
     for (final table in [
       'habits',
       'checkins',
@@ -789,6 +836,11 @@ class GardenStore {
         where: 'account = ?',
         whereArgs: [_account],
       );
+      if (table == 'settings') {
+        data[table] = (data[table] as List)
+            .where((row) => row['key'] != 'invitationState')
+            .toList();
+      }
     }
     return data;
   }

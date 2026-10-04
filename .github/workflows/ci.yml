@@ -11,8 +11,18 @@ on:
         description: 'Run only the real aggregate worker and customer-route isolation proof'
         type: boolean
         default: false
+      verify_spend_guard:
+        description: 'Run only the read-only free-tier and spending-limit audit'
+        type: boolean
+        default: false
 
 jobs:
+  spend-proof:
+    if: github.event_name == 'workflow_dispatch' && inputs.verify_spend_guard
+    permissions:
+      contents: read
+      id-token: write
+    uses: ./.github/workflows/spend-guard.yml
   aggregate-proof:
     if: github.event_name == 'workflow_dispatch' && inputs.verify_aggregates
     permissions:
@@ -20,7 +30,7 @@ jobs:
       id-token: write
     uses: ./.github/workflows/aggregates.yml
   api:
-    if: github.event_name != 'workflow_dispatch' || !inputs.verify_aggregates
+    if: github.event_name != 'workflow_dispatch' || (!inputs.verify_aggregates && !inputs.verify_spend_guard)
     runs-on: ubuntu-latest
     defaults:
       run:
@@ -41,10 +51,10 @@ jobs:
         working-directory: .
         run: |
           npm --prefix site ci
-          node --test site/test/operator-auth.test.mjs
+          node --test site/test/*.test.mjs
           npm --prefix site run build
   test-and-build-windows:
-    if: github.event_name != 'workflow_dispatch' || !inputs.verify_aggregates
+    if: github.event_name != 'workflow_dispatch' || (!inputs.verify_aggregates && !inputs.verify_spend_guard)
     strategy:
       fail-fast: false
       matrix:
@@ -122,6 +132,11 @@ jobs:
           $target = Join-Path $env:RUNNER_TEMP 'Bloomstep-smoke'
           Start-Process $installer -ArgumentList "/VERYSILENT /SUPPRESSMSGBOXES /NORESTART /DIR=`"$target`"" -Wait
           if (-not (Test-Path "$target\bloomstep.exe")) { throw 'Install failed' }
+          $protocolKey = 'Registry::HKEY_CURRENT_USER\Software\Classes\bloomstep\shell\open\command'
+          $protocol = (Get-Item $protocolKey).GetValue('')
+          if ($protocol -ne "`"$target\bloomstep.exe`" `"%1`"") {
+            throw 'Per-user invitation protocol was not registered to the installed app.'
+          }
           $app = Start-Process "$target\bloomstep.exe" -PassThru
           Start-Sleep 8
           if ($app.HasExited) { throw 'Installed app exited unexpectedly' }
@@ -131,17 +146,33 @@ jobs:
             throw 'A second launch opened another persistent app instance.'
           }
           if ($second.ExitCode -ne 0) { throw 'Second launch did not activate the existing app.' }
+          $code = 'A' * 43
+          $invitation = Start-Process "$target\bloomstep.exe" -ArgumentList "bloomstep://invite?code=$code&channel=link" -PassThru
+          if (-not $invitation.WaitForExit(10000)) {
+            Stop-Process -Id $invitation.Id
+            throw 'Invitation launch opened a duplicate app.'
+          }
+          if ($invitation.ExitCode -ne 0) { throw 'Invitation activation failed.' }
           $app.Refresh()
           if ($app.HasExited) { throw 'Activating the existing app closed its owner.' }
           Stop-Process -Id $app.Id
           Start-Process "$target\unins000.exe" -ArgumentList '/VERYSILENT /SUPPRESSMSGBOXES /NORESTART' -Wait
           if (Test-Path "$target\bloomstep.exe") { throw 'Uninstall failed' }
+          if (Test-Path $protocolKey) { throw 'Owned invitation protocol survived uninstall.' }
       - uses: actions/upload-artifact@v4
         with:
           name: bloomstep-windows-${{ matrix.arch }}
           path: |
             build/windows/${{ matrix.arch }}/runner/Release/
             release-output/
+      - name: Build isolated Windows runtime probe
+        if: matrix.arch == 'arm64'
+        run: flutter build windows --profile --target tool/runtime_probe.dart
+      - uses: actions/upload-artifact@v4
+        if: matrix.arch == 'arm64'
+        with:
+          name: bloomstep-synthetic-runtime-arm64-NOT-FOR-RELEASE
+          path: build/windows/arm64/runner/Profile/
       - name: Build isolated synthetic profile preview
         if: matrix.arch == 'arm64'
         run: flutter build windows --profile --target tool/preview.dart

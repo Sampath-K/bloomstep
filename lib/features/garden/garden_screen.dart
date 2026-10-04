@@ -15,6 +15,9 @@ import '../../services/sync_service.dart';
 import '../../services/desktop_reminders.dart';
 import '../../services/remote_config.dart';
 import '../../services/update_service.dart';
+import '../../services/invitation_service.dart';
+import '../../services/invitation_intent.dart';
+import '../../services/native_share.dart';
 
 import 'package:launch_at_startup/launch_at_startup.dart';
 
@@ -27,10 +30,18 @@ class GardenScreen extends StatefulWidget {
     required this.store,
     this.identity,
     this.updateService,
+    this.reminderGateway,
+    this.configLoader,
+    this.invitationInbox,
+    this.invitationService,
   });
   final GardenStore store;
   final IdentityService? identity;
   final UpdateService? updateService;
+  final ReminderGateway? reminderGateway;
+  final Future<RemoteConfigResult> Function(GardenStore)? configLoader;
+  final InvitationInbox? invitationInbox;
+  final InvitationService? invitationService;
   @override
   State<GardenScreen> createState() => _GardenScreenState();
 }
@@ -46,27 +57,44 @@ class _GardenScreenState extends State<GardenScreen> {
   Map<String, DateTime?> naturalnessDates = {};
   Set<String> pausedReminders = {};
   String? error;
+  String? configWarning;
   String syncStatus = 'Local garden';
   bool syncing = false;
   bool closing = false;
   Timer? syncTimer;
+  Timer? configExpiryTimer;
   DesktopReminders? reminders;
+  InvitationService? invitations;
+  InvitationIntent? pendingInvitation;
+  InvitationStatus? invitationStatus;
+  Map<String, dynamic>? acceptedCard;
+  String? invitationWarning;
   @override
   void initState() {
     super.initState();
+    invitations =
+        widget.invitationService ??
+        (widget.identity == null
+            ? null
+            : InvitationService(widget.store, identity: widget.identity));
+    widget.invitationInbox?.addListener(_inboxChanged);
+    _inboxChanged();
+    if (invitations != null) unawaited(_loadInvitationCache());
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (mounted) unawaited(_foregroundOpening());
     });
     _load();
-    if (widget.identity != null) {
+    if (widget.identity != null || widget.reminderGateway != null) {
       reminders = DesktopReminders(widget.store, _load, (message) {
         if (mounted) setState(() => error = message);
-      });
+      }, gateway: widget.reminderGateway);
       reminders!.initialize().catchError((Object e) {
         if (mounted) setState(() => error = 'Reminders could not start: $e');
       });
-      _sync();
       _refreshConfig();
+    }
+    if (widget.identity != null) {
+      _sync();
       syncTimer = Timer.periodic(const Duration(minutes: 5), (_) => _sync());
     }
   }
@@ -74,6 +102,8 @@ class _GardenScreenState extends State<GardenScreen> {
   @override
   void dispose() {
     syncTimer?.cancel();
+    widget.invitationInbox?.removeListener(_inboxChanged);
+    configExpiryTimer?.cancel();
     reminders?.dispose().catchError(
       (Object e) => debugPrint('Reminder cleanup failed: $e'),
     );
@@ -125,6 +155,7 @@ class _GardenScreenState extends State<GardenScreen> {
         setState(() => syncStatus = 'Saved on this device and synced');
       }
       await _load();
+      if (invitations != null) await _refreshInvitations();
     } catch (e) {
       if (mounted) {
         setState(() => syncStatus = 'Sync needs attention: $e');
@@ -136,13 +167,33 @@ class _GardenScreenState extends State<GardenScreen> {
 
   Future<void> _refreshConfig() async {
     try {
-      final config = await RemoteConfig.fetch(widget.store);
-      reminders?.config = config;
-    } catch (e) {
+      final result = await (widget.configLoader ?? RemoteConfig.fetch)(
+        widget.store,
+      );
+      reminders?.config = result.config;
+      configExpiryTimer?.cancel();
+      final expires = result.config.expiresAt;
+      if (expires != null) {
+        final remaining = expires.difference(DateTime.now().toUtc());
+        configExpiryTimer = Timer(
+          remaining.isNegative ? Duration.zero : remaining,
+          () {
+            reminders?.config = RemoteConfig.defaults;
+            if (mounted) {
+              setState(
+                () => configWarning = 'Remote configuration expired; using reviewed local control copy. No experiment is active.',
+              );
+            }
+          },
+        );
+      }
+      if (mounted) setState(() => configWarning = result.warning);
+    } catch (_) {
+      reminders?.config = RemoteConfig.defaults;
+      configExpiryTimer?.cancel();
       if (mounted) {
         setState(
-          () => error =
-              'Remote config unavailable; using reviewed local control copy. $e',
+          () => configWarning = 'Remote configuration unavailable; using reviewed local control copy. No experiment is active.',
         );
       }
     }
@@ -204,7 +255,7 @@ class _GardenScreenState extends State<GardenScreen> {
     }
   }
 
-  Future<void> _plant() async {
+  Future<void> _plant({Habit? prefill}) async {
     if (habits.where((h) => h.status == 'active').length >= 3) {
       final more = await _confirm(
         'Start small',
@@ -216,7 +267,7 @@ class _GardenScreenState extends State<GardenScreen> {
     if (!mounted) return;
     final recipe = await showDialog<RecipeDraft>(
       context: context,
-      builder: (_) => const RecipeBuilder(),
+      builder: (_) => RecipeBuilder(habit: prefill),
     );
     if (recipe == null) return;
     await _act(() async {
@@ -520,81 +571,299 @@ class _GardenScreenState extends State<GardenScreen> {
     }
   }
 
+  void _inboxChanged() => unawaited(_readInvitation());
+
+  Future<void> _readInvitation() async {
+    try {
+      final intent = await widget.invitationInbox?.read();
+      if (mounted) setState(() => pendingInvitation = intent);
+    } catch (_) {
+      if (mounted) {
+        setState(
+          () => invitationWarning = 'The saved invitation is unavailable or expired. Open the original link again.',
+        );
+      }
+    }
+  }
+
+  Future<void> _loadInvitationCache() async {
+    try {
+      final status = await invitations!.cachedStatus();
+      final card = await invitations!.cachedAcceptedCard();
+      if (mounted) {
+        setState(() {
+          invitationStatus = status;
+          acceptedCard = card;
+        });
+      }
+    } catch (_) {
+      if (mounted) {
+        setState(
+          () => invitationWarning =
+              'Private invitation cache needs attention; reconnect to refresh.',
+        );
+      }
+    }
+  }
+
+  Future<void> _refreshInvitations() async {
+    try {
+      final status = await invitations!.refreshStatus();
+      if (mounted) {
+        setState(() {
+          invitationStatus = status;
+          invitationWarning = null;
+        });
+      }
+    } catch (_) {
+      if (mounted) {
+        setState(
+          () => invitationWarning = 'Invitation status could not be refreshed. Cached cosmetics are last-known server receipts, not a new grant.',
+        );
+      }
+    }
+  }
+
+  Future<void> _clearCurrentInvitation(String code) async {
+    final inbox = widget.invitationInbox;
+    if (inbox != null && (await inbox.read())?.code == code) {
+      await inbox.clear();
+    }
+    if (mounted && pendingInvitation?.code == code) {
+      setState(() => pendingInvitation = null);
+    }
+  }
+
+  Future<void> _acceptInvitation() async {
+    final intent = pendingInvitation;
+    if (intent == null || invitations == null) return;
+    await _act(() async {
+      final receipt = await invitations!.redeem(intent.code);
+      if (mounted) setState(() => acceptedCard = receipt.recipeCard);
+      await _clearCurrentInvitation(intent.code);
+      await _refreshInvitations();
+    });
+  }
+
+  Future<void> _importCard() async {
+    final card = acceptedCard;
+    if (card == null ||
+        !await _confirm(
+          'Use this shared recipe?',
+          '${card['aspiration']}\nAfter I ${card['anchor']}, I will ${card['behavior']}.\nThen I ${card['celebration']}.\nSpecies: ${card['species']}\n\nYou can edit it before planting. Nothing is planted automatically.',
+          'Open recipe builder',
+        )) {
+      return;
+    }
+    await _plant(
+      prefill: Habit(
+        id: '',
+        aspiration: card['aspiration'],
+        anchor: card['anchor'],
+        behavior: card['behavior'],
+        celebration: card['celebration'],
+        species: card['species'],
+        stage: GrowthStage.seed,
+        status: 'active',
+        practiceCount: 0,
+        recentPractice: 0,
+      ),
+    );
+  }
+
+  Future<Map<String, dynamic>?> _chooseShareCard() async {
+    if (habits.isEmpty) return null;
+    final habit = await showDialog<Habit>(
+      context: context,
+      builder: (context) => SimpleDialog(
+        title: const Text('Choose a recipe to explicitly share'),
+        children: [
+          for (final h in habits)
+            SimpleDialogOption(
+              onPressed: () => Navigator.pop(context, h),
+              child: Text(h.aspiration),
+            ),
+        ],
+      ),
+    );
+    if (habit == null || !mounted) return null;
+    final category = await showDialog<String>(
+      context: context,
+      builder: (context) => SimpleDialog(
+        title: const Text('Choose shared recipe category'),
+        children: [
+          for (final c in invitationCategories)
+            SimpleDialogOption(
+              onPressed: () => Navigator.pop(context, c),
+              child: Text(c),
+            ),
+        ],
+      ),
+    );
+    if (category == null) return null;
+    if (!await _confirm(
+      'Approve this private recipe card?',
+      'This deliberately shares these recipe fields:\n${habit.aspiration}\nAfter I ${habit.anchor}, I will ${habit.behavior}.\nThen I ${habit.celebration}.\nSpecies: ${habit.species}\nCategory: $category\n\nNo account identity, progress or habit ID is shared.',
+      'Share this exact card',
+    )) {
+      return null;
+    }
+    return {
+      'explicitChoice': true,
+      'templateCategory': category,
+      'aspiration': habit.aspiration,
+      'anchor': habit.anchor,
+      'behavior': habit.behavior,
+      'celebration': habit.celebration,
+      'species': habit.species,
+    };
+  }
+
   Future<void> _share() async {
-    const url =
-        'https://brave-plant-02c10e800.5.azurestaticapps.net/?invite=garden&channel=link';
-    if (!mounted) return;
+    if (invitations == null) {
+      setState(
+        () => error = 'Connected invitations require an authenticated garden. No demo invitation was created.',
+      );
+      return;
+    }
+    Map<String, dynamic>? card;
+    var busy = false;
+    String? failure;
+    InvitationReceipt? receipt;
     await showDialog<void>(
       context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Invite someone to grow'),
-        content: SizedBox(
-          width: 360,
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              const Text(
-                'This invitation contains no habit text or account information. Personalized referral credit is not enabled until the cloud service is live.',
-              ),
-              const SizedBox(height: 16),
-              Semantics(
-                label: 'QR code for the Bloomstep website',
-                child: QrImageView(
-                  data: url,
-                  size: 180,
-                  backgroundColor: Colors.white,
-                ),
-              ),
-              const SelectableText(url),
-            ],
-          ),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () async {
-              final messenger = ScaffoldMessenger.of(this.context);
-              await Clipboard.setData(const ClipboardData(text: url));
-              await widget.store.track(
-                'share_initiated',
-                properties: {
-                  'channel': 'link',
-                  'platform': GardenStore.telemetryPlatform,
-                },
+      builder: (dialogContext) => StatefulBuilder(
+        builder: (context, update) {
+          Future<void> send(String channel) async {
+            update(() {
+              busy = true;
+              failure = null;
+            });
+            try {
+              final created = await invitations!.create(
+                channel,
+                recipeCard: card,
               );
-              messenger.showSnackBar(
-                const SnackBar(content: Text('Invitation link copied.')),
-              );
-            },
-            child: const Text('Copy link'),
-          ),
-          TextButton(
-            onPressed: () => _act(() async {
-              if (!await launchUrl(
-                Uri(
-                  scheme: 'mailto',
-                  query:
-                      'subject=${Uri.encodeComponent('A tiny step together')}&body=${Uri.encodeComponent('Bloomstep is growing a gentle habit garden. $url')}',
-                ),
-              )) {
-                throw StateError(
-                  'No email application is available. Copy the invitation link instead.',
-                );
+              final url = invitations!.webUri(created);
+              if (!context.mounted) return;
+              update(() => receipt = created);
+              if (channel == 'link') {
+                await Clipboard.setData(ClipboardData(text: url.toString()));
+              } else if (channel == 'email') {
+                if (!await launchUrl(
+                  Uri(
+                    scheme: 'mailto',
+                    query:
+                        'subject=${Uri.encodeComponent('A tiny step together')}&body=${Uri.encodeComponent('Grow a tiny habit with Bloomstep. $url')}',
+                  ),
+                )) {
+                  throw StateError(
+                    'No email application is available. Nothing was sent.',
+                  );
+                }
+              } else if (channel == 'native') {
+                await NativeShare.share(url);
               }
               await widget.store.track(
                 'share_initiated',
                 properties: {
-                  'channel': 'email',
+                  'channel': ['link', 'email'].contains(channel)
+                      ? channel
+                      : 'invite',
                   'platform': GardenStore.telemetryPlatform,
                 },
               );
-            }),
-            child: const Text('Email invite'),
-          ),
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('Done'),
-          ),
-        ],
+            } catch (e) {
+              if (context.mounted) {
+                update(
+                  () => failure = 'Invitation needs a connection or retry: $e',
+                );
+              }
+            } finally {
+              if (context.mounted) update(() => busy = false);
+            }
+          }
+
+          return AlertDialog(
+            title: const Text('Invite someone to grow'),
+            content: SizedBox(
+              width: 460,
+              child: SingleChildScrollView(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text(
+                      'Default: no private habit text. We do not contact anyone. Email opens your composer; Windows share opens the OS panel, not proof of transmission.',
+                    ),
+                    Text(
+                      card == null
+                          ? 'No recipe card included.'
+                          : 'Explicitly approved recipe card included.',
+                    ),
+                    TextButton(
+                      onPressed: busy
+                          ? null
+                          : () async {
+                              final chosen = await _chooseShareCard();
+                              if (context.mounted && chosen != null) {
+                                update(() => card = chosen);
+                              }
+                            },
+                      child: const Text('Choose and approve a recipe card'),
+                    ),
+                    if (card != null)
+                      TextButton(
+                        onPressed: busy
+                            ? null
+                            : () => update(() => card = null),
+                        child: const Text('Remove recipe card'),
+                      ),
+                    if (receipt != null) ...[
+                      Text(
+                        '${receipt!.cached ? "Cached existing invitation" : "Server-created invitation"}; expires ${receipt!.expiresAt.toLocal()}.',
+                      ),
+                      SelectableText(invitations!.webUri(receipt!).toString()),
+                      if (receipt!.channel == 'qr')
+                        Semantics(
+                          label: 'Server invitation QR code',
+                          child: QrImageView(
+                            data: invitations!.webUri(receipt!).toString(),
+                            size: 180,
+                            backgroundColor: Colors.white,
+                          ),
+                        ),
+                    ],
+                    if (failure != null) Text(failure!),
+                    if (busy) const LinearProgressIndicator(),
+                  ],
+                ),
+              ),
+            ),
+            actions: [
+              TextButton(
+                onPressed: busy ? null : () => send('link'),
+                child: const Text('Copy link'),
+              ),
+              TextButton(
+                onPressed: busy ? null : () => send('email'),
+                child: const Text('Email invite'),
+              ),
+              TextButton(
+                onPressed: busy ? null : () => send('qr'),
+                child: const Text('Show QR'),
+              ),
+              TextButton(
+                onPressed: busy ? null : () => send('native'),
+                child: const Text('Windows share'),
+              ),
+              TextButton(
+                onPressed: busy ? null : () => Navigator.pop(dialogContext),
+                child: const Text('Done'),
+              ),
+            ],
+          );
+        },
       ),
     );
   }
@@ -719,6 +988,8 @@ class _GardenScreenState extends State<GardenScreen> {
 
   Future<void> _settings() async {
     var analytics = await widget.store.setting('analytics') == 'true';
+    var personalized =
+        await widget.store.setting('personalizedTiming') == 'true';
     if (!mounted) return;
     await showDialog<void>(
       context: context,
@@ -769,6 +1040,20 @@ class _GardenScreenState extends State<GardenScreen> {
                       },
                     ),
                   if (reminders != null) ...[
+                    SwitchListTile(
+                      title: const Text('Personalized reminder timing'),
+                      subtitle: const Text(
+                        'Device-only, off by default. When enabled, uses your last 14 practice times after five samples, rounded to 15 minutes. Local time, daylight-saving changes, quiet hours and daily limits still apply.',
+                      ),
+                      value: personalized,
+                      onChanged: (value) async {
+                        await widget.store.setSetting(
+                          'personalizedTiming',
+                          '$value',
+                        );
+                        update(() => personalized = value);
+                      },
+                    ),
                     ListTile(
                       title: const Text('Choose check-in time'),
                       onTap: () => _chooseMinute('reminderMinute', 1080),
@@ -820,9 +1105,18 @@ class _GardenScreenState extends State<GardenScreen> {
                         suggestedName: 'bloomstep-export.json',
                       );
                       if (target == null) return;
+                      final data = await widget.store.export();
+                      if (invitations != null) {
+                        try {
+                          data['serverInvitations'] =
+                              (await invitations!.refreshStatus(export: true))
+                                  .json;
+                        } catch (_) {
+                          data['invitationExportWarning'] = 'Offline or unavailable: includes local receipts only, not a current server export.';
+                        }
+                      }
                       final bytes = utf8.encode(
-                        const JsonEncoder.withIndent('  ')
-                            .convert(await widget.store.export()),
+                        const JsonEncoder.withIndent('  ').convert(data),
                       );
                       await XFile.fromData(
                         bytes,
@@ -857,6 +1151,13 @@ class _GardenScreenState extends State<GardenScreen> {
                           }
                           await reminders?.disable();
                           await widget.store.deleteLocalAccount();
+                          if (pendingInvitation != null) {
+                            await _clearCurrentInvitation(
+                              pendingInvitation!.code,
+                            );
+                          }
+                          invitationStatus = null;
+                          acceptedCard = null;
                           closing = false;
                         });
                       }
@@ -888,6 +1189,11 @@ class _GardenScreenState extends State<GardenScreen> {
                             widget.identity!,
                             widget.store,
                           ).deleteAccount();
+                          if (pendingInvitation != null) {
+                            await _clearCurrentInvitation(
+                              pendingInvitation!.code,
+                            );
+                          }
                         });
                         if (context.mounted && mounted && error == null) {
                           Navigator.pop(context);
@@ -921,6 +1227,11 @@ class _GardenScreenState extends State<GardenScreen> {
                           }
                           await reminders?.disable();
                           await widget.store.deleteLocalAccount();
+                          if (pendingInvitation != null) {
+                            await _clearCurrentInvitation(
+                              pendingInvitation!.code,
+                            );
+                          }
                           await widget.identity!.signOut();
                         });
                         if (context.mounted && mounted && error == null) {
@@ -1116,6 +1427,111 @@ class _GardenScreenState extends State<GardenScreen> {
                           onPressed: syncing ? null : _sync,
                           icon: const Icon(Icons.sync),
                           label: const Text('Sync now'),
+                        ),
+                      if (pendingInvitation != null)
+                        Card(
+                          child: Padding(
+                            padding: const EdgeInsets.all(16),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                const Text(
+                                  'Someone invited you to grow a tiny habit.',
+                                ),
+                                const Text(
+                                  'Accept only if you want. Acceptance is sent to the authenticated service; attribution comes from the server, not the link. A cosmetic reward requires the server to observe your first positive practice.',
+                                ),
+                                Wrap(
+                                  spacing: 8,
+                                  children: [
+                                    FilledButton(
+                                      onPressed: working || invitations == null
+                                          ? null
+                                          : _acceptInvitation,
+                                      child: const Text('Accept invitation'),
+                                    ),
+                                    TextButton(
+                                      onPressed: working
+                                          ? null
+                                          : () => _act(
+                                              () => _clearCurrentInvitation(
+                                                pendingInvitation!.code,
+                                              ),
+                                            ),
+                                      child: const Text('Decline invitation'),
+                                    ),
+                                  ],
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                      if (acceptedCard != null)
+                        TextButton(
+                          onPressed: working ? null : _importCard,
+                          child: const Text(
+                            'Review shared recipe before planting',
+                          ),
+                        ),
+                      if (invitations != null)
+                        TextButton(
+                          onPressed: working
+                              ? null
+                              : () => _act(_refreshInvitations),
+                          child: const Text('Refresh invitation receipts'),
+                        ),
+                      if (invitationStatus != null &&
+                          invitationStatus!.rewards.isNotEmpty)
+                        Card(
+                          child: Padding(
+                            padding: const EdgeInsets.all(16),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                const Icon(
+                                  Icons.local_florist,
+                                  semanticLabel: 'Rare flower cosmetic',
+                                ),
+                                if (invitationStatus != null &&
+                                    invitationStatus!.invitations.isNotEmpty)
+                                  ExpansionTile(
+                                    title: const Text(
+                                      'Private invitation receipts',
+                                    ),
+                                    subtitle: Text(
+                                      '${invitationStatus!.cached ? "Cached" : "Server"} status as of ${invitationStatus!.fetchedAt.toLocal()}',
+                                    ),
+                                    children: [
+                                      for (final receipt
+                                          in invitationStatus!.invitations)
+                                        ListTile(
+                                          title: Text(
+                                            '${receipt['direction']} • ${receipt['channel']} • ${receipt['status']}',
+                                          ),
+                                          subtitle: Text(
+                                            'Receipt expires ${DateTime.parse(receipt['expiresAt']).toLocal()}',
+                                          ),
+                                        ),
+                                    ],
+                                  ),
+                                const Text(
+                                  'Rare flower — server-granted cosmetic',
+                                ),
+                                Text(
+                                  '${invitationStatus!.rewards.length} server grant(s). ${invitationStatus!.cached ? "Cached receipt" : "Server status"} as of ${invitationStatus!.fetchedAt.toLocal()}. No growth, ranking or streak advantage.',
+                                ),
+                                Text(invitationStatus!.json['definition']),
+                              ],
+                            ),
+                          ),
+                        ),
+                      if (invitationWarning != null) Text(invitationWarning!),
+                      if (configWarning != null)
+                        Card(
+                          child: Padding(
+                            padding: const EdgeInsets.all(16),
+                            child: Text(configWarning!),
+                          ),
                         ),
                       if (error != null)
                         Card(

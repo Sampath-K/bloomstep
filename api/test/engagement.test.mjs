@@ -16,7 +16,7 @@ const request = (method, data, query = {}, params = {}) => ({
   text: async () => JSON.stringify(data),
 });
 
-function harness({ roles = ['Bloomstep.Admin'], disabled = false, apiDisabled = false, aggregatesDisabled = false, limits = {}, beforeBatch, failAudit = false, beforeQuery } = {}) {
+function harness({ roles = ['Bloomstep.Admin'], scopes = ['Garden.ReadWrite'], actorUserId, disabled = false, apiDisabled = false, aggregatesDisabled = false, invitationsDisabled = false, limits = {}, beforeBatch, failAudit = false, beforeQuery } = {}) {
   const documents = new Map();
   const writes = [];
   let revision = 0;
@@ -65,6 +65,9 @@ function harness({ roles = ['Bloomstep.Admin'], disabled = false, apiDisabled = 
           else if (spec.query.includes('c.type = "events"')) rows = rows.filter(row => row.type === 'events' && (!parameters['@start'] || row.record.ts >= parameters['@start'] && row.record.ts < parameters['@end']));
           else if (spec.query.includes('c.type = "account"')) rows = rows.filter(row => row.type === 'account');
           else if (spec.query.includes('c.type = "aggregate"')) rows = rows.filter(row => row.type === 'aggregate');
+          else if (spec.query.includes('c.type = "invitation_receipt"')) rows = rows.filter(row => row.type === 'invitation_receipt');
+          else if (spec.query.includes('c.type = "referral_reward"')) rows = rows.filter(row => row.type === 'referral_reward');
+          else if (spec.query.includes('c.type = "invitation_secret"')) rows = rows.filter(row => row.type === 'invitation_secret');
           else if (spec.query.includes('c.type != "account"')) rows = rows.filter(row => row.type !== 'account');
           rows.sort((a, b) => a.userId.localeCompare(b.userId) || a.id.localeCompare(b.id));
           if (parameters['@after']) rows = rows.filter(row => `${row.userId}:${row.id}` > parameters['@after']);
@@ -76,14 +79,399 @@ function harness({ roles = ['Bloomstep.Admin'], disabled = false, apiDisabled = 
   };
   const handlers = createHandlers({
     container: () => store,
-    authenticate: async () => ({ userId: roles.length ? teamId : userId, roles }),
+    authenticate: async () => ({ userId: actorUserId ?? (roles.length ? teamId : userId), roles, scopes }),
     clock: () => new Date(now), environment: () => ({
       BLOOMSTEP_ENGAGEMENT_DISABLED: String(disabled), BLOOMSTEP_API_DISABLED: String(apiDisabled), BLOOMSTEP_AGGREGATES_DISABLED: String(aggregatesDisabled),
+      BLOOMSTEP_INVITATIONS_DISABLED: String(invitationsDisabled),
     }),
     limits: { ...previewLimits, ...limits },
   });
   return { ...handlers, put, read, documents, writes, store };
 }
+
+const friendId = 'c'.repeat(64);
+const friendHandlers = (h, id = friendId, roles = [], scopes = ['Garden.ReadWrite']) => createHandlers({
+  container: () => h.store, authenticate: async () => ({ userId: id, roles, scopes }),
+  clock: () => new Date(now),
+});
+const recipe = () => ({ id: randomUUID(), aspiration: 'Private aspiration', anchor: 'Private anchor',
+  behavior: 'Private behavior', celebration: 'Private celebration', species: 'Fern', stage: 0, status: 'active', updated: now });
+const practice = (habitId, result = 'did') => ({ id: randomUUID(), habitId, day: '2026-09-01', result, reason: null, ts: now });
+
+test('native invitation channels qr/native preserve the canonical 32-byte opaque token contract', async () => {
+  const h = harness();
+  for (const channel of ['qr', 'native']) {
+    const created = (await h.createInvitation(request('POST', { requestId: randomUUID(), channel }))).jsonBody;
+    assert.equal(created.channel, channel);
+    assert.match(created.token, /^[A-Za-z0-9_-]{43}$/);
+    assert.equal(Buffer.from(created.token, 'base64url').length, 32);
+    assert.equal(Buffer.from(created.token, 'base64url').toString('base64url'), created.token);
+    const friend = friendHandlers(h, channel === 'qr' ? friendId : 'd'.repeat(64));
+    const accepted = (await friend.redeemInvitation(request('POST', { requestId: randomUUID(), token: created.token }))).jsonBody;
+    assert.equal(accepted.channel, channel);
+    assert.equal(accepted.recipeCard, null);
+  }
+});
+
+test('spend pause is isolated, bounded, one-way and idempotent; garden/team pause but export/deletion/ops remain', async () => {
+  const h = harness();
+  h.put({ id: 'account', userId, type: 'account', deleted: false });
+  const guard = createHandlers({
+    container: () => h.store, authenticate: async () => ({ userId, roles: [], scopes: ['Garden.ReadWrite'] }),
+    authenticateSpend: async () => ({ userId: teamId, roles: ['Bloomstep.SpendGuard'] }), clock: () => new Date(now),
+  });
+  const data = { requestId: randomUUID(), reason: 'paid_sku' };
+  const paused = (await guard.operationalPause(request('POST', data))).jsonBody;
+  assert.equal(paused.paused, true);
+  assert.deepEqual((await guard.operationalPause(request('POST', data))).jsonBody, paused);
+  await assert.rejects(guard.operationalPause(request('POST', { ...data, reason: 'positive_cost' })), e => e.status === 409);
+  await assert.rejects(guard.operationalPause(request('POST', { ...data, paused: false })), e => e.status === 400);
+  await assert.rejects(guard.sync(request('POST', payload())), e => e.status === 503);
+  await assert.rejects(h.metrics(request('GET')), e => e.status === 503);
+  assert.deepEqual((await guard.sync(request('GET'))).jsonBody.habits, []);
+  const worker = createHandlers({ container: () => h.store,
+    authenticate: async () => ({ userId: teamId, roles: ['Bloomstep.AggregateWriter'] }), clock: () => new Date(now) });
+  await worker.aggregates(request('POST', {}));
+  await assert.rejects(worker.operationalPause(request('POST', data)), e => e.status === 503);
+  const wrong = createHandlers({ container: () => h.store,
+    authenticate: async () => ({ userId: teamId, roles: ['Bloomstep.Admin'] }),
+    authenticateSpend: async () => ({ userId: teamId, roles: ['Bloomstep.AggregateWriter'] }), clock: () => new Date(now) });
+  await assert.rejects(wrong.operationalPause(request('POST', data)), e => e.status === 403);
+  const deletion = request('DELETE'); deletion.headers.set('x-confirm-delete', 'delete-my-garden');
+  assert.equal((await guard.deleteAccount(deletion)).status, 204);
+  assert.equal((await guard.operationalPause(request('POST', { requestId: randomUUID(), reason: 'spending_limit_off' }))).jsonBody.paused, true);
+  await assert.rejects(guard.operationalResume(request('POST', {})), e => e.status === 403);
+  await assert.rejects(h.operationalResume(request('POST', { requestId: randomUUID(), reviewedPauseRequestId: data.requestId })), e => e.status === 400);
+  const review = { requestId: randomUUID(), reviewedPauseRequestId: data.requestId, confirmation: 'reviewed-free-tier-and-spending-limit' };
+  assert.equal((await h.operationalResume(request('POST', review))).jsonBody.paused, false);
+  assert.equal((await h.operationalResume(request('POST', review))).jsonBody.paused, false);
+  await h.metrics(request('GET'));
+  const newPause = { requestId: randomUUID(), reason: 'positive_cost' };
+  await guard.operationalPause(request('POST', newPause));
+  await assert.rejects(h.operationalResume(request('POST', review)), e => e.status === 409);
+  h.put({ ...h.read('budget', '__preview_budget'), operations: previewLimits.lifetimeOperations });
+  assert.equal((await guard.operationalPause(request('POST', newPause))).jsonBody.paused, true);
+  assert.equal(h.read('budget', '__preview_budget').pauseOperations, 2);
+});
+
+test('SpendGuard never obtains primary garden/team privileges even if a malformed primary actor includes it', async () => {
+  const h = harness({ roles: ['Bloomstep.SpendGuard'] });
+  await assert.rejects(h.sync(request('GET')), e => e.status === 403);
+  await assert.rejects(h.metrics(request('GET')), e => e.status === 403);
+  await assert.rejects(h.createInvitation(request('POST', { requestId: randomUUID(), channel: 'link' })), e => e.status === 403);
+  await assert.rejects(h.aggregates(request('POST', {})), e => e.status === 403);
+});
+
+test('invitations require customer Garden scope, reject worker/admin-only and strict unknown/private defaults', async () => {
+  const h = harness();
+  for (const actor of [friendHandlers(h, friendId, ['Bloomstep.Admin'], []),
+    friendHandlers(h, friendId, ['Bloomstep.AggregateWriter']), friendHandlers(h, friendId, [], [])]) {
+    await assert.rejects(actor.createInvitation(request('POST', { requestId: randomUUID(), channel: 'link' })), e => e.status === 403);
+    await assert.rejects(actor.redeemInvitation(request('POST', { requestId: randomUUID(), token: 'ignored' })), e => e.status === 403);
+    await assert.rejects(actor.invitationStatus(request('GET')), e => e.status === 403);
+  }
+  for (const data of [
+    { requestId: randomUUID(), channel: 'link', inviter: teamId },
+    { requestId: randomUUID(), channel: 'link', habitText: 'private' },
+    { requestId: randomUUID(), channel: 'sms' },
+    { requestId: randomUUID(), channel: 'link', recipeCard: { explicitChoice: false, behavior: 'private' } },
+  ]) await assert.rejects(h.createInvitation(request('POST', data)), e => e.status === 400);
+  await assert.rejects(h.invitationStatus(request('GET', null, { userId: friendId })), e => e.status === 400);
+});
+
+test('opaque invitation creation is immutable/idempotent, defaults no habit text and is finitely capped', async () => {
+  const h = harness();
+  const data = { requestId: randomUUID(), channel: 'link' };
+  const first = (await h.createInvitation(request('POST', data))).jsonBody;
+  assert.match(first.token, /^[A-Za-z0-9_-]{43}$/);
+  assert.equal(first.recipeCard, null);
+  assert.equal(first.expiresAt, '2026-09-08T12:00:00.000Z');
+  assert.equal(JSON.stringify(first).includes(teamId), false);
+  assert.deepEqual((await h.createInvitation(request('POST', data))).jsonBody, first);
+  await assert.rejects(h.createInvitation(request('POST', { ...data, channel: 'email' })), e => e.status === 409);
+  for (let i = 1; i < 10; i++) {
+    h.put({ ...h.read('account', teamId), invitationDaily: 0 });
+    await h.createInvitation(request('POST', { requestId: randomUUID(), channel: 'link' }));
+  }
+  await assert.rejects(h.createInvitation(request('POST', { requestId: randomUUID(), channel: 'link' })), e => e.status === 429);
+  assert.equal(h.read('account', teamId).invitationCreated, 10);
+});
+
+test('recipe-card sharing is explicit and exact; no contacts or attributed identities in recipient response', async () => {
+  const h = harness();
+  const card = { explicitChoice: true, templateCategory: 'calm', aspiration: 'Calm', anchor: 'After tea',
+    behavior: 'One breath', celebration: 'Smile', species: 'Fern' };
+  const created = (await h.createInvitation(request('POST', { requestId: randomUUID(), channel: 'email', recipeCard: card }))).jsonBody;
+  const friend = friendHandlers(h);
+  const accepted = (await friend.redeemInvitation(request('POST', { requestId: randomUUID(), token: created.token }))).jsonBody;
+  assert.deepEqual(accepted.recipeCard, card);
+  assert.equal(accepted.channel, 'email');
+  assert.equal(JSON.stringify(accepted).includes(teamId), false);
+  assert.equal(JSON.stringify(accepted).includes(friendId), false);
+  assert.deepEqual((await h.invitationStatus(request('GET', null, { export: 'true' }))).jsonBody.sharedRecipes[0].recipeCard, card);
+  assert.equal((await friend.invitationStatus(request('GET', null, { export: 'true' }))).jsonBody.sharedRecipes.length, 0);
+  await assert.rejects(h.createInvitation(request('POST', { requestId: randomUUID(), channel: 'link', recipeCard: { ...card, email: 'private' } })), e => e.status === 400);
+});
+
+test('invitation daily/global budgets and kill switches are explicit; deletion remains possible', async () => {
+  for (const options of [{ disabled: true }, { apiDisabled: true }, { invitationsDisabled: true }]) {
+    const h = harness(options);
+    await assert.rejects(h.createInvitation(request('POST', { requestId: randomUUID(), channel: 'link' })), e => e.status === 503);
+    assert.equal(h.documents.size, 0);
+  }
+  const h = harness();
+  for (let i = 0; i < 2; i++) await h.createInvitation(request('POST', { requestId: randomUUID(), channel: 'link' }));
+  await assert.rejects(h.createInvitation(request('POST', { requestId: randomUUID(), channel: 'link' })), e => e.status === 429);
+  const limited = harness({ limits: { lifetimeRecords: 1 } });
+  await assert.rejects(limited.createInvitation(request('POST', { requestId: randomUUID(), channel: 'link' })), e => e.status === 429);
+  assert.equal([...limited.documents.values()].some(row => row.type === 'invitation_code'), false);
+});
+
+test('acceptance resumes after a partition interruption with the identical request and never doubles acceptance', async () => {
+  let fail = true;
+  const h = harness({ beforeBatch: (operations, partition) => {
+    if (fail && partition === friendId && operations.some(op => op.resourceBody?.id === 'invitation:incoming')) {
+      fail = false; throw Error('Offline interrupted acceptance');
+    }
+  } });
+  const friend = friendHandlers(h);
+  const invitation = (await h.createInvitation(request('POST', { requestId: randomUUID(), channel: 'link' }))).jsonBody;
+  const data = { requestId: randomUUID(), token: invitation.token };
+  await assert.rejects(friend.redeemInvitation(request('POST', data)), /Offline interrupted acceptance/);
+  assert.equal(h.read('invitation:incoming', friendId), undefined);
+  assert.equal((await friend.redeemInvitation(request('POST', data))).jsonBody.status, 'accepted');
+  assert.equal((await friend.redeemInvitation(request('POST', data))).jsonBody.status, 'accepted');
+  assert.equal([...h.documents.values()].filter(row => row.type === 'invitation_receipt').length, 2);
+});
+
+test('latest undo/rest and future-day checkins cannot establish an invited first practice', async () => {
+  const h = harness();
+  const friend = friendHandlers(h);
+  const invitation = (await h.createInvitation(request('POST', { requestId: randomUUID(), channel: 'link' }))).jsonBody;
+  await friend.redeemInvitation(request('POST', { requestId: randomUUID(), token: invitation.token }));
+  const habit = recipe();
+  const positive = practice(habit.id);
+  const undo = { ...practice(habit.id, null), ts: '2026-09-01T12:00:00.001Z' };
+  const future = { ...practice(habit.id), day: '2026-09-02' };
+  await friend.sync(request('POST', payload({ habits: [habit], checkins: [positive, undo, future] })));
+  assert.equal(h.read('account', friendId).firstPracticeAt, undefined);
+  assert.equal((await friend.invitationStatus(request('GET'))).jsonBody.rewards.length, 0);
+  const later = createHandlers({ container: () => h.store, authenticate: async () => ({ userId: friendId, roles: [], scopes: ['Garden.ReadWrite'] }),
+    clock: () => new Date('2026-09-02T12:00:00.000Z') });
+  await later.sync(request('POST', payload()));
+  assert.equal((await later.invitationStatus(request('GET'))).jsonBody.rewards.length, 0);
+  await assert.rejects(friend.sync(request('POST', payload({ checkins: [{ ...practice(habit.id), referralEligible: true }] }))), e => e.status === 400);
+});
+
+test('deletion winning a reward account gate cannot be rewarded and retries clean the partial grant', async () => {
+  let deleting = false;
+  const h = harness({ beforeBatch: (operations, partition, store) => {
+    if (deleting && partition === teamId && operations.some(op => op.resourceBody?.type === 'referral_reward')) {
+      deleting = false;
+      store.put({ ...store.read('account', teamId), deleted: true });
+    }
+  } });
+  const friend = friendHandlers(h);
+  const invitation = (await h.createInvitation(request('POST', { requestId: randomUUID(), channel: 'link' }))).jsonBody;
+  await friend.redeemInvitation(request('POST', { requestId: randomUUID(), token: invitation.token }));
+  const habit = recipe();
+  deleting = true;
+  await assert.rejects(friend.sync(request('POST', payload({ habits: [habit], checkins: [practice(habit.id)] }))), e => e.status === 409);
+  assert.equal([...h.documents.values()].filter(row => row.type === 'referral_reward' && row.userId === teamId).length, 0);
+  assert.equal((await friend.invitationStatus(request('GET'))).jsonBody.rewards.length, 0);
+  assert.equal([...h.documents.values()].some(row => row.type === 'invitation_code'), false);
+});
+
+test('redemption rejects self/malformed/expired, binds immutable retry and only one invited-account acceptance', async () => {
+  const h = harness();
+  const created = (await h.createInvitation(request('POST', { requestId: randomUUID(), channel: 'link' }))).jsonBody;
+  await assert.rejects(h.redeemInvitation(request('POST', { requestId: randomUUID(), token: created.token })), e => e.status === 400);
+  await assert.rejects(friendHandlers(h).redeemInvitation(request('POST', { requestId: randomUUID(), token: 'bad' })), e => e.status === 400);
+  const expired = createHandlers({ container: () => h.store, authenticate: async () => ({ userId: friendId, roles: [], scopes: ['Garden.ReadWrite'] }), clock: () => new Date('2026-09-09T12:00:00.000Z') });
+  await assert.rejects(expired.redeemInvitation(request('POST', { requestId: randomUUID(), token: created.token })), e => e.status === 410);
+  const friend = friendHandlers(h);
+  const data = { requestId: randomUUID(), token: created.token };
+  const first = (await friend.redeemInvitation(request('POST', data))).jsonBody;
+  assert.deepEqual((await friend.redeemInvitation(request('POST', data))).jsonBody, first);
+  await assert.rejects(friend.redeemInvitation(request('POST', { ...data, requestId: randomUUID() })), e => e.status === 409);
+  await assert.rejects(friendHandlers(h, 'd'.repeat(64)).redeemInvitation(request('POST', { requestId: randomUUID(), token: created.token })), e => e.status === 409);
+  const other = (await h.createInvitation(request('POST', { requestId: randomUUID(), channel: 'link' }))).jsonBody;
+  await assert.rejects(friend.redeemInvitation(request('POST', { ...data, token: other.token })), e => e.status === 409);
+});
+
+test('mutual rare flower is granted only from first stored positive garden checkin, never telemetry/settings/rest/undo', async () => {
+  const h = harness();
+  const friend = friendHandlers(h);
+  const created = (await h.createInvitation(request('POST', { requestId: randomUUID(), channel: 'link' }))).jsonBody;
+  await friend.redeemInvitation(request('POST', { requestId: randomUUID(), token: created.token }));
+  assert.equal((await friend.invitationStatus(request('GET'))).jsonBody.rewards.length, 0);
+  const habit = recipe();
+  await friend.sync(request('POST', payload({ habits: [habit], checkins: [practice(habit.id, 'notToday'), practice(habit.id, null)],
+    events: [{ id: randomUUID(), name: 'first_checkin', ts: now }] })));
+  assert.equal((await friend.invitationStatus(request('GET'))).jsonBody.rewards.length, 0);
+  await assert.rejects(friend.sync(request('POST', payload({ settings: [{ key: 'rareFlower', value: 'true', updated: now }] }))), e => e.status === 400);
+  const checkin = practice(habit.id, 'didMore');
+  checkin.ts = '2026-09-01T12:00:00.001Z';
+  const synced = await friend.sync(request('POST', payload({ checkins: [checkin] })));
+  assert.equal(Object.hasOwn(synced.jsonBody, 'rewards'), false);
+  const first = (await friend.invitationStatus(request('GET'))).jsonBody;
+  const inviter = (await h.invitationStatus(request('GET'))).jsonBody;
+  assert.equal(first.rewards.length, 1);
+  assert.equal(inviter.rewards.length, 1);
+  const granted = [...h.documents.values()].filter(row => row.type === 'referral_reward');
+  assert.notEqual(granted[0].id, granted[1].id);
+  assert.equal(granted.every(row => !Object.hasOwn(row, 'peer') && !Object.hasOwn(row, 'invitationId') && !Object.hasOwn(row, 'hash')), true);
+  assert.equal(first.rewards[0].cosmetic, 'rare_flower');
+  await friend.sync(request('POST', payload({ checkins: [checkin] })));
+  assert.deepEqual((await friend.invitationStatus(request('GET'))).jsonBody.rewards, first.rewards);
+  assert.equal(JSON.stringify(first).includes(teamId), false);
+  assert.equal(JSON.stringify(inviter).includes(friendId), false);
+});
+
+test('practice before acceptance cannot be retroactively attributed or rewarded', async () => {
+  const h = harness();
+  const friend = friendHandlers(h);
+  const habit = recipe();
+  await friend.sync(request('POST', payload({ habits: [habit], checkins: [practice(habit.id)] })));
+  const invitation = (await h.createInvitation(request('POST', { requestId: randomUUID(), channel: 'link' }))).jsonBody;
+  await assert.rejects(friend.redeemInvitation(request('POST', { requestId: randomUUID(), token: invitation.token })), e => e.status === 409);
+});
+
+test('partial mutual grant is a durable retryable saga, not claimed cross-partition atomicity', async () => {
+  let fail = false;
+  const h = harness({ beforeBatch: (operations, partition) => {
+    if (fail && partition === teamId && operations.some(op => op.resourceBody?.type === 'referral_reward')) {
+      fail = false;
+      throw Error('Offline interruption');
+    }
+  } });
+  const friend = friendHandlers(h);
+  const invitation = (await h.createInvitation(request('POST', { requestId: randomUUID(), channel: 'link' }))).jsonBody;
+  await friend.redeemInvitation(request('POST', { requestId: randomUUID(), token: invitation.token }));
+  const habit = recipe();
+  fail = true;
+  await assert.rejects(friend.sync(request('POST', payload({ habits: [habit], checkins: [practice(habit.id)] }))), /Offline interruption/);
+  assert.equal([...h.documents.values()].filter(row => row.type === 'referral_reward').length, 1);
+  await friend.invitationStatus(request('GET'));
+  assert.equal([...h.documents.values()].filter(row => row.type === 'referral_reward').length, 2);
+  await friend.invitationStatus(request('GET'));
+  assert.equal([...h.documents.values()].filter(row => row.type === 'referral_reward').length, 2);
+});
+
+test('deletion cleans codes, reciprocal attribution/rewards, denies retries and exports only owner data', async () => {
+  const h = harness();
+  const friend = friendHandlers(h);
+  const invitation = (await h.createInvitation(request('POST', { requestId: randomUUID(), channel: 'link' }))).jsonBody;
+  await friend.redeemInvitation(request('POST', { requestId: randomUUID(), token: invitation.token }));
+  const habit = recipe();
+  await friend.sync(request('POST', payload({ habits: [habit], checkins: [practice(habit.id)] })));
+  const exported = (await friend.invitationStatus(request('GET', null, { export: 'true' }))).jsonBody;
+  assert.equal(exported.rewards.length, 1);
+  assert.equal(JSON.stringify(exported).includes(teamId), false);
+  const deletion = request('DELETE');
+  deletion.headers.set('x-confirm-delete', 'delete-my-garden');
+  await friend.deleteAccount(deletion);
+  assert.equal((await h.invitationStatus(request('GET'))).jsonBody.rewards.length, 0);
+  assert.equal([...h.documents.values()].some(row => row.type === 'invitation_code'), false);
+  assert.equal([...h.documents.values()].some(row => row.type === 'invitation_receipt'), false);
+  await assert.rejects(friend.invitationStatus(request('GET')), e => e.status === 410);
+});
+
+test('expired invitation IDs cannot allocate replacement codes after TTL removes receipts/secrets', async () => {
+  const h = harness();
+  const data = { requestId: randomUUID(), channel: 'link' };
+  await h.createInvitation(request('POST', data));
+  h.documents.delete(`${teamId}/invitation:secret:${data.requestId}`);
+  h.documents.delete(`${teamId}/invitation:receipt:${data.requestId}`);
+  await assert.rejects(h.createInvitation(request('POST', data)), e => e.status === 410);
+  await assert.rejects(h.createInvitation(request('POST', { ...data, channel: 'email' })), e => e.status === 409);
+  assert.equal(h.read('account', teamId).invitationCreated, 1);
+});
+
+test('referral deletion is not blocked by an exhausted preview ledger and leaves a minimal non-linking tombstone', async () => {
+  const h = harness();
+  const friend = friendHandlers(h);
+  const invitation = (await h.createInvitation(request('POST', { requestId: randomUUID(), channel: 'link' }))).jsonBody;
+  await friend.redeemInvitation(request('POST', { requestId: randomUUID(), token: invitation.token }));
+  const habit = recipe();
+  await friend.sync(request('POST', payload({ habits: [habit], checkins: [practice(habit.id)] })));
+  h.put({ ...h.read('budget', '__preview_budget'), operations: previewLimits.lifetimeOperations });
+  const deletion = request('DELETE');
+  deletion.headers.set('x-confirm-delete', 'delete-my-garden');
+  assert.equal((await friend.deleteAccount(deletion)).status, 204);
+  assert.equal([...h.documents.values()].some(row => ['invitation_code', 'invitation_receipt', 'referral_reward'].includes(row.type)), false);
+  const tombstone = h.read('account', friendId);
+  assert.equal(tombstone.deleted, true);
+  assert.equal(Object.hasOwn(tombstone, 'firstPracticeCheckin'), false);
+  assert.equal(Object.hasOwn(tombstone, 'invitationRequests'), false);
+});
+
+test('deleting one referral never removes an unrelated outgoing code with a colliding client request UUID', async () => {
+  const h = harness();
+  const friend = friendHandlers(h);
+  const id = randomUUID();
+  const invite = (await h.createInvitation(request('POST', { requestId: id, channel: 'link' }))).jsonBody;
+  const unrelated = (await friend.createInvitation(request('POST', { requestId: id, channel: 'email' }))).jsonBody;
+  await friend.redeemInvitation(request('POST', { requestId: randomUUID(), token: invite.token }));
+  const deletion = request('DELETE');
+  deletion.headers.set('x-confirm-delete', 'delete-my-garden');
+  await h.deleteAccount(deletion);
+  assert.equal(h.read(`invitation:secret:${id}`, friendId).token, unrelated.token);
+  assert.equal(h.read(`invitation:receipt:${id}`, friendId).direction, 'outgoing');
+  assert.equal(h.read('invitation:incoming', friendId), undefined);
+});
+
+test('an immutable rest checkin cannot be retried as a positive to forge a cosmetic reward', async () => {
+  const h = harness();
+  const friend = friendHandlers(h);
+  const invitation = (await h.createInvitation(request('POST', { requestId: randomUUID(), channel: 'link' }))).jsonBody;
+  await friend.redeemInvitation(request('POST', { requestId: randomUUID(), token: invitation.token }));
+  const habit = recipe();
+  const rest = practice(habit.id, 'notToday');
+  await friend.sync(request('POST', payload({ habits: [habit], checkins: [rest] })));
+  await friend.sync(request('POST', payload({ checkins: [{ ...rest, result: 'did' }] })));
+  assert.equal(h.read(`checkins:${rest.id}`, friendId).record.result, 'notToday');
+  assert.equal(h.read(`checkins:${rest.id}`, friendId).referralEligible, false);
+  assert.equal((await friend.invitationStatus(request('GET'))).jsonBody.rewards.length, 0);
+});
+
+test('a missing lookup after interrupted creation repairs the same opaque code without reallocating records', async () => {
+  const h = harness();
+  const create = h.store.items.create;
+  let interrupted = false;
+  h.store.items.create = async document => {
+    if (document.type === 'invitation_code' && !interrupted) {
+      interrupted = true; throw Error('Offline lookup interruption');
+    }
+    return create(document);
+  };
+  const data = { requestId: randomUUID(), channel: 'link' };
+  await assert.rejects(h.createInvitation(request('POST', data)), /Offline lookup interruption/);
+  const secret = h.read(`invitation:secret:${data.requestId}`, teamId);
+  const allocated = h.read('budget', '__preview_budget').records;
+  const repaired = (await h.createInvitation(request('POST', data))).jsonBody;
+  assert.equal(repaired.token, secret.token);
+  assert.equal(h.read('account', teamId).invitationCreated, 1);
+  assert.equal(h.read('budget', '__preview_budget').records, allocated);
+});
+
+test('acceptance qualification closes at its deadline and an original code/card retains absolute seven-day TTL', async () => {
+  const h = harness();
+  const invitation = (await h.createInvitation(request('POST', { requestId: randomUUID(), channel: 'link' }))).jsonBody;
+  const later = createHandlers({ container: () => h.store, authenticate: async () => ({ userId: friendId, roles: [], scopes: ['Garden.ReadWrite'] }),
+    clock: () => new Date('2026-09-03T12:00:00.000Z') });
+  await later.redeemInvitation(request('POST', { requestId: randomUUID(), token: invitation.token }));
+  const index = [...h.documents.values()].find(row => row.type === 'invitation_code');
+  assert.equal(index.ttl, 5 * 86400);
+  const expired = createHandlers({ container: () => h.store, authenticate: async () => ({ userId: friendId, roles: [], scopes: ['Garden.ReadWrite'] }),
+    clock: () => new Date('2026-10-04T12:00:00.000Z') });
+  const habit = { ...recipe(), updated: '2026-10-04T12:00:00.000Z' };
+  const late = { ...practice(habit.id), day: '2026-10-04', ts: '2026-10-04T12:00:00.000Z' };
+  await expired.sync(request('POST', payload({ habits: [habit], checkins: [late] })));
+  const state = (await expired.invitationStatus(request('GET'))).jsonBody;
+  assert.equal(state.invitations[0].status, 'expired');
+  assert.equal(state.rewards.length, 0);
+});
 
 test('metrics consumes persisted daily records distinctly from on-demand values and missing days', async () => {
   const h = harness();

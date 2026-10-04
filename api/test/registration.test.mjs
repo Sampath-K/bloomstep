@@ -20,16 +20,19 @@ test('actual ESM entrypoint registers only host-valid routes and guarded handler
   const results = JSON.parse(execFileSync(process.execPath, ['--input-type=module', '-e', script], {
     cwd: new URL('../', import.meta.url), encoding: 'utf8',
   }));
-  assert.equal(results.length, 5);
+  assert.equal(results.length, 10);
   for (const entry of results) {
     // Mirrors ScriptHost.ValidateHttpFunction: prefix check precedes host api prefix.
     assert.equal(/^(admin|runtime)/i.test(entry.route.replace(/^\/+|\/+$/g, '')), false, entry.route);
-    assert.equal(entry.status, entry.route === 'internal/aggregates' ? 401 : 503);
+    assert.equal(entry.status, entry.route.startsWith('internal/') ? 401 : 503);
     assert.equal(entry.cache, 'no-store');
     assert.equal(entry.authLevel, 'anonymous');
   }
   assert.deepEqual(results.map(entry => entry.route), [
     'sync', 'account', 'team/feedback/{userId?}', 'team/metrics', 'internal/aggregates',
+    'invitations', 'invitations/redeem', 'invitations/status',
+    'internal/operational-pause',
+    'team/operational-resume',
   ]);
 });
 
@@ -56,7 +59,7 @@ test('configured entrypoint rejects platform-only auth on every served handler b
   const results = JSON.parse(execFileSync(process.execPath, ['--input-type=module', '-e', script], {
     cwd: new URL('../', import.meta.url), encoding: 'utf8', timeout: 30000,
   }));
-  assert.equal(results.length, 10);
+  assert.equal(results.length, 20);
   for (const entry of results) {
     assert.equal(entry.status, 401, entry.route);
     assert.equal(entry.error, 'Sign in required.');

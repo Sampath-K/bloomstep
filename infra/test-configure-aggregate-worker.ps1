@@ -9,7 +9,7 @@ function global:az {
   $global:workerProbeCalls += ,@($args)
   $global:LASTEXITCODE = 0
   if ($args[0] -eq 'account' -and $args[1] -eq 'show') {
-    return '{"id":"849aefa8-4e83-453b-b8f6-f197542e46c3","tenantId":"b804cfab-f12f-4bd3-a010-1631594ec8ff","state":"Enabled"}'
+    return '{"id":"11111111-1111-4111-8111-111111111111","tenantId":"22222222-2222-4222-8222-222222222222","state":"Enabled"}'
   }
   if ($args[0] -eq 'account' -and $args[1] -eq 'get-access-token') {
     if ($args -contains '--tenant' -and $args -contains '--subscription') {
@@ -26,12 +26,15 @@ function global:gh {
   $global:LASTEXITCODE = 0
   if ($args[1] -match 'API_ORIGIN') { return '{"value":"https://mock.azurestaticapps.net"}' }
   if ($args[1] -match 'oidc/customization') { return '{"use_default":true}' }
+  if ($args[1] -eq 'repos/Sampath-K/bloomstep') {
+    return '{"full_name":"Sampath-K/bloomstep","name":"bloomstep","id":456,"owner":{"login":"Sampath-K","id":123}}'
+  }
   return '{}'
 }
 try {
   try {
-    & $source -ResourceTenantId 'b804cfab-f12f-4bd3-a010-1631594ec8ff' `
-      -SubscriptionId '849aefa8-4e83-453b-b8f6-f197542e46c3' `
+    & $source -ResourceTenantId '22222222-2222-4222-8222-222222222222' `
+      -SubscriptionId '11111111-1111-4111-8111-111111111111' `
       -ResourceGroup 'bloomstep-free' -SwaName 'bloomstep-free' `
       -Repository 'Sampath-K/bloomstep' -Environment 'bloomstep-operations' `
       -FeatureBranch 'sampath-k-bloomstep-mvp-implementation' -ConfirmPersonalResourceTenant

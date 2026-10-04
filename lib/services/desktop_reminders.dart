@@ -263,7 +263,7 @@ class DesktopReminders with TrayListener, WindowListener {
         'notif_disabled',
         properties: {
           'platform': GardenStore.telemetryPlatform,
-          'localDay': localDate(clock()),
+          'localDay': localDate(clock().toLocal()),
         },
       );
     }
@@ -345,7 +345,27 @@ class DesktopReminders with TrayListener, WindowListener {
     if (habitId == '_reconnect' && ['did', 'rest'].contains(action)) return;
     handled.add(action);
     row['handled'] = handled;
+    final exposed =
+        row['experiment'] == 'reminder_copy_v1' &&
+        ['control', 'gentle'].contains(row['variant']) &&
+        row['reviewChecksum'] == RemoteConfig.reviewedEvidenceChecksum &&
+        RemoteConfig.reviewedEvidenceChecksum.isNotEmpty &&
+        row['exposed'] != true &&
+        config.activeAt(clock());
+    if (exposed) row['exposed'] = true;
     await _save('reminderLog', jsonEncode(log));
+    // A successful show() is only a request. An attributable user callback is
+    // the first evidence that this copy was actually seen.
+    if (exposed) {
+      await _track(
+        'experiment_exposure',
+        properties: {
+          'experiment': 'reminder_copy_v1',
+          'variant': row['variant'] as String,
+          'platform': GardenStore.telemetryPlatform,
+        },
+      );
+    }
     final properties = <String, Object?>{
       'notificationId': notification,
       'platform': GardenStore.telemetryPlatform,
@@ -362,7 +382,8 @@ class DesktopReminders with TrayListener, WindowListener {
     if (habitId != '_reconnect') {
       await _save('ignored:$habitId', '0');
     }
-    if (data['day'] != localDate(clock()) && ['did', 'rest'].contains(action)) {
+    if (data['day'] != localDate(clock().toLocal()) &&
+        ['did', 'rest'].contains(action)) {
       await _open();
       return;
     }
@@ -373,7 +394,7 @@ class DesktopReminders with TrayListener, WindowListener {
         await store.checkIn(
           habitId,
           action == 'did' ? CheckInResult.did : CheckInResult.notToday,
-          now: clock(),
+          now: clock().toLocal(),
         );
         await practiced(habitId);
         await changed();
@@ -408,7 +429,14 @@ class DesktopReminders with TrayListener, WindowListener {
     ticking = true;
     var refresh = false;
     try {
-      final date = now ?? clock();
+      final date = (now ?? clock()).toLocal();
+      if (config.expiresAt != null &&
+          !date.toUtc().isBefore(config.expiresAt!)) {
+        config = RemoteConfig.defaults;
+        reportError(
+          'Remote configuration expired; using reviewed local control copy. No experiment is active.',
+        );
+      }
       final day = localDate(date);
       final minute = date.hour * 60 + date.minute;
       final quietStart = int.parse(await store.setting('quietStart') ?? '1290');
@@ -425,7 +453,11 @@ class DesktopReminders with TrayListener, WindowListener {
       )) {
         if (!enabled || !_sameAccount) break;
         if (await _postponed(habit.id, date)) continue;
-        final practice = await store.practiceMinutes(habit.id);
+        final personalized =
+            await store.setting('personalizedTiming') == 'true';
+        final practice = personalized
+            ? await store.practiceMinutes(habit.id)
+            : <int>[];
         final chosen = ReminderRules.timing(
           practice,
           due,
@@ -456,7 +488,7 @@ class DesktopReminders with TrayListener, WindowListener {
           log,
           date,
           habit.id,
-          title: config.title(store.account),
+          title: config.title(store.account, now: date),
           body:
               'Your garden is here whenever you are. Why: ${practice.length >= 5 ? "recent practice timing" : "your chosen check-in time"}, adjusted for quiet hours. Later withdraws this request; no second request today.',
           actions: const {
@@ -549,6 +581,12 @@ class DesktopReminders with TrayListener, WindowListener {
       'day': request.day,
       'notificationId': request.notificationId,
       'handled': <String>[],
+      if (habitId != '_reconnect' && config.activeAt(date)) ...{
+        'experiment': 'reminder_copy_v1',
+        'variant': config.variant(store.account, now: date),
+        'configVersion': config.version,
+        'reviewChecksum': RemoteConfig.reviewedEvidenceChecksum,
+      },
     };
     log.add(reservation);
     // Retain today's records regardless of clock changes; pruning must not
@@ -615,7 +653,7 @@ class DesktopReminders with TrayListener, WindowListener {
         !(await store.habits()).any((h) => h.id == habitId)) {
       throw StateError('Recipe belongs to a different garden.');
     }
-    final now = clock();
+    final now = clock().toLocal();
     final sent = (await _log()).any(
       (r) => r['habitId'] == habitId && r['day'] == localDate(now),
     );
@@ -638,7 +676,7 @@ class DesktopReminders with TrayListener, WindowListener {
   );
 
   Future<void> _menu() async {
-    final habits = await store.habits(now: clock());
+    final habits = await store.habits(now: clock().toLocal());
     await trayManager.setContextMenu(
       Menu(
         items: [
@@ -689,7 +727,7 @@ class DesktopReminders with TrayListener, WindowListener {
     if (!_sameAccount) throw StateError('Tray belongs to a different garden.');
     if (key.startsWith('did:')) {
       final habitId = key.substring(4);
-      await store.checkIn(habitId, CheckInResult.did, now: clock());
+      await store.checkIn(habitId, CheckInResult.did, now: clock().toLocal());
       await practiced(habitId);
       await changed();
       await gateway.showAndFocus();

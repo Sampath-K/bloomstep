@@ -2,9 +2,40 @@ import 'dart:convert';
 import 'dart:io';
 
 import 'package:bloomstep/services/single_instance.dart';
+import 'package:bloomstep/services/invitation_intent.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
+  test(
+    'second launch forwards only a validated opaque invitation to the owner',
+    () async {
+      final folder = await Directory.systemTemp.createTemp(
+        'bloomstep-instance-invite-',
+      );
+      addTearDown(() => folder.delete(recursive: true));
+      InvitationIntent? received;
+      final first = SingleInstance(
+        folder.path,
+        () async {},
+        (_) {},
+        onInvitation: (intent) async {
+          received = intent;
+        },
+      );
+      final second = SingleInstance(folder.path, () async {}, (_) {});
+      addTearDown(first.close);
+      addTearDown(second.close);
+      await first.start();
+      final code = List.filled(43, 'A').join();
+      expect(
+        await second.start(invitation: InvitationIntent(code, 'qr')),
+        isFalse,
+      );
+      expect(received!.code, code);
+      expect(received!.channel, 'qr');
+    },
+    skip: !Platform.isWindows,
+  );
   test(
     'damaged descriptor cannot strand the owner lock during shutdown',
     () async {

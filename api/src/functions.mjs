@@ -5,6 +5,7 @@ import { accountKey, isAdmin } from './contracts.mjs';
 import { createHandlers, ServiceError } from './backend.mjs';
 import { requestBearer } from './auth-transport.mjs';
 import { createAggregateAuthenticator } from './aggregate-auth.mjs';
+import { createSpendAuthenticator } from './spend-auth.mjs';
 const { app } = azureFunctions;
 
 const issuer = process.env.OIDC_ISSUER;
@@ -27,7 +28,7 @@ async function authenticate(request) {
     if (!payload.sub || !payload.iss) throw new Error('Missing subject');
     const scopes = typeof payload.scp === 'string' ? payload.scp.split(' ') : [];
     if (!scopes.includes('Garden.ReadWrite') && !isAdmin(payload.roles)) throw new ServiceError(403, 'Required API scope is missing.');
-    return { userId: accountKey(payload.iss, payload.sub), roles: payload.roles };
+    return { userId: accountKey(payload.iss, payload.sub), roles: payload.roles, scopes };
   } catch (error) {
     if (error instanceof ServiceError) throw error;
     throw new ServiceError(401, 'Identity token could not be validated.');
@@ -39,7 +40,11 @@ const authenticateAggregate = createAggregateAuthenticator({
   audience: process.env.AGGREGATE_OIDC_AUDIENCE,
   jwksUri: process.env.AGGREGATE_OIDC_JWKS_URI,
 }, authenticate);
-const handlers = createHandlers({ container, authenticate, authenticateAggregate });
+const authenticateSpend = createSpendAuthenticator({
+  issuer: process.env.SPEND_GUARD_OIDC_ISSUER, audience: process.env.SPEND_GUARD_OIDC_AUDIENCE,
+  jwksUri: process.env.SPEND_GUARD_OIDC_JWKS_URI,
+});
+const handlers = createHandlers({ container, authenticate, authenticateAggregate, authenticateSpend });
 /**
  * @param {(request: import('@azure/functions').HttpRequest) => Promise<import('@azure/functions').HttpResponseInit>} handler
  */
@@ -61,3 +66,8 @@ app.http('deleteAccount', { route: 'account', methods: ['DELETE'], authLevel: 'a
 app.http('adminFeedback', { route: 'team/feedback/{userId?}', methods: ['GET', 'POST'], authLevel: 'anonymous', handler: guarded(handlers.admin) });
 app.http('adminMetrics', { route: 'team/metrics', methods: ['GET'], authLevel: 'anonymous', handler: guarded(handlers.metrics) });
 app.http('internalAggregates', { route: 'internal/aggregates', methods: ['POST'], authLevel: 'anonymous', handler: guarded(handlers.aggregates) });
+app.http('createInvitation', { route: 'invitations', methods: ['POST'], authLevel: 'anonymous', handler: guarded(handlers.createInvitation) });
+app.http('redeemInvitation', { route: 'invitations/redeem', methods: ['POST'], authLevel: 'anonymous', handler: guarded(handlers.redeemInvitation) });
+app.http('invitationStatus', { route: 'invitations/status', methods: ['GET'], authLevel: 'anonymous', handler: guarded(handlers.invitationStatus) });
+app.http('operationalPause', { route: 'internal/operational-pause', methods: ['POST'], authLevel: 'anonymous', handler: guarded(handlers.operationalPause) });
+app.http('operationalResume', { route: 'team/operational-resume', methods: ['POST'], authLevel: 'anonymous', handler: guarded(handlers.operationalResume) });

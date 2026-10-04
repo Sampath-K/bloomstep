@@ -222,6 +222,51 @@ void main() {
     },
   );
 
+  test('personalized timing is local opt-in and changes timing without consent or cap changes', () async {
+    final h = await plantReminder(store);
+    for (var day = 25; day <= 29; day++) {
+      await store.checkIn(
+        h.id,
+        CheckInResult.did,
+        now: DateTime(2026, 9, day, 14),
+      );
+    }
+    now = DateTime(2026, 10, 4, 14);
+    await reminders.tick();
+    expect(gateway.requests, isEmpty);
+    await store.setSetting('personalizedTiming', 'true');
+    await reminders.tick(now: now.toUtc());
+    expect(gateway.requests.single.habitId, h.id);
+    expect(gateway.requests.single.body, contains('recent practice timing'));
+    await store.setSetting('personalizedTiming', 'false');
+    now = DateTime(2026, 10, 4, 18);
+    await reminders.tick();
+    expect(gateway.requests.where((r) => r.habitId == h.id), hasLength(1));
+    expect(await store.setting('analytics'), isNull);
+    expect(
+      ((await store.syncPayload())['settings'] as List).where(
+        (r) => r['key'] == 'personalizedTiming',
+      ),
+      isEmpty,
+    );
+    await store.switchAccount('other-timing');
+    expect(await store.setting('personalizedTiming'), isNull);
+  });
+
+  test(
+    'UTC clock inputs reevaluate local quiet hours and local date caps',
+    () async {
+      final h = await plantReminder(store);
+      await reminders.tick(now: DateTime(2026, 10, 4, 22).toUtc());
+      expect(gateway.requests, isEmpty);
+      await reminders.tick(now: DateTime(2026, 10, 5, 18).toUtc());
+      expect(gateway.requests.single.day, '2026-10-05');
+      expect(gateway.requests.single.habitId, h.id);
+      await reminders.tick(now: DateTime(2026, 10, 5, 19).toUtc());
+      expect(gateway.requests, hasLength(1));
+    },
+  );
+
   test(
     'only request and explicit observed action telemetry; none delivered',
     () async {
@@ -241,7 +286,11 @@ void main() {
       expect(sent['properties']['habitId'], h.id);
       expect(
         events.where(
-          (r) => ['notif_delivered', 'notif_dismissed'].contains(r['name']),
+          (r) => [
+            'notif_delivered',
+            'notif_dismissed',
+            'experiment_exposure',
+          ].contains(r['name']),
         ),
         isEmpty,
       );

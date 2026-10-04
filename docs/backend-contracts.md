@@ -1,5 +1,259 @@
 # Bounded backend telemetry and engagement contracts
 
+## Operational spending guard: isolated one-way pause
+
+`POST /api/internal/operational-pause` uses **only** a separately pinned normal
+resource-directory app token: `SPEND_GUARD_OIDC_ISSUER`,
+`SPEND_GUARD_OIDC_AUDIENCE` (guard app GUID), `SPEND_GUARD_OIDC_JWKS_URI`.
+RS256, issuer, audience, signature and sub/iat/exp are required; delegated `scp`
+is forbidden and the sole app role must be `Bloomstep.SpendGuard`. There is no
+customer/Admin or AggregateWriter alternate-verifier fallback. Customer/team/
+garden routes still exclusively use primary customer JWT authentication.
+
+Body exactly `{requestId:<UUID>,reason:<enum>}`; reason is
+`paid_sku|spending_limit_off|positive_cost|configuration_unknown`. Response200:
+`{paused:true,requestId,reason,pausedAt:<UTC ISO>}`. The single preview-budget ledger
+row retains the first current pause and guard actor, conditional on its ETag.
+Same request/reason is idempotent, changed reason under the same current request
+ID409; already-paused new requests return the original receipt without growing
+records. No arbitrary text/cost/error payload, disable:false or unpause action
+is accepted. Pause intentionally bypasses exhausted normal counters so a safety
+stop still works at the cap; it does not allocate new audit rows per run.
+
+Paused ledger blocks new POST sync writes, team feedback/metrics, invitations
+and referral reconciliation, while authenticated existing garden GET/export and
+account deletion remain available. Existing environment kill-switch semantics
+are independent. Internal aggregation and internal guard pause remain available
+subject to existing worker quotas; application pause does not secretly elevate
+machine access or disable privacy deletion. There is a cross-partition/in-flight
+write race: checks at entry and before each sync batch reject observed pause,
+but this is **not** an Azure spending hard cap or atomic global write barrier.
+
+`POST /api/team/operational-resume` requires a **selected real customer**
+Bloomstep.Admin plus Garden.ReadWrite, never SpendGuard/AggregateWriter.
+Body exactly
+`{requestId:<UUID>,reviewedPauseRequestId:<current pause UUID>,
+confirmation:"reviewed-free-tier-and-spending-limit"}`. Response `{paused:false}`.
+It conditionally clears only the reviewed current pause, records the authenticated
+customer reviewer/time in the same ledger and allows at most10 lifetime resumes.
+Wrong/stale review409, missing role403, incomplete confirmation400. Matching
+retry is idempotent only while no newer pause exists. Guard workflow never calls
+resume; this assertion is human review, not machine verification or blanket
+authorization to spend. A future pause requires another explicit human review.
+
+## Authenticated invitations and mutual cosmetic rewards (§8.2)
+
+New routes all validate the **primary customer** broker JWT via
+`X-Bloomstep-Authorization: Bearer <customer API access token>`, including exact
+issuer/audience/signature/expiry, and specifically require delegated
+`Garden.ReadWrite`. An Admin-only token without that scope is insufficient;
+resource-directory AggregateWriter authentication is never used on these routes.
+No staff privileges, email/name, SWA principal or subscription ownership confer
+access. Responses are no-store. No anonymous invitation preview/identity lookup
+or contact/email sending endpoint exists.
+
+### Exact HTTP/native contracts
+
+`POST /api/invitations`:
+
+```json
+{"requestId":"<UUID>","channel":"link"}
+```
+
+`channel` is exactly `link|email|qr|native`, merely the user's explicit sharing choice,
+not a contact address or evidence that any message was sent. Response HTTP200:
+
+```json
+{
+  "invitationId":"<same request UUID>",
+  "token":"<43-character base64url cryptorandom 32-byte code>",
+  "channel":"link",
+  "expiresAt":"<server UTC ISO, creation +7 days>",
+  "recipeCard":null
+}
+```
+
+Default sharing includes **no habit text**. Optional `recipeCard` must be exactly:
+
+```json
+{
+  "explicitChoice":true,
+  "templateCategory":"calm",
+  "aspiration":"Feel calmer",
+  "anchor":"After tea",
+  "behavior":"Take one breath",
+  "celebration":"Smile",
+  "species":"Fern"
+}
+```
+
+All fields are required for a card. Taxonomy is
+`calm|focus|health|learning|connection`; species `Cosmos|Sunflower|Fern`.
+The four recipe strings are trimmed, nonempty and max200 characters each.
+No habit IDs, progress, names, email, visibility, account fields or unknown
+fields are accepted. This card is deliberately shared private recipe content,
+not anonymous analytics: the UI must present the entire card for explicit
+approval, and must not infer approval from a general sharing/analytics setting.
+It does not create a friend's habit automatically.
+
+`POST /api/invitations/redeem`:
+
+```json
+{"requestId":"<new persisted UUID>","token":"<opaque code>"}
+```
+
+Response HTTP200:
+
+```json
+{
+  "invitationId":"<opaque invitation UUID>",
+  "channel":"link",
+  "acceptedAt":"<server UTC ISO>",
+  "expiresAt":"<acceptance +30 days>",
+  "recipeCard":null,
+  "status":"accepted"
+}
+```
+
+An explicitly shared card replaces null only while its original7-day code
+window remains open. `status` can become `rewarded` on a later identical retry;
+attribution/request/time never change. Inviter/recipient account IDs and existing
+inviter identity are never returned. Each code accepts one friend; each account
+can accept only one invitation lifetime, before prior observed positive practice.
+Self invitation is rejected. Server-owned code reservation and receipts derive
+inviter/channel/acceptance; callers cannot set them.
+
+`GET /api/invitations/status` returns only the currently authenticated owner:
+
+```json
+{
+  "invitations":[
+    {
+      "invitationId":"<opaque UUID>",
+      "direction":"incoming",
+      "channel":"link",
+      "acceptedAt":"<server UTC ISO or null>",
+      "expiresAt":"<UTC ISO>",
+      "status":"accepted"
+    }
+  ],
+  "rewards":[
+    {"id":"<opaque owner-specific grant digest>","cosmetic":"rare_flower","grantedAt":"<server UTC ISO>"}
+  ],
+  "definition":"<cosmetic-only, two-partition durable-saga explanation>"
+}
+```
+
+Invitation statuses are `created|accepted|rewarded|expired`; expired unaccepted
+codes remain metadata only while the bounded receipt exists. Pending reward
+preparation is not returned as an earned cosmetic. No account selector/cursor
+query is accepted. `?export=true` additionally returns
+`sharedRecipes:[{invitationId,expiresAt,recipeCard}]` for the owner's own explicitly
+shared, still-valid cards; never someone else's code/recipe or raw token.
+Native export should combine the unchanged `GET /api/sync` garden and this
+owner-only referral export. It should not turn internal attribution into a
+public contact list.
+
+Native must persist request UUIDs before sending and retry the identical payload
+after connection/409/500 failures. Create retries return the original valid code;
+changed payload reuse returns409, expired/TTL-removed code retries cannot allocate
+replacement tokens (410/409). Redemption retries resume the same acceptance;
+different request/code or a previously used account returns409. Unknown JSON,
+noncanonical tokens and self invitation return400; invalid/expired/deleted code
+or participant returns410; missing scope403; real JWT failure401; preview caps429;
+disabled service503. No registration/source test is a live identity acceptance
+claim.
+
+### First-practice qualification and durable saga
+
+Only a schema-validated, owned **garden check-in** stored through normal sync with
+`result:did|didMore` can qualify—not `first_checkin` telemetry, rest (`notToday`),
+undo (`null`), client preferences, stages or forged cosmetics/proof fields.
+The server attaches immutable `receivedAt/referralEligible` metadata internally;
+client schemas reject those fields and sync responses retain the legacy lists.
+Future-day check-ins never become qualifying merely as time passes. Earliest
+effective positive check-in is selected with microsecond/UUID ordering, latest
+result per habit/day winning. A positive followed by undo/rest in the same sync
+does not trigger a grant. Already earned cosmetics are not punitive streaks and
+are not revoked by a later ordinary undo.
+
+An account-gated server first-practice marker and positive-seen latch prevent
+retroactive attribution/racing acceptance after practice; conservative legacy
+history with any prior positive also denies redemption. Qualifying check-in's
+server receipt and client timestamp must not precede acceptance, and first
+server-observed practice must occur inside the30-day acceptance window.
+“Actual” here means the authenticated user's actual garden check-in record,
+not proof/sensors verifying their real-world behavior or resistance to Sybil
+accounts. The existing system is self-reported; no production anti-fraud claim.
+
+Acceptance reserves the hashed code conditionally, then commits the invitee
+receipt under the invitee's account ETag, then mirrors the inviter receipt under
+their account ETag. Every retry checks both live account gates. The two cosmetic
+grant IDs are deterministic but **owner-specific** (not a shared lifetime join
+key), first prepared pending then settled under each owner gate after both
+preparations exist. Repeated sync/status/redemption repairs interrupted work
+without duplicate grants. Pending grants are not displayed as earned.
+This is a durable **bounded retry saga**, not a cross-partition transaction.
+One side can settle before an interruption; native must retry and show failure/
+pending rather than promise instantaneous mutual completion. Recovery must occur
+while the30-day receipts exist; there is no unprovisioned background reconciler
+or guarantee of convergence after all recovery metadata expires.
+
+### Quotas, privacy TTL, deletion and UX
+
+- Max10 created invitations lifetime/account, max2/day/account; one accepted
+  invitation lifetime/account. UUID/digest immutability markers are bounded10.
+- Max11 owner receipts/reward records (ten inviter grants plus one invited grant).
+  Existing global200 accounts,10000 lifetime records,2000 daily/20000 lifetime
+  operations and30 requests/minute/account apply. Expiry/deletion do not recycle
+  lifetime grant/invitation/global allocations.
+- Codes and optional card secrets expire at7 days; lookup stores only token hash,
+  bounded attribution and absolute expiry, never card/text/raw bearer token.
+  Unaccepted metadata lasts30 days; accepted reciprocal identity/attribution
+  receipts expire30 days after acceptance. Updates use remaining TTL, not rolling
+  extension. Pending grants expire with receipt recovery window.
+  The existing Cosmos container must have item TTL enabled (for example,
+  `defaultTtl:-1`); per-document `ttl` does not enable container TTL by itself.
+  Owner must verify this existing-container setting and deletion/expiry behavior.
+  Absolute `expiresAt` checks enforce API expiry even before asynchronous Cosmos
+  TTL cleanup, but source tests are not evidence of deployed physical erasure.
+- Settled owner-only cosmetic records last until account deletion and contain
+  neither counterpart IDs nor shared invitation hashes/IDs; public grant IDs
+  are opaque owner-specific digests. First-practice marker holds only the owner's
+  check-in ID. There is no referral text/token/identity analytics or new telemetry
+  registry field, web/install linkage, contacts discovery or email service.
+- Account deletion first tombstones the owner, clears gate metadata, then removes
+  hashed code lookups and still-retained reciprocal receipts/related grants using
+  conditional peer-account gates, then drains all owner data. Partial deletion
+  is retryable; concurrent grants fail their gates or are purged on reconciliation.
+  Bounded privacy cleanup bypasses exhausted engagement ledger, like account
+  deletion, so the cap does not block removal. Counterpart cosmetics linked by
+  current receipts are removed conservatively; after attribution TTL expires,
+  unlinked earned cosmetics carry no recoverable counterpart relation.
+- `BLOOMSTEP_INVITATIONS_DISABLED=true|1` pauses create/redeem/status and grant
+  reconciliation during sync. Existing API/engagement switches also apply;
+  garden-only sync and account deletion retain their existing availability rules.
+  The first-practice eligibility latch can still record garden practice while
+  rewards are paused, preventing retroactive attribution after re-enablement.
+
+Required native privacy copy:
+“Share a tiny invitation—not your name, email or habit. We do not contact anyone.”
+For optional cards: “Share this recipe card? Your friend will see the aspiration,
+anchor, behavior and celebration shown here. Nothing is shared unless you choose.”
+Reward copy: “After your friend's first completed tiny practice, you both earn a
+rare flower. It is cosmetic only: no money, progress multiplier or streak pressure.”
+Codes are bearer capabilities. The owner-selected native link contract is
+`https://<API_ORIGIN-host>/?invite=<code>&channel=<link|email|qr|native>` and
+`bloomstep://invite?code=<code>&channel=<link|email|qr|native>`. The native inbox
+preserves only this opaque intent across sign-in/restart; no account/habit text
+is included by default. Query-string codes can appear in browser history,
+hosting/access logs and referrers; the owner must redact/exclude them, use
+no-referrer on invitation landing pages and remove the query after safely
+capturing the intent. Never put codes into analytics or send them to third-party
+origins. Send code only in authenticated redemption JSON, and never automatically
+opt anyone into analytics or upload contacts. Native invitation screens/deep links/import/rendering
+are owner follow-up work, not implemented by this backend job.
+
 ## Persisted daily worker → operator dashboard
 
 `GET /api/team/metrics?days=1..30` retains strict customer `Bloomstep.Admin`,
