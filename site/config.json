@@ -1,0 +1,12 @@
+{
+  "schemaVersion": 1,
+  "version": 1,
+  "experiment": {
+    "id": "gentle-reminder-copy-v1",
+    "enabled": false,
+    "treatmentPercent": 25,
+    "control": "A tiny step is enough",
+    "treatment": "Your next tiny step is here",
+    "guardrails": ["reminder_opt_out", "fewer_reminders", "pushy_feedback"]
+  }
+}

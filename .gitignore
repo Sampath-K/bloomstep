@@ -46,3 +46,11 @@ app.*.map.json
 
 # Widget Preview related
 .widget_preview/
+**/node_modules/
+*.sqlite
+*.sqlite-shm
+*.sqlite-wal
+*.db
+*.env
+local.settings.json
+release-output/

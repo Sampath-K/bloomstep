@@ -2,23 +2,100 @@ name: ci
 
 on:
   push:
-    branches: [main]
+    branches: ['**']
+    tags: ['v*']
   pull_request:
+  workflow_dispatch:
 
 jobs:
+  api:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: api
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: api/package-lock.json
+      - run: npm ci --ignore-scripts
+      - run: npm run check
+      - run: npm test
   test-and-build-windows:
-    runs-on: windows-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - runner: windows-latest
+            arch: x64
+          - runner: windows-11-arm
+            arch: arm64
+    runs-on: ${{ matrix.runner }}
     steps:
       - uses: actions/checkout@v4
       - uses: subosito/flutter-action@v2
         with:
           channel: stable
+          architecture: ${{ matrix.arch }}
           cache: true
       - run: flutter pub get
       - run: flutter analyze
-      - run: flutter test
+      - run: flutter test --reporter expanded
       - run: flutter build windows --release
+      - name: Install Inno Setup
+        shell: pwsh
+        run: |
+          if (-not (Test-Path "${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe")) {
+            choco install innosetup --no-progress -y
+          }
+      - name: Build unsigned preview installer
+        shell: pwsh
+        run: |
+          & "${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe" /Qp /DAppArch=${{ matrix.arch }} /DAppVersion=0.1.0-preview packaging\bloomstep.iss
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          Get-FileHash release-output\*.exe -Algorithm SHA256 | ForEach-Object { "$($_.Hash.ToLower())  $([IO.Path]::GetFileName($_.Path))" } | Set-Content release-output\SHA256-${{ matrix.arch }}.txt
+      - name: Installer lifecycle smoke test
+        shell: pwsh
+        run: |
+          $installer = (Get-ChildItem release-output\*.exe).FullName
+          $target = Join-Path $env:RUNNER_TEMP 'Bloomstep-smoke'
+          Start-Process $installer -ArgumentList "/VERYSILENT /SUPPRESSMSGBOXES /NORESTART /DIR=`"$target`"" -Wait
+          if (-not (Test-Path "$target\bloomstep.exe")) { throw 'Install failed' }
+          $app = Start-Process "$target\bloomstep.exe" -PassThru
+          Start-Sleep 8
+          if ($app.HasExited) { throw 'Installed app exited unexpectedly' }
+          Stop-Process -Id $app.Id
+          Start-Process "$target\unins000.exe" -ArgumentList '/VERYSILENT /SUPPRESSMSGBOXES /NORESTART' -Wait
+          if (Test-Path "$target\bloomstep.exe") { throw 'Uninstall failed' }
       - uses: actions/upload-artifact@v4
         with:
-          name: bloomstep-windows-x64
-          path: build/windows/x64/runner/Release/
+          name: bloomstep-windows-${{ matrix.arch }}
+          path: |
+            build/windows/${{ matrix.arch }}/runner/Release/
+            release-output/
+      - name: Build isolated synthetic profile preview
+        if: matrix.arch == 'arm64'
+        run: flutter build windows --profile --target tool/preview.dart
+      - uses: actions/upload-artifact@v4
+        if: matrix.arch == 'arm64'
+        with:
+          name: bloomstep-synthetic-preview-arm64-NOT-FOR-RELEASE
+          path: build/windows/arm64/runner/Profile/
+  release:
+    if: startsWith(github.ref, 'refs/tags/v')
+    needs: [api, test-and-build-windows]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: bloomstep-windows-*
+          path: artifacts
+      - name: Publish preview (not the authenticated MVP)
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release create "$GITHUB_REF_NAME" --repo "$GITHUB_REPOSITORY" --prerelease --title "Bloomstep $GITHUB_REF_NAME - engineering preview" --notes "Unsigned Windows engineering preview. Sign-in is intentionally gated until a personal identity tenant and API are configured. This is NOT the complete MVP. See docs/status.md for verified capabilities and gaps." $(find artifacts -name '*.exe' -path '*/release-output/*') $(find artifacts -name 'SHA256-*.txt')
