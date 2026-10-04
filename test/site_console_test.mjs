@@ -1,7 +1,16 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
 import { approvedConnection, formatMetric, replyAttempt, metricPanels, tokenHeaders, dashboardPanels, snapshotPanels } from '../site/console.mjs';
 import { dashboardSummaries } from '../api/src/dashboards.mjs';
+
+test('production SWA deployment follows main and serializes the one shared environment', () => {
+  const workflow = readFileSync(new URL('../.github/workflows/azure.yml', import.meta.url), 'utf8');
+  assert.match(workflow, /branches:\s*\[main\]/);
+  assert.match(workflow, /production_branch:\s*main/);
+  assert.match(workflow, /group:\s*bloomstep-production-deployment/);
+  assert.match(workflow, /cancel-in-progress:\s*false/);
+});
 
 test('operator renders persisted latest-day panels and unavailable history separately, never window sums', () => {
   const record = { dashboards: dashboardSummaries([], '2026-08-31', '2026-08-31', '2026-09-01') };

@@ -1,13 +1,17 @@
 name: Deploy free preview website and API
 on:
   push:
-    branches: [main, sampath-k-bloomstep-mvp-implementation]
+    branches: [main]
     paths: ['site/**', 'api/**', 'shared/**', 'tool/generate_event_registry.mjs', '.github/workflows/azure.yml']
   workflow_dispatch:
 permissions:
   contents: read
+concurrency:
+  group: bloomstep-production-deployment
+  cancel-in-progress: false
 jobs:
   deploy:
+    if: github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -37,6 +41,7 @@ jobs:
         with:
           azure_static_web_apps_api_token: ${{ secrets.AZURE_STATIC_WEB_APPS_API_TOKEN }}
           action: upload
+          production_branch: main
           app_location: deploy-site
           api_location: api
           output_location: ''
@@ -45,9 +50,11 @@ jobs:
         env:
           API_ORIGIN: ${{ vars.API_ORIGIN }}
         run: |
-          for route in sync team/feedback team/metrics internal/aggregates; do
+          for route in sync team/feedback team/metrics invitations invitations/status invitations/redeem internal/aggregates internal/operational-pause team/operational-resume; do
             method=GET
-            if [ "$route" = internal/aggregates ]; then method=POST; fi
+            case "$route" in
+              invitations|invitations/redeem|internal/aggregates|internal/operational-pause|team/operational-resume) method=POST;;
+            esac
             matched=false
             for attempt in $(seq 1 12); do
               status=$(curl --silent --show-error --output /dev/null --write-out '%{http_code}' --request "$method" "$API_ORIGIN/api/$route")

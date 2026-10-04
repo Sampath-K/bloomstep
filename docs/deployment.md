@@ -113,6 +113,21 @@ never for customer garden or team feedback routes. Do not enable premium/SMS/M2M
 
 ## Deployment and operational verification
 
+## Production branch after engineering merge
+
+The shared Free Static Web App now follows `main`. Align the existing resource
+branch with the repository default branch without changing its Free SKU.
+`.github/workflows/azure.yml` deploys only main, explicitly passes
+`production_branch: main`, and serializes uploads to the one shared production
+environment. Feature pushes run contracts/native CI but do not compete with
+production deployments or consume preview-environment slots.
+
+The first main release-link deployment exposed a stale feature-branch resource
+binding (`No matching Static Web App environment`). The resource binding and
+workflow were repaired, rather than treating a successful simultaneous feature
+upload as a successful main deployment. Post-deployment gates require401 for
+all protected sync/team/invitation/operational routes using their actual methods. and operational verification
+
 ### Browser operator console: real public-client PKCE
 
 The operator console no longer accepts pasted bearer tokens. It uses locally

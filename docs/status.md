@@ -59,7 +59,8 @@ pane/transmission is claimed. Customer/OS/launch gates are consolidated in
 permission/transport, observed session/sign-in
 consent, invitation retries/export,
 opaque intent IPC, capped reminders and active-session clock boundaries.
-Full analyzer is clean. API suite passes90; browser suite passes16; spend-guard
+Full analyzer is clean. API suite passes90; site/operator/deployment contracts
+pass17; spend-guard
 policy suite passes8. Native Share bridge compiles with the existing ARM64 SDK.
 Live popup/API proof is
 pending. No test fixture is represented as a real user login.
@@ -79,6 +80,10 @@ are still blocked by that OS gate.
 Live Edge invite handoff, optional storage save/restore/remove and invalid-code
 handling passed with no page errors; no app launch, customer login or referral
 redemption was inferred.
+The first main release-link deployment37223371502 exposed the SWA resource still
+bound to the feature branch. The existing Free resource is now bound to main;
+main-only, explicit-production, serialized deployment and all protected-route
+smoke gates repair that integration. Replacement main deployment proof is pending.
 
 ## Verification and demo jobs
 

@@ -69,6 +69,9 @@
   versioned ARM64 upgrade, registered URI/one-instance handoff and owned
   uninstall observed. Main operational worker/audit passed; scheduled ticks
   and customer/OS/launch acceptance are not inferred.
+- Production SWA now follows merged main, with serialized main-only uploads and
+  method-correct smoke gates for every protected invitation/operational route.
+  Stale feature-branch resource binding is corrected without a SKU change.
 
 No user feedback item is marked shipped yet. This is not a full authenticated
 MVP; deployment/native delivery and remaining loops are tracked in `docs/status.md`.
