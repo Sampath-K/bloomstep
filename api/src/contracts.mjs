@@ -6,7 +6,7 @@ const text = z.string().trim().min(1).max(200);
 const timestamp = z.iso.datetime()
   .refine(value => !/\.\d{7,}Z$/.test(value), 'Microsecond precision is the maximum.')
   .refine(value => Date.parse(value) <= Date.now() + 300000, 'Timestamp is too far in the future.');
-export const eventNames = ['recipe_created', 'checkin', 'reflection', 'habit_graduated', 'feedback_submitted', 'share_initiated', 'reminder_sent', 'signin_succeeded'];
+export const eventNames = ['recipe_created', 'checkin', 'reflection', 'habit_graduated', 'feedback_submitted', 'share_initiated', 'reminder_sent', 'signin_succeeded', 'weekly_reflection', 'rating_prompted'];
 export const habitSchema = z.object({
   id, aspiration: text, anchor: text, behavior: text, celebration: text,
   species: z.enum(['Cosmos', 'Sunflower', 'Fern']),
@@ -28,14 +28,17 @@ export const reflectionSchema = z.object({
 }).strict().refine(r => Math.abs(r.items.reduce((a, b) => a + b, 0) / 4 - r.score) < .001);
 export const voiceSchema = z.object({
   id, kind: z.enum(['Idea', 'Bug', 'Question', 'Praise', 'This felt wrong', 'Rating']),
-  body: z.string().trim().min(1).max(2000), rating: z.number().int().min(1).max(5).nullable(), ts: timestamp,
-}).strict();
+  body: z.string().trim().max(2000), rating: z.number().int().min(1).max(5).nullable(), ts: timestamp,
+}).strict().refine(voice => voice.kind === 'Rating' ? voice.rating !== null : voice.body.length > 0,
+  'Ratings require a score; other feedback requires text.');
 export const eventSchema = z.object({ id, name: z.enum(eventNames), ts: timestamp }).strict();
 export const settingSchema = z.object({
-  key: z.enum(['reducedMotion', 'reminderMinute', 'quietStart', 'quietEnd', 'fewerReminders']),
-  value: z.string().max(5), updated: timestamp,
+  key: z.enum(['reducedMotion', 'reminderMinute', 'quietStart', 'quietEnd', 'fewerReminders', 'weeklyLast', 'ratingPromptedAt']),
+  value: z.string().max(40), updated: timestamp,
 }).strict().refine(setting =>
-  ['reducedMotion', 'fewerReminders'].includes(setting.key)
+  ['weeklyLast', 'ratingPromptedAt'].includes(setting.key)
+    ? timestamp.safeParse(setting.value).success
+    : ['reducedMotion', 'fewerReminders'].includes(setting.key)
     ? ['true', 'false'].includes(setting.value)
     : /^\d{1,4}$/.test(setting.value) && Number(setting.value) < 1440,
 );
@@ -50,6 +53,7 @@ export const syncSchema = z.object({
 export const replySchema = z.object({
   id, status: z.enum(['received', 'under review', 'planned', 'in progress', 'shipped', 'not planned']),
   reply: z.string().trim().min(1).max(2000),
+  requestId: id.optional(),
 }).strict();
 
 /** @param {string} issuer @param {string} subject */

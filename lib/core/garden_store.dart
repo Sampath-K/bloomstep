@@ -1,5 +1,6 @@
 import 'dart:convert';
 
+import 'package:crypto/crypto.dart';
 import 'package:sqflite_common_ffi/sqflite_ffi.dart';
 import 'package:uuid/uuid.dart';
 
@@ -11,6 +12,8 @@ class GardenStore {
   final Database _db;
   String _account;
   String get account => _account;
+  int _syncGeneration = 0;
+  int get syncGeneration => _syncGeneration;
   static const _uuid = Uuid();
 
   static Future<GardenStore> open(String path, String account) async {
@@ -18,13 +21,14 @@ class GardenStore {
     final db = await databaseFactoryFfi.openDatabase(
       path,
       options: OpenDatabaseOptions(
-        version: 2,
+        version: 3,
         onUpgrade: (db, oldVersion, _) async {
           if (oldVersion < 2) {
             await db.execute(
               "ALTER TABLE settings ADD COLUMN updated TEXT NOT NULL DEFAULT '1970-01-01T00:00:00.000Z'",
             );
           }
+          if (oldVersion < 3) await _createSyncState(db);
         },
         onCreate: (db, _) async {
           await db.execute(
@@ -48,13 +52,30 @@ class GardenStore {
           await db.execute(
             'CREATE TABLE events (id TEXT PRIMARY KEY, account TEXT NOT NULL, name TEXT NOT NULL, ts TEXT NOT NULL)',
           );
+          await _createSyncState(db);
         },
       ),
     );
     return GardenStore._(db, account);
   }
 
-  Future<void> switchAccount(String account) async => _account = account;
+  static Future<void> _createSyncState(DatabaseExecutor db) => db.execute(
+    'CREATE TABLE sync_state (account TEXT NOT NULL, tableName TEXT NOT NULL, recordId TEXT NOT NULL, fingerprint TEXT NOT NULL, PRIMARY KEY(account,tableName,recordId))',
+  );
+
+  Future<void> switchAccount(String account) async {
+    _syncGeneration++;
+    _account = account;
+  }
+
+  void requireSyncSession(String account, int generation) {
+    if (_account != account || _syncGeneration != generation) {
+      throw StateError(
+        'The signed-in garden changed during sync. Retry safely.',
+      );
+    }
+  }
+
   Future<void> close() => _db.close();
 
   Future<Habit> plant({
@@ -128,12 +149,13 @@ class GardenStore {
 
   Future<List<Map<String, Object?>>> _current(
     DatabaseExecutor db,
-    String habitId,
-  ) async {
+    String habitId, {
+    String? account,
+  }) async {
     final rows = await db.query(
       'checkins',
       where: 'account = ? AND habitId = ?',
-      whereArgs: [_account, habitId],
+      whereArgs: [account ?? _account, habitId],
       orderBy: 'ts ASC, id ASC',
     );
     final byDay = <String, Map<String, Object?>>{};
@@ -229,15 +251,27 @@ class GardenStore {
         whereArgs: [habitId, _account],
       );
     });
-    await recordInteraction();
+    await recordInteraction(
+      now: now,
+      practiced: result != null && result != 'notToday',
+    );
     await track('checkin');
   }
 
-  Future<void> recordInteraction({DateTime? now}) async {
-    await setSetting(
-      'lastInteraction',
-      (now ?? DateTime.now()).toUtc().toIso8601String(),
-    );
+  Future<void> recordInteraction({
+    DateTime? now,
+    bool practiced = false,
+    bool positiveReturn = false,
+  }) async {
+    final date = now ?? DateTime.now();
+    if (practiced || positiveReturn) {
+      final last = DateTime.tryParse(await setting('lastInteraction') ?? '');
+      if (last != null && date.toUtc().difference(last).inDays >= 3) {
+        final count = int.tryParse(await setting('ratingComebacks') ?? '') ?? 0;
+        await setSetting('ratingComebacks', '${count + 1}');
+      }
+    }
+    await setSetting('lastInteraction', date.toUtc().toIso8601String());
     await setSetting('reconnectCount', '0');
   }
 
@@ -372,6 +406,134 @@ class GardenStore {
     await track('reflection');
   }
 
+  Future<DateTime?> naturalnessAvailableAt(String habitId) async {
+    await _owned(habitId, _db);
+    final rows = await _db.query(
+      'reflections',
+      where: 'account = ? AND habitId = ?',
+      whereArgs: [_account, habitId],
+      orderBy: 'ts DESC',
+      limit: 1,
+    );
+    return rows.isEmpty
+        ? null
+        : DateTime.parse(rows.single['ts'] as String)
+              .add(const Duration(days: 14));
+  }
+
+  Future<bool> weeklyReflectionDue({DateTime? now}) async {
+    final last = DateTime.tryParse(await setting('weeklyLast') ?? '');
+    return last == null ||
+        (now ?? DateTime.now()).toUtc().difference(last) >=
+            const Duration(days: 7);
+  }
+
+  Future<String> weeklyRecommendation(String habitId, {DateTime? now}) async {
+    await _owned(habitId, _db);
+    final date = now ?? DateTime.now();
+    final end = localDate(date);
+    final start = localDate(
+      DateTime(
+        date.year,
+        date.month,
+        date.day,
+      ).subtract(const Duration(days: 6)),
+    );
+    final counts = {'too hard': 0, 'anchor': 0, 'forgot': 0, 'motivation': 0};
+    for (final row in await _current(_db, habitId)) {
+      if (row['result'] == 'notToday' &&
+          (row['day'] as String).compareTo(start) >= 0 &&
+          (row['day'] as String).compareTo(end) <= 0 &&
+          counts.containsKey(row['reason'])) {
+        final reason = row['reason'] as String;
+        counts[reason] = counts[reason]! + 1;
+      }
+    }
+    String? reason;
+    var most = 0;
+    // Stable ties prioritize reducing effort, then reliability, then specificity.
+    for (final entry in counts.entries) {
+      if (entry.value > most) {
+        reason = entry.key;
+        most = entry.value;
+      }
+    }
+    return reason == null
+        ? 'Keep what feels easy. If you want to experiment, choose a more specific anchor, a smaller step, or a celebration you enjoy. No change is required.'
+        : recipeDoctor(reason);
+  }
+
+  Future<void> completeWeeklyReflection(String habitId, {DateTime? now}) async {
+    await _owned(habitId, _db);
+    await setSetting(
+      'weeklyLast',
+      (now ?? DateTime.now()).toUtc().toIso8601String(),
+    );
+    await track('weekly_reflection');
+  }
+
+  /// Call only after a successful positive moment, never on load or a miss.
+  /// Claim before displaying; dismissing or snoozing retains the same cooldown.
+  Future<bool> claimRatingPrompt({
+    DateTime? now,
+    bool positiveMoment = true,
+  }) async {
+    if (!positiveMoment) return false;
+    final date = (now ?? DateTime.now()).toUtc();
+    final account = _account;
+    return _db.transaction((txn) async {
+      final settings = await txn.query(
+        'settings',
+        where: 'account = ?',
+        whereArgs: [account],
+      );
+      final values = {for (final r in settings) r['key']: r['value'] as String};
+      final last = DateTime.tryParse(values['ratingPromptedAt'] ?? '');
+      if (last != null && date.difference(last) < const Duration(days: 120)) {
+        return false;
+      }
+      final rows = await txn.query(
+        'habits',
+        where: 'account = ?',
+        whereArgs: [account],
+      );
+      final days = <String>{};
+      for (final h in rows) {
+        for (final row in await _current(
+          txn,
+          h['id'] as String,
+          account: account,
+        )) {
+          if (row['result'] != 'notToday' &&
+              (row['day'] as String).compareTo(localDate(date.toLocal())) <=
+                  0) {
+            days.add(row['day'] as String);
+          }
+        }
+      }
+      if (!rows.any((h) => h['status'] == 'graduated') &&
+          days.length < 30 &&
+          (int.tryParse(values['ratingComebacks'] ?? '') ?? 0) < 3) {
+        return false;
+      }
+      await txn.insert('settings', {
+        'account': account,
+        'key': 'ratingPromptedAt',
+        'value': date.toIso8601String(),
+        'updated': date.toIso8601String(),
+      }, conflictAlgorithm: ConflictAlgorithm.replace);
+      if (values['analytics'] == 'true') {
+        await txn.insert('events', {
+          'id': _uuid.v4(),
+          'account': account,
+          'name': 'rating_prompted',
+          'ts': date.toIso8601String(),
+        });
+      }
+      return true;
+    });
+  }
+
   Future<String?> setting(String key) async {
     final rows = await _db.query(
       'settings',
@@ -381,14 +543,25 @@ class GardenStore {
     return rows.isEmpty ? null : rows.single['value'] as String;
   }
 
-  Future<void> setSetting(String key, String value) => _db
-      .insert('settings', {
-        'account': _account,
+  Future<void> setSetting(String key, String value) async {
+    final account = _account;
+    await _db.transaction((txn) async {
+      await txn.insert('settings', {
+        'account': account,
         'key': key,
         'value': value,
         'updated': DateTime.now().toUtc().toIso8601String(),
-      }, conflictAlgorithm: ConflictAlgorithm.replace)
-      .then((_) {});
+      }, conflictAlgorithm: ConflictAlgorithm.replace);
+      if (key == 'analytics' && value != 'true') {
+        await txn.delete('events', where: 'account = ?', whereArgs: [account]);
+        await txn.delete(
+          'sync_state',
+          where: 'account = ? AND tableName = ?',
+          whereArgs: [account, 'events'],
+        );
+      }
+    });
+  }
 
   static const eventNames = {
     'recipe_created',
@@ -399,17 +572,27 @@ class GardenStore {
     'share_initiated',
     'reminder_sent',
     'signin_succeeded',
+    'weekly_reflection',
+    'rating_prompted',
   };
   Future<void> track(String name) async {
     if (!eventNames.contains(name)) {
       throw ArgumentError('Unregistered telemetry event.');
     }
-    if (await setting('analytics') != 'true') return;
-    await _db.insert('events', {
-      'id': _uuid.v4(),
-      'account': _account,
-      'name': name,
-      'ts': DateTime.now().toUtc().toIso8601String(),
+    final account = _account;
+    await _db.transaction((txn) async {
+      final consent = await txn.query(
+        'settings',
+        where: 'account = ? AND key = ?',
+        whereArgs: [account, 'analytics'],
+      );
+      if (consent.isEmpty || consent.single['value'] != 'true') return;
+      await txn.insert('events', {
+        'id': _uuid.v4(),
+        'account': account,
+        'name': name,
+        'ts': DateTime.now().toUtc().toIso8601String(),
+      });
     });
   }
 
@@ -422,8 +605,9 @@ class GardenStore {
           'This felt wrong',
           'Rating',
         ].contains(kind) ||
-        body.trim().isEmpty ||
+        (body.trim().isEmpty && kind != 'Rating') ||
         body.length > 2000 ||
+        (kind == 'Rating' && rating == null) ||
         (rating != null && (rating < 1 || rating > 5))) {
       throw ArgumentError(
         'Enter feedback (1-2000 characters) and a valid rating.',
@@ -475,6 +659,8 @@ class GardenStore {
   }
 
   Future<void> deleteLocalAccount() async {
+    _syncGeneration++;
+    final account = _account;
     await _db.transaction((txn) async {
       for (final table in [
         'habits',
@@ -483,36 +669,125 @@ class GardenStore {
         'voice',
         'settings',
         'events',
+        'sync_state',
       ]) {
-        await txn.delete(table, where: 'account = ?', whereArgs: [_account]);
+        await txn.delete(table, where: 'account = ?', whereArgs: [account]);
       }
     });
   }
 
-  Future<Map<String, Object?>> syncPayload() async {
-    final data = await export();
-    final payload = <String, Object?>{};
-    for (final table in [
-      'habits',
-      'checkins',
-      'reflections',
-      'voice',
-      'events',
-    ]) {
-      payload[table] = (data[table] as List).map((raw) {
-        final row = Map<String, Object?>.from(raw as Map)..remove('account');
-        if (table == 'voice') {
-          row.remove('status');
-          row.remove('replies');
-        }
-        return row;
-      }).toList();
+  static const syncTables = [
+    'habits',
+    'checkins',
+    'reflections',
+    'voice',
+    'events',
+    'settings',
+  ];
+
+  static Map<String, Object?> _wireRow(String table, Map<String, Object?> raw) {
+    final row = Map<String, Object?>.from(raw)..remove('account');
+    if (table == 'voice') {
+      row.remove('status');
+      row.remove('replies');
     }
-    payload['settings'] = (data['settings'] as List)
-        .map((raw) => Map<String, Object?>.from(raw as Map)..remove('account'))
-        .where((row) => syncedSettings.contains(row['key']))
-        .toList();
-    return payload;
+    return row;
+  }
+
+  static String _recordId(String table, Map<String, Object?> row) =>
+      row[table == 'settings' ? 'key' : 'id'] as String;
+
+  static String _fingerprint(String table, Map<String, Object?> raw) {
+    final row = _wireRow(table, raw);
+    final keys = row.keys.toList()..sort();
+    return sha256
+        .convert(
+          utf8.encode(jsonEncode({for (final key in keys) key: row[key]})),
+        )
+        .toString();
+  }
+
+  static Future<void> _rememberSync(
+    DatabaseExecutor db,
+    String account,
+    String table,
+    Map<String, Object?> row,
+  ) async {
+    await db.insert('sync_state', {
+      'account': account,
+      'tableName': table,
+      'recordId': _recordId(table, row),
+      'fingerprint': _fingerprint(table, row),
+    }, conflictAlgorithm: ConflictAlgorithm.replace);
+  }
+
+  /// A transaction snapshots each pending record; acknowledgment compares that
+  /// exact snapshot so edits made during the HTTP request remain pending.
+  Future<Map<String, Object?>> syncPayload() async {
+    final account = _account;
+    final generation = _syncGeneration;
+    return _db.transaction((txn) async {
+      requireSyncSession(account, generation);
+      final state = await txn.query(
+        'sync_state',
+        where: 'account = ?',
+        whereArgs: [account],
+      );
+      final known = {
+        for (final row in state)
+          '${row['tableName']}:${row['recordId']}': row['fingerprint'],
+      };
+      final payload = <String, Object?>{};
+      for (final table in syncTables) {
+        final rows = await txn.query(
+          table,
+          where: 'account = ?',
+          whereArgs: [account],
+          orderBy: table == 'settings' ? 'key ASC' : 'id ASC',
+        );
+        payload[table] = rows
+            .where(
+              (row) =>
+                  table != 'settings' || syncedSettings.contains(row['key']),
+            )
+            .where(
+              (row) =>
+                  known['$table:${_recordId(table, row)}'] !=
+                  _fingerprint(table, row),
+            )
+            .map((row) => _wireRow(table, row))
+            .toList();
+      }
+      requireSyncSession(account, generation);
+      return payload;
+    });
+  }
+
+  Future<void> acknowledgeSync(
+    Map<String, Object?> submitted, {
+    String? account,
+    int? generation,
+  }) async {
+    final owner = account ?? _account;
+    final session = generation ?? _syncGeneration;
+    await _db.transaction((txn) async {
+      requireSyncSession(owner, session);
+      for (final table in syncTables) {
+        for (final raw in submitted[table] as List? ?? []) {
+          final row = Map<String, Object?>.from(raw as Map);
+          final current = await txn.query(
+            table,
+            where: '${table == 'settings' ? 'key' : 'id'} = ? AND account = ?',
+            whereArgs: [_recordId(table, row), owner],
+          );
+          if (current.isNotEmpty &&
+              _fingerprint(table, current.single) == _fingerprint(table, row)) {
+            await _rememberSync(txn, owner, table, row);
+          }
+        }
+      }
+      requireSyncSession(owner, session);
+    });
   }
 
   static const syncedSettings = {
@@ -521,9 +796,17 @@ class GardenStore {
     'quietStart',
     'quietEnd',
     'fewerReminders',
+    'weeklyLast',
+    'ratingPromptedAt',
   };
 
-  Future<void> mergeSync(Map<String, dynamic> data) async {
+  Future<void> mergeSync(
+    Map<String, dynamic> data, {
+    String? account,
+    int? generation,
+  }) async {
+    final owner = account ?? _account;
+    final session = generation ?? _syncGeneration;
     final columns = {
       'habits': [
         'id',
@@ -541,6 +824,7 @@ class GardenStore {
       'voice': ['id', 'kind', 'body', 'rating', 'status', 'replies', 'ts'],
     };
     await _db.transaction((txn) async {
+      requireSyncSession(owner, session);
       for (final entry in columns.entries) {
         final rows = data[entry.key];
         if (rows is! List) {
@@ -550,7 +834,7 @@ class GardenStore {
           if (raw is! Map || entry.value.any((key) => !raw.containsKey(key))) {
             throw const FormatException('Incomplete sync record.');
           }
-          final row = <String, Object?>{'account': _account};
+          final row = <String, Object?>{'account': owner};
           for (final key in entry.value) {
             final value = raw[key];
             if (value != null && value is! String && value is! num) {
@@ -558,10 +842,11 @@ class GardenStore {
             }
             row[key] = value;
           }
+          final received = Map<String, Object?>.from(row);
           final existing = await txn.query(
             entry.key,
             where: 'id = ? AND account = ?',
-            whereArgs: [row['id'], _account],
+            whereArgs: [row['id'], owner],
           );
           if (existing.isEmpty) {
             await txn.insert(entry.key, row);
@@ -583,14 +868,14 @@ class GardenStore {
                 entry.key,
                 row,
                 where: 'id = ? AND account = ?',
-                whereArgs: [row['id'], _account],
+                whereArgs: [row['id'], owner],
               );
             } else {
               await txn.update(
                 entry.key,
                 {'stage': stage},
                 where: 'id = ? AND account = ?',
-                whereArgs: [row['id'], _account],
+                whereArgs: [row['id'], owner],
               );
             }
           } else if (entry.key == 'voice') {
@@ -598,9 +883,10 @@ class GardenStore {
               entry.key,
               {'status': row['status'], 'replies': row['replies']},
               where: 'id = ? AND account = ?',
-              whereArgs: [row['id'], _account],
+              whereArgs: [row['id'], owner],
             );
           }
+          await _rememberSync(txn, owner, entry.key, received);
         }
       }
       final settings = data['settings'] ?? [];
@@ -615,7 +901,7 @@ class GardenStore {
           throw const FormatException('Invalid synced preference.');
         }
         final row = <String, Object?>{
-          'account': _account,
+          'account': owner,
           'key': raw['key'],
           'value': raw['value'],
           'updated': raw['updated'],
@@ -623,8 +909,18 @@ class GardenStore {
         final previous = await txn.query(
           'settings',
           where: 'account = ? AND key = ?',
-          whereArgs: [_account, row['key']],
+          whereArgs: [owner, row['key']],
         );
+        if (row['key'] == 'weeklyLast' || row['key'] == 'ratingPromptedAt') {
+          final stamp = DateTime.tryParse(row['value'] as String);
+          if (stamp == null || !(row['value'] as String).endsWith('Z')) {
+            throw const FormatException('Invalid cadence timestamp.');
+          }
+          final old = previous.isEmpty
+              ? null
+              : DateTime.tryParse(previous.single['value'] as String);
+          if (old != null && old.isAfter(stamp)) continue;
+        }
         if (previous.isEmpty ||
             newerVersionedRecord(row, previous.single, ['value'])) {
           await txn.insert(
@@ -633,21 +929,31 @@ class GardenStore {
             conflictAlgorithm: ConflictAlgorithm.replace,
           );
         }
+        await _rememberSync(txn, owner, 'settings', row);
       }
       for (final id in (data['acknowledgedEvents'] as List? ?? [])) {
         await txn.delete(
           'events',
           where: 'id = ? AND account = ?',
-          whereArgs: [id, _account],
+          whereArgs: [id, owner],
+        );
+        await txn.delete(
+          'sync_state',
+          where: 'account = ? AND tableName = ? AND recordId = ?',
+          whereArgs: [owner, 'events', id],
         );
       }
       final recipes = await txn.query(
         'habits',
         where: 'account = ?',
-        whereArgs: [_account],
+        whereArgs: [owner],
       );
       for (final habit in recipes) {
-        final current = await _current(txn, habit['id'] as String);
+        final current = await _current(
+          txn,
+          habit['id'] as String,
+          account: owner,
+        );
         final count = current.where((r) => r['result'] != 'notToday').length;
         final stage = count >= 21
             ? 3
@@ -661,10 +967,11 @@ class GardenStore {
             'habits',
             {'stage': stage},
             where: 'id = ? AND account = ?',
-            whereArgs: [habit['id'], _account],
+            whereArgs: [habit['id'], owner],
           );
         }
       }
+      requireSyncSession(owner, session);
     });
   }
 }

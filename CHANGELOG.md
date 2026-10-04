@@ -21,6 +21,14 @@
   delivery remains unverified.
 - x64 installer lifecycle passes CI. ARM64 builds bootstrap the official native
   Dart SDK and verify executable architecture instead of guessing from the runner.
+- True ARM64/x64 installer lifecycle verified; native synthetic garden launched
+  and app-only screenshot inspected. Contrast/action overlap fixes are in source.
+- Weekly review independent of naturalness cooldown, patient rating cadence,
+  restart-safe incremental sync acknowledgments and atomic analytics opt-out.
+- Audited private feedback pagination/retry IDs, deletion-safe replies,
+  consent-safe preview measurement panels and explicit finite volume controls.
+- Manual trusted-repository version checks, no automatic installer execution;
+  offline identity expires at exactly 30 days, not rounded day 31.
 
 No user feedback item is marked shipped yet. This is not a full authenticated
 MVP; deployment/native delivery and remaining loops are tracked in `docs/status.md`.

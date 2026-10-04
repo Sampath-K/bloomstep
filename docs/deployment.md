@@ -44,12 +44,43 @@ nonce, loopback-only HTTP listener with three-minute expiry and signature checks
 Grant only the API scope plus openid/profile/email/offline_access.
 Associate the app with a sign-up/sign-in flow configured for email OTP.
 
-Google: provider OAuth project, published consent settings, exact broker
-federation redirect; credentials supplied **directly** to Entra provider settings.
-Microsoft work/school: documented custom Entra OIDC federation; consent rules
-can require organizational approval. Microsoft personal account federation is
-not assumed from the built-in provider table; use a supported validated OIDC
-configuration or explicitly report it unavailable. No silent email merging.
+Google uses the documented built-in customer provider. Create an OAuth **web**
+client in a personal Google Cloud project; billing and Gmail APIs are not needed.
+Use only `openid profile email`. For testing, add the owner's Google account as
+a test user; testing is not publicly available sign-in. Configure the authorized
+domains/callbacks in the current
+[Google federation instructions](https://learn.microsoft.com/en-us/entra/external-id/customers/how-to-google-federation-customers).
+Include both customer-subdomain and tenant-ID callback variants listed there;
+the canonical tenant-ID host can use `/federation/oidc/accounts.google.com`.
+Paste credentials **directly** into Entra's built-in Google provider, never into
+chat, source, native build defines or SWA settings. Enable Google in the existing
+customer user flow. Public consent publishing/verification is a separate gate.
+
+Microsoft **personal** Outlook/Hotmail accounts are explicitly supported by the
+current [customer MSA federation instructions](https://learn.microsoft.com/en-us/entra/external-id/customers/how-to-microsoft-accounts-federation-customers).
+Use a separate confidential federation registration (not the public desktop
+client), multi-org + personal-account audience and v2 tokens. Its documented web
+callbacks are `https://<subdomain>.ciamlogin.com/<tenant-id>/federation/oauth2`
+and the equivalent `<subdomain>.onmicrosoft.com` tenant path.
+`infra/configure-identity.ps1` prepares this registration without exporting a
+secret; the operator creates/pastes its secret directly in Entra's custom OIDC
+provider and enables it in the user flow. The provider configuration is:
+
+- Metadata: `https://login.microsoftonline.com/consumers/v2.0/.well-known/openid-configuration`.
+- Provider issuer alias: **`https://login.live.com`**, exactly as Microsoft's MSA
+  instructions prescribe. The consumer discovery document actually returns the
+  consumer tenant's `microsoftonline.com/.../v2.0` JWT issuer; do not confuse this
+  special broker-provider setting with the API's accepted token issuer.
+- Code response, `openid profile email`, supported secret authentication
+  (`client_secret_post`), subject `sub`, display name `name`; no unnecessary
+  required profile attributes. `client_secret_basic` and `private_key_jwt`
+  are not supported by the current customer OIDC configuration.
+
+No broker replacement is required for this documented path. Actual Google and
+MSA sign-ins, consent, claims mapping and callback behavior must still be observed.
+Microsoft work/school federation is a different configuration and can need
+organizational approval; `common` is not a substitute for personal-account setup.
+Never merge gardens by email or treat resource-tenant ownership as an API role.
 
 API app settings (deployment secret store only):
 `COSMOS_CONNECTION_STRING`, `OIDC_ISSUER`, `OIDC_API_AUDIENCE`,

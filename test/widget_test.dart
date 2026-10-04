@@ -50,6 +50,10 @@ void main() {
     await settleDatabase();
     expect((await tester.runAsync(store.habits))!.single.practiceCount, 1);
     expect(find.textContaining('relax my shoulders'), findsWidgets);
+    await tester.pump(const Duration(seconds: 6));
+    await tester.pumpAndSettle();
+    await tester.ensureVisible(find.text('Undo today'));
+    await tester.pumpAndSettle();
     await tester.tap(find.text('Undo today'));
     await settleDatabase();
     expect((await tester.runAsync(store.habits))!.single.practiceCount, 0);

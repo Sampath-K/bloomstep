@@ -14,6 +14,7 @@ import '../../services/identity.dart';
 import '../../services/sync_service.dart';
 import '../../services/desktop_reminders.dart';
 import '../../services/remote_config.dart';
+import '../../services/update_service.dart';
 
 import 'package:launch_at_startup/launch_at_startup.dart';
 
@@ -21,9 +22,15 @@ import 'plant_art.dart';
 import 'recipe_builder.dart';
 
 class GardenScreen extends StatefulWidget {
-  const GardenScreen({super.key, required this.store, this.identity});
+  const GardenScreen({
+    super.key,
+    required this.store,
+    this.identity,
+    this.updateService,
+  });
   final GardenStore store;
   final IdentityService? identity;
+  final UpdateService? updateService;
   @override
   State<GardenScreen> createState() => _GardenScreenState();
 }
@@ -33,6 +40,10 @@ class _GardenScreenState extends State<GardenScreen> {
   bool loading = true;
   bool working = false;
   bool reducedMotion = false;
+  bool weeklyDue = false;
+  bool ratingInvitation = false;
+  int ratingMoment = 0;
+  Map<String, DateTime?> naturalnessDates = {};
   String? error;
   String syncStatus = 'Local garden';
   bool syncing = false;
@@ -42,6 +53,9 @@ class _GardenScreenState extends State<GardenScreen> {
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) unawaited(_foregroundOpening());
+    });
     _load();
     if (widget.identity != null) {
       reminders = DesktopReminders(widget.store, _load, (message) {
@@ -65,6 +79,37 @@ class _GardenScreenState extends State<GardenScreen> {
     super.dispose();
   }
 
+  Future<void> _foregroundOpening() async {
+    final account = widget.store.account;
+    final generation = widget.store.syncGeneration;
+    try {
+      final last = DateTime.tryParse(
+        await widget.store.setting('lastInteraction') ?? '',
+      );
+      if (!mounted || closing) return;
+      widget.store.requireSyncSession(account, generation);
+      final now = DateTime.now();
+      final returning =
+          last != null &&
+          now.toUtc().difference(last) >= const Duration(days: 3);
+      await widget.store.recordInteraction(now: now, positiveReturn: returning);
+      if (!mounted || closing) return;
+      widget.store.requireSyncSession(account, generation);
+      if (returning) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Returning is a win; your garden kept its growth'),
+            duration: Duration(seconds: 5),
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() => error = 'Your return could not be recorded: $e');
+      }
+    }
+  }
+
   Future<void> _sync() async {
     final identity = widget.identity;
     if (identity == null || identity.account == null || syncing || closing) {
@@ -81,7 +126,7 @@ class _GardenScreenState extends State<GardenScreen> {
       await _load();
     } catch (e) {
       if (mounted) {
-        setState(() => syncStatus = 'Offline / sync needs attention: $e');
+        setState(() => syncStatus = 'Sync needs attention: $e');
       }
     } finally {
       syncing = false;
@@ -106,10 +151,17 @@ class _GardenScreenState extends State<GardenScreen> {
     try {
       final data = await widget.store.habits();
       final reduce = await widget.store.setting('reducedMotion') == 'true';
+      final weekly = await widget.store.weeklyReflectionDue();
+      final dates = <String, DateTime?>{};
+      for (final habit in data) {
+        dates[habit.id] = await widget.store.naturalnessAvailableAt(habit.id);
+      }
       if (mounted) {
         setState(() {
           habits = data;
           reducedMotion = reduce;
+          weeklyDue = weekly;
+          naturalnessDates = dates;
           loading = false;
         });
       }
@@ -128,6 +180,8 @@ class _GardenScreenState extends State<GardenScreen> {
     setState(() {
       working = true;
       error = null;
+      ratingInvitation = false;
+      ratingMoment++;
     });
     try {
       await action();
@@ -188,6 +242,7 @@ class _GardenScreenState extends State<GardenScreen> {
 
   Future<void> _check(Habit habit, CheckInResult result) async {
     String? reason;
+    ScaffoldFeatureController<SnackBar, SnackBarClosedReason>? celebration;
     if (result == CheckInResult.notToday) {
       reason = await showDialog<String>(
         context: context,
@@ -212,7 +267,7 @@ class _GardenScreenState extends State<GardenScreen> {
       if (reason == 'skip') reason = null;
     } else {
       // Show the personal celebration immediately; persistence follows independently.
-      ScaffoldMessenger.of(context).showSnackBar(
+      celebration = ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(
             '${result == CheckInResult.didMore ? 'A little extra! ' : 'That tiny step counts! '}Now ${habit.celebration}.',
@@ -221,8 +276,43 @@ class _GardenScreenState extends State<GardenScreen> {
         ),
       );
     }
-    await _act(() => widget.store.checkIn(habit.id, result, reason: reason));
+    var saved = false;
+    await _act(() async {
+      await widget.store.checkIn(habit.id, result, reason: reason);
+      saved = true;
+    });
     await reminders?.practiced(habit.id);
+    if (saved && celebration != null) {
+      unawaited(_offerRatingAfterCelebration(celebration.closed, ratingMoment));
+    }
+  }
+
+  Future<void> _offerRatingAfterCelebration(
+    Future<SnackBarClosedReason> closed,
+    int moment,
+  ) async {
+    await closed;
+    if (!mounted ||
+        closing ||
+        working ||
+        error != null ||
+        moment != ratingMoment) {
+      return;
+    }
+    try {
+      final eligible = await widget.store.claimRatingPrompt();
+      if (!mounted || closing || error != null || moment != ratingMoment) {
+        return;
+      }
+      if (eligible) {
+        setState(() => ratingInvitation = true);
+        if (widget.identity?.account != null) unawaited(_sync());
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() => error = 'Rating invitation could not be saved: $e');
+      }
+    }
   }
 
   Future<void> _edit(Habit habit) async {
@@ -243,6 +333,18 @@ class _GardenScreenState extends State<GardenScreen> {
   }
 
   Future<void> _reflection(Habit habit) async {
+    final available = await widget.store.naturalnessAvailableAt(habit.id);
+    if (!mounted) return;
+    if (available != null && DateTime.now().toUtc().isBefore(available)) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            'Naturalness available ${localDate(available.toLocal())}. Weekly reflection is always available.',
+          ),
+        ),
+      );
+      return;
+    }
     final scores = [4, 4, 4, 4];
     final accepted = await showDialog<bool>(
       context: context,
@@ -311,16 +413,71 @@ class _GardenScreenState extends State<GardenScreen> {
     if (accepted == true) {
       await _act(() => widget.store.reflect(habit.id, scores));
       if (!mounted) return;
-      if (habits.firstWhere((h) => h.id == habit.id).status == 'graduated') {
-        ScaffoldMessenger.of(context).showSnackBar(
+      if (error == null &&
+          habit.status != 'graduated' &&
+          habits.firstWhere((h) => h.id == habit.id).status == 'graduated') {
+        final celebration = ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
             content: Text(
               'This one is part of you now. Welcome to your evergreen Grove!',
             ),
           ),
         );
+        unawaited(
+          _offerRatingAfterCelebration(celebration.closed, ratingMoment),
+        );
       }
     }
+  }
+
+  Future<void> _weeklyReflection(Habit habit) async {
+    final recommendation = await widget.store.weeklyRecommendation(habit.id);
+    if (!mounted) return;
+    final choice = await showDialog<String>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('A minute for your recipe'),
+        content: SizedBox(
+          width: 460,
+          child: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(habit.recipe),
+                const SizedBox(height: 12),
+                const Text(
+                  'Under 60 seconds: What made starting easier this week? Does your anchor happen reliably? Does your celebration feel good?',
+                ),
+                const SizedBox(height: 12),
+                Text(recommendation),
+                const SizedBox(height: 12),
+                const Text(
+                  'Recipe Doctor uses your recorded reasons from the last seven days, not AI. You choose whether to change anything. This does not change your naturalness score or graduation criteria.',
+                ),
+              ],
+            ),
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Not now'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(context, 'edit'),
+            child: const Text('Adjust my recipe'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(context, 'keep'),
+            child: const Text('Keep my recipe'),
+          ),
+        ],
+      ),
+    );
+    if (choice == null) return;
+    await _act(() => widget.store.completeWeeklyReflection(habit.id));
+    if (choice == 'edit' && error == null && mounted) await _edit(habit);
   }
 
   Future<void> _share() async {
@@ -389,9 +546,9 @@ class _GardenScreenState extends State<GardenScreen> {
     );
   }
 
-  Future<void> _voice() async {
+  Future<void> _voice({String initialKind = 'Idea'}) async {
     final body = TextEditingController();
-    var kind = 'Idea';
+    var kind = initialKind;
     var rating = 5;
     try {
       final submitted = await showDialog<bool>(
@@ -432,8 +589,10 @@ class _GardenScreenState extends State<GardenScreen> {
                     controller: body,
                     maxLength: 2000,
                     maxLines: 4,
-                    decoration: const InputDecoration(
-                      labelText: 'Your feedback',
+                    decoration: InputDecoration(
+                      labelText: kind == 'Rating'
+                          ? 'Optional feedback'
+                          : 'Your feedback',
                       hintText: 'Please do not include secrets or private account details.',
                     ),
                   ),
@@ -483,7 +642,11 @@ class _GardenScreenState extends State<GardenScreen> {
                 const Text('No feedback yet. Your voice is welcome.'),
               for (final record in records)
                 ListTile(
-                  title: Text(record['body'] as String),
+                  title: Text(
+                    record['kind'] == 'Rating'
+                        ? '${record['rating']} / 5${(record['body'] as String).isEmpty ? '' : ' — ${record['body']}'}'
+                        : record['body'] as String,
+                  ),
                   subtitle: Text(
                     '${record['kind']} - ${record['status']}\n${(jsonDecode(record['replies'] as String) as List).join('\n')}',
                   ),
@@ -615,16 +778,7 @@ class _GardenScreenState extends State<GardenScreen> {
                   ListTile(
                     title: const Text('Check for updates'),
                     leading: const Icon(Icons.system_update),
-                    onTap: () => _act(() async {
-                      if (!await launchUrl(
-                        Uri.parse(
-                          'https://github.com/Sampath-K/bloomstep/releases',
-                        ),
-                        mode: LaunchMode.externalApplication,
-                      )) {
-                        throw StateError('Release page could not be opened.');
-                      }
-                    }),
+                    onTap: _checkUpdates,
                   ),
                   ListTile(
                     title: const Text('Delete local garden'),
@@ -740,6 +894,103 @@ class _GardenScreenState extends State<GardenScreen> {
     );
   }
 
+  Future<void> _checkUpdates() async {
+    Future<(UpdateInfo?, Object?)> checkSafely() async {
+      try {
+        return (await (widget.updateService ?? UpdateService()).check(), null);
+      } catch (e) {
+        return (null, e);
+      }
+    }
+
+    final check = checkSafely();
+    String? launchError;
+    var opening = false;
+    await showDialog<void>(
+      context: context,
+      builder: (context) => StatefulBuilder(
+        builder: (context, update) => FutureBuilder<(UpdateInfo?, Object?)>(
+          future: check,
+          builder: (context, snapshot) {
+            final release = snapshot.data?.$1;
+            final failure = snapshot.data?.$2;
+            return AlertDialog(
+              title: const Text('Published releases'),
+              content: SizedBox(
+                width: 460,
+                child: SingleChildScrollView(
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Text(
+                        'Bundled version: ${UpdateService.bundledVersion}',
+                      ),
+                      const SizedBox(height: 12),
+                      if (snapshot.connectionState != ConnectionState.done)
+                        const Text('Checking GitHub Releases…')
+                      else if (failure != null)
+                        Text('Update check failed: $failure')
+                      else if (release == null)
+                        const Text('No newer published release found')
+                      else ...[
+                        Text('Published version: ${release.version}'),
+                        if (release.prerelease)
+                          const Text(
+                            'Unsigned preview: experimental and not a signed update. Windows may show an unknown-publisher warning.',
+                          ),
+                        const Text(
+                          'You choose whether to open the release page and download anything. Bloomstep will not download or run an installer automatically.',
+                        ),
+                      ],
+                      if (launchError != null) Text(launchError!),
+                    ],
+                  ),
+                ),
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.pop(context),
+                  child: const Text('Not now'),
+                ),
+                if (release != null && failure == null)
+                  FilledButton(
+                    onPressed: opening
+                        ? null
+                        : () async {
+                            update(() {
+                              opening = true;
+                              launchError = null;
+                            });
+                            try {
+                              if (!await launchUrl(
+                                release.releasePage,
+                                mode: LaunchMode.externalApplication,
+                              )) {
+                                throw StateError(
+                                  'Release page could not be opened.',
+                                );
+                              }
+                            } catch (e) {
+                              if (context.mounted) {
+                                update(() => launchError = '$e');
+                              }
+                            } finally {
+                              if (context.mounted) {
+                                update(() => opening = false);
+                              }
+                            }
+                          },
+                    child: const Text('Open release page'),
+                  ),
+              ],
+            );
+          },
+        ),
+      ),
+    );
+  }
+
   Future<void> _chooseMinute(String key, int fallback) async {
     final minute = int.parse(await widget.store.setting(key) ?? '$fallback');
     if (!mounted) return;
@@ -798,7 +1049,12 @@ class _GardenScreenState extends State<GardenScreen> {
                         style: theme.textTheme.titleMedium,
                       ),
                       const SizedBox(height: 24),
-                      Text(syncStatus, style: theme.textTheme.bodySmall),
+                      Text(
+                        weeklyDue && habits.isNotEmpty
+                            ? '$syncStatus • Weekly reflection is ready'
+                            : syncStatus,
+                        style: theme.textTheme.bodySmall,
+                      ),
                       if (widget.identity != null)
                         TextButton.icon(
                           onPressed: syncing ? null : _sync,
@@ -810,6 +1066,48 @@ class _GardenScreenState extends State<GardenScreen> {
                           child: Padding(
                             padding: const EdgeInsets.all(16),
                             child: SelectableText(error!),
+                          ),
+                        ),
+                      if (ratingInvitation && error == null)
+                        Card(
+                          child: Padding(
+                            padding: const EdgeInsets.all(16),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                const Text(
+                                  'A positive moment in your garden. Want to share how Bloomstep feels? Ratings are optional and never affect your garden.',
+                                ),
+                                Wrap(
+                                  spacing: 8,
+                                  children: [
+                                    TextButton(
+                                      onPressed: working
+                                          ? null
+                                          : () {
+                                              setState(
+                                                () => ratingInvitation = false,
+                                              );
+                                              _voice(initialKind: 'Rating');
+                                            },
+                                      child: const Text('Rate Bloomstep'),
+                                    ),
+                                    TextButton(
+                                      onPressed: () => setState(
+                                        () => ratingInvitation = false,
+                                      ),
+                                      child: const Text('Snooze 120 days'),
+                                    ),
+                                    TextButton(
+                                      onPressed: () => setState(
+                                        () => ratingInvitation = false,
+                                      ),
+                                      child: const Text('Dismiss'),
+                                    ),
+                                  ],
+                                ),
+                              ],
+                            ),
                           ),
                         ),
                       if (habits.isEmpty)
@@ -962,27 +1260,49 @@ class _GardenScreenState extends State<GardenScreen> {
                                                     : 'Today is recorded. You can change it.',
                                               ),
                                             ),
-                                            TextButton(
-                                              onPressed: working
-                                                  ? null
-                                                  : () => _act(
-                                                      () => widget.store.undo(
-                                                        habit.id,
+                                            Flexible(
+                                              child: TextButton(
+                                                onPressed: working
+                                                    ? null
+                                                    : () => _act(
+                                                        () => widget.store.undo(
+                                                          habit.id,
+                                                        ),
                                                       ),
-                                                    ),
-                                              child: const Text('Undo today'),
+                                                child: const Text('Undo today'),
+                                              ),
                                             ),
                                           ],
                                         ),
                                       TextButton.icon(
                                         onPressed: working
                                             ? null
-                                            : () => _reflection(habit),
+                                            : () => _weeklyReflection(habit),
                                         icon: const Icon(
                                           Icons.self_improvement,
                                         ),
                                         label: const Text(
-                                          'Reflect / Recipe Doctor',
+                                          'Weekly reflection / Recipe Doctor',
+                                        ),
+                                      ),
+                                      TextButton(
+                                        onPressed:
+                                            working ||
+                                                (naturalnessDates[habit.id]
+                                                        ?.isAfter(
+                                                          DateTime.now()
+                                                              .toUtc(),
+                                                        ) ??
+                                                    false)
+                                            ? null
+                                            : () => _reflection(habit),
+                                        child: Text(
+                                          naturalnessDates[habit.id]?.isAfter(
+                                                    DateTime.now().toUtc(),
+                                                  ) ??
+                                                  false
+                                              ? 'Naturalness available ${localDate(naturalnessDates[habit.id]!.toLocal())}'
+                                              : 'Check naturalness',
                                         ),
                                       ),
                                     ],
@@ -997,10 +1317,15 @@ class _GardenScreenState extends State<GardenScreen> {
                 ),
               ),
             ),
-      floatingActionButton: FloatingActionButton.extended(
-        onPressed: working ? null : _plant,
-        icon: const Icon(Icons.add),
-        label: const Text('Plant a habit'),
+      bottomNavigationBar: SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+          child: FilledButton.icon(
+            onPressed: working ? null : _plant,
+            icon: const Icon(Icons.add),
+            label: const Text('Plant a habit'),
+          ),
+        ),
       ),
     );
   }

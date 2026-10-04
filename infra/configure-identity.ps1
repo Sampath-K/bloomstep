@@ -70,11 +70,31 @@ if (-not $existing.Count) {
     consentType = 'AllPrincipals'; scope = 'Garden.ReadWrite'
   }
 }
+$organizations = Graph 'organization'
+$domain = @($organizations.value[0].verifiedDomains | Where-Object isInitial)[0].name
+if (-not $domain.EndsWith('.onmicrosoft.com')) { throw 'Customer initial domain could not be verified.' }
+$subdomain = $domain.Substring(0, $domain.Length - '.onmicrosoft.com'.Length)
+$callbacks = @(
+  "https://$subdomain.ciamlogin.com/$TenantId/federation/oauth2",
+  "https://$subdomain.ciamlogin.com/$domain/federation/oauth2"
+)
+$microsoft = ManagedApp 'Bloomstep consumer federation' @{
+  displayName = 'Bloomstep consumer federation'
+  signInAudience = 'AzureADandPersonalMicrosoftAccount'
+  tags = @('Bloomstep-managed-free')
+  api = @{ requestedAccessTokenVersion = 2 }
+  web = @{ redirectUris = $callbacks }
+  requiredResourceAccess = @()
+}
 @{
   apiClientId = $api.appId
   desktopClientId = $desktop.appId
   apiScope = "api://$($api.appId)/Garden.ReadWrite"
   redirectUri = 'http://127.0.0.1:43821/callback'
   userFlow = 'Requires customer tenant user-flow setup and app association.'
+  microsoftFederationClientId = $microsoft.appId
+  microsoftFederationObjectId = $microsoft.id
+  microsoftFederationCallbacks = $callbacks
+  microsoftFederationSecret = 'Not created or exported; create and paste directly in Entra provider settings.'
 } | ConvertTo-Json
 Remove-Variable token,headers

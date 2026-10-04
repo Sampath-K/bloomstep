@@ -23,6 +23,7 @@ jobs:
       - run: npm ci --ignore-scripts
       - run: npm run check
       - run: npm test
+      - run: node --test ../test/site_console_test.mjs
   test-and-build-windows:
     strategy:
       fail-fast: false
@@ -68,7 +69,10 @@ jobs:
           OIDC_CLIENT_ID: ${{ vars.OIDC_CLIENT_ID }}
           OIDC_API_SCOPE: ${{ vars.OIDC_API_SCOPE }}
           API_ORIGIN: ${{ vars.API_ORIGIN }}
-        run: flutter build windows --release --dart-define="OIDC_ISSUER=$env:OIDC_ISSUER" --dart-define="OIDC_CLIENT_ID=$env:OIDC_CLIENT_ID" --dart-define="OIDC_API_SCOPE=$env:OIDC_API_SCOPE" --dart-define="API_ORIGIN=$env:API_ORIGIN"
+          RELEASE_TAG: ${{ startsWith(github.ref, 'refs/tags/v') && github.ref_name || 'v0.1.0-preview' }}
+        run: |
+          $version = $env:RELEASE_TAG.TrimStart('v')
+          flutter build windows --release --dart-define="OIDC_ISSUER=$env:OIDC_ISSUER" --dart-define="OIDC_CLIENT_ID=$env:OIDC_CLIENT_ID" --dart-define="OIDC_API_SCOPE=$env:OIDC_API_SCOPE" --dart-define="API_ORIGIN=$env:API_ORIGIN" --dart-define="BLOOMSTEP_RELEASE_VERSION=$version"
       - name: Verify executable architecture before labeling installer
         shell: pwsh
         run: |
@@ -84,8 +88,11 @@ jobs:
           }
       - name: Build unsigned preview installer
         shell: pwsh
+        env:
+          RELEASE_TAG: ${{ startsWith(github.ref, 'refs/tags/v') && github.ref_name || 'v0.1.0-preview' }}
         run: |
-          & "${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe" /Qp /DAppArch=${{ matrix.arch }} /DAppVersion=0.1.0-preview packaging\bloomstep.iss
+          $version = $env:RELEASE_TAG.TrimStart('v')
+          & "${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe" /Qp /DAppArch=${{ matrix.arch }} "/DAppVersion=$version" packaging\bloomstep.iss
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           Get-FileHash release-output\*.exe -Algorithm SHA256 | ForEach-Object { "$($_.Hash.ToLower())  $([IO.Path]::GetFileName($_.Path))" } | Set-Content release-output\SHA256-${{ matrix.arch }}.txt
       - name: Installer lifecycle smoke test
@@ -130,4 +137,4 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          gh release create "$GITHUB_REF_NAME" --repo "$GITHUB_REPOSITORY" --prerelease --title "Bloomstep $GITHUB_REF_NAME - engineering preview" --notes "Unsigned Windows engineering preview. Sign-in is intentionally gated until a personal identity tenant and API are configured. This is NOT the complete MVP. See docs/status.md for verified capabilities and gaps." $(find artifacts -name '*.exe' -path '*/release-output/*') $(find artifacts -name 'SHA256-*.txt')
+          gh release create "$GITHUB_REF_NAME" --repo "$GITHUB_REPOSITORY" --prerelease --title "Bloomstep $GITHUB_REF_NAME - engineering preview" --notes "Unsigned Windows engineering preview with real broker sign-in; provider availability depends on the configured customer flow. No anonymous or simulated login. This is NOT the complete verified MVP. See docs/status.md for actual evidence, runtime limits and outstanding launch gates. Verify the downloadable SHA-256 before installing." $(find artifacts -name '*.exe' -path '*/release-output/*') $(find artifacts -name 'SHA256-*.txt')

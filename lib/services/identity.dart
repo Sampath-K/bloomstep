@@ -22,25 +22,57 @@ class IdentityService {
       apiScope.isNotEmpty &&
       apiOrigin.startsWith('https://');
 
+  static bool offlineSessionValid(DateTime validatedAt, {DateTime? now}) {
+    final age = (now ?? DateTime.now()).toUtc().difference(validatedAt.toUtc());
+    return age >= const Duration(minutes: -5) && age < const Duration(days: 30);
+  }
+
   Future<bool> restore() async {
     if (!configured) return false;
     final raw = await _storage.read(key: 'bloomstep-session');
     if (raw == null) return false;
-    final record = (jsonDecode(raw) as Map).cast<String, dynamic>();
-    if (record['issuer'] != issuerUrl || record['clientId'] != clientId) {
-      return false;
+    final dynamic decoded;
+    try {
+      decoded = jsonDecode(raw);
+    } on FormatException {
+      throw StateError(
+        'The saved session could not be decoded. Sign in again.',
+      );
     }
-    if (DateTime.now()
-            .toUtc()
-            .difference(DateTime.parse(record['validatedAt'] as String))
-            .inDays >
-        30) {
+    if (decoded is! Map ||
+        decoded['issuer'] is! String ||
+        decoded['clientId'] is! String ||
+        decoded['account'] is! String ||
+        !RegExp(r'^[a-f0-9]{64}$').hasMatch(decoded['account'] as String) ||
+        decoded['validatedAt'] is! String ||
+        decoded['credential'] is! Map) {
+      throw StateError('The saved session is incomplete. Sign in again.');
+    }
+    final record = decoded.cast<String, dynamic>();
+    if (record['issuer'] != issuerUrl || record['clientId'] != clientId) {
       await signOut();
       return false;
     }
-    _credential = Credential.fromJson(
+    if (!offlineSessionValid(DateTime.parse(record['validatedAt'] as String))) {
+      await signOut();
+      return false;
+    }
+    final credential = Credential.fromJson(
       (record['credential'] as Map).cast<String, dynamic>(),
     );
+    final claims = credential.idToken.claims.toJson();
+    if (claims['iss'] is! String ||
+        claims['sub'] is! String ||
+        (claims['sub'] as String).isEmpty ||
+        sha256
+                .convert(utf8.encode('${claims['iss']}|${claims['sub']}'))
+                .toString() !=
+            record['account']) {
+      throw StateError(
+        'The saved identity does not match this garden. Sign in again.',
+      );
+    }
+    _credential = credential;
     account = record['account'] as String;
     return true;
   }
