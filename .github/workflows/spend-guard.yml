@@ -1,0 +1,36 @@
+name: Read-only free-tier spending guard
+on:
+  schedule:
+    - cron: '45 */6 * * *'
+  workflow_dispatch:
+  workflow_call:
+permissions:
+  contents: read
+concurrency:
+  group: bloomstep-spend-guard
+  cancel-in-progress: false
+jobs:
+  guard:
+    if: github.repository == 'Sampath-K/bloomstep' && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/sampath-k-bloomstep-mvp-implementation')
+    runs-on: ubuntu-latest
+    environment: bloomstep-operations
+    timeout-minutes: 5
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - uses: actions/checkout@v4
+      - name: Offline guard contracts
+        working-directory: infra
+        run: python3 -m unittest test_spend_guard.py
+      - name: Inspect read-only Azure metadata and request one-way pause if needed
+        env:
+          GUARD_TENANT_ID: ${{ vars.GUARD_TENANT_ID }}
+          GUARD_CLIENT_ID: ${{ vars.GUARD_CLIENT_ID }}
+          GUARD_SUBSCRIPTION_ID: ${{ vars.GUARD_SUBSCRIPTION_ID }}
+          GUARD_RESOURCE_GROUP: ${{ vars.GUARD_RESOURCE_GROUP }}
+          GUARD_SWA_NAME: ${{ vars.GUARD_SWA_NAME }}
+          GUARD_COSMOS_NAME: ${{ vars.GUARD_COSMOS_NAME }}
+          GUARD_CUSTOMER_DIRECTORY_NAME: ${{ vars.GUARD_CUSTOMER_DIRECTORY_NAME }}
+          API_ORIGIN: ${{ vars.API_ORIGIN }}
+        run: python3 infra/spend_guard.py

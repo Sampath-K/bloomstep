@@ -1,0 +1,124 @@
+name: Bounded daily aggregates
+on:
+  schedule:
+    - cron: '20 2 * * *'
+  workflow_dispatch:
+  workflow_call:
+permissions:
+  contents: read
+concurrency:
+  group: bloomstep-daily-aggregates
+  cancel-in-progress: false
+jobs:
+  aggregate:
+    if: github.repository == 'Sampath-K/bloomstep' && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/sampath-k-bloomstep-mvp-implementation')
+    runs-on: ubuntu-latest
+    environment: bloomstep-operations
+    timeout-minutes: 5
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - name: Exchange real resource-directory FIC token and aggregate yesterday
+        env:
+          WORKER_TENANT_ID: ${{ vars.WORKER_TENANT_ID }}
+          WORKER_CLIENT_ID: ${{ vars.WORKER_CLIENT_ID }}
+          API_ORIGIN: ${{ vars.API_ORIGIN }}
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          import base64, json, os, re, sys
+          from urllib.parse import urlencode, urlsplit
+          from urllib.request import Request, build_opener, HTTPRedirectHandler
+          from urllib.error import HTTPError
+
+          class NoRedirect(HTTPRedirectHandler):
+              def redirect_request(self, *args, **kwargs):
+                  return None
+
+          opener = build_opener(NoRedirect)
+
+          def fail(message):
+              print("::error::" + message)
+              raise SystemExit(1)
+
+          def call(request, stage):
+              try:
+                  with opener.open(request, timeout=45) as response:
+                      if not 200 <= response.status < 300:
+                          fail("Worker HTTP request failed; response omitted.")
+                      raw = response.read(524289)
+                      if len(raw) > 524288:
+                          fail("Worker response exceeds the bounded transport limit.")
+                      return json.loads(raw)
+              except HTTPError as error:
+                  diagnostic = ""
+                  if stage == "Resource-directory token exchange":
+                      try:
+                          details = json.loads(error.read(8192))
+                          code = details.get("error", "")
+                          if re.fullmatch(r"[a-z_]{1,50}", code):
+                              diagnostic += " " + code
+                          identifiers = re.findall(r"AADSTS[0-9]+", details.get("error_description", ""))
+                          diagnostic += " " + ",".join(sorted(set(identifiers)))
+                      except (ValueError, OSError):
+                          diagnostic = " (unavailable safe error code)"
+                  fail(stage + " failed with HTTP " + str(error.code) + diagnostic + "; private response omitted.")
+              except (OSError, ValueError):
+                  fail(stage + " transport or JSON response failed; credentials omitted.")
+
+          def mask(value):
+              if not isinstance(value, str) or not value or any(c in value for c in "\r\n"):
+                  fail("Invalid token response.")
+              print("::add-mask::" + value, flush=True)
+              return value
+
+          tenant = os.environ.get("WORKER_TENANT_ID", "")
+          client = os.environ.get("WORKER_CLIENT_ID", "")
+          guid = r"[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}"
+          if not re.fullmatch(guid, tenant) or not re.fullmatch(guid, client):
+              fail("Provision the nonsecret worker tenant/client environment variables first.")
+          origin = os.environ.get("API_ORIGIN", "").rstrip("/")
+          parsed = urlsplit(origin)
+          if parsed.scheme != "https" or not parsed.hostname or not parsed.hostname.endswith(".azurestaticapps.net") or parsed.username or parsed.password or parsed.port or parsed.path or parsed.query or parsed.fragment:
+              fail("API_ORIGIN must be the selected HTTPS managed SWA origin.")
+          assertion_url = os.environ["ACTIONS_ID_TOKEN_REQUEST_URL"]
+          assertion_url += ("&" if "?" in assertion_url else "?") + urlencode({"audience": "api://AzureADTokenExchange"})
+          assertion = mask(call(Request(assertion_url, headers={
+              "Authorization": "Bearer " + os.environ["ACTIONS_ID_TOKEN_REQUEST_TOKEN"]
+          }), "GitHub assertion")["value"])
+          encoded_claims = assertion.split(".")[1]
+          claims = json.loads(base64.urlsafe_b64decode(encoded_claims + "=" * (-len(encoded_claims) % 4)))
+          print("Federated trust identifiers: " + json.dumps({key: claims.get(key) for key in ("iss", "sub", "aud")}))
+          form = urlencode({
+              "client_id": client,
+              "scope": "api://" + client + "/.default",
+              "grant_type": "client_credentials",
+              "client_assertion_type": "urn:ietf:params:oauth:client-assertion-type:jwt-bearer",
+              "client_assertion": assertion
+          }).encode()
+          access_token = mask(call(Request(
+              "https://login.microsoftonline.com/" + tenant + "/oauth2/v2.0/token",
+              data=form, headers={"Content-Type": "application/x-www-form-urlencoded"}
+          ), "Resource-directory token exchange")["access_token"])
+          for route in ("/api/sync", "/api/team/feedback", "/api/team/metrics"):
+              request = Request(origin + route, headers={
+                  "X-Bloomstep-Authorization": "Bearer " + access_token
+              })
+              try:
+                  with opener.open(request, timeout=45):
+                      fail("Aggregate worker unexpectedly accessed a customer/team route.")
+              except HTTPError as error:
+                  if error.code != 401:
+                      fail("Worker isolation check returned HTTP " + str(error.code) + " instead of 401.")
+              except OSError:
+                  fail("Worker isolation probe transport failed.")
+          result = call(Request(origin + "/api/internal/aggregates", data=b"{}", method="POST", headers={
+              "Content-Type": "application/json",
+              "X-Bloomstep-Authorization": "Bearer " + access_token
+          }), "Authenticated aggregate write")
+          if not isinstance(result, dict) or not isinstance(result.get("snapshots"), list):
+              fail("Unexpected aggregate response; body omitted.")
+          print("Completed prior-UTC-day aggregate request; snapshots: " + str(len(result["snapshots"])))
+          print("Real worker token rejected by garden and team routes; issuer/role isolation verified.")
+          PY

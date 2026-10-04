@@ -1,0 +1,14 @@
+{
+  "automatic": true,
+  "indexingMode": "consistent",
+  "includedPaths": [{"path": "/*"}],
+  "excludedPaths": [{"path": "/\"_etag\"/?"}],
+  "compositeIndexes": [
+    [
+      {"path": "/userId", "order": "ascending"},
+      {"path": "/id", "order": "ascending"}
+    ]
+  ],
+  "fullTextIndexes": [],
+  "vectorIndexes": []
+}

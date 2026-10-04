@@ -1,0 +1,167 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="Bloomstep: one tiny step, a garden that grows with you. Windows engineering preview.">
+  <title>Bloomstep - a little is enough</title>
+  <script>
+    (() => {
+      const param = new URLSearchParams(window.location.search).get("scoutTheme");
+      const theme = param || (window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light");
+      document.documentElement.setAttribute("data-theme", theme);
+    })();
+  </script>
+  <style>
+    :root {
+      color-scheme: light;
+      --cp-bg: #f7f4ef;
+      --cp-bg-elevated: #fcfbf8;
+      --cp-surface: #ffffff;
+      --cp-surface-soft: #f5f5f5;
+      --cp-border: #dedede;
+      --cp-border-strong: #919191;
+      --cp-text: #242424;
+      --cp-text-muted: #5c5c5c;
+      --cp-text-soft: #6f6f6f;
+      --cp-accent: #b11f4b;
+      --cp-accent-hover: #9a1a41;
+      --cp-accent-soft: rgba(177, 31, 75, 0.08);
+      --cp-accent-fg: #ffffff;
+      --cp-success: #16a34a;
+      --cp-danger: #dc2626;
+      --cp-warning: #f59e0b;
+      --cp-link: #0078d4;
+      --cp-shadow: 0 18px 48px rgba(0, 0, 0, 0.12);
+      --cp-overlay: rgba(255, 255, 255, 0.8);
+      --cp-panel: rgba(255, 255, 255, 0.86);
+      --cp-panel-strong: rgba(255, 255, 255, 0.96);
+      --cp-sheen: rgba(255, 255, 255, 0.55);
+      --cp-highlight: rgba(177, 31, 75, 0.12);
+    }
+    html[data-theme="dark"] {
+      color-scheme: dark;
+      --cp-bg: #3d3b3a;
+      --cp-bg-elevated: #343231;
+      --cp-surface: #292929;
+      --cp-surface-soft: #2e2e2e;
+      --cp-border: #474747;
+      --cp-border-strong: #5f5f5f;
+      --cp-text: #dedede;
+      --cp-text-muted: #919191;
+      --cp-text-soft: #b0b0b0;
+      --cp-accent: #fd8ea1;
+      --cp-accent-hover: #fb7b91;
+      --cp-accent-soft: rgba(253, 142, 161, 0.14);
+      --cp-accent-fg: #1a1a1a;
+      --cp-success: #4ade80;
+      --cp-danger: #f87171;
+      --cp-warning: #fbbf24;
+      --cp-link: #4da6ff;
+      --cp-shadow: 0 18px 48px rgba(0, 0, 0, 0.32);
+      --cp-overlay: rgba(41, 41, 41, 0.88);
+      --cp-panel: rgba(41, 41, 41, 0.72);
+      --cp-panel-strong: rgba(41, 41, 41, 0.96);
+      --cp-sheen: rgba(255, 255, 255, 0.04);
+      --cp-highlight: rgba(253, 142, 161, 0.12);
+    }
+    * { box-sizing: border-box; }
+    body { margin: 0; background: var(--cp-bg); color: var(--cp-text); font: 18px/1.65 "Segoe UI", Aptos, Calibri, -apple-system, BlinkMacSystemFont, sans-serif; }
+    main, header, footer { max-width: 1040px; margin: auto; padding: 32px; }
+    header { display: flex; justify-content: space-between; gap: 24px; flex-wrap: wrap; }
+    nav { display: flex; gap: 24px; flex-wrap: wrap; }
+    a { color: var(--cp-link); text-underline-offset: 4px; }
+    h1 { font-size: clamp(40px, 7vw, 72px); line-height: 1.08; max-width: 760px; font-weight: 600; letter-spacing: -2px; margin: 24px 0; }
+    h2 { line-height: 1.2; }
+    .eyebrow { text-transform: uppercase; letter-spacing: 3px; color: var(--cp-accent); font-size: 14px; font-weight: 700; }
+    .lead { font-size: 24px; max-width: 720px; color: var(--cp-text-muted); }
+    .button, button { display: inline-block; background: var(--cp-accent); color: var(--cp-accent-fg); padding: 12px 24px; border-radius: .625rem; text-decoration: none; border: none; font: inherit; cursor: pointer; min-height: 48px; }
+    .button:hover, button:hover { background: var(--cp-accent-hover); }
+    a:focus-visible, button:focus-visible, input:focus-visible, textarea:focus-visible { outline: 3px solid var(--cp-link); outline-offset: 4px; }
+    section { margin: 48px 0; scroll-margin-top: 24px; }
+    .notice { padding: 20px 24px; border-left: 4px solid var(--cp-accent); background: var(--cp-accent-soft); border-radius: .625rem; }
+    .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 20px; }
+    article { padding: 24px; border: 1px solid var(--cp-border); border-radius: 16px; background: var(--cp-surface); }
+    .small { color: var(--cp-text-muted); font-size: 16px; }
+    .garden { height: 180px; display: flex; align-items: flex-end; justify-content: space-around; margin: 24px 0; border-bottom: 12px solid var(--cp-border); }
+    .plant { width: 64px; height: var(--height); border-radius: 48% 48% 10px 10px; background: var(--cp-success); position: relative; }
+    .plant::before, .plant::after { content: ""; position: absolute; width: 40px; height: 24px; border-radius: 70% 0; background: var(--cp-success); top: 30%; }
+    .plant::before { right: 90%; transform: rotate(20deg); }
+    .plant::after { left: 90%; transform: rotate(-20deg); }
+    .flower { width: 64px; height: 64px; border-radius: 50%; background: var(--cp-accent); position: absolute; top: -24px; }
+    label { display: block; margin: 16px 0; }
+    input, textarea, select { display: block; padding: 12px; width: 100%; font: inherit; border: 1px solid var(--cp-border-strong); border-radius: .625rem; color: var(--cp-text); background: var(--cp-surface); }
+    pre { white-space: pre-wrap; overflow-wrap: anywhere; font: 14px/1.6 Consolas, "Courier New", Courier, monospace; }
+    [hidden] { display: none !important; }
+  </style>
+</head>
+<body>
+  <header><strong>Bloomstep</strong><nav aria-label="Main"><a href="#grow">How it grows</a><a href="#download">Download</a><a href="#trust">Trust &amp; privacy</a><a href="#changes">Changelog</a></nav></header>
+  <main>
+    <section>
+      <div class="eyebrow">One tiny step</div>
+      <h1>A little is enough.<br>A garden grows from there.</h1>
+      <p class="lead">Attach one tiny behavior to a routine you already have. Celebrate it. Watch your plant grow, without streak pressure or punishment.</p>
+      <div id="invitation" class="notice" hidden></div>
+      <div class="garden" role="img" aria-label="Three healthy plants at different growth stages. Plants never lose their growth.">
+        <div class="plant" style="--height: 44px"></div><div class="plant" style="--height: 100px"></div><div class="plant" style="--height: 136px"><span class="flower"></span></div>
+      </div>
+      <p class="notice"><strong>Engineering preview, not the full MVP.</strong> Native Windows builds and the free-tier website/API are live under integration verification. Real sign-in is required; Google and Microsoft personal-account availability depends on the configured broker flow. No pretend login, no anonymous production garden.</p>
+    </section>
+    <section id="grow">
+      <h2>Small by design. Gentle by default.</h2>
+      <div class="grid">
+        <article><h3>Find your anchor</h3><p>After I pour my coffee, I will take one slow breath. Start with a step that takes less than 30 seconds.</p></article>
+        <article><h3>Let it feel good</h3><p>A smile, a phrase, a small gesture. Practice your personal celebration when you plant your seed.</p></article>
+        <article><h3>Grow without guilt</h3><p>Did it, did more, or not today. Plants never wilt. Reflection helps you adapt, and automatic habits graduate to your Grove.</p></article>
+      </div>
+      <p class="small">Original content inspired by the behavior design research of Dr. BJ Fogg. Not affiliated with or endorsed by his organization. Health recipes are not medical advice. Designed for ages 16+.</p>
+    </section>
+    <section id="download">
+      <h2>Windows first. A real desktop app.</h2>
+      <p>Choose ARM64 for a Windows ARM device, or x64 for Intel/AMD Windows. The app installs for your user account and does not require administrator rights.</p>
+      <p><a class="button" href="https://github.com/Sampath-K/bloomstep/releases/download/v0.1.0-preview.1/Bloomstep-0.1.0-preview.1-windows-arm64-setup.exe">Download ARM64 preview</a>
+      <a class="button" href="https://github.com/Sampath-K/bloomstep/releases/download/v0.1.0-preview.1/Bloomstep-0.1.0-preview.1-windows-x64-setup.exe">Download x64 preview</a></p>
+      <p><a href="https://github.com/Sampath-K/bloomstep/releases/tag/v0.1.0-preview.1">Release notes &amp; SHA-256 checksums</a></p>
+      <p class="small">Unsigned preview: Windows SmartScreen may warn about an unknown publisher. Download only from the linked GitHub repository and compare the SHA-256 checksum. Do not bypass security policy on a managed device. Microsoft Store signing does not sign this web download. Store, Android and iOS distribution are deferred.</p>
+      <p class="small">An update check opens the release page; automatic installation and staged rollout are not yet enabled.</p>
+    </section>
+    <section id="trust">
+      <h2>Your habits are private.</h2>
+      <div class="grid">
+        <article><h3>What stays on your device</h3><p>SQLite stores recipes, check-in edits, reflection scores, feedback and settings. Authentication credentials use Windows secure storage, never the database. Your Windows account's filesystem protections apply; SQLite itself is not encrypted.</p></article>
+        <article><h3>What sync sends</h3><p>When signed in and connected, recipes, check-ins, reflections, feedback and safe account preferences sync to your private account partition. Analytics consent, reminder enablement and startup stay device-local. Feedback and ratings are private, not published to an ideas board. The identity broker stores the basic identity attributes needed for Microsoft, Google or email sign-in.</p></article>
+        <article><h3>What we never do</h3><p>No ads, no AI, no selling habit data. Optional event counts are off by default and contain no habit or feedback text. Invitation links contain no personal garden data.</p></article>
+      </div>
+      <p>Export your records as JSON from Settings. Delete local data or request cloud data deletion from the connected app. Cloud deletion keeps a minimal account deletion marker to prevent old devices from restoring your deleted data. Identity provider accounts are managed by their providers, not by Bloomstep.</p>
+      <p>Raw opt-in app event retention is 13 months. No product telemetry is collected by this website. Microsoft Azure hosts this website, the identity broker and the private account database; GitHub hosts source, build artifacts and downloads. Those providers can retain standard access/security logs. There are no third-party product analytics or AI processors. A full controller/contact and data-processing notice remains a public-MVP launch gate.</p>
+      <p>Cloud engineering-preview storage and request quotas are finite. A quota or service pause is shown explicitly; your local garden remains available. These volume controls are not a guarantee that Azure free allowances can never be exceeded. No paid tier is selected.</p>
+      <p>Use the private in-app feedback channel for sensitive support once it is connected. Do not place private habits, credentials or account exports in public GitHub issues. Public source and non-sensitive bug reports: <a href="https://github.com/Sampath-K/bloomstep">Bloomstep repository</a>.</p>
+    </section>
+    <section id="changes">
+      <h2>Growing in public</h2>
+      <article><h3>0.1.0 engineering preview</h3><p>Five starter recipes, a celebration-first builder, a SQLite daily check-in event log, undo/edit, five growth stages, three plant species, reflection and deterministic Recipe Doctor. Export, private feedback, rating, invitation link/QR and reminder controls are in development.</p><p>No completed feedback items are claimed yet. <a href="https://github.com/Sampath-K/bloomstep/blob/sampath-k-bloomstep-mvp-implementation/docs/status.md">Detailed requirements and verification status</a>.</p></article>
+    </section>
+    <section>
+      <details><summary>Product team console (deployment verification)</summary>
+        <p>For authorized operators only. Sign in through the real customer broker; data access is enforced by the API's explicitly assigned <code>Bloomstep.Admin</code> role, never email or subscription ownership. No private data is fetched until you request it. Tokens stay in page memory; only temporary sign-in state uses session storage. No bearer copying or client secret is required.</p>
+        <form id="admin">
+          <label>This deployed HTTPS API origin<input id="origin" type="url" required readonly></label>
+          <button id="signin-console" type="button">Sign in to operator console</button>
+          <button type="submit">Load private feedback</button>
+          <button id="next-feedback" type="button" disabled>Next private feedback page</button>
+          <label>UTC measurement days<input id="metric-days" type="number" min="1" max="30" value="7"></label>
+          <button id="metrics" type="button">Load private preview measurements</button>
+          <button id="clear-console" type="button">Sign out and clear private data</button>
+        </form>
+        <p id="admin-status" role="status"></p>
+        <div id="feedback"></div>
+        <div id="measurement"></div>
+        <details><summary>UTC daily counts and suppression</summary><pre id="daily-counts"></pre></details>
+      </details>
+    </section>
+  </main>
+  <footer class="small">Bloomstep contributors. Grow tiny behaviors into something natural.</footer>
+  <script type="module" src="assets/console.js"></script>
+</body>
+</html>

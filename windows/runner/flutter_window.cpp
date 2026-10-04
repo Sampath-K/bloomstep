@@ -26,6 +26,10 @@ bool FlutterWindow::OnCreate() {
   }
   RegisterPlugins(flutter_controller_->engine());
   SetChildContent(flutter_controller_->view()->GetNativeWindow());
+  native_share_ = std::make_unique<NativeShare>(
+      flutter_controller_->engine()->messenger(), GetHandle());
+  toast_history_ = std::make_unique<ToastHistory>(
+      flutter_controller_->engine()->messenger());
 
   flutter_controller_->engine()->SetNextFrameCallback([&]() {
     this->Show();
@@ -40,6 +44,8 @@ bool FlutterWindow::OnCreate() {
 }
 
 void FlutterWindow::OnDestroy() {
+  toast_history_ = nullptr;
+  native_share_ = nullptr;
   if (flutter_controller_) {
     flutter_controller_ = nullptr;
   }

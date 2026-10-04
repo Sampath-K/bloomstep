@@ -2,23 +2,198 @@ name: ci
 
 on:
   push:
-    branches: [main]
+    branches: ['**']
+    tags: ['v*']
   pull_request:
+  workflow_dispatch:
+    inputs:
+      verify_aggregates:
+        description: 'Run only the real aggregate worker and customer-route isolation proof'
+        type: boolean
+        default: false
+      verify_spend_guard:
+        description: 'Run only the read-only free-tier and spending-limit audit'
+        type: boolean
+        default: false
 
 jobs:
+  spend-proof:
+    if: github.event_name == 'workflow_dispatch' && inputs.verify_spend_guard
+    permissions:
+      contents: read
+      id-token: write
+    uses: ./.github/workflows/spend-guard.yml
+  aggregate-proof:
+    if: github.event_name == 'workflow_dispatch' && inputs.verify_aggregates
+    permissions:
+      contents: read
+      id-token: write
+    uses: ./.github/workflows/aggregates.yml
+  api:
+    if: github.event_name != 'workflow_dispatch' || (!inputs.verify_aggregates && !inputs.verify_spend_guard)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: api
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: api/package-lock.json
+      - run: npm ci --ignore-scripts
+      - run: npm run check
+      - run: npm test
+      - run: node ../tool/generate_event_registry.mjs --check
+      - run: node --test ../test/site_console_test.mjs
+      - name: Verify bundled operator authentication
+        working-directory: .
+        run: |
+          npm --prefix site ci
+          node --test site/test/*.test.mjs
+          npm --prefix site run build
   test-and-build-windows:
-    runs-on: windows-latest
+    if: github.event_name != 'workflow_dispatch' || (!inputs.verify_aggregates && !inputs.verify_spend_guard)
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - runner: windows-latest
+            arch: x64
+          - runner: windows-11-arm
+            arch: arm64
+    runs-on: ${{ matrix.runner }}
     steps:
       - uses: actions/checkout@v4
       - uses: subosito/flutter-action@v2
+        if: matrix.arch == 'x64'
         with:
-          channel: stable
+          flutter-version: '3.47.6'
+          architecture: x64
           cache: true
+      - name: Bootstrap supported native ARM64 Dart from Flutter source
+        if: matrix.arch == 'arm64'
+        shell: pwsh
+        run: |
+          if ([Runtime.InteropServices.RuntimeInformation]::OSArchitecture -ne 'Arm64') {
+            throw 'This job requires a real Windows ARM64 host.'
+          }
+          $sdk = Join-Path $env:RUNNER_TEMP 'flutter-arm64'
+          git clone --quiet --depth 1 --branch 3.47.6 https://github.com/flutter/flutter.git $sdk
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          # Flutter's official bootstrap chooses the native Dart archive using this variable.
+          $env:PROCESSOR_ARCHITECTURE = 'ARM64'
+          & "$sdk\bin\flutter.bat" --version
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          $dart = [IO.File]::ReadAllBytes("$sdk\bin\cache\dart-sdk\bin\dart.exe")
+          $machine = [BitConverter]::ToUInt16($dart, [BitConverter]::ToInt32($dart, 60) + 4)
+          if ($machine -ne 0xaa64) { throw 'Flutter bootstrap did not provide ARM64 Dart.' }
+          Add-Content $env:GITHUB_PATH "$sdk\bin"
       - run: flutter pub get
       - run: flutter analyze
-      - run: flutter test
-      - run: flutter build windows --release
+      - run: flutter test --reporter expanded --concurrency 1 --timeout 60s
+      - name: Build real sign-in-gated release
+        env:
+          OIDC_ISSUER: ${{ vars.OIDC_ISSUER }}
+          OIDC_CLIENT_ID: ${{ vars.OIDC_CLIENT_ID }}
+          OIDC_API_SCOPE: ${{ vars.OIDC_API_SCOPE }}
+          API_ORIGIN: ${{ vars.API_ORIGIN }}
+          RELEASE_TAG: ${{ startsWith(github.ref, 'refs/tags/v') && github.ref_name || 'v0.1.0-preview' }}
+        run: |
+          $version = $env:RELEASE_TAG.TrimStart('v')
+          flutter build windows --release --dart-define="OIDC_ISSUER=$env:OIDC_ISSUER" --dart-define="OIDC_CLIENT_ID=$env:OIDC_CLIENT_ID" --dart-define="OIDC_API_SCOPE=$env:OIDC_API_SCOPE" --dart-define="API_ORIGIN=$env:API_ORIGIN" --dart-define="BLOOMSTEP_RELEASE_VERSION=$version"
+      - name: Verify executable architecture before labeling installer
+        shell: pwsh
+        run: |
+          $binary = [IO.File]::ReadAllBytes("build\windows\${{ matrix.arch }}\runner\Release\bloomstep.exe")
+          $machine = [BitConverter]::ToUInt16($binary, [BitConverter]::ToInt32($binary, 60) + 4)
+          $expected = if ('${{ matrix.arch }}' -eq 'arm64') { 0xaa64 } else { 0x8664 }
+          if ($machine -ne $expected) { throw 'Executable architecture does not match the installer.' }
+      - name: Install Inno Setup
+        shell: pwsh
+        run: |
+          if (-not (Test-Path "${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe")) {
+            choco install innosetup --no-progress -y
+          }
+      - name: Build unsigned preview installer
+        shell: pwsh
+        env:
+          RELEASE_TAG: ${{ startsWith(github.ref, 'refs/tags/v') && github.ref_name || 'v0.1.0-preview' }}
+        run: |
+          $version = $env:RELEASE_TAG.TrimStart('v')
+          & "${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe" /Qp /DAppArch=${{ matrix.arch }} "/DAppVersion=$version" packaging\bloomstep.iss
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          Get-FileHash release-output\*.exe -Algorithm SHA256 | ForEach-Object { "$($_.Hash.ToLower())  $([IO.Path]::GetFileName($_.Path))" } | Set-Content release-output\SHA256-${{ matrix.arch }}.txt
+      - name: Installer lifecycle smoke test
+        shell: pwsh
+        run: |
+          $installer = (Get-ChildItem release-output\*.exe).FullName
+          $target = Join-Path $env:RUNNER_TEMP 'Bloomstep-smoke'
+          Start-Process $installer -ArgumentList "/VERYSILENT /SUPPRESSMSGBOXES /NORESTART /DIR=`"$target`"" -Wait
+          if (-not (Test-Path "$target\bloomstep.exe")) { throw 'Install failed' }
+          $protocolKey = 'Registry::HKEY_CURRENT_USER\Software\Classes\bloomstep\shell\open\command'
+          $protocol = (Get-Item $protocolKey).GetValue('')
+          if ($protocol -ne "`"$target\bloomstep.exe`" `"%1`"") {
+            throw 'Per-user invitation protocol was not registered to the installed app.'
+          }
+          $app = Start-Process "$target\bloomstep.exe" -PassThru
+          Start-Sleep 8
+          if ($app.HasExited) { throw 'Installed app exited unexpectedly' }
+          $second = Start-Process "$target\bloomstep.exe" -PassThru
+          if (-not $second.WaitForExit(10000)) {
+            Stop-Process -Id $second.Id
+            throw 'A second launch opened another persistent app instance.'
+          }
+          if ($second.ExitCode -ne 0) { throw 'Second launch did not activate the existing app.' }
+          $code = 'A' * 43
+          $invitation = Start-Process "$target\bloomstep.exe" -ArgumentList "bloomstep://invite?code=$code&channel=link" -PassThru
+          if (-not $invitation.WaitForExit(10000)) {
+            Stop-Process -Id $invitation.Id
+            throw 'Invitation launch opened a duplicate app.'
+          }
+          if ($invitation.ExitCode -ne 0) { throw 'Invitation activation failed.' }
+          $app.Refresh()
+          if ($app.HasExited) { throw 'Activating the existing app closed its owner.' }
+          Stop-Process -Id $app.Id
+          Start-Process "$target\unins000.exe" -ArgumentList '/VERYSILENT /SUPPRESSMSGBOXES /NORESTART' -Wait
+          if (Test-Path "$target\bloomstep.exe") { throw 'Uninstall failed' }
+          if (Test-Path $protocolKey) { throw 'Owned invitation protocol survived uninstall.' }
       - uses: actions/upload-artifact@v4
         with:
-          name: bloomstep-windows-x64
-          path: build/windows/x64/runner/Release/
+          name: bloomstep-windows-${{ matrix.arch }}
+          path: |
+            build/windows/${{ matrix.arch }}/runner/Release/
+            release-output/
+      - name: Build isolated Windows runtime probe
+        if: matrix.arch == 'arm64'
+        run: flutter build windows --profile --target tool/runtime_probe.dart
+      - uses: actions/upload-artifact@v4
+        if: matrix.arch == 'arm64'
+        with:
+          name: bloomstep-synthetic-runtime-arm64-NOT-FOR-RELEASE
+          path: build/windows/arm64/runner/Profile/
+      - name: Build isolated synthetic profile preview
+        if: matrix.arch == 'arm64'
+        run: flutter build windows --profile --target tool/preview.dart
+      - uses: actions/upload-artifact@v4
+        if: matrix.arch == 'arm64'
+        with:
+          name: bloomstep-synthetic-preview-arm64-NOT-FOR-RELEASE
+          path: build/windows/arm64/runner/Profile/
+  release:
+    if: startsWith(github.ref, 'refs/tags/v')
+    needs: [api, test-and-build-windows]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: bloomstep-windows-*
+          path: artifacts
+      - name: Publish preview (not the authenticated MVP)
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release create "$GITHUB_REF_NAME" --repo "$GITHUB_REPOSITORY" --prerelease --title "Bloomstep $GITHUB_REF_NAME - engineering preview" --notes "Unsigned Windows engineering preview with real broker sign-in; provider availability depends on the configured customer flow. No anonymous or simulated login. This is NOT the complete verified MVP. See docs/status.md for actual evidence, runtime limits and outstanding launch gates. Verify the downloadable SHA-256 before installing." $(find artifacts -name '*.exe' -path '*/release-output/*') $(find artifacts -name 'SHA256-*.txt')
