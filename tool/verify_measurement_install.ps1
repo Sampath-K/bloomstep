@@ -15,7 +15,7 @@ public static class MeasurementWizard {
   delegate bool EnumProc(IntPtr h, IntPtr p);
   [DllImport("user32.dll")] static extern bool EnumWindows(EnumProc p, IntPtr x);
   [DllImport("user32.dll")] static extern bool EnumChildWindows(IntPtr h, EnumProc p, IntPtr x);
-  [DllImport("user32.dll")] static extern int GetWindowText(IntPtr h, StringBuilder b, int c);
+  [DllImport("user32.dll", CharSet=CharSet.Unicode)] static extern int GetWindowText(IntPtr h, StringBuilder b, int c);
   [DllImport("user32.dll")] public static extern uint GetWindowThreadProcessId(IntPtr h, out uint pid);
   [DllImport("user32.dll")] static extern bool IsWindowVisible(IntPtr h);
   [DllImport("user32.dll")] static extern bool IsWindowEnabled(IntPtr h);
@@ -29,19 +29,33 @@ public static class MeasurementWizard {
     IntPtr found = IntPtr.Zero;
     EnumChildWindows(owner,(h,p) => {
       var b = new StringBuilder(512); GetWindowText(h,b,512);
-      if (IsWindowVisible(h) && IsWindowEnabled(h) && b.ToString() == caption) found=h;
+      if (IsWindowVisible(h) && IsWindowEnabled(h) &&
+          b.ToString().Replace("&","").Trim() == caption.Replace("&","").Trim()) found=h;
       return true;
     },IntPtr.Zero);
     return found;
   }
+  public static string Describe(IntPtr owner) {
+    var texts = new List<string>();
+    var title = new StringBuilder(512); GetWindowText(owner,title,512);
+    texts.Add("Window: " + title.ToString());
+    EnumChildWindows(owner,(h,p) => {
+      var text = new StringBuilder(1024); GetWindowText(h,text,1024);
+      if (IsWindowVisible(h) && text.Length > 0)
+        texts.Add((IsWindowEnabled(h) ? "enabled " : "disabled ") + text.ToString());
+      return true;
+    },IntPtr.Zero);
+    return string.Join(" | ",texts);
+  }
 }
 '@
-$setup = Start-Process $Installer -ArgumentList "/SP- /NORESTART /LANG=english /DIR=`"$Target`"" -PassThru
+$setup = Start-Process $Installer -ArgumentList "/SP- /NORESTART /DIR=`"$Target`"" -PassThru
 $owned = [Collections.Generic.HashSet[int]]::new()
 [void]$owned.Add($setup.Id)
 $selected = $false
 $finished = $false
 $appId = $null
+$states = [Collections.Generic.HashSet[string]]::new()
 try {
   $deadline = (Get-Date).AddMinutes(3)
   while ((Get-Date) -lt $deadline -and -not $finished) {
@@ -55,6 +69,8 @@ try {
       [uint32]$owner = 0
       [void][MeasurementWizard]::GetWindowThreadProcessId($window, [ref]$owner)
       if (-not $owned.Contains([int]$owner)) { continue }
+      $description = [MeasurementWizard]::Describe($window)
+      if ($states.Add($description)) { Write-Output "Owned synthetic installer PID${owner}: $description" }
       $checkbox = [MeasurementWizard]::Find($window, 'Save optional local observations (unchecked by default)')
       if ($checkbox -ne [IntPtr]::Zero -and -not $selected) {
         if ([MeasurementWizard]::SendMessage($checkbox, 0x00F0, [IntPtr]::Zero, [IntPtr]::Zero).ToInt32() -ne 0) {
@@ -80,7 +96,10 @@ try {
     }
     Start-Sleep -Milliseconds 200
   }
-  if (-not $finished) { throw 'Owned installer wizard did not complete within its deadline.' }
+  if (-not $finished) {
+    Write-Output "Owned synthetic PID tree: $(@($owned) -join ','); distinct wizard states: $($states.Count)"
+    throw 'Owned installer wizard did not complete within its deadline.'
+  }
   if (-not (Test-Path $receipt)) { throw 'Opt-in installation phase did not produce a receipt.' }
   $installed = Get-Content $receipt -Raw | ConvertFrom-Json
   if ($installed.schemaVersion -ne 1 -or $installed.source -ne 'installer') { throw 'Invalid installer receipt envelope.' }
