@@ -8,9 +8,13 @@ class RecipeDraft {
     this.anchor,
     this.behavior,
     this.celebration,
-    this.species,
-  );
+    this.species, {
+    this.templateCategory,
+    this.celebrationPracticed = false,
+  });
   final String aspiration, anchor, behavior, celebration, species;
+  final String? templateCategory;
+  final bool celebrationPracticed;
 }
 
 class RecipeBuilder extends StatefulWidget {
@@ -25,6 +29,8 @@ class _RecipeBuilderState extends State<RecipeBuilder> {
   late final TextEditingController aspiration, anchor, behavior, celebration;
   var species = 'Cosmos';
   bool practiced = false;
+  bool celebrationObserved = false;
+  String? templateCategory;
   @override
   void initState() {
     super.initState();
@@ -77,6 +83,8 @@ class _RecipeBuilderState extends State<RecipeBuilder> {
                           behavior.text = recipe.behavior;
                           celebration.text = recipe.celebration;
                           practiced = false;
+                          celebrationObserved = false;
+                          templateCategory = recipe.aspiration.toLowerCase();
                         }),
                       ),
                   ],
@@ -107,7 +115,11 @@ class _RecipeBuilderState extends State<RecipeBuilder> {
                     validator: (v) => v == null || v.trim().isEmpty
                         ? 'Add this part of your recipe.'
                         : null,
-                    onChanged: (_) => setState(() => practiced = false),
+                    onChanged: (_) => setState(() {
+                      practiced = false;
+                      celebrationObserved = false;
+                      templateCategory = null;
+                    }),
                   ),
                 ),
               DropdownButtonFormField<String>(
@@ -127,7 +139,10 @@ class _RecipeBuilderState extends State<RecipeBuilder> {
                   'Try it now. Let the tiny success feel good.',
                 ),
                 value: practiced,
-                onChanged: (v) => setState(() => practiced = v!),
+                onChanged: (v) => setState(() {
+                  practiced = v!;
+                  celebrationObserved = v;
+                }),
               ),
             ],
           ),
@@ -151,6 +166,8 @@ class _RecipeBuilderState extends State<RecipeBuilder> {
                       behavior.text,
                       celebration.text,
                       species,
+                      templateCategory: templateCategory,
+                      celebrationPracticed: celebrationObserved,
                     ),
                   );
                 }

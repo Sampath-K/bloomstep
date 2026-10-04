@@ -85,7 +85,7 @@ class SyncService {
     store.requireSyncSession(account, generation);
     final url = Uri.parse('${IdentityService.apiOrigin}/api/sync');
     final headers = {
-      'Authorization': 'Bearer $token',
+      'X-Bloomstep-Authorization': 'Bearer $token',
       'Content-Type': 'application/json',
     };
     final httpClient = client ?? http.Client();
@@ -138,7 +138,7 @@ class SyncService {
           .delete(
             Uri.parse('${IdentityService.apiOrigin}/api/account'),
             headers: {
-              'Authorization': 'Bearer $token',
+              'X-Bloomstep-Authorization': 'Bearer $token',
               'x-confirm-delete': 'delete-my-garden',
             },
           )

@@ -15,7 +15,7 @@ const request = (method, data, query = {}, params = {}) => ({
   text: async () => JSON.stringify(data),
 });
 
-function harness({ roles = ['Bloomstep.Admin'], disabled = false, apiDisabled = false, limits = {}, beforeBatch, failAudit = false, beforeQuery } = {}) {
+function harness({ roles = ['Bloomstep.Admin'], disabled = false, apiDisabled = false, aggregatesDisabled = false, limits = {}, beforeBatch, failAudit = false, beforeQuery } = {}) {
   const documents = new Map();
   const writes = [];
   let revision = 0;
@@ -46,11 +46,11 @@ function harness({ roles = ['Bloomstep.Admin'], disabled = false, apiDisabled = 
         await beforeBatch?.(operations, partition, { put, read });
         for (const operation of operations) {
           const current = read(operation.id ?? operation.resourceBody.id, partition);
-          if (operation.operationType === 'Create' ? !!current : !current || current._etag !== operation.ifMatch) return { code: 412 };
+          if (operation.operationType === 'Create' ? !!current : !current || operation.operationType !== 'Delete' && current._etag !== operation.ifMatch) return { code: 412 };
         }
         for (const operation of operations) {
-          writes.push(operation.resourceBody);
-          put(operation.resourceBody);
+          if (operation.operationType === 'Delete') documents.delete(key(operation.id, partition));
+          else { writes.push(operation.resourceBody); put(operation.resourceBody); }
         }
         return { code: 200 };
       },
@@ -63,6 +63,7 @@ function harness({ roles = ['Bloomstep.Admin'], disabled = false, apiDisabled = 
           else if (spec.query.includes('c.type = "voice"')) rows = rows.filter(row => row.type === 'voice');
           else if (spec.query.includes('c.type = "events"')) rows = rows.filter(row => row.type === 'events' && (!parameters['@start'] || row.record.ts >= parameters['@start'] && row.record.ts < parameters['@end']));
           else if (spec.query.includes('c.type = "account"')) rows = rows.filter(row => row.type === 'account');
+          else if (spec.query.includes('c.type = "aggregate"')) rows = rows.filter(row => row.type === 'aggregate');
           else if (spec.query.includes('c.type != "account"')) rows = rows.filter(row => row.type !== 'account');
           rows.sort((a, b) => a.userId.localeCompare(b.userId) || a.id.localeCompare(b.id));
           if (parameters['@after']) rows = rows.filter(row => `${row.userId}:${row.id}` > parameters['@after']);
@@ -76,7 +77,7 @@ function harness({ roles = ['Bloomstep.Admin'], disabled = false, apiDisabled = 
     container: () => store,
     authenticate: async () => ({ userId: roles.length ? teamId : userId, roles }),
     clock: () => new Date(now), environment: () => ({
-      BLOOMSTEP_ENGAGEMENT_DISABLED: String(disabled), BLOOMSTEP_API_DISABLED: String(apiDisabled),
+      BLOOMSTEP_ENGAGEMENT_DISABLED: String(disabled), BLOOMSTEP_API_DISABLED: String(apiDisabled), BLOOMSTEP_AGGREGATES_DISABLED: String(aggregatesDisabled),
     }),
     limits: { ...previewLimits, ...limits },
   });
@@ -89,6 +90,9 @@ test('metrics requires explicit admin role and reports four bounded categories',
   const h = harness();
   const result = await h.metrics(request('GET'));
   assert.equal(result.jsonBody.minimumCohort, 50);
+  assert.equal(result.jsonBody.endDay, '2026-09-01');
+  assert.equal(result.jsonBody.dashboards.endDay, '2026-08-31');
+  assert.equal(result.jsonBody.dashboards.observedThrough, '2026-09-01');
   assert.deepEqual(Object.keys(result.jsonBody.categories), ['activationRetention', 'reminderLearning', 'voiceRatings', 'sharingExperiment']);
   assert.equal(h.writes.filter(row => row.action === 'metrics_read').length, 1);
   await assert.rejects(h.metrics(request('GET', null, { days: '31' })), error => error.status === 400);
@@ -227,7 +231,7 @@ test('daily and per-event suppression does not publish sparse voice or sharing c
   const result = aggregateEvents(rows, '2026-09-01', '2026-09-01');
   assert.equal(result.daily[0].counts.feedback_submitted, null);
   assert.equal(result.categories.voiceRatings.feedbackSubmitted, null);
-  assert.equal(result.daily[0].counts.share_initiated, 0);
+  assert.equal(result.daily[0].counts.share_initiated, null);
 });
 
 test('reply retries with requestId are idempotent and conflicting key reuse rejects', async () => {
@@ -416,4 +420,103 @@ test('textless rating survives private feedback sync without becoming telemetry'
   assert.equal(result.jsonBody.voice[0].rating, 4);
   assert.equal(result.jsonBody.voice[0].status, 'received');
   assert.equal([...h.documents.values()].some(row => row.type === 'events'), false);
+});
+
+test('dedicated aggregate role cannot access garden, feedback or admin metrics', async () => {
+  const h = harness({ roles: ['Bloomstep.AggregateWriter'] });
+  for (const handler of [h.sync, h.admin, h.metrics, h.deleteAccount]) {
+    await assert.rejects(handler(request('GET')), error => error.status === 403);
+  }
+  assert.equal(h.documents.size, 0);
+});
+test('aggregate endpoint validates completed UTC-day backfills and stores bounded snapshots idempotently', async () => {
+  const h = harness({ roles: ['Bloomstep.AggregateWriter'] });
+  const body = { endDay: '2026-08-31', days: 2 };
+  const first = await h.aggregates(request('POST', body));
+  assert.equal(first.jsonBody.snapshots.length, 2);
+  assert.equal(first.jsonBody.snapshots[1].day, '2026-08-31');
+  await h.aggregates(request('POST', body));
+  assert.equal([...h.documents.values()].filter(row => row.type === 'aggregate').length, 2);
+  assert.equal(h.writes.filter(row => row.action === 'aggregates_write').length, 2);
+  for (const invalid of [{ endDay: '2026-09-01' }, { days: 31 }, { days: 0 }, { userId }, { endDay: '2025-01-01' }]) {
+    await assert.rejects(h.aggregates(request('POST', invalid)), error => error.status === 400);
+  }
+  await assert.rejects(harness({ roles: [] }).aggregates(request('POST', {})), error => error.status === 403);
+  await assert.rejects(harness({ disabled: true }).aggregates(request('POST', {})), error => error.status === 503);
+});
+test('deletion invalidates persisted snapshots and worker writes race through generation ETag', async () => {
+  const h = harness({ roles: [] });
+  const worker = createHandlers({ container: () => h.store, authenticate: async () => ({ userId: teamId, roles: ['Bloomstep.AggregateWriter'] }), clock: () => new Date(now) });
+  h.put({ id: 'account', userId, type: 'account', deleted: false });
+  await worker.aggregates(request('POST', {}));
+  assert.equal([...h.documents.values()].filter(row => row.type === 'aggregate').length, 1);
+  const deletion = request('DELETE');
+  deletion.headers.set('x-confirm-delete', 'delete-my-garden');
+  await h.deleteAccount(deletion);
+  assert.equal([...h.documents.values()].filter(row => row.type === 'aggregate').length, 0);
+});
+test('snapshot writers fail closed if deletion changes generation after the scan begins', async () => {
+  const h = harness({ roles: ['Bloomstep.AggregateWriter'], beforeQuery: (spec, store) => {
+    if (spec.query.includes('c.type = "events"')) {
+      const gate = store.read('generation', '__daily_aggregates');
+      store.put({ ...gate, revision: 'deletion won' });
+      store.put({ id: 'account', userId, type: 'account', deleted: true });
+    }
+  } });
+  await assert.rejects(h.aggregates(request('POST', {})), error => error.status === 409);
+  assert.equal([...h.documents.values()].some(row => row.type === 'aggregate'), false);
+});
+test('snapshot aggregate kill switch, audit failure and action budget deny before snapshots', async () => {
+  for (const h of [
+    harness({ roles: ['Bloomstep.AggregateWriter'], aggregatesDisabled: true }),
+    harness({ roles: ['Bloomstep.AggregateWriter'], apiDisabled: true }),
+  ]) {
+    await assert.rejects(h.aggregates(request('POST', {})), error => error.status === 503);
+    assert.equal(h.documents.size, 0);
+  }
+  const failed = harness({ roles: ['Bloomstep.AggregateWriter'], failAudit: true });
+  await assert.rejects(failed.aggregates(request('POST', {})), /Audit storage failed/);
+  assert.equal([...failed.documents.values()].some(row => row.type === 'aggregate'), false);
+  const limited = harness({ roles: ['Bloomstep.AggregateWriter'], limits: { adminActions: { ...previewLimits.adminActions, aggregates_write: { daily: 1, lifetime: 1 } } } });
+  await limited.aggregates(request('POST', {}));
+  await assert.rejects(limited.aggregates(request('POST', {})), error => error.status === 429);
+});
+test('snapshot store strips account/event IDs and unchanged retries consume no extra snapshot records', async () => {
+  const h = harness({ roles: ['Bloomstep.AggregateWriter'] });
+  h.put({ id: 'account', userId, type: 'account', deleted: false });
+  const clientId = randomUUID();
+  h.put({ id: `events:${clientId}`, userId, type: 'events', record: { id: clientId, name: 'first_launch', ts: '2026-08-31T12:00:00Z' } });
+  await h.aggregates(request('POST', {}));
+  const first = h.read('budget', '__preview_budget').records;
+  const retried = await h.aggregates(request('POST', {}));
+  assert.equal(retried.jsonBody.snapshots[0].updated, false);
+  // Each retry intentionally retains one read/write-attempt audit.
+  assert.equal(h.read('budget', '__preview_budget').records, first + 1);
+  const serialized = JSON.stringify([...h.documents.values()].filter(row => row.type === 'aggregate'));
+  assert.equal(serialized.includes(clientId), false);
+  assert.equal(serialized.includes(userId), false);
+});
+test('maximum 30-day backfill is bounded and prunes expired dates atomically', async () => {
+  const h = harness({ roles: ['Bloomstep.AggregateWriter'] });
+  h.put({ id: 'daily:2026-07-01', userId: '__daily_aggregates', type: 'aggregate', day: '2026-07-01', digest: 'old', record: {}, ttl: 2592000 });
+  const result = await h.aggregates(request('POST', { days: 30 }));
+  assert.equal(result.jsonBody.snapshots.length, 30);
+  assert.equal([...h.documents.values()].filter(row => row.type === 'aggregate').length, 30);
+  assert.equal(h.read('daily:2026-07-01', '__daily_aggregates'), undefined);
+});
+test('alternate authenticator is invoked only for the internal aggregate route', async () => {
+  const h = harness();
+  let alternateCalls = 0;
+  const handlers = createHandlers({
+    container: () => h.store,
+    authenticate: async () => { throw new ServiceError(401, 'Customer issuer only.'); },
+    authenticateAggregate: async () => { alternateCalls++; return { userId: teamId, roles: ['Bloomstep.AggregateWriter'] }; },
+    clock: () => new Date(now),
+  });
+  for (const handler of [handlers.sync, handlers.admin, handlers.metrics, handlers.deleteAccount]) {
+    await assert.rejects(handler(request('GET')), error => error.status === 401);
+  }
+  assert.equal(alternateCalls, 0);
+  await handlers.aggregates(request('POST', {}));
+  assert.equal(alternateCalls, 1);
 });

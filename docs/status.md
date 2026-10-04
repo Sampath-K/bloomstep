@@ -9,11 +9,11 @@ This ledger is updated with verified outcomes, not inferred from source code.
 | 0 | Build, run, ship | ARM64/x64 installer lifecycle CI passed at `c15ab2a` (transient x64 SQLite download retried with checksum verification intact). ARM64 installer SHA-256 and PE 0xaa64 independently verified locally. Public release assets and upgrade lifecycle still pending. |
 | 1 | Plant first habit | SQLite tests and real widget journey pass: five starters, four recipe fields, three species, practiced celebration, restart-safe storage. |
 | 2 | Check in | Tests pass for did/more/rest, idempotency, append edits/undo, local midnight. Widget tap/celebration/undo pass. Native measured latency pending. |
-| 3 | Visual garden | True ARM64 synthetic profile launched and app-only native capture inspected at `c15ab2a`: three stages, readable native text/icons. Capture found banner contrast/action overlap; source fixes and 1280x720/200%-text regressions pass, newer native observation pending. |
+| 3 | Visual garden | Newer true ARM64 synthetic profile `f92473d` launched and app-only capture inspected: readable banner and reserved Plant bar fixes observed. Responsive/200%-text regressions pass. Native screen-reader evidence remains pending; UIAutomation did not expose button controls in the current OS mode. |
 | 4 | Local reminders | Windows plugin APIs verified in installed packages; toast/tray/autostart opt-in wired. Quiet-hour/cap/backoff rules tested. Real minimized/closed/restarted delivery and OS Focus observation pending; no success claim yet. |
-| 5 | Sign in | Customer tenant, public desktop/API registrations, narrow scope consent and email user-flow association verified through Graph. Real PKCE authorization surface HTTP 200; actual login/offline-session verification pending. Google/Microsoft federation not yet enabled. No fake login. |
-| 6 | Sync | Personal SWA Free/Cosmos free tier provisioned; live unauthenticated API returns 401. SQLite v3 durable fingerprint acknowledgments resume partial uploads and preserve concurrent edits; safe preferences/ties/union tested. Atomic consent revocation clears queued events; in-flight requests cannot be recalled. Actual two-account/device/offline round trips remain pending. |
-| 7 | Funnel | Opt-in typed envelopes and four private preview measurement panels, on-demand UTC aggregates with 50-user suppression. Not full acquisition/install, D7/D30 retention, persisted daily-job or outcomes dashboards. These remain gaps. |
+| 5 | Sign in | Customer tenant, public desktop/API registrations, narrow scope consent and email user-flow association verified through Graph. Real PKCE authorization surface HTTP 200; actual human email/code login and offline-session verification pending. Google/Microsoft federation explicitly deferred by user, not completed. No fake login. |
+| 6 | Sync | Personal SWA Free/Cosmos free tier provisioned; live unauthenticated sync API returns 401. SQLite v4 preserves durable fingerprints and adds typed event properties; partial upload/concurrent edits, consent purge and account isolation tested. Live probes exposed SWA replacing Authorization and reserved admin routes: dedicated client-token header and team routes fixed in source, deployment smoke gate added. Actual authenticated two-account/device/offline round trips remain pending. |
+| 7 | Funnel | Versioned 48-event registry with generated Dart/JavaScript/declarations and drift check; strict optional metadata and four typed operator dashboards (ordered funnel, exact D1/D7/D30, outcomes, observed reminder health), minimum 50 contributors. Completed-day snapshots implemented with 30-day TTL and deletion invalidation. Worker provision/schedule and acquisition/install/auth/OS-delivery instrumentation are still missing; unavailable metrics stay null. |
 | 8 | Feedback | Private queue/status/replies; audited paginated admin reads, retry IDs, bounded threads and deletion-gated replies pass backend fixtures. Operator same-origin/token clearing and reply retries tested. Updated deployment and actual role/user round trip still pending. |
 | 9 | Invite | Copy/email/QR and safe static invitation link. Native OS share/deep-link install attribution and mutual reward pending. |
 | 10 | Reflection | Weekly deterministic Doctor works independently of fortnight naturalness sliders; cooldown checked before collecting scores. Real SQLite graduation/spacing tests pass. Not a validated SRBAI instrument. Native learning interaction still pending. |
@@ -39,9 +39,10 @@ This ledger is updated with verified outcomes, not inferred from source code.
 
 ## Latest verification
 
-43-test full Flutter suite plus two exact offline-identity expiry regressions;
-full analyzer clean. API type checking and 37 backend/contract tests pass; three
-operator-console tests pass. No test fixture is represented as a real user login.
+56-test full serial Flutter suite passes, including damaged-descriptor cleanup,
+exact offline-identity expiry and typed telemetry migration. API type checking
+and 61 backend/contract tests pass; five operator-console tests pass. Full analyzer
+is clean. No test fixture is represented as a real user login.
 The offline window expires at exactly 30 days and rejects large clock rollback.
 Native screenshot timeline is kept privately, never copied with user account data.
 
@@ -61,7 +62,9 @@ syncs, or enters release installers. Normal `lib/main.dart` is always sign-in ga
 The preview rejects release mode. Native captures use its Flutter repaint boundary,
 not desktop capture, so other applications and login screens cannot leak.
 
-Run `flutter analyze` and `flutter test --reporter expanded`. API:
+Run `flutter analyze` and `flutter test --reporter expanded --concurrency 1 --timeout 60s`.
+Desktop FFI/widget harnesses are run serially; parallel Windows runs have stalled
+on the rating dialog test. API:
 `cd api; npm ci; npm run check; npm test`. CI builds both Windows architectures,
 produces Inno Setup installers and checks install-launch-uninstall in an isolated
 runner directory. Tag workflow publishes **prereleases**, never production.
@@ -91,6 +94,10 @@ rendered images to an explicit local artifact directory (not committed).
 | Invalid future/oversized API records | Reject, don't silently truncate | Schema tests; timestamp-skew integration pending |
 | Cross-account API input | No client account field accepted | Strict schema tests; live adversarial API test pending |
 | Telemetry free-text | Reject unregistered events/unknown fields | API contract tests |
+| Managed SWA proxy authentication | Never trust overwritten Authorization/proxy principal; require dedicated validated customer JWT header | Native/API/console tests; live authenticated proof pending |
+| Internal daily worker | Separate pinned resource issuer and explicit aggregate-only role; never garden/team access | API signed-token tests; actual free worker provisioning pending |
+| Second native launch | Activate existing window, no duplicate reminder process | Windows socket/file-lock tests; dual-architecture installer CI gate added |
+| Damaged instance descriptor | Report corruption and always release owner lock | Windows regression test |
 | Client forged team status | Server owns received/status/replies | API contract tests |
 | Deleted account + concurrent sync | Conditional account gate in same-partition transactional batch | Source implemented; Cosmos integration pending |
 | Auth unavailable/offline | Local changes preserved, error explicit, no mocked identity | Sign-in gate widget test; real offline login pending |

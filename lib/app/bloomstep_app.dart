@@ -133,7 +133,7 @@ class _SignInScreenState extends State<SignInScreen> {
               ),
               const SizedBox(height: 16),
               const Text(
-                'Microsoft, Google and email availability depends on the configured identity provider. No account is created until you consent in your browser.',
+                'Microsoft personal accounts, Google and email options depend on the configured identity provider. Your provider handles its password and account consent in the system browser; Bloomstep never collects your password.',
                 textAlign: TextAlign.center,
               ),
             ],

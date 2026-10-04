@@ -94,6 +94,22 @@ Never ship a client secret. Default unconfigured builds are sign-in-gated previe
 Native credentials use OS secure storage; offline access expires after 30 days
 since verified authentication. A refresh never resets that authentication deadline.
 
+Managed SWA replaces the standard `Authorization` header with its own backend
+token ([Azure team's confirmation](https://github.com/Azure/static-web-apps/issues/34)).
+Native sync/deletion and the same-origin operator console therefore carry the
+real broker token in **`X-Bloomstep-Authorization: Bearer ...`**. The API validates
+that token's exact issuer, audience, signature, expiry, subject, scope and role.
+SWA's proxy token/client-principal header is never a substitute for app identity.
+Missing or invalid client tokens fail closed; this is not an authentication bypass.
+
+Do not use customer-tenant `client_credentials` for a scheduled worker: current
+[External ID pricing](https://learn.microsoft.com/en-us/entra/external-id/external-identities-pricing)
+classifies it as a paid M2M add-on, separate from the user MAU allowance. An
+internal aggregation worker can instead use a tightly scoped real application
+role/federated credential in the approved personal **resource** directory.
+Its separate pinned issuer/audience is accepted only for internal aggregation,
+never for customer garden or team feedback routes. Do not enable premium/SMS/M2M.
+
 ## Deployment and operational verification
 
 SWA deployment token goes only in a GitHub Actions secret, not terminal output,

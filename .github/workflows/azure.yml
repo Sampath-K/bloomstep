@@ -2,7 +2,7 @@ name: Deploy free preview website and API
 on:
   push:
     branches: [main, sampath-k-bloomstep-mvp-implementation]
-    paths: ['site/**', 'api/**', '.github/workflows/azure.yml']
+    paths: ['site/**', 'api/**', 'shared/**', 'tool/generate_event_registry.mjs', '.github/workflows/azure.yml']
   workflow_dispatch:
 permissions:
   contents: read
@@ -17,6 +17,8 @@ jobs:
       - name: Verify private API contracts
         working-directory: api
         run: npm ci --ignore-scripts && npm run check && npm test
+      - name: Verify generated event registry
+        run: node tool/generate_event_registry.mjs --check
       - name: Deploy approved Free SWA
         uses: Azure/static-web-apps-deploy@v1
         with:
@@ -26,4 +28,21 @@ jobs:
           api_location: api
           output_location: ''
           skip_app_build: true
-          production_branch: sampath-k-bloomstep-mvp-implementation
+      - name: Verify served protected routes, not just deployment status
+        env:
+          API_ORIGIN: ${{ vars.API_ORIGIN }}
+        run: |
+          for route in sync team/feedback team/metrics internal/aggregates; do
+            method=GET
+            if [ "$route" = internal/aggregates ]; then method=POST; fi
+            matched=false
+            for attempt in $(seq 1 12); do
+              status=$(curl --silent --show-error --output /dev/null --write-out '%{http_code}' --request "$method" "$API_ORIGIN/api/$route")
+              if [ "$status" = 401 ]; then matched=true; break; fi
+              sleep 10
+            done
+            if [ "$matched" != true ]; then
+              echo "::error::Protected $route returned HTTP $status instead of 401."
+              exit 1
+            fi
+          done

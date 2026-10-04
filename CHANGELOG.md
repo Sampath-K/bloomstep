@@ -29,6 +29,14 @@
   consent-safe preview measurement panels and explicit finite volume controls.
 - Manual trusted-repository version checks, no automatic installer execution;
   offline identity expires at exactly 30 days, not rounded day 31.
+- Single native instance with private loopback activation; damaged metadata
+  cannot strand its owner lock, and installer CI checks repeat launches.
+- Versioned typed event registry, SQLite v4 metadata migration, generated-client
+  drift checking, completed-day retention/outcome/reminder dashboards and
+  deletion-invalidated daily snapshots. Live worker and instrumentation remain
+  explicit gates; absent observations are not substituted with zero.
+- Dedicated customer-token transport through managed SWA and non-reserved team
+  routes, with post-deployment 401 smoke checks rather than deployment-only proof.
 
 No user feedback item is marked shipped yet. This is not a full authenticated
 MVP; deployment/native delivery and remaining loops are tracked in `docs/status.md`.

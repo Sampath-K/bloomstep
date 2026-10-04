@@ -1,11 +1,13 @@
 import 'dart:convert';
 
 import 'package:crypto/crypto.dart';
+import 'package:flutter/foundation.dart';
 import 'package:sqflite_common_ffi/sqflite_ffi.dart';
 import 'package:uuid/uuid.dart';
 
 import 'models.dart';
 import 'rules.dart';
+import 'event_registry.g.dart' as registry;
 
 class GardenStore {
   GardenStore._(this._db, this._account);
@@ -21,7 +23,7 @@ class GardenStore {
     final db = await databaseFactoryFfi.openDatabase(
       path,
       options: OpenDatabaseOptions(
-        version: 3,
+        version: 4,
         onUpgrade: (db, oldVersion, _) async {
           if (oldVersion < 2) {
             await db.execute(
@@ -29,6 +31,9 @@ class GardenStore {
             );
           }
           if (oldVersion < 3) await _createSyncState(db);
+          if (oldVersion < 4) {
+            await db.execute('ALTER TABLE events ADD COLUMN properties TEXT');
+          }
         },
         onCreate: (db, _) async {
           await db.execute(
@@ -50,7 +55,7 @@ class GardenStore {
             'CREATE TABLE settings (account TEXT NOT NULL, key TEXT NOT NULL, value TEXT NOT NULL, updated TEXT NOT NULL, PRIMARY KEY(account,key))',
           );
           await db.execute(
-            'CREATE TABLE events (id TEXT PRIMARY KEY, account TEXT NOT NULL, name TEXT NOT NULL, ts TEXT NOT NULL)',
+            'CREATE TABLE events (id TEXT PRIMARY KEY, account TEXT NOT NULL, name TEXT NOT NULL, ts TEXT NOT NULL, properties TEXT)',
           );
           await _createSyncState(db);
         },
@@ -84,6 +89,8 @@ class GardenStore {
     required String behavior,
     required String celebration,
     required String species,
+    String? templateCategory,
+    bool celebrationPracticed = false,
   }) async {
     final fields = [aspiration, anchor, behavior, celebration];
     if (fields.any((s) => s.trim().isEmpty || s.length > 200) ||
@@ -93,6 +100,13 @@ class GardenStore {
       );
     }
     final id = _uuid.v4();
+    final properties = <String, Object?>{
+      'habitId': id,
+      'templateCategory': ?templateCategory,
+      'localDay': localDate(DateTime.now()),
+      'platform': telemetryPlatform,
+    };
+    _validateEventProperties('recipe_created', properties);
     await _db.insert('habits', {
       'id': id,
       'account': _account,
@@ -104,7 +118,17 @@ class GardenStore {
       'updated': DateTime.now().toUtc().toIso8601String(),
     });
     await recordInteraction();
-    await track('recipe_created');
+    await track('recipe_created', properties: properties);
+    if (celebrationPracticed) {
+      await track(
+        'celebration_practiced',
+        properties: {
+          'habitId': id,
+          'localDay': localDate(DateTime.now()),
+          'platform': telemetryPlatform,
+        },
+      );
+    }
     return (await habits()).firstWhere((h) => h.id == id);
   }
 
@@ -185,7 +209,8 @@ class GardenStore {
         !['forgot', 'too hard', 'anchor', 'motivation'].contains(reason)) {
       throw ArgumentError('Unknown check-in reason.');
     }
-    await _db.transaction((txn) async {
+    final account = _account;
+    final changed = await _db.transaction((txn) async {
       final habit = await _owned(habitId, txn);
       final day = localDate(now);
       final previous = await txn.query(
@@ -198,8 +223,18 @@ class GardenStore {
       if (previous.isNotEmpty &&
           previous.first['result'] == result &&
           previous.first['reason'] == reason) {
-        return;
+        return false;
       }
+      final first =
+          result != null &&
+          result != 'notToday' &&
+          (await txn.query(
+            'checkins',
+            columns: ['id'],
+            where: "account = ? AND result IN ('did','didMore')",
+            whereArgs: [account],
+            limit: 1,
+          )).isEmpty;
       // Monotonic event timestamps resolve fast edits even with a frozen clock.
       var timestamp = now.toUtc();
       if (previous.isNotEmpty) {
@@ -250,12 +285,23 @@ class GardenStore {
         where: 'id = ? AND account = ?',
         whereArgs: [habitId, _account],
       );
+      final properties = <String, Object?>{
+        'habitId': habitId,
+        'result': result ?? 'undo',
+        'localDay': day,
+        'platform': telemetryPlatform,
+      };
+      await _trackWith(txn, account, 'checkin', properties: properties);
+      if (first) {
+        await _trackWith(txn, account, 'first_checkin', properties: properties);
+      }
+      return true;
     });
+    if (!changed) return;
     await recordInteraction(
       now: now,
       practiced: result != null && result != 'notToday',
     );
-    await track('checkin');
   }
 
   Future<void> recordInteraction({
@@ -264,15 +310,45 @@ class GardenStore {
     bool positiveReturn = false,
   }) async {
     final date = now ?? DateTime.now();
-    if (practiced || positiveReturn) {
-      final last = DateTime.tryParse(await setting('lastInteraction') ?? '');
-      if (last != null && date.toUtc().difference(last).inDays >= 3) {
-        final count = int.tryParse(await setting('ratingComebacks') ?? '') ?? 0;
-        await setSetting('ratingComebacks', '${count + 1}');
+    final account = _account;
+    await _db.transaction((txn) async {
+      final rows = await txn.query(
+        'settings',
+        where: 'account = ?',
+        whereArgs: [account],
+      );
+      final values = {
+        for (final row in rows) row['key']: row['value'] as String,
+      };
+      final stamp = date.toUtc().toIso8601String();
+      Future<void> write(String key, String value) async {
+        await txn.insert('settings', {
+          'account': account,
+          'key': key,
+          'value': value,
+          'updated': stamp,
+        }, conflictAlgorithm: ConflictAlgorithm.replace);
       }
-    }
-    await setSetting('lastInteraction', date.toUtc().toIso8601String());
-    await setSetting('reconnectCount', '0');
+
+      if (practiced || positiveReturn) {
+        final last = DateTime.tryParse(values['lastInteraction'] ?? '');
+        if (last != null && date.toUtc().difference(last).inDays >= 3) {
+          final count = int.tryParse(values['ratingComebacks'] ?? '') ?? 0;
+          await write('ratingComebacks', '${count + 1}');
+          await _trackWith(
+            txn,
+            account,
+            'comeback',
+            properties: {
+              'localDay': localDate(date),
+              'platform': telemetryPlatform,
+            },
+          );
+        }
+      }
+      await write('lastInteraction', stamp);
+      await write('reconnectCount', '0');
+    });
   }
 
   Future<List<int>> practiceMinutes(String habitId) async {
@@ -380,10 +456,11 @@ class GardenStore {
       limit: 2,
     );
     final habit = (await habits(now: date)).firstWhere((h) => h.id == habitId);
-    if (canGraduate(
-      scores.map((r) => (r['score'] as num).toDouble()).toList(),
-      habit.recentPractice,
-    )) {
+    if (habit.status != 'graduated' &&
+        canGraduate(
+          scores.map((r) => (r['score'] as num).toDouble()).toList(),
+          habit.recentPractice,
+        )) {
       await _db.update(
         'habits',
         {
@@ -394,7 +471,15 @@ class GardenStore {
         where: 'id = ? AND account = ?',
         whereArgs: [habitId, _account],
       );
-      await track('habit_graduated');
+      await track(
+        'habit_graduated',
+        properties: {
+          'habitId': habitId,
+          'score': score,
+          'localDay': localDate(date),
+          'platform': telemetryPlatform,
+        },
+      );
     } else if (habit.practiceCount >= 30 && score >= 4) {
       await _db.update(
         'habits',
@@ -403,7 +488,15 @@ class GardenStore {
         whereArgs: [habitId, _account],
       );
     }
-    await track('reflection');
+    await track(
+      'automaticity_score',
+      properties: {
+        'habitId': habitId,
+        'score': score,
+        'localDay': localDate(date),
+        'platform': telemetryPlatform,
+      },
+    );
   }
 
   Future<DateTime?> naturalnessAvailableAt(String habitId) async {
@@ -469,7 +562,14 @@ class GardenStore {
       'weeklyLast',
       (now ?? DateTime.now()).toUtc().toIso8601String(),
     );
-    await track('weekly_reflection');
+    await track(
+      'weekly_reflection',
+      properties: {
+        'habitId': habitId,
+        'localDay': localDate(now ?? DateTime.now()),
+        'platform': telemetryPlatform,
+      },
+    );
   }
 
   /// Call only after a successful positive moment, never on load or a miss.
@@ -522,14 +622,15 @@ class GardenStore {
         'value': date.toIso8601String(),
         'updated': date.toIso8601String(),
       }, conflictAlgorithm: ConflictAlgorithm.replace);
-      if (values['analytics'] == 'true') {
-        await txn.insert('events', {
-          'id': _uuid.v4(),
-          'account': account,
-          'name': 'rating_prompted',
-          'ts': date.toIso8601String(),
-        });
-      }
+      await _trackWith(
+        txn,
+        account,
+        'rating_prompted',
+        properties: {
+          'localDay': localDate(date.toLocal()),
+          'platform': telemetryPlatform,
+        },
+      );
       return true;
     });
   }
@@ -546,6 +647,13 @@ class GardenStore {
   Future<void> setSetting(String key, String value) async {
     final account = _account;
     await _db.transaction((txn) async {
+      final previous = key == 'analytics'
+          ? await txn.query(
+              'settings',
+              where: 'account = ? AND key = ?',
+              whereArgs: [account, key],
+            )
+          : <Map<String, Object?>>[];
       await txn.insert('settings', {
         'account': account,
         'key': key,
@@ -559,40 +667,49 @@ class GardenStore {
           where: 'account = ? AND tableName = ?',
           whereArgs: [account, 'events'],
         );
+      } else if (key == 'analytics' &&
+          value == 'true' &&
+          (previous.isEmpty || previous.single['value'] != 'true')) {
+        await _trackWith(
+          txn,
+          account,
+          'analytics_consent',
+          properties: {'platform': telemetryPlatform},
+        );
       }
     });
   }
 
-  static const eventNames = {
-    'recipe_created',
-    'checkin',
-    'reflection',
-    'habit_graduated',
-    'feedback_submitted',
-    'share_initiated',
-    'reminder_sent',
-    'signin_succeeded',
-    'weekly_reflection',
-    'rating_prompted',
-  };
-  Future<void> track(String name) async {
-    if (!eventNames.contains(name)) {
-      throw ArgumentError('Unregistered telemetry event.');
-    }
+  Future<void> track(String name, {Map<String, Object?>? properties}) async {
+    _validateEventProperties(name, properties);
+    final copy = properties == null
+        ? null
+        : Map<String, Object?>.from(properties);
     final account = _account;
     await _db.transaction((txn) async {
-      final consent = await txn.query(
-        'settings',
-        where: 'account = ? AND key = ?',
-        whereArgs: [account, 'analytics'],
-      );
-      if (consent.isEmpty || consent.single['value'] != 'true') return;
-      await txn.insert('events', {
-        'id': _uuid.v4(),
-        'account': account,
-        'name': name,
-        'ts': DateTime.now().toUtc().toIso8601String(),
-      });
+      await _trackWith(txn, account, name, properties: copy);
+    });
+  }
+
+  static Future<void> _trackWith(
+    DatabaseExecutor txn,
+    String account,
+    String name, {
+    Map<String, Object?>? properties,
+  }) async {
+    _validateEventProperties(name, properties);
+    final consent = await txn.query(
+      'settings',
+      where: 'account = ? AND key = ?',
+      whereArgs: [account, 'analytics'],
+    );
+    if (consent.isEmpty || consent.single['value'] != 'true') return;
+    await txn.insert('events', {
+      'id': _uuid.v4(),
+      'account': account,
+      'name': name,
+      'ts': DateTime.now().toUtc().toIso8601String(),
+      'properties': properties == null ? null : jsonEncode(properties),
     });
   }
 
@@ -613,8 +730,9 @@ class GardenStore {
         'Enter feedback (1-2000 characters) and a valid rating.',
       );
     }
+    final id = _uuid.v4();
     await _db.insert('voice', {
-      'id': _uuid.v4(),
+      'id': id,
       'account': _account,
       'kind': kind,
       'body': body.trim(),
@@ -623,7 +741,24 @@ class GardenStore {
       'replies': '[]',
       'ts': DateTime.now().toUtc().toIso8601String(),
     });
-    await track('feedback_submitted');
+    await track(
+      'feedback_submitted',
+      properties: {
+        'feedbackId': id,
+        'kind': kind,
+        'platform': telemetryPlatform,
+      },
+    );
+    if (kind == 'Rating') {
+      await track(
+        'rated',
+        properties: {
+          'rating': rating,
+          'localDay': localDate(DateTime.now()),
+          'platform': telemetryPlatform,
+        },
+      );
+    }
   }
 
   Future<List<Map<String, Object?>>> voice() => _db.query(
@@ -691,7 +826,38 @@ class GardenStore {
       row.remove('status');
       row.remove('replies');
     }
+    if (table == 'events') {
+      final properties = row['properties'];
+      if (properties == null) {
+        row.remove('properties');
+      } else {
+        final decoded = properties is String
+            ? jsonDecode(properties)
+            : properties;
+        if (decoded is! Map) {
+          throw const FormatException('Invalid telemetry properties.');
+        }
+        final values = Map<String, Object?>.from(decoded);
+        _validateEventProperties(row['name'] as String, values);
+        final keys = values.keys.toList()..sort();
+        row['properties'] = {for (final key in keys) key: values[key]};
+      }
+    }
     return row;
+  }
+
+  static String get telemetryPlatform =>
+      kIsWeb ? 'web' : defaultTargetPlatform.name.toLowerCase();
+
+  static const eventNames = registry.eventNames;
+
+  static void _validateEventProperties(
+    String name,
+    Map<String, Object?>? properties,
+  ) {
+    if (!registry.isValidEventProperties(name, properties ?? const {})) {
+      throw ArgumentError('Unregistered telemetry event or invalid metadata.');
+    }
   }
 
   static String _recordId(String table, Map<String, Object?> row) =>

@@ -216,6 +216,8 @@ class _GardenScreenState extends State<GardenScreen> {
         behavior: recipe.behavior,
         celebration: recipe.celebration,
         species: recipe.species,
+        templateCategory: recipe.templateCategory,
+        celebrationPracticed: recipe.celebrationPracticed,
       );
     });
   }
@@ -306,6 +308,13 @@ class _GardenScreenState extends State<GardenScreen> {
       }
       if (eligible) {
         setState(() => ratingInvitation = true);
+        await widget.store.track(
+          'rating_prompt_shown',
+          properties: {
+            'localDay': localDate(DateTime.now()),
+            'platform': GardenStore.telemetryPlatform,
+          },
+        );
         if (widget.identity?.account != null) unawaited(_sync());
       }
     } catch (e) {
@@ -315,21 +324,33 @@ class _GardenScreenState extends State<GardenScreen> {
     }
   }
 
-  Future<void> _edit(Habit habit) async {
+  Future<bool> _edit(Habit habit) async {
     final draft = await showDialog<RecipeDraft>(
       context: context,
       builder: (_) => RecipeBuilder(habit: habit),
     );
     if (draft != null) {
-      await _act(
-        () => widget.store.edit(
+      await _act(() async {
+        await widget.store.edit(
           habit,
           anchor: draft.anchor,
           behavior: draft.behavior,
           celebration: draft.celebration,
-        ),
-      );
+        );
+        if (draft.celebrationPracticed) {
+          await widget.store.track(
+            'celebration_practiced',
+            properties: {
+              'habitId': habit.id,
+              'localDay': localDate(DateTime.now()),
+              'platform': GardenStore.telemetryPlatform,
+            },
+          );
+        }
+      });
+      return error == null;
     }
+    return false;
   }
 
   Future<void> _reflection(Habit habit) async {
@@ -477,13 +498,21 @@ class _GardenScreenState extends State<GardenScreen> {
     );
     if (choice == null) return;
     await _act(() => widget.store.completeWeeklyReflection(habit.id));
-    if (choice == 'edit' && error == null && mounted) await _edit(habit);
+    if (choice == 'edit' && error == null && mounted && await _edit(habit)) {
+      await widget.store.track(
+        'recipe_doctor_applied',
+        properties: {
+          'habitId': habit.id,
+          'localDay': localDate(DateTime.now()),
+          'platform': GardenStore.telemetryPlatform,
+        },
+      );
+    }
   }
 
   Future<void> _share() async {
     const url =
         'https://brave-plant-02c10e800.5.azurestaticapps.net/?invite=garden&channel=link';
-    await widget.store.track('share_initiated');
     if (!mounted) return;
     await showDialog<void>(
       context: context,
@@ -515,6 +544,13 @@ class _GardenScreenState extends State<GardenScreen> {
             onPressed: () async {
               final messenger = ScaffoldMessenger.of(this.context);
               await Clipboard.setData(const ClipboardData(text: url));
+              await widget.store.track(
+                'share_initiated',
+                properties: {
+                  'channel': 'link',
+                  'platform': GardenStore.telemetryPlatform,
+                },
+              );
               messenger.showSnackBar(
                 const SnackBar(content: Text('Invitation link copied.')),
               );
@@ -534,6 +570,13 @@ class _GardenScreenState extends State<GardenScreen> {
                   'No email application is available. Copy the invitation link instead.',
                 );
               }
+              await widget.store.track(
+                'share_initiated',
+                properties: {
+                  'channel': 'email',
+                  'platform': GardenStore.telemetryPlatform,
+                },
+              );
             }),
             child: const Text('Email invite'),
           ),

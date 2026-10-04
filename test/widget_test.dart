@@ -27,6 +27,7 @@ void main() {
     addTearDown(() => tester.runAsync(store.close));
     await tester.binding.setSurfaceSize(const Size(1100, 900));
     addTearDown(() => tester.binding.setSurfaceSize(null));
+    await tester.runAsync(() => store.setSetting('analytics', 'true'));
     await tester.pumpWidget(MaterialApp(home: GardenScreen(store: store)));
     Future<void> settleDatabase() async {
       await tester.runAsync(() async {
@@ -46,6 +47,16 @@ void main() {
     await tester.tap(find.text('Plant this seed'));
     await settleDatabase();
     expect((await tester.runAsync(store.habits))!.length, 1);
+    final planted =
+        ((await tester.runAsync(store.syncPayload))!['events'] as List);
+    expect(
+      planted.where((r) => r['name'] == 'celebration_practiced'),
+      hasLength(1),
+    );
+    expect(
+      planted.singleWhere((r) => r['name'] == 'recipe_created')['properties'],
+      containsPair('templateCategory', 'calm'),
+    );
     await tester.tap(find.text('Did it'));
     await settleDatabase();
     expect((await tester.runAsync(store.habits))!.single.practiceCount, 1);
@@ -57,5 +68,9 @@ void main() {
     await tester.tap(find.text('Undo today'));
     await settleDatabase();
     expect((await tester.runAsync(store.habits))!.single.practiceCount, 0);
+    final recorded =
+        ((await tester.runAsync(store.syncPayload))!['events'] as List);
+    expect(recorded.where((r) => r['name'] == 'first_checkin'), hasLength(1));
+    expect(recorded.where((r) => r['name'] == 'checkin'), hasLength(2));
   });
 }

@@ -1,5 +1,6 @@
 import { z } from 'zod';
 import { eventNames, eventSchema } from './contracts.mjs';
+import { eventRegistry } from './event_registry.g.mjs';
 
 export const previewLimits = Object.freeze({
   accounts: 200, lifetimeOperations: 20000, operationsPerDay: 2000,
@@ -10,6 +11,7 @@ export const previewLimits = Object.freeze({
     metrics_read: Object.freeze({ daily: 12, lifetime: 120 }),
     feedback_read: Object.freeze({ daily: 60, lifetime: 600 }),
     feedback_reply: Object.freeze({ daily: 60, lifetime: 600 }),
+    aggregates_write: Object.freeze({ daily: 2, lifetime: 60 }),
   }),
 });
 export const feedbackQuerySchema = z.object({
@@ -51,7 +53,9 @@ export function aggregateEvents(rows, startDay, endDay) {
     const key = `${row.userId}:${parsed.data.id}`;
     const previous = envelopes.get(key);
     if (previous === null) continue;
-    envelopes.set(key, previous && JSON.stringify(previous.event) !== JSON.stringify(parsed.data)
+    const canonical = (/** @type {z.infer<typeof eventSchema>} */ event) =>
+      JSON.stringify([event.name, event.ts, Object.entries(event.properties ?? {}).sort(([a], [b]) => a.localeCompare(b))]);
+    envelopes.set(key, previous && canonical(previous.event) !== canonical(parsed.data)
       ? null : { userId: row.userId, event: parsed.data });
   }
   /** @type {Map<string, Set<string>>} */
@@ -77,7 +81,7 @@ export function aggregateEvents(rows, startDay, endDay) {
     users: bucket.users.size >= minimumCohort ? bucket.users.size : null,
     counts: bucket.users.size >= minimumCohort
       ? Object.fromEntries(eventNames.map(name => [name,
-        bucket.counts[name] === 0 || (bucket.cohorts.get(name)?.size ?? 0) >= minimumCohort ? bucket.counts[name] : null]))
+        eventRegistry[/** @type {keyof typeof eventRegistry} */ (name)].observable && (bucket.cohorts.get(name)?.size ?? 0) >= minimumCohort ? bucket.counts[name] : null]))
       : null,
   }));
   /** @param {string} name */
@@ -89,14 +93,14 @@ export function aggregateEvents(rows, startDay, endDay) {
     categories: {
       activationRetention: { signins: total('signin_succeeded'), recipesCreated: total('recipe_created'), checkins: total('checkin'), graduations: total('habit_graduated'), returningCheckinUsers: returning >= minimumCohort ? returning : null },
       reminderLearning: { remindersSent: total('reminder_sent'), reflections: total('reflection'), weeklyReflections: total('weekly_reflection') },
-      voiceRatings: { feedbackSubmitted: total('feedback_submitted'), ratingPrompts: total('rating_prompted'), ratings: null },
+      voiceRatings: { feedbackSubmitted: total('feedback_submitted'), ratingPrompts: total('rating_prompted'), ratings: total('rated') },
       sharingExperiment: { sharesInitiated: total('share_initiated'), experiments: null },
     },
     limitations: [
       'Opt-in allowlisted event counts, not all-user activation rates or production dashboards.',
       'A returning check-in user has events on at least two UTC days in this window; this is not D7/D30 retention.',
       'Small daily and per-event cohorts are suppressed; null is unavailable, not zero.',
-      'Rating prompts are not rating submissions; rating values, experiment, reminder delivery/opt-out and acquisition outcomes have no current allowlisted event.',
+      'Missing, sparse or future/unobservable measures are null, never assumed zero. Rating prompts are not submissions. Registered event names do not prove complete acquisition, OS delivery or experiment capture.',
     ],
   };
 }

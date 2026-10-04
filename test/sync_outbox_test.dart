@@ -43,6 +43,32 @@ Map<String, dynamic> _emptyGarden() => {
 
 void main() {
   test(
+    'sync and deletion preserve CIAM token in dedicated SWA-safe header',
+    () async {
+      final store = await GardenStore.open(':memory:', 'transport');
+      addTearDown(store.close);
+      await _plant(store);
+      final methods = <String>[];
+      final client = MockClient((request) async {
+        methods.add(request.method);
+        expect(
+          request.headers['X-Bloomstep-Authorization'],
+          'Bearer test-token',
+        );
+        expect(request.headers.containsKey('Authorization'), isFalse);
+        if (request.method == 'DELETE') return http.Response('', 204);
+        return http.Response(jsonEncode(_emptyGarden()), 200);
+      });
+      addTearDown(client.close);
+      final identity = _Identity('transport');
+      final service = SyncService(identity, store, client: client);
+      await service.sync();
+      await service.deleteAccount();
+      expect(methods, ['POST', 'GET', 'DELETE']);
+    },
+  );
+
+  test(
     'sync surfaces bounded API errors without losing pending records',
     () async {
       final store = await GardenStore.open(':memory:', 'quota');
@@ -135,7 +161,7 @@ void main() {
       await store.track('weekly_reflection');
       await store.track('rating_prompted');
       final submitted = await store.syncPayload();
-      expect(submitted['events'], hasLength(2));
+      expect(submitted['events'], hasLength(3));
       await store.acknowledgeSync(submitted);
       await store.setSetting('analytics', 'false');
       expect((await store.export())['events'], isEmpty);
@@ -144,7 +170,7 @@ void main() {
       expect((await store.syncPayload())['events'], isEmpty);
       await store.setSetting('analytics', 'true');
       await store.track('rating_prompted');
-      expect((await store.syncPayload())['events'], hasLength(1));
+      expect((await store.syncPayload())['events'], hasLength(2));
     },
   );
 

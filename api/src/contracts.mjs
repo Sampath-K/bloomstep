@@ -1,12 +1,13 @@
 import { z } from 'zod';
 import { createHash } from 'node:crypto';
+import { eventRegistry, registryVersion } from './event_registry.g.mjs';
 
 const id = z.uuid();
 const text = z.string().trim().min(1).max(200);
 const timestamp = z.iso.datetime()
   .refine(value => !/\.\d{7,}Z$/.test(value), 'Microsecond precision is the maximum.')
   .refine(value => Date.parse(value) <= Date.now() + 300000, 'Timestamp is too far in the future.');
-export const eventNames = ['recipe_created', 'checkin', 'reflection', 'habit_graduated', 'feedback_submitted', 'share_initiated', 'reminder_sent', 'signin_succeeded', 'weekly_reflection', 'rating_prompted'];
+export const eventNames = Object.keys(eventRegistry);
 export const habitSchema = z.object({
   id, aspiration: text, anchor: text, behavior: text, celebration: text,
   species: z.enum(['Cosmos', 'Sunflower', 'Fern']),
@@ -31,7 +32,25 @@ export const voiceSchema = z.object({
   body: z.string().trim().max(2000), rating: z.number().int().min(1).max(5).nullable(), ts: timestamp,
 }).strict().refine(voice => voice.kind === 'Rating' ? voice.rating !== null : voice.body.length > 0,
   'Ratings require a score; other feedback requires text.');
-export const eventSchema = z.object({ id, name: z.enum(eventNames), ts: timestamp }).strict();
+/** @param {any} rule */
+function propertySchema(rule) {
+  if (rule.enum) return z.enum(rule.enum);
+  if (rule.type === 'uuid') return z.uuid();
+  if (rule.type === 'date') return z.iso.date();
+  const number = z.number().min(rule.min).max(rule.max);
+  return rule.type === 'integer' ? number.int() : number;
+}
+const propertySchemas = Object.fromEntries(Object.entries(eventRegistry).map(([name, entry]) => [
+  name, z.object(Object.fromEntries(Object.entries(entry.properties).map(([key, rule]) => [key, propertySchema(rule).optional()]))).strict(),
+]));
+export const eventSchema = z.object({
+  id, name: z.enum(eventNames), ts: timestamp, schemaVersion: z.literal(registryVersion).optional(),
+  properties: z.record(z.string(), z.unknown()).optional(),
+}).strict().superRefine((event, context) => {
+  if (event.properties && !propertySchemas[event.name].safeParse(event.properties).success) {
+    context.addIssue({ code: 'custom', message: 'Invalid event-specific properties.', path: ['properties'] });
+  }
+});
 export const settingSchema = z.object({
   key: z.enum(['reducedMotion', 'reminderMinute', 'quietStart', 'quietEnd', 'fewerReminders', 'weeklyLast', 'ratingPromptedAt']),
   value: z.string().max(40), updated: timestamp,

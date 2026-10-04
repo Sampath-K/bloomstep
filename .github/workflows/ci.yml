@@ -23,6 +23,7 @@ jobs:
       - run: npm ci --ignore-scripts
       - run: npm run check
       - run: npm test
+      - run: node ../tool/generate_event_registry.mjs --check
       - run: node --test ../test/site_console_test.mjs
   test-and-build-windows:
     strategy:
@@ -62,7 +63,7 @@ jobs:
           Add-Content $env:GITHUB_PATH "$sdk\bin"
       - run: flutter pub get
       - run: flutter analyze
-      - run: flutter test --reporter expanded
+      - run: flutter test --reporter expanded --concurrency 1 --timeout 60s
       - name: Build real sign-in-gated release
         env:
           OIDC_ISSUER: ${{ vars.OIDC_ISSUER }}
@@ -105,6 +106,14 @@ jobs:
           $app = Start-Process "$target\bloomstep.exe" -PassThru
           Start-Sleep 8
           if ($app.HasExited) { throw 'Installed app exited unexpectedly' }
+          $second = Start-Process "$target\bloomstep.exe" -PassThru
+          if (-not $second.WaitForExit(10000)) {
+            Stop-Process -Id $second.Id
+            throw 'A second launch opened another persistent app instance.'
+          }
+          if ($second.ExitCode -ne 0) { throw 'Second launch did not activate the existing app.' }
+          $app.Refresh()
+          if ($app.HasExited) { throw 'Activating the existing app closed its owner.' }
           Stop-Process -Id $app.Id
           Start-Process "$target\unins000.exe" -ArgumentList '/VERYSILENT /SUPPRESSMSGBOXES /NORESTART' -Wait
           if (Test-Path "$target\bloomstep.exe") { throw 'Uninstall failed' }

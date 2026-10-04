@@ -3,6 +3,8 @@ import { CosmosClient } from '@azure/cosmos';
 import { createRemoteJWKSet, jwtVerify } from 'jose';
 import { accountKey, isAdmin } from './contracts.mjs';
 import { createHandlers, ServiceError } from './backend.mjs';
+import { requestBearer } from './auth-transport.mjs';
+import { createAggregateAuthenticator } from './aggregate-auth.mjs';
 
 const issuer = process.env.OIDC_ISSUER;
 const audience = process.env.OIDC_API_AUDIENCE;
@@ -18,10 +20,9 @@ const keys = jwks?.startsWith('https://') ? createRemoteJWKSet(new URL(jwks)) : 
 /** @param {import('@azure/functions').HttpRequest} request */
 async function authenticate(request) {
   if (!issuer || !audience || !keys || !configuredContainer) throw new ServiceError(503, 'Service is not provisioned.');
-  const authorization = request.headers.get('authorization');
-  if (!authorization?.startsWith('Bearer ')) throw new ServiceError(401, 'Sign in required.');
+  const token = requestBearer(request);
   try {
-    const { payload } = await jwtVerify(authorization.slice(7), keys, { issuer, audience, algorithms: ['RS256'], requiredClaims: ['sub', 'iss', 'exp', 'iat'] });
+    const { payload } = await jwtVerify(token, keys, { issuer, audience, algorithms: ['RS256'], requiredClaims: ['sub', 'iss', 'exp', 'iat'] });
     if (!payload.sub || !payload.iss) throw new Error('Missing subject');
     const scopes = typeof payload.scp === 'string' ? payload.scp.split(' ') : [];
     if (!scopes.includes('Garden.ReadWrite') && !isAdmin(payload.roles)) throw new ServiceError(403, 'Required API scope is missing.');
@@ -32,7 +33,12 @@ async function authenticate(request) {
   }
 }
 
-const handlers = createHandlers({ container, authenticate });
+const authenticateAggregate = createAggregateAuthenticator({
+  issuer: process.env.AGGREGATE_OIDC_ISSUER,
+  audience: process.env.AGGREGATE_OIDC_AUDIENCE,
+  jwksUri: process.env.AGGREGATE_OIDC_JWKS_URI,
+}, authenticate);
+const handlers = createHandlers({ container, authenticate, authenticateAggregate });
 /**
  * @param {(request: import('@azure/functions').HttpRequest) => Promise<import('@azure/functions').HttpResponseInit>} handler
  */
@@ -51,5 +57,6 @@ function guarded(handler) {
 
 app.http('sync', { route: 'sync', methods: ['GET', 'POST'], authLevel: 'anonymous', handler: guarded(handlers.sync) });
 app.http('deleteAccount', { route: 'account', methods: ['DELETE'], authLevel: 'anonymous', handler: guarded(handlers.deleteAccount) });
-app.http('adminFeedback', { route: 'admin/feedback/{userId?}', methods: ['GET', 'POST'], authLevel: 'anonymous', handler: guarded(handlers.admin) });
-app.http('adminMetrics', { route: 'admin/metrics', methods: ['GET'], authLevel: 'anonymous', handler: guarded(handlers.metrics) });
+app.http('adminFeedback', { route: 'team/feedback/{userId?}', methods: ['GET', 'POST'], authLevel: 'anonymous', handler: guarded(handlers.admin) });
+app.http('adminMetrics', { route: 'team/metrics', methods: ['GET'], authLevel: 'anonymous', handler: guarded(handlers.metrics) });
+app.http('internalAggregates', { route: 'internal/aggregates', methods: ['POST'], authLevel: 'anonymous', handler: guarded(handlers.aggregates) });

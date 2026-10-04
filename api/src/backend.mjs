@@ -1,6 +1,9 @@
 import { createHash, randomUUID } from 'node:crypto';
 import { isAdmin, syncSchema, replySchema, newerRecipe, newerSetting } from './contracts.mjs';
 import { aggregateEvents, previewLimits, feedbackQuerySchema, metricsQuerySchema, decodeCursor } from './engagement.mjs';
+import { dashboardSummaries, addDays } from './dashboards.mjs';
+import { registryVersion } from './event_registry.g.mjs';
+import { z } from 'zod';
 
 export class ServiceError extends Error {
   /** @param {number} status @param {string} message */
@@ -13,15 +16,25 @@ export class ServiceError extends Error {
  * @param {{
  * container: () => import('@azure/cosmos').Container,
  * authenticate: (request: import('@azure/functions').HttpRequest) => Promise<{userId: string, roles: unknown}>,
+ * authenticateAggregate?: (request: import('@azure/functions').HttpRequest) => Promise<{userId: string, roles: unknown}>,
  * clock?: () => Date,
  * environment?: () => NodeJS.ProcessEnv,
  * limits?: typeof previewLimits
  * }} dependencies
  */
-export function createHandlers({ container, authenticate, clock = () => new Date(), environment = () => process.env, limits = previewLimits }) {
+export function createHandlers({ container, authenticate, authenticateAggregate = authenticate, clock = () => new Date(), environment = () => process.env, limits = previewLimits }) {
   const budgetPartition = '__preview_budget';
   const rawTtl = 34214400;
   const auditTtl = 2592000;
+  const aggregatePartition = '__daily_aggregates';
+  const aggregateSchema = z.object({ endDay: z.iso.date().optional(), days: z.number().int().min(1).max(30).default(1) }).strict();
+  const workerOnly = (/** @type {unknown} */ roles) => Array.isArray(roles) && roles.includes('Bloomstep.AggregateWriter') && !isAdmin(roles);
+  /** @param {import('@azure/functions').HttpRequest} request */
+  async function gardenActor(request) {
+    const actor = await authenticate(request);
+    if (workerOnly(actor.roles)) throw new ServiceError(403, 'Aggregate worker cannot access customer records.');
+    return actor;
+  }
   const gateBody = (/** @type {any} */ gate) => ({ ...gate, revision: randomUUID() });
   /** @param {unknown} error */
   const conflict = error => typeof error === 'object' && error && 'code' in error && [409, 412, 424].includes(Number(error.code));
@@ -143,7 +156,7 @@ export function createHandlers({ container, authenticate, clock = () => new Date
   }
   /** @param {import('@azure/functions').HttpRequest} request */
   async function sync(request) {
-    const { userId } = await authenticate(request);
+    const { userId } = await gardenActor(request);
     apiEnabled();
     const parsed = request.method === 'GET' ? null : syncSchema.safeParse(await body(request));
     if (parsed && !parsed.success) throw new ServiceError(400, 'Sync payload failed validation.');
@@ -200,7 +213,7 @@ export function createHandlers({ container, authenticate, clock = () => new Date
   }
   /** @param {import('@azure/functions').HttpRequest} request */
   async function deleteAccount(request) {
-    const { userId } = await authenticate(request);
+    const { userId } = await gardenActor(request);
     if (request.headers.get('x-confirm-delete') !== 'delete-my-garden') throw new ServiceError(400, 'Explicit deletion confirmation required.');
     const item = container().item('account', userId);
     let current = (await item.read()).resource;
@@ -211,6 +224,7 @@ export function createHandlers({ container, authenticate, clock = () => new Date
       if (conflict(error)) throw new ServiceError(409, 'Concurrent update; retry deletion.');
       throw error;
     }
+    await invalidateSnapshots();
     // Repeated bounded drains make deletion retryable without a cross-partition scan.
     for (;;) {
       const { resources } = await container().items.query({
@@ -234,6 +248,51 @@ export function createHandlers({ container, authenticate, clock = () => new Date
     apiEnabled();
     engagementEnabled();
     return actor;
+  }
+  async function aggregateGate() {
+    const item = container().item('generation', aggregatePartition);
+    let { resource } = await item.read();
+    if (!resource) {
+      try {
+        resource = (await container().items.create({ id: 'generation', userId: aggregatePartition, type: 'aggregate_generation', revision: randomUUID(), ttl: -1 })).resource;
+      } catch (error) {
+        if (!conflict(error)) throw error;
+        resource = (await item.read()).resource;
+      }
+    }
+    if (!resource) throw new ServiceError(503, 'Aggregate generation unavailable.');
+    return resource;
+  }
+  async function snapshots() {
+    const { resources } = await container().items.query({
+      query: 'SELECT TOP 31 * FROM c WHERE c.type = "aggregate"',
+    }, { partitionKey: aggregatePartition }).fetchAll();
+    if (resources.length > 30) throw new ServiceError(429, 'Snapshot count exceeds bounded store.');
+    return resources;
+  }
+  async function invalidateSnapshots() {
+    const gate = await aggregateGate();
+    const rows = await snapshots();
+    await batch([
+      { operationType: 'Replace', id: 'generation', ifMatch: gate._etag, resourceBody: gateBody(gate) },
+      ...rows.map(row => /** @type {import('@azure/cosmos').OperationInput} */ ({
+        operationType: 'Delete', id: row.id,
+      })),
+    ], aggregatePartition);
+  }
+  /** @param {string} startDay @param {string} endExclusive */
+  async function rawEvents(startDay, endExclusive) {
+    const { resources } = await container().items.query({
+      query: `SELECT TOP ${limits.metricRecords + 1} c.userId, c.record FROM c WHERE c.type = "events" AND c.record.ts >= @start AND c.record.ts < @end`,
+      parameters: [{ name: '@start', value: startDay }, { name: '@end', value: endExclusive }],
+    }).fetchAll();
+    if (resources.length > limits.metricRecords) throw new ServiceError(429, 'Metrics scan cap exceeded; no partial counts returned.');
+    const { resources: accounts } = await container().items.query({
+      query: `SELECT TOP ${limits.accounts + 1} c.userId, c.deleted FROM c WHERE c.type = "account"`,
+    }).fetchAll();
+    if (accounts.length > limits.accounts) throw new ServiceError(429, 'Legacy account volume exceeds metrics cap.');
+    const active = new Set(accounts.filter(row => !row.deleted).map(row => row.userId));
+    return resources.filter(row => active.has(row.userId));
   }
   /** @param {string} actor @param {'feedback_read' | 'metrics_read'} action */
   async function auditRead(actor, action) {
@@ -313,18 +372,53 @@ export function createHandlers({ container, authenticate, clock = () => new Date
     end.setUTCDate(end.getUTCDate() + 1);
     const start = new Date(end);
     start.setUTCDate(start.getUTCDate() - (parsed.data.days ?? 7));
-    const { resources } = await container().items.query({
-      query: `SELECT TOP ${limits.metricRecords + 1} c.userId, c.record FROM c WHERE c.type = "events" AND c.record.ts >= @start AND c.record.ts < @end`,
-      parameters: [{ name: '@start', value: start.toISOString().slice(0, 10) }, { name: '@end', value: end.toISOString().slice(0, 10) }],
-    }).fetchAll();
-    if (resources.length > limits.metricRecords) throw new ServiceError(429, 'Metrics scan cap exceeded; no partial counts returned.');
-    const { resources: accounts } = await container().items.query({
-      query: `SELECT TOP ${limits.accounts + 1} c.userId, c.deleted FROM c WHERE c.type = "account"`,
-    }).fetchAll();
-    if (accounts.length > limits.accounts) throw new ServiceError(429, 'Legacy account volume exceeds metrics cap.');
-    const active = new Set(accounts.filter(row => !row.deleted).map(row => row.userId));
+    const startDay = start.toISOString().slice(0, 10);
+    const resources = await rawEvents(addDays(startDay, -31), end.toISOString().slice(0, 10));
     const endDay = new Date(end.getTime() - 86400000).toISOString().slice(0, 10);
-    return { jsonBody: aggregateEvents(resources.filter(row => active.has(row.userId)), start.toISOString().slice(0, 10), endDay) };
+    return { jsonBody: { ...aggregateEvents(resources, startDay, endDay),
+      dashboards: dashboardSummaries(resources, addDays(startDay, -1), addDays(endDay, -1), clock().toISOString().slice(0, 10)) } };
   }
-  return { sync, deleteAccount, admin, metrics };
+  /** @param {import('@azure/functions').HttpRequest} request */
+  async function aggregates(request) {
+    const actor = await authenticateAggregate(request);
+    if (!isAdmin(actor.roles) && !(Array.isArray(actor.roles) && actor.roles.includes('Bloomstep.AggregateWriter'))) throw new ServiceError(403, 'Aggregate writer role required.');
+    apiEnabled();
+    engagementEnabled();
+    if (['true','1'].includes((environment().BLOOMSTEP_AGGREGATES_DISABLED ?? '').toLowerCase())) throw new ServiceError(503, 'Aggregate worker is paused.');
+    const parsed = aggregateSchema.safeParse(await body(request));
+    if (!parsed.success) throw new ServiceError(400, 'Invalid aggregate backfill.');
+    const today = clock().toISOString().slice(0, 10);
+    const endDay = parsed.data.endDay ?? addDays(today, -1);
+    const startDay = addDays(endDay, 1 - parsed.data.days);
+    if (endDay >= today || startDay < addDays(today, -30)) throw new ServiceError(400, 'Backfill must use the previous 30 completed UTC days.');
+    await reserve(1, 0, 'aggregates_write');
+    await container().items.create({ id: randomUUID(), userId: budgetPartition, type: 'audit', actor: actor.userId, action: 'aggregates_write', ts: clock().toISOString(), ttl: auditTtl });
+    const gate = await aggregateGate();
+    const existing = await snapshots();
+    const rows = await rawEvents(addDays(startDay, -30), addDays(endDay, 1));
+    /** @type {import('@azure/cosmos').OperationInput[]} */
+    const operations = [{ operationType: 'Replace', id: 'generation', ifMatch: gate._etag, resourceBody: gateBody(gate) }];
+    const result = [];
+    let creates = 0;
+    for (const old of existing.filter(row => row.day < addDays(today, -30))) {
+      operations.push({ operationType: 'Delete', id: old.id });
+    }
+    for (let day = startDay; day <= endDay; day = addDays(day, 1)) {
+      const record = { ...aggregateEvents(rows, day, day),
+        dashboards: dashboardSummaries(rows.filter(row => row.record.ts.slice(0, 10) <= day), day, day, addDays(day, 1)) };
+      const digest = createHash('sha256').update(JSON.stringify(record)).digest('hex');
+      const id = `daily:${day}`;
+      const old = existing.find(row => row.id === id);
+      if (old?.digest !== digest) {
+        const document = { id, userId: aggregatePartition, type: 'aggregate', day, registryVersion, digest, record, ttl: auditTtl };
+        operations.push(old ? { operationType: 'Replace', id, ifMatch: old._etag, resourceBody: document } : { operationType: 'Create', resourceBody: document });
+        if (!old) creates++;
+      }
+      result.push({ day, digest, updated: old?.digest !== digest });
+    }
+    await reserve(creates);
+    await batch(operations, aggregatePartition);
+    return { jsonBody: { registryVersion, snapshots: result, experimentEnabled: false } };
+  }
+  return { sync, deleteAccount, admin, metrics, aggregates };
 }

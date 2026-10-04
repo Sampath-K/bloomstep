@@ -38,6 +38,10 @@ export function formatMetric(value) {
   return new Intl.NumberFormat(undefined, { maximumFractionDigits: 1 }).format(value);
 }
 
+export function tokenHeaders(token) {
+  return { 'X-Bloomstep-Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' };
+}
+
 export function metricPanels(data) {
   if (!data || !Number.isInteger(data.minimumCohort) || !Array.isArray(data.daily) ||
       !Array.isArray(data.limitations)) throw new Error('Incomplete aggregate response.');
@@ -46,6 +50,69 @@ export function metricPanels(data) {
     if (!category) throw new Error('Missing registered measurement category.');
     return { title, rows: fields.map(([field, label]) => ({ label, value: formatMetric(category[field]) })) };
   });
+}
+
+export function dashboardPanels(data) {
+  const dashboards = data?.dashboards;
+  if (!dashboards || dashboards.registryVersion !== 1 ||
+      dashboards.minimumCohort !== 50 || !dashboards.funnel?.stages ||
+      !Array.isArray(dashboards.retention?.cohorts) ||
+      !Array.isArray(dashboards.outcomes?.daily) || !dashboards.reminderHealth) {
+    throw new Error('Incomplete typed dashboard response.');
+  }
+  const metric = (label, value) => ({ label, value: formatMetric(value) });
+  const percentage = value => {
+    if (value === null) return 'Unavailable / suppressed';
+    if (typeof value !== 'number' || !Number.isFinite(value) || value < 0 || value > 1) {
+      throw new Error('Invalid dashboard rate.');
+    }
+    return `${formatMetric(value * 100)}%`;
+  };
+  const rate = (label, value) => {
+    if (!value) throw new Error('Missing dashboard rate.');
+    return { label, value: `${percentage(value.rate)} (${formatMetric(value.convertedUsers)} / ${formatMetric(value.eligibleUsers)} users)` };
+  };
+  const panel = (title, source, rows) => {
+    if (typeof source.definition !== 'string') throw new Error('Missing dashboard definition.');
+    return { title, definition: source.definition, rows };
+  };
+  const funnel = dashboards.funnel;
+  const retention = dashboards.retention;
+  const outcomes = dashboards.outcomes;
+  const reminders = dashboards.reminderHealth;
+  return [
+    panel('Ordered opt-in funnel', funnel, [
+      ...Object.entries(funnel.stages).map(([name, stage]) => metric(name.replaceAll('_', ' '), stage.users)),
+      rate('Visit to download', funnel.visitToDownload),
+      rate('Download to launch', funnel.downloadToLaunch),
+      rate('Launch to sign-in', funnel.launchToSignin),
+      rate('Same-day activation', funnel.sameDayActivation),
+    ]),
+    panel('Exact-day practice retention', retention, retention.cohorts.length === 0
+      ? [{ label: 'Cohorts', value: 'No observed eligible cohorts' }]
+      : retention.cohorts.flatMap(cohort => [1, 7, 30].map(offset => {
+        const value = cohort[`d${offset}`];
+        if (!value || typeof value.matured !== 'boolean') throw new Error('Invalid retention cohort.');
+        return { label: `${cohort.cohortDay} D${offset}`, value: value.matured
+          ? `${percentage(value.rate)} (${formatMetric(value.practicingUsers)} / ${formatMetric(value.eligibleUsers)} users)`
+          : 'Not yet mature; unavailable' };
+      }))),
+    panel('Observed habit outcomes', outcomes, outcomes.daily.flatMap(day => [
+      metric(`${day.day} median automaticity`, day.medianAutomaticity),
+      metric(`${day.day} score contributors`, day.scoreUsers),
+      metric(`${day.day} practicing users`, day.practicingUsers),
+      metric(`${day.day} graduated users`, day.graduatedUsers),
+      metric(`${day.day} graduations`, day.graduationCount),
+    ])),
+    panel('Observed reminder health', reminders, [
+      metric('Users sent a reminder request', reminders.sentUsers),
+      metric('Observed delivered users', reminders.deliveredUsers),
+      metric('Observed opened users', reminders.openedUsers),
+      metric('Observed dismissed users', reminders.dismissedUsers),
+      rate('Observed delivery to action', reminders.actionRate),
+      rate('Sent users disabling reminders', reminders.disableRate),
+    ]),
+  ];
 }
 
 export function replyAttempt(previous, payload, id = () => crypto.randomUUID()) {
@@ -73,7 +140,7 @@ function initialize() {
       const response = await fetch(connection.origin + path, {
         method: body ? 'POST' : 'GET',
         signal: controller.signal,
-        headers: { Authorization: `Bearer ${connection.token}`, 'Content-Type': 'application/json' },
+        headers: tokenHeaders(connection.token),
         ...(body ? { body: JSON.stringify(body) } : {}),
       });
       const data = await response.json();
@@ -92,7 +159,7 @@ function initialize() {
     status.textContent = 'Loading private feedback...';
     try {
       const pageCursor = reset ? null : cursor;
-      const data = await request('/api/admin/feedback?limit=20' + (pageCursor ? `&cursor=${encodeURIComponent(pageCursor)}` : ''));
+      const data = await request('/api/team/feedback?limit=20' + (pageCursor ? `&cursor=${encodeURIComponent(pageCursor)}` : ''));
       if (!Array.isArray(data.feedback) || !(data.nextCursor === null || typeof data.nextCursor === 'string')) {
         throw new Error('Incomplete private feedback page.');
       }
@@ -129,7 +196,7 @@ function initialize() {
           const payload = { id: item.record.id, status: selection.value, reply: reply.value.trim() };
           attempt = replyAttempt(attempt, payload);
           try {
-            await request(`/api/admin/feedback/${encodeURIComponent(item.userId)}`, { ...payload, requestId: attempt.requestId });
+            await request(`/api/team/feedback/${encodeURIComponent(item.userId)}`, { ...payload, requestId: attempt.requestId });
             title.textContent = `${item.record.kind} - ${selection.value}`;
             const saved = document.createElement('p'); saved.textContent = payload.reply; history.append(saved);
             reply.value = '';
@@ -155,12 +222,16 @@ function initialize() {
     try {
       const days = Number(element('metric-days').value);
       if (!Number.isInteger(days) || days < 1 || days > 30) throw new Error('Choose 1-30 UTC days.');
-      const data = await request(`/api/admin/metrics?days=${days}`);
-      const cards = metricPanels(data);
+      const data = await request(`/api/team/metrics?days=${days}`);
+      const cards = [...dashboardPanels(data), ...metricPanels(data)];
       const grid = document.createElement('div'); grid.className = 'grid';
       for (const item of cards) {
         const card = document.createElement('article');
         const title = document.createElement('h3'); title.textContent = item.title; card.append(title);
+        if (item.definition) {
+          const definition = document.createElement('p'); definition.className = 'small';
+          definition.textContent = item.definition; card.append(definition);
+        }
         for (const row of item.rows) {
           const line = document.createElement('p'); line.textContent = `${row.label}: ${row.value}`; card.append(line);
         }
@@ -173,7 +244,7 @@ function initialize() {
       }
       element('measurement').append(grid, limits);
       element('daily-counts').textContent = JSON.stringify(data.daily, null, 2);
-      status.textContent = `Private preview counts over ${days} UTC days. Cohorts below ${data.minimumCohort} are suppressed, not zero. These are not validated full-funnel or D7/D30 retention dashboards.`;
+      status.textContent = `Typed dashboards cover ${data.dashboards.startDay} through ${data.dashboards.endDay} (completed UTC days); compatibility counts include today. Cohorts below ${data.minimumCohort} are suppressed, not zero. Missing instrumentation is unavailable, not inferred. Experiment remains off; crash-free rate is unavailable. Live authenticated measurement is not yet verified.`;
     } catch (error) { status.textContent = error.message; }
   });
 
