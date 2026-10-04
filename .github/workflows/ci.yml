@@ -6,15 +6,21 @@ on:
     tags: ['v*']
   pull_request:
   workflow_dispatch:
+    inputs:
+      verify_aggregates:
+        description: 'Run only the real aggregate worker and customer-route isolation proof'
+        type: boolean
+        default: false
 
 jobs:
   aggregate-proof:
-    if: github.event_name == 'workflow_dispatch'
+    if: github.event_name == 'workflow_dispatch' && inputs.verify_aggregates
     permissions:
       contents: read
       id-token: write
     uses: ./.github/workflows/aggregates.yml
   api:
+    if: github.event_name != 'workflow_dispatch' || !inputs.verify_aggregates
     runs-on: ubuntu-latest
     defaults:
       run:
@@ -38,6 +44,7 @@ jobs:
           node --test site/test/operator-auth.test.mjs
           npm --prefix site run build
   test-and-build-windows:
+    if: github.event_name != 'workflow_dispatch' || !inputs.verify_aggregates
     strategy:
       fail-fast: false
       matrix:
