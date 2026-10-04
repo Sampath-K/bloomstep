@@ -55,7 +55,8 @@ the covered-window input preflight sent no foreign input. No visible OS Share
 pane/transmission is claimed. Customer/OS/launch gates are consolidated in
 `docs/acceptance.md`, not requested incrementally.
 
-121-test full serial Flutter suite passes, including Win32 notification
+126-test full serial Flutter suite passes, including consent-scoped error hooks
+and Win32 notification
 permission/transport, observed session/sign-in
 consent, invitation retries/export,
 opaque intent IPC, capped reminders and active-session clock boundaries.
@@ -89,6 +90,30 @@ the default environment main/Ready/Free. Independent served-content checks
 verified both preview.2 links, schema2 config checksum/version/expiry with the
 experiment OFF, and all nine protected routes401 using actual methods.
 Full final-main run37223995427 also passed, including both native architectures.
+
+## Instrumentation continuation (not population evidence)
+
+Runtime diagnostics now require current account consent, preserve original
+framework presentation/unhandled semantics, detach on scope close, and cap
+observations at ten per session. Only fixed category/source/session metadata
+is stored; no error text, stacks or native/process-death census. Opt-out purges
+events and queued event sync. The health dashboard deliberately retains a null
+crash-free rate. Acquisition/install instrumentation is still developer-owned
+work in progress; no users, completed funnel or measured cohort are inferred.
+
+| Workstream | Owner | Next action | Definition of done |
+| --- | --- | --- | --- |
+| Acquisition/install observation | Implementation session | Add explicit default-off local receipts and explicit account linkage, with failures/expiry/retry tested | Real surfaces wired, observations retain original times, consent/privacy tests green, source pushed and native packaging verified |
+| Runtime error observation | Implementation session | Validate deployed/native candidate after source push | Bounded consent-scoped hooks and strict server allowlist verified; never claim full crash census |
+| Customer integration | Implementation session, after trusted-browser customer authorization | Real provider exchange, account/device/offline API round trips and readback/cleanup | Actual two-account isolation, feedback/rating/reply/referral/delete results; no fixtures substituted |
+| Operator/OS/launch decisions | Customer/controller | Select customer Admin; authorize OS permission; approve legal/provider/billing/unsigned trust | One consolidated final acceptance batch; agent owns subsequent component checks |
+| Experiment/population | Product operator | Review genuine consented cohort and guardrails | Real bounded experiment activated/evaluated only after review; remains OFF until then |
+
+Minimum50 is a dashboard publication/suppression threshold, not an excuse to
+omit instrumentation or an independent minimum-user download requirement.
+Genuine cohort/guardrail review gates experiment activation. The original
+spec includes one bounded experiment; OFF/config-ready is not completion of
+that requirement, and no scope deferral has been assumed.
 
 ## Verification and demo jobs
 

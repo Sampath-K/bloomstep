@@ -18,6 +18,7 @@ import '../../services/update_service.dart';
 import '../../services/invitation_service.dart';
 import '../../services/invitation_intent.dart';
 import '../../services/native_share.dart';
+import '../../services/session_diagnostics.dart';
 
 import 'package:launch_at_startup/launch_at_startup.dart';
 
@@ -34,6 +35,7 @@ class GardenScreen extends StatefulWidget {
     this.configLoader,
     this.invitationInbox,
     this.invitationService,
+    this.diagnostics,
   });
   final GardenStore store;
   final IdentityService? identity;
@@ -42,6 +44,7 @@ class GardenScreen extends StatefulWidget {
   final Future<RemoteConfigResult> Function(GardenStore)? configLoader;
   final InvitationInbox? invitationInbox;
   final InvitationService? invitationService;
+  final SessionDiagnostics? diagnostics;
   @override
   State<GardenScreen> createState() => _GardenScreenState();
 }
@@ -1015,13 +1018,14 @@ class _GardenScreenState extends State<GardenScreen> {
                   SwitchListTile(
                     title: const Text('Share product event counts'),
                     subtitle: const Text(
-                      'Off by default. No habit text, email or feedback in telemetry.',
+                      'Off by default. Counts and up to 10 observed Dart/Flutter errors per session; category only, no message/stack, habit text, email or feedback. Native/process deaths are not captured; no crash-free claim.',
                     ),
                     value: analytics,
                     onChanged: (v) async {
-                      await _act(
-                        () => widget.store.setSetting('analytics', '$v'),
-                      );
+                      await _act(() async {
+                        await widget.store.setSetting('analytics', '$v');
+                        await widget.diagnostics?.consentChanged();
+                      });
                       update(() => analytics = v);
                     },
                   ),

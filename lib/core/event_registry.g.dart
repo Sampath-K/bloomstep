@@ -1065,6 +1065,12 @@ final Map<String, dynamic> eventRegistry = jsonDecode(r'''{
           "unavailable",
           "unknown"
         ]
+      },
+      "diagnosticSource": {
+        "enum": [
+          "flutter_framework",
+          "dart_unhandled"
+        ]
       }
     },
     "observable": true,

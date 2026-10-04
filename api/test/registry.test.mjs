@@ -22,6 +22,7 @@ test('strict event-specific properties reject private and misplaced fields', () 
     event('landing_view', { platform: 'windows', channel: 'website' }),
     event('notif_actioned', { action: 'did', notificationId: randomUUID() }),
     event('experiment_exposure', { experiment: 'reminder_copy_v1', variant: 'control' }),
+    event('crash', { sessionId: randomUUID(), platform: 'windows', diagnosticSource: 'dart_unhandled', errorKind: 'unknown' }),
   ];
   for (const row of valid) assert.equal(eventSchema.safeParse(row).success, true, row.name);
   for (const row of [
@@ -34,6 +35,9 @@ test('strict event-specific properties reject private and misplaced fields', () 
     event('notif_actioned', { action: 'anything' }),
     event('experiment_exposure', { experiment: 'arbitrary_experiment', variant: 'control' }),
     event('rated', { rating: 3.5 }),
+    event('crash', { message: 'private error' }),
+    event('crash', { stack: 'private path' }),
+    event('crash', { diagnosticSource: 'native_complete_capture' }),
   ]) assert.equal(eventSchema.safeParse(row).success, false, row.name);
   for (const name of ['recipe_created','checkin','reflection','habit_graduated','feedback_submitted','share_initiated','reminder_sent','signin_succeeded','weekly_reflection','rating_prompted']) {
     assert.equal(eventSchema.safeParse(event(name)).success, true);

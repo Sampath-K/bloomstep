@@ -6,7 +6,7 @@ import '../core/garden_store.dart';
 import '../features/garden/garden_screen.dart';
 import '../services/identity.dart';
 import '../services/invitation_intent.dart';
-import '../services/session_events.dart';
+import '../services/session_diagnostics.dart';
 import 'theme.dart';
 import 'session_boundary.dart';
 
@@ -63,8 +63,21 @@ class _SignInScreenState extends State<SignInScreen> {
       await store.close();
       return;
     }
+    final diagnostics = SessionDiagnostics(
+      store,
+      onWriteError: (message) {
+        if (mounted) {
+          setState(() => error = message);
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text(message)),
+          );
+        }
+        debugPrint(message);
+      },
+    );
     try {
-      await SessionEvents.entered(store, authenticatedNow: authenticatedNow);
+      await diagnostics.start(authenticatedNow: authenticatedNow);
+      diagnostics.attach();
       if (!mounted) return;
       await Navigator.of(context).push(
         MaterialPageRoute<void>(
@@ -77,11 +90,13 @@ class _SignInScreenState extends State<SignInScreen> {
               store: store,
               identity: identity,
               invitationInbox: widget.invitationInbox,
+              diagnostics: diagnostics,
             ),
           ),
         ),
       );
     } finally {
+      await diagnostics.close();
       await store.close();
     }
   }

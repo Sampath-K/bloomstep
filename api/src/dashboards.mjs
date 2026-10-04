@@ -122,7 +122,7 @@ export function dashboardSummaries(rows, startDay, endDay, observedThrough) {
       openedUsers: count(users(['notif_opened'])), dismissedUsers: count(users(['notif_dismissed'])),
       definition: 'User-level observed delivered→actioned with same notification UUID; disable rate is sent users with disable event in window. Event absence is not OS delivery or opt-out evidence.' },
     appHealth: { observedSessionUsers: count(new Set(healthSessions.map(row => row.userId))), observedCrashUsers: count(new Set(crashed.map(row => row.userId))), crashFreeRate: null,
-      definition: 'Optional sampled diagnostics cannot establish crash-free sessions without complete capture.' },
+      definition: 'Opt-in bounded Dart/Flutter observed errors may be nonfatal; no messages/stacks or native/process-death census. Event absence cannot establish crash-free sessions.' },
     experiment: { enabled: false, reason: 'No verified exposure/guardrail completeness; taxonomy does not enable the experiment.' },
   };
 }

@@ -19,7 +19,8 @@
     "action": {"enum":["did","snooze","fewer","off","open"]},
     "experiment": {"enum":["reminder_copy_v1"]},
     "variant": {"enum":["control","gentle"]},
-    "errorKind": {"enum":["network","authentication","conflict","quota","validation","unavailable","unknown"]}
+    "errorKind": {"enum":["network","authentication","conflict","quota","validation","unavailable","unknown"]},
+    "diagnosticSource": {"enum":["flutter_framework","dart_unhandled"]}
   },
   "events": {
     "analytics_consent": {"properties":["platform"]},
@@ -64,7 +65,7 @@
     "notif_dismissed": {"properties":["notificationId","platform"]},
     "notif_disabled": {"properties":["platform","localDay"]},
     "session_started": {"properties":["sessionId","platform"]},
-    "crash": {"properties":["sessionId","platform","errorKind"]},
+    "crash": {"properties":["sessionId","platform","errorKind","diagnosticSource"]},
     "app_hang": {"properties":["sessionId","platform","latencyMs"]},
     "cold_start": {"properties":["sessionId","platform","latencyMs"]},
     "sync_error": {"properties":["platform","errorKind"]},

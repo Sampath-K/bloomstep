@@ -1062,6 +1062,12 @@ export const eventRegistry = {
           "unavailable",
           "unknown"
         ]
+      },
+      "diagnosticSource": {
+        "enum": [
+          "flutter_framework",
+          "dart_unhandled"
+        ]
       }
     },
     "observable": true,
@@ -3489,6 +3495,13 @@ export const eventJsonSchema = {
                 "validation",
                 "unavailable",
                 "unknown"
+              ]
+            },
+            "diagnosticSource": {
+              "type": "string",
+              "enum": [
+                "flutter_framework",
+                "dart_unhandled"
               ]
             }
           }
