@@ -13,6 +13,7 @@ import '../../core/rules.dart';
 import '../../services/identity.dart';
 import '../../services/sync_service.dart';
 import '../../services/desktop_reminders.dart';
+import '../../services/remote_config.dart';
 
 import 'package:launch_at_startup/launch_at_startup.dart';
 
@@ -50,6 +51,7 @@ class _GardenScreenState extends State<GardenScreen> {
         if (mounted) setState(() => error = 'Reminders could not start: $e');
       });
       _sync();
+      _refreshConfig();
       syncTimer = Timer.periodic(const Duration(minutes: 5), (_) => _sync());
     }
   }
@@ -68,6 +70,7 @@ class _GardenScreenState extends State<GardenScreen> {
     if (identity == null || identity.account == null || syncing || closing) {
       return;
     }
+
     syncing = true;
     if (mounted) setState(() => syncStatus = 'Syncing...');
     try {
@@ -82,6 +85,20 @@ class _GardenScreenState extends State<GardenScreen> {
       }
     } finally {
       syncing = false;
+    }
+  }
+
+  Future<void> _refreshConfig() async {
+    try {
+      final config = await RemoteConfig.fetch(widget.store);
+      reminders?.config = config;
+    } catch (e) {
+      if (mounted) {
+        setState(
+          () => error =
+              'Remote config unavailable; using reviewed local control copy. $e',
+        );
+      }
     }
   }
 

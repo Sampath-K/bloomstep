@@ -3,7 +3,7 @@ import { createHash } from 'node:crypto';
 
 const id = z.uuid();
 const text = z.string().trim().min(1).max(200);
-const timestamp = z.iso.datetime();
+const timestamp = z.iso.datetime().refine(value => Date.parse(value) <= Date.now() + 300000, 'Timestamp is too far in the future.');
 export const eventNames = ['recipe_created', 'checkin', 'reflection', 'habit_graduated', 'feedback_submitted', 'share_initiated', 'reminder_sent', 'signin_succeeded'];
 export const habitSchema = z.object({
   id, aspiration: text, anchor: text, behavior: text, celebration: text,
@@ -18,7 +18,10 @@ export const checkinSchema = z.object({
   ts: timestamp,
 }).strict();
 export const reflectionSchema = z.object({
-  id, habitId: id, items: z.string().transform(s => JSON.parse(s)).pipe(z.array(z.number().int().min(1).max(7)).length(4)),
+  id, habitId: id, items: z.string().transform((s, context) => {
+    try { return JSON.parse(s); }
+    catch { context.addIssue({ code: 'custom', message: 'Invalid reflection JSON' }); return z.NEVER; }
+  }).pipe(z.array(z.number().int().min(1).max(7)).length(4)),
   score: z.number().min(1).max(7), ts: timestamp,
 }).strict().refine(r => Math.abs(r.items.reduce((a, b) => a + b, 0) / 4 - r.score) < .001);
 export const voiceSchema = z.object({

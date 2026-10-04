@@ -5,6 +5,7 @@ class BloomstepTheme {
 
   static ThemeData light() => ThemeData(
     colorScheme: ColorScheme.fromSeed(seedColor: seed),
+    fontFamily: 'Segoe UI',
     useMaterial3: true,
   );
 
@@ -13,6 +14,7 @@ class BloomstepTheme {
       seedColor: seed,
       brightness: Brightness.dark,
     ),
+    fontFamily: 'Segoe UI',
     useMaterial3: true,
   );
 }

@@ -11,6 +11,7 @@ import 'package:window_manager/window_manager.dart';
 import '../core/garden_store.dart';
 import '../core/models.dart';
 import '../core/rules.dart';
+import 'remote_config.dart';
 
 class DesktopReminders with TrayListener, WindowListener {
   DesktopReminders(this.store, this.changed, this.reportError);
@@ -21,6 +22,7 @@ class DesktopReminders with TrayListener, WindowListener {
   Timer? timer;
   bool enabled = false;
   bool ticking = false;
+  RemoteConfig config = RemoteConfig.defaults;
 
   Future<void> initialize() async {
     if (!Platform.isWindows) return;
@@ -178,7 +180,7 @@ class DesktopReminders with TrayListener, WindowListener {
         final id = experimentBucket(habit.id) + 100;
         await notifications.show(
           id: id,
-          title: 'A tiny step is enough',
+          title: config.title(store.account),
           body: 'Your garden is here whenever you are. Open Bloomstep to celebrate or rest. Why: your chosen check-in time.',
           payload: '${habit.id}:open',
           notificationDetails: NotificationDetails(

@@ -1,0 +1,10 @@
+{
+  "location": "Asia Pacific",
+  "sku": { "name": "Standard", "tier": "A0" },
+  "properties": {
+    "createTenantProperties": {
+      "countryCode": "IN",
+      "displayName": "Bloomstep Customers"
+    }
+  }
+}

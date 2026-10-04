@@ -8,6 +8,7 @@ import 'package:bloomstep/features/garden/garden_screen.dart';
 import 'package:bloomstep/features/garden/plant_art.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
@@ -17,6 +18,14 @@ void main() {
     await tester.binding.setSurfaceSize(const Size(1200, 950));
     addTearDown(() => tester.binding.setSurfaceSize(null));
     final semantics = tester.ensureSemantics();
+    if (Platform.isWindows) {
+      await tester.runAsync(() async {
+        final bytes = await File(r'C:\Windows\Fonts\segoeui.ttf').readAsBytes();
+        await (FontLoader(
+          'Segoe UI',
+        )..addFont(Future.value(ByteData.sublistView(bytes)))).load();
+      });
+    }
     final store = (await tester.runAsync(
       () => GardenStore.open(':memory:', 'visual-test-only'),
     ))!;
