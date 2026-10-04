@@ -62,6 +62,9 @@
   cancellation. A native explicit-AUMID/grouped toast adapter and permission
   preflight now surface disabled Windows notifications instead of fake success.
   Actual OS delivery remains a permission/acceptance gate.
+- Windows Share requires a visible foreground owner; a background API request
+  cannot masquerade as an opened panel. Synthetic native MSAA check-in exposed
+  its celebration in67ms; real account/OS acceptance remains distinct.
 
 No user feedback item is marked shipped yet. This is not a full authenticated
 MVP; deployment/native delivery and remaining loops are tracked in `docs/status.md`.

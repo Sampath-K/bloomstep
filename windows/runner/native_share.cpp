@@ -38,6 +38,12 @@ NativeShare::NativeShare(flutter::BinaryMessenger* messenger, HWND window)
           result->Error("invalid_share", "The invitation is outside safe sharing limits.");
           return;
         }
+        if (!IsWindowVisible(window_) || GetForegroundWindow() != window_) {
+          result->Error(
+              "share_foreground_required",
+              "Bring Bloomstep to the foreground and choose Windows share again.");
+          return;
+        }
         try {
           if (!runtime_initialized_) {
             winrt::init_apartment(winrt::apartment_type::single_threaded);

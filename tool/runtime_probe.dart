@@ -33,6 +33,40 @@ class _RuntimeProbeState extends State<RuntimeProbe> {
     'popupDelivery': 'not inferred from show acknowledgment or history',
   };
 
+  Future<void> _writeReport() async {
+    report['capturedAt'] = DateTime.now().toUtc().toIso8601String();
+    final output = Platform.environment['BLOOMSTEP_RUNTIME_REPORT'];
+    if (output == null) {
+      debugPrint(jsonEncode(report));
+    } else {
+      await File(output).writeAsString(jsonEncode(report), flush: true);
+    }
+  }
+
+  Future<void> _share() async {
+    try {
+      await NativeShare.share(
+        Uri.parse('https://example.com/bloomstep-synthetic-share-probe'),
+      );
+      report['shareSurfaceRequested'] = true;
+      report['shareSurfaceObserved'] = 'Requires independent OS observation';
+      report['shareTransmission'] = 'Not requested or inferred';
+      report.remove('shareError');
+      if (mounted) {
+        setState(
+          () => status = 'Windows Share requested with a synthetic link. Inspect and cancel; no transmission is inferred.',
+        );
+      }
+    } catch (error) {
+      report['shareSurfaceRequested'] = false;
+      report['shareError'] = error.toString();
+      if (mounted) {
+        setState(() => status = 'Windows Share request failed: $error');
+      }
+    }
+    await _writeReport();
+  }
+
   @override
   void initState() {
     super.initState();
@@ -144,26 +178,9 @@ class _RuntimeProbeState extends State<RuntimeProbe> {
         report['notificationSettingError'] = error.toString();
       }
       if (Platform.environment['BLOOMSTEP_RUNTIME_SHARE'] == '1') {
-        try {
-          await NativeShare.share(
-            Uri.parse('https://example.com/bloomstep-synthetic-share-probe'),
-          );
-          report['shareSurfaceRequested'] = true;
-          report['shareSurfaceObserved'] =
-              'Requires independent OS observation';
-          report['shareTransmission'] = 'Not requested or inferred';
-        } catch (error) {
-          report['shareSurfaceRequested'] = false;
-          report['shareError'] = error.toString();
-        }
+        await _share();
       }
-      report['capturedAt'] = DateTime.now().toUtc().toIso8601String();
-      final output = Platform.environment['BLOOMSTEP_RUNTIME_REPORT'];
-      if (output == null) {
-        debugPrint(jsonEncode(report));
-      } else {
-        await File(output).writeAsString(jsonEncode(report), flush: true);
-      }
+      await _writeReport();
     }
   }
 
@@ -175,7 +192,17 @@ class _RuntimeProbeState extends State<RuntimeProbe> {
     body: Center(
       child: Padding(
         padding: const EdgeInsets.all(32),
-        child: SelectableText(status),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            SelectableText(status),
+            const SizedBox(height: 24),
+            FilledButton(
+              onPressed: _share,
+              child: const Text('Open synthetic Windows Share'),
+            ),
+          ],
+        ),
       ),
     ),
   );
