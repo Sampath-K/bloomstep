@@ -114,7 +114,7 @@ export function dashboardSummaries(rows, startDay, endDay, observedThrough) {
     funnel: { stages: Object.fromEntries(stages.map(name => [name, { users: count(users([name])), suppressed: users([name]).size < minimumCohort }])),
       visitToDownload: transition('landing_view','download_click'), downloadToLaunch: transition('download_click','first_launch'),
       launchToSignin: transition('first_launch','signin_succeeded'), sameDayActivation: rate(users(['signin_succeeded']), activated), breakdowns,
-      definition: 'Same authenticated account, ordered events in the window; same-day activation uses reported localDay or UTC fallback. No web/install-to-broker identity linking inferred; missing cohorts are unavailable.' },
+      definition: 'Same authenticated account, original ordered observation times in the window; same-day activation uses reported localDay or UTC fallback. Web/installer receipts are self-selected, explicitly account-linked under independent consent, not authenticated installer proof or automatic browser-to-broker attribution. Source/IDs do not prove unique visitors or complete capture; missing cohorts are unavailable.' },
     retention: { cohorts, cohortStartDay: addDays(startDay, -30), cohortEndDay: endDay, definition: 'Opt-in explicit first_checkin with did/didMore and localDay, including 30-day cohort lookback; exact local-day +1/+7/+30 effective did/didMore checkin, not rolling retention. Latest microsecond/UUID-ordered result per account/habit/localDay wins; omitted habit IDs form one unidentified stream. Mature only after target UTC date closes. Missing result/date or <50 numerator/denominator yields null. Late/offline events can revise snapshots.' },
     outcomes: { daily, definition: 'UTC score/graduation event trends and effective local-date practicing users; median latest numeric 1–7 score per user/day; counts only publishable cohorts, not clinical outcomes or all-user graduation rate.' },
     reminderHealth: { sentUsers: count(reminderUsers), deliveredUsers: count(users(['notif_delivered'])), actionRate: rate(new Set(delivered.map(row => row.userId)), acted),
@@ -122,7 +122,7 @@ export function dashboardSummaries(rows, startDay, endDay, observedThrough) {
       openedUsers: count(users(['notif_opened'])), dismissedUsers: count(users(['notif_dismissed'])),
       definition: 'User-level observed delivered→actioned with same notification UUID; disable rate is sent users with disable event in window. Event absence is not OS delivery or opt-out evidence.' },
     appHealth: { observedSessionUsers: count(new Set(healthSessions.map(row => row.userId))), observedCrashUsers: count(new Set(crashed.map(row => row.userId))), crashFreeRate: null,
-      definition: 'Optional sampled diagnostics cannot establish crash-free sessions without complete capture.' },
+      definition: 'Opt-in bounded Dart/Flutter observed errors may be nonfatal; no messages/stacks or native/process-death census. Event absence cannot establish crash-free sessions.' },
     experiment: { enabled: false, reason: 'No verified exposure/guardrail completeness; taxonomy does not enable the experiment.' },
   };
 }

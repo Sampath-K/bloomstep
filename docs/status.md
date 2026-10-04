@@ -55,12 +55,14 @@ the covered-window input preflight sent no foreign input. No visible OS Share
 pane/transmission is claimed. Customer/OS/launch gates are consolidated in
 `docs/acceptance.md`, not requested incrementally.
 
-121-test full serial Flutter suite passes, including Win32 notification
+138-test full serial Flutter suite passes, including strict receipt linking,
+installer ownership, consent-scoped error hooks
+and Win32 notification
 permission/transport, observed session/sign-in
 consent, invitation retries/export,
 opaque intent IPC, capped reminders and active-session clock boundaries.
-Full analyzer is clean. API suite passes90; site/operator/deployment contracts
-pass17; spend-guard
+Full analyzer is clean. API suite passes91; site/operator/deployment contracts
+pass20; spend-guard
 policy suite passes8. Native Share bridge compiles with the existing ARM64 SDK.
 Live popup/API proof is
 pending. No test fixture is represented as a real user login.
@@ -89,6 +91,34 @@ the default environment main/Ready/Free. Independent served-content checks
 verified both preview.2 links, schema2 config checksum/version/expiry with the
 experiment OFF, and all nine protected routes401 using actual methods.
 Full final-main run37223995427 also passed, including both native architectures.
+
+## Instrumentation continuation (not population evidence)
+
+Runtime diagnostics now require current account consent, preserve original
+framework presentation/unhandled semantics, detach on scope close, and cap
+observations at ten per session. Only fixed category/source/session metadata
+is stored; no error text, stacks or native/process-death census. Opt-out purges
+events and queued event sync. The health dashboard deliberately retains a null
+crash-free rate. New acquisition/install local receipt and explicit account-link
+source passes synthetic privacy/consent/expiry/retry/surface tests. Actual isolated
+Edge checkbox/gesture/export/opt-out/expiry observations also pass, with external
+download navigation prevented for QA. Dual native/interactive installer
+verification remains developer-owned work in progress; no users, completed
+funnel or measured cohort are inferred. Contract details are in `measurement.md`.
+
+| Workstream | Owner | Next action | Definition of done |
+| --- | --- | --- | --- |
+| Acquisition/install observation | Implementation session | Verify newer dual native/interactive installer candidate and browser surface | Default-off local receipts and explicit account-link controls are wired/tested; original IDs/times, strict schema/expiry/bounds, retry rollback, opt-out and account guards. Completion requires source pushed and actual native packaging verified |
+| Runtime error observation | Implementation session | Validate deployed/native candidate after source push | Bounded consent-scoped hooks and strict server allowlist verified; never claim full crash census |
+| Customer integration | Implementation session, after trusted-browser customer authorization | Real provider exchange, account/device/offline API round trips and readback/cleanup | Actual two-account isolation, feedback/rating/reply/referral/delete results; no fixtures substituted |
+| Operator/OS/launch decisions | Customer/controller | Select customer Admin; authorize OS permission; approve legal/provider/billing/unsigned trust | One consolidated final acceptance batch; agent owns subsequent component checks |
+| Experiment/population | Product operator | Review genuine consented cohort and guardrails | Real bounded experiment activated/evaluated only after review; remains OFF until then |
+
+Minimum50 is a dashboard publication/suppression threshold, not an excuse to
+omit instrumentation or an independent minimum-user download requirement.
+Genuine cohort/guardrail review gates experiment activation. The original
+spec includes one bounded experiment; OFF/config-ready is not completion of
+that requirement, and no scope deferral has been assumed.
 
 ## Verification and demo jobs
 

@@ -39,6 +39,12 @@ export const eventRegistry = {
           "link",
           "email"
         ]
+      },
+      "measurementSource": {
+        "enum": [
+          "website_receipt",
+          "installer_receipt"
+        ]
       }
     },
     "observable": true,
@@ -66,6 +72,12 @@ export const eventRegistry = {
           "link",
           "email"
         ]
+      },
+      "measurementSource": {
+        "enum": [
+          "website_receipt",
+          "installer_receipt"
+        ]
       }
     },
     "observable": true,
@@ -92,6 +104,12 @@ export const eventRegistry = {
           "unknown",
           "link",
           "email"
+        ]
+      },
+      "measurementSource": {
+        "enum": [
+          "website_receipt",
+          "installer_receipt"
         ]
       }
     },
@@ -147,6 +165,12 @@ export const eventRegistry = {
           "link",
           "email"
         ]
+      },
+      "measurementSource": {
+        "enum": [
+          "website_receipt",
+          "installer_receipt"
+        ]
       }
     },
     "observable": true,
@@ -173,6 +197,12 @@ export const eventRegistry = {
           "unknown",
           "link",
           "email"
+        ]
+      },
+      "measurementSource": {
+        "enum": [
+          "website_receipt",
+          "installer_receipt"
         ]
       }
     },
@@ -204,6 +234,12 @@ export const eventRegistry = {
       },
       "sessionId": {
         "type": "uuid"
+      },
+      "measurementSource": {
+        "enum": [
+          "website_receipt",
+          "installer_receipt"
+        ]
       }
     },
     "observable": true,
@@ -234,6 +270,12 @@ export const eventRegistry = {
       },
       "sessionId": {
         "type": "uuid"
+      },
+      "measurementSource": {
+        "enum": [
+          "website_receipt",
+          "installer_receipt"
+        ]
       }
     },
     "observable": true,
@@ -1062,6 +1104,12 @@ export const eventRegistry = {
           "unavailable",
           "unknown"
         ]
+      },
+      "diagnosticSource": {
+        "enum": [
+          "flutter_framework",
+          "dart_unhandled"
+        ]
       }
     },
     "observable": true,
@@ -1294,6 +1342,13 @@ export const eventJsonSchema = {
                 "link",
                 "email"
               ]
+            },
+            "measurementSource": {
+              "type": "string",
+              "enum": [
+                "website_receipt",
+                "installer_receipt"
+              ]
             }
           }
         }
@@ -1349,6 +1404,13 @@ export const eventJsonSchema = {
                 "link",
                 "email"
               ]
+            },
+            "measurementSource": {
+              "type": "string",
+              "enum": [
+                "website_receipt",
+                "installer_receipt"
+              ]
             }
           }
         }
@@ -1403,6 +1465,13 @@ export const eventJsonSchema = {
                 "unknown",
                 "link",
                 "email"
+              ]
+            },
+            "measurementSource": {
+              "type": "string",
+              "enum": [
+                "website_receipt",
+                "installer_receipt"
               ]
             }
           }
@@ -1514,6 +1583,13 @@ export const eventJsonSchema = {
                 "link",
                 "email"
               ]
+            },
+            "measurementSource": {
+              "type": "string",
+              "enum": [
+                "website_receipt",
+                "installer_receipt"
+              ]
             }
           }
         }
@@ -1568,6 +1644,13 @@ export const eventJsonSchema = {
                 "unknown",
                 "link",
                 "email"
+              ]
+            },
+            "measurementSource": {
+              "type": "string",
+              "enum": [
+                "website_receipt",
+                "installer_receipt"
               ]
             }
           }
@@ -1628,6 +1711,13 @@ export const eventJsonSchema = {
             "sessionId": {
               "type": "string",
               "format": "uuid"
+            },
+            "measurementSource": {
+              "type": "string",
+              "enum": [
+                "website_receipt",
+                "installer_receipt"
+              ]
             }
           }
         }
@@ -1687,6 +1777,13 @@ export const eventJsonSchema = {
             "sessionId": {
               "type": "string",
               "format": "uuid"
+            },
+            "measurementSource": {
+              "type": "string",
+              "enum": [
+                "website_receipt",
+                "installer_receipt"
+              ]
             }
           }
         }
@@ -3489,6 +3586,13 @@ export const eventJsonSchema = {
                 "validation",
                 "unavailable",
                 "unknown"
+              ]
+            },
+            "diagnosticSource": {
+              "type": "string",
+              "enum": [
+                "flutter_framework",
+                "dart_unhandled"
               ]
             }
           }

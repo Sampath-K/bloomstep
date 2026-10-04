@@ -50,6 +50,15 @@ export const eventSchema = z.object({
   if (event.properties && !propertySchemas[event.name].safeParse(event.properties).success) {
     context.addIssue({ code: 'custom', message: 'Invalid event-specific properties.', path: ['properties'] });
   }
+  if (event.properties?.measurementSource !== undefined) {
+    const website = event.properties.measurementSource === 'website_receipt';
+    const allowed = website ? ['landing_view', 'invite_link_open', 'download_click']
+      : ['installer_started', 'install_completed', 'first_launch', 'signin_view'];
+    if (!allowed.includes(event.name) || event.properties.platform !== (website ? 'web' : 'windows')
+        || event.properties.channel !== (website ? 'website' : 'direct')) {
+      context.addIssue({ code: 'custom', message: 'Receipt source metadata is inconsistent.', path: ['properties'] });
+    }
+  }
 });
 export const settingSchema = z.object({
   key: z.enum(['reducedMotion', 'reminderMinute', 'quietStart', 'quietEnd', 'fewerReminders', 'weeklyLast', 'ratingPromptedAt']),

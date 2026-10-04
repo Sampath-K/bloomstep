@@ -22,6 +22,7 @@ test('strict event-specific properties reject private and misplaced fields', () 
     event('landing_view', { platform: 'windows', channel: 'website' }),
     event('notif_actioned', { action: 'did', notificationId: randomUUID() }),
     event('experiment_exposure', { experiment: 'reminder_copy_v1', variant: 'control' }),
+    event('crash', { sessionId: randomUUID(), platform: 'windows', diagnosticSource: 'dart_unhandled', errorKind: 'unknown' }),
   ];
   for (const row of valid) assert.equal(eventSchema.safeParse(row).success, true, row.name);
   for (const row of [
@@ -34,6 +35,9 @@ test('strict event-specific properties reject private and misplaced fields', () 
     event('notif_actioned', { action: 'anything' }),
     event('experiment_exposure', { experiment: 'arbitrary_experiment', variant: 'control' }),
     event('rated', { rating: 3.5 }),
+    event('crash', { message: 'private error' }),
+    event('crash', { stack: 'private path' }),
+    event('crash', { diagnosticSource: 'native_complete_capture' }),
   ]) assert.equal(eventSchema.safeParse(row).success, false, row.name);
   for (const name of ['recipe_created','checkin','reflection','habit_graduated','feedback_submitted','share_initiated','reminder_sent','signin_succeeded','weekly_reflection','rating_prompted']) {
     assert.equal(eventSchema.safeParse(event(name)).success, true);
@@ -60,6 +64,23 @@ test('explicit opt-in observation allows only fixed platform, not remote consent
   for (const properties of [{ enabled: true }, { enabled: false }, { consent: true }, { email: 'private' }, { platform: 'anything' }]) {
     assert.equal(eventSchema.safeParse(event('analytics_consent', properties)).success, false);
   }
+});
+test('receipt metadata requires matching source/event/platform/channel and no private envelope', () => {
+  for (const name of ['landing_view', 'invite_link_open', 'download_click']) {
+    assert.equal(eventSchema.safeParse(event(name, { measurementSource: 'website_receipt', platform: 'web', channel: 'website' })).success, true);
+  }
+  for (const name of ['installer_started', 'install_completed', 'first_launch', 'signin_view']) {
+    assert.equal(eventSchema.safeParse(event(name, { measurementSource: 'installer_receipt', platform: 'windows', channel: 'direct' })).success, true);
+  }
+  for (const row of [
+    event('landing_view', { measurementSource: 'installer_receipt', platform: 'web', channel: 'website' }),
+    event('installer_started', { measurementSource: 'website_receipt', platform: 'windows', channel: 'direct' }),
+    event('landing_view', { measurementSource: 'website_receipt', platform: 'windows', channel: 'website' }),
+    event('landing_view', { measurementSource: 'website_receipt' }),
+    event('first_launch', { measurementSource: 'installer_receipt', platform: 'windows', channel: 'website' }),
+    event('crash', { measurementSource: 'website_receipt' }),
+    event('download_click', { receipt: { email: 'private' } }),
+  ]) assert.equal(eventSchema.safeParse(row).success, false, row.name);
 });
 test('registry optional envelopes never make unobservable metrics or sparse ratios available', () => {
   const rows = Array.from({ length: 50 }, (_, i) => [

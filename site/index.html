@@ -120,11 +120,19 @@
     <section id="download">
       <h2>Windows first. A real desktop app.</h2>
       <p>Choose ARM64 for a Windows ARM device, or x64 for Intel/AMD Windows. The app installs for your user account and does not require administrator rights.</p>
-      <p><a class="button" href="https://github.com/Sampath-K/bloomstep/releases/download/v0.1.0-preview.2/Bloomstep-0.1.0-preview.2-windows-arm64-setup.exe">Download ARM64 preview</a>
-      <a class="button" href="https://github.com/Sampath-K/bloomstep/releases/download/v0.1.0-preview.2/Bloomstep-0.1.0-preview.2-windows-x64-setup.exe">Download x64 preview</a></p>
+      <p><a class="button" data-measure-download href="https://github.com/Sampath-K/bloomstep/releases/download/v0.1.0-preview.2/Bloomstep-0.1.0-preview.2-windows-arm64-setup.exe">Download ARM64 preview</a>
+      <a class="button" data-measure-download href="https://github.com/Sampath-K/bloomstep/releases/download/v0.1.0-preview.2/Bloomstep-0.1.0-preview.2-windows-x64-setup.exe">Download x64 preview</a></p>
       <p><a href="https://github.com/Sampath-K/bloomstep/releases/tag/v0.1.0-preview.2">Release notes &amp; SHA-256 checksums</a></p>
       <p class="small">Unsigned preview: Windows SmartScreen may warn about an unknown publisher. Download only from the linked GitHub repository and compare the SHA-256 checksum. Do not bypass security policy on a managed device. Microsoft Store signing does not sign this web download. Store, Android and iOS distribution are deferred.</p>
       <p class="small">An update check opens the release page; automatic installation and staged rollout are not yet enabled.</p>
+      <details><summary>Optional local download observations (off by default)</summary>
+        <p>No website analytics are sent automatically. If you opt in, this browser saves a receipt that expires after seven days and is removed on next site access, with at most 32 page/invitation views and download clicks after consent. Clear it below for immediate removal. Only fixed event names, random observation IDs and UTC times: no URL, invitation code, email, habit text, fingerprint or contact information. A click does not prove a successful download or installation.</p>
+        <label><input id="measurement-consent" type="checkbox" style="display:inline-block;width:auto;margin:0 8px 0 0;vertical-align:middle;accent-color:var(--cp-accent)"> Save optional local observations on this browser</label>
+        <p>Export the receipt only if you want to explicitly link it to your signed-in Bloomstep account through app Settings. Linking requires separate account analytics consent and sends these historical events to your private account during sync. This is a voluntary, self-selected sample, not automatic web-to-person tracking. The current preview.2 binary predates receipt import; use a candidate with the import control before linking.</p>
+        <button id="export-measurement" type="button" disabled>Export local receipt (JSON)</button>
+        <button id="clear-measurement" type="button">Clear receipt / stop local observation</button>
+        <p id="local-measurement-status" role="status">Nothing is observed until you opt in. Download works independently.</p>
+      </details>
     </section>
     <section id="trust">
       <h2>Your habits are private.</h2>
@@ -134,7 +142,7 @@
         <article><h3>What we never do</h3><p>No ads, no AI, no selling habit data. Optional event counts are off by default and contain no habit or feedback text. Invitation links contain no personal garden data.</p></article>
       </div>
       <p>Export your records as JSON from Settings. Delete local data or request cloud data deletion from the connected app. Cloud deletion keeps a minimal account deletion marker to prevent old devices from restoring your deleted data. Identity provider accounts are managed by their providers, not by Bloomstep.</p>
-      <p>Raw opt-in app event retention is 13 months. No product telemetry is collected by this website. Microsoft Azure hosts this website, the identity broker and the private account database; GitHub hosts source, build artifacts and downloads. Those providers can retain standard access/security logs. There are no third-party product analytics or AI processors. A full controller/contact and data-processing notice remains a public-MVP launch gate.</p>
+      <p>Raw opt-in app event retention is 13 months. Optional app diagnostics record at most 10 observed Dart/Flutter errors per session: fixed category/source only, never messages, stack traces or habit/account text. They may be nonfatal; native/process deaths are not captured, so no crash-free rate is inferred. Optional website observations stay in this browser for up to seven days unless you export and explicitly link them in the app; this site has no analytics upload endpoint. Clear browser site storage to remove local receipts; exported copies must be deleted separately. Microsoft Azure hosts this website, the identity broker and the private account database; GitHub hosts source, build artifacts and downloads. Those providers can retain standard access/security logs. There are no third-party product analytics or AI processors. A full controller/contact and data-processing notice remains a public-MVP launch gate.</p>
       <p>Cloud engineering-preview storage and request quotas are finite. A quota or service pause is shown explicitly; your local garden remains available. These volume controls are not a guarantee that Azure free allowances can never be exceeded. No paid tier is selected.</p>
       <p>Use the private in-app feedback channel for sensitive support once it is connected. Do not place private habits, credentials or account exports in public GitHub issues. Public source and non-sensitive bug reports: <a href="https://github.com/Sampath-K/bloomstep">Bloomstep repository</a>.</p>
     </section>

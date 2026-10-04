@@ -7,8 +7,9 @@ class SessionEvents {
   static Future<void> entered(
     GardenStore store, {
     required bool authenticatedNow,
+    String? sessionId,
   }) async {
-    final sessionId = const Uuid().v4();
+    sessionId ??= const Uuid().v4();
     await store.track(
       'session_started',
       properties: {'sessionId': sessionId, 'platform': 'windows'},

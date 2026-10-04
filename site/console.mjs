@@ -1,4 +1,5 @@
 import { loadOperatorAuth, operatorRequest } from './operator-auth.mjs';
+import { initializeMeasurement } from './measurement.mjs';
 const groups = [
   ['activationRetention', 'Activation / returning activity', [
     ['signins', 'Sign-ins'], ['recipesCreated', 'Recipes created'],
@@ -170,6 +171,7 @@ function initialize() {
   });
   element('origin').value = location.origin;
   initializeInvitationLanding();
+  initializeMeasurement();
 
   async function request(path, body) {
     if(!auth) throw new Error('Sign in to the operator console first.');

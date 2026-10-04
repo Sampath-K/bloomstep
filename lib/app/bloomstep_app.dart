@@ -6,26 +6,45 @@ import '../core/garden_store.dart';
 import '../features/garden/garden_screen.dart';
 import '../services/identity.dart';
 import '../services/invitation_intent.dart';
-import '../services/session_events.dart';
+import '../services/session_diagnostics.dart';
+import '../services/installer_measurement.dart';
 import 'theme.dart';
 import 'session_boundary.dart';
 
 class BloomstepApp extends StatelessWidget {
-  const BloomstepApp({super.key, this.invitationInbox});
+  const BloomstepApp({
+    super.key,
+    this.invitationInbox,
+    this.measurement,
+    this.measurementWarning,
+  });
   final InvitationInbox? invitationInbox;
+  final InstallerMeasurement? measurement;
+  final String? measurementWarning;
   @override
   Widget build(BuildContext context) => MaterialApp(
     title: 'Bloomstep',
     debugShowCheckedModeBanner: false,
     theme: BloomstepTheme.light(),
     darkTheme: BloomstepTheme.dark(),
-    home: SignInScreen(invitationInbox: invitationInbox),
+    home: SignInScreen(
+      invitationInbox: invitationInbox,
+      measurement: measurement,
+      measurementWarning: measurementWarning,
+    ),
   );
 }
 
 class SignInScreen extends StatefulWidget {
-  const SignInScreen({super.key, this.invitationInbox});
+  const SignInScreen({
+    super.key,
+    this.invitationInbox,
+    this.measurement,
+    this.measurementWarning,
+  });
   final InvitationInbox? invitationInbox;
+  final InstallerMeasurement? measurement;
+  final String? measurementWarning;
   @override
   State<SignInScreen> createState() => _SignInScreenState();
 }
@@ -38,6 +57,18 @@ class _SignInScreenState extends State<SignInScreen> {
   void initState() {
     super.initState();
     _restore();
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
+      if (!mounted || ModalRoute.of(context)?.isCurrent != true) return;
+      try {
+        await widget.measurement?.observe('signin_view');
+      } catch (_) {
+        if (mounted) {
+          setState(
+            () => error = 'Optional local sign-in-view observation failed. No server data was sent; sign-in still works. Clear the installer receipt below to stop observation.',
+          );
+        }
+      }
+    });
   }
 
   Future<void> _restore() async {
@@ -63,8 +94,20 @@ class _SignInScreenState extends State<SignInScreen> {
       await store.close();
       return;
     }
+    final diagnostics = SessionDiagnostics(
+      store,
+      onWriteError: (message) {
+        if (mounted) {
+          setState(() => error = message);
+          ScaffoldMessenger.of(context)
+              .showSnackBar(SnackBar(content: Text(message)));
+        }
+        debugPrint(message);
+      },
+    );
     try {
-      await SessionEvents.entered(store, authenticatedNow: authenticatedNow);
+      await diagnostics.start(authenticatedNow: authenticatedNow);
+      diagnostics.attach();
       if (!mounted) return;
       await Navigator.of(context).push(
         MaterialPageRoute<void>(
@@ -77,11 +120,14 @@ class _SignInScreenState extends State<SignInScreen> {
               store: store,
               identity: identity,
               invitationInbox: widget.invitationInbox,
+              diagnostics: diagnostics,
+              installerMeasurement: widget.measurement,
             ),
           ),
         ),
       );
     } finally {
+      await diagnostics.close();
       await store.close();
     }
   }
@@ -158,6 +204,30 @@ class _SignInScreenState extends State<SignInScreen> {
                   ),
                 ),
               if (error != null) SelectableText(error!),
+              if (widget.measurementWarning != null)
+                SelectableText(widget.measurementWarning!),
+              if (widget.measurement != null)
+                TextButton(
+                  onPressed: () async {
+                    try {
+                      await widget.measurement!.clear();
+                      if (mounted) {
+                        setState(
+                          () => error = 'Installer receipt removed. No further local observations; nothing was sent.',
+                        );
+                      }
+                    } catch (_) {
+                      if (mounted) {
+                        setState(
+                          () => error = 'Installer receipt could not be removed. Clear the per-user Bloomstep measurement file manually; sign-in still works.',
+                        );
+                      }
+                    }
+                  },
+                  child: const Text(
+                    'Clear optional installer observation receipt',
+                  ),
+                ),
               const SizedBox(height: 16),
               FilledButton.icon(
                 onPressed: busy || !identity.configured ? null : _signIn,
