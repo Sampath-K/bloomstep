@@ -65,6 +65,10 @@
 - Windows Share requires a visible foreground owner; a background API request
   cannot masquerade as an opened panel. Synthetic native MSAA check-in exposed
   its celebration in67ms; real account/OS acceptance remains distinct.
+- Public preview.2 installers independently hash-verified; actual local
+  versioned ARM64 upgrade, registered URI/one-instance handoff and owned
+  uninstall observed. Main operational worker/audit passed; scheduled ticks
+  and customer/OS/launch acceptance are not inferred.
 
 No user feedback item is marked shipped yet. This is not a full authenticated
 MVP; deployment/native delivery and remaining loops are tracked in `docs/status.md`.

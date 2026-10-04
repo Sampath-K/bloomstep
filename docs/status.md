@@ -6,19 +6,19 @@ This ledger is updated with verified outcomes, not inferred from source code.
 
 | Iteration | Job | Current evidence / remaining gate |
 | --- | --- | --- |
-| 0 | Build, run, ship | Public unsigned `v0.1.0-preview.1` engineering installers published; ARM64/x64 install-launch-second-launch-uninstall CI passed. Both public downloads independently hash-verified. Local upgrade/SmartScreen and authenticated acceptance remain gates. |
+| 0 | Build, run, ship | Public unsigned `v0.1.0-preview.2` engineering installers published from green `b48bd73`; both architectures/download hashes verified. Actual local ARM64 install preview.1 -> preview.2 upgrade, normal launch, repeat launch, registered URI handoff and ownership-aware uninstall passed. Normal candidate reinstalled per-user; SmartScreen/customer acceptance remain gates. |
 | 1 | Plant first habit | SQLite tests and real widget journey pass: five starters, four recipe fields, three species, practiced celebration, restart-safe storage. |
 | 2 | Check in | Tests pass for did/more/rest, idempotency, append edits/undo, local midnight. Actual MSAA Did-it action in the newer synthetic native garden exposed celebration in67ms (<=300ms); not a customer-use measurement. |
 | 3 | Visual garden | True ARM64 synthetic profile captures inspected: readable banner and reserved Plant bar fixes observed. Responsive/200%-text regressions pass. Actual Flutter child HWND exposes38 MSAA nodes including labeled action buttons; UIA is empty, not evidence of no MSAA support. Narrator interaction remains unobserved. |
 | 4 | Local reminders | Real runtime probe observed tray bounds/hidden window and clean teardown. It exposed the dependency's unpackaged Win32 history/individual-cancel limitation. Native explicit-AUMID/grouped WinRT request/history/removal now replaces that path, with OS permission preflight and surfaced errors. This machine reports NotificationSetting2 (DisabledForUser); no OS settings changed or delivery claimed. New adapter full native/link/removal and popup/Focus/restart observations remain pending. |
 | 5 | Sign in | Email OTP, Google and Microsoft personal-account providers are now created AND enabled on the actual native/console user flow. MSA issuer/discovery/client/scope/auth type and both callbacks verified; real PKCE sign-in page HTTP200 includes all three options. Actual provider login/token exchanges remain unobserved, not inferred from setup. No fake login. |
 | 6 | Sync | Personal SWA Free/Cosmos free tier provisioned; live unauthenticated sync API returns 401. SQLite v4 preserves durable fingerprints and adds typed event properties; partial upload/concurrent edits, consent purge and account isolation tested. Live probes exposed SWA replacing Authorization and reserved admin routes: dedicated client-token header and team routes fixed in source, deployment smoke gate added. Actual authenticated two-account/device/offline round trips remain pending. |
-| 7 | Funnel | Versioned48-event registry and strict optional metadata; four typed dashboards with minimum50 contributors. Persisted completed-day snapshots are consumed distinctly from on-demand windows, with generation/deletion validation and no median/user-count summation. Real worker run37214984889 wrote a snapshot and its token was rejected by customer/team routes. Observed consent-bound session and fresh sign-in events are wired; restore never fabricates sign-in/install/provider history. Acquisition/install/OS-delivery observations remain incomplete; cron needs default-branch merge. |
+| 7 | Funnel | Versioned48-event registry and strict optional metadata; four typed dashboards with minimum50 contributors. Persisted snapshots remain distinct from on-demand windows with deletion validation and no median/user-count summation. Actual main worker run37222477262 wrote one snapshot; its token was rejected by garden/team routes. Consent-bound session/fresh sign-in events are wired; no inferred install/provider history. Source merged to main, workflow definitions active; scheduled tick not yet observed. Acquisition/install/OS-delivery measurements remain incomplete. |
 | 8 | Feedback | Private queue/status/replies; audited pagination/retry/deletion protections tested. Real browser PKCE operator source and separately registered SPA/consent/flow binding now prepared; credentials memory-only, no pasted token. Actual selected customer Admin and feedback/rating round trip still pending. |
 | 9 | Invite | Authenticated opaque invitations, server-owned attribution, first-positive-practice mutual cosmetic saga and owner-only receipts implemented/tested. Native copy/email/QR/Windows Share UI, opt-in recipe card, accept/decline, cached retry IDs and export integrated. Per-user protocol and private IPC/inbox preserve intent across install/sign-in; web handoff/storage is explicit. Live customer reward and OS-share observations remain pending. |
 | 10 | Reflection | Weekly deterministic Doctor works independently of fortnight naturalness sliders; cooldown checked before collecting scores. Real SQLite graduation/spacing tests pass. Not a validated SRBAI instrument. Native learning interaction still pending. |
 | 11 | Reconnect | Three/seven-day rule, max two/absence, activity reset and scheduler shared quiet-hour/day caps implemented; rules tested. Windows delivery and closed-app behavior not observed. |
-| 12 | Website/update | Live SWA landing/config HTTP200 and public engineering prerelease with ARM64/x64 installers/checksums. Manual trusted version/channel checks tested, never auto-execute. Actual local upgrade/SmartScreen observation pending. |
+| 12 | Website/update | Live SWA landing/config HTTP200 and public preview.2 ARM64/x64 installers/checksums. Manual trusted version/channel checks tested, never auto-execute. Actual local versioned upgrade/protocol/uninstall observed; silent QA is not evidence of browser SmartScreen experience. |
 | 13 | Rating/privacy | Positive-moment prompts wait for celebration and persist a 120-day cadence even when dismissed; rating text optional. Export/account isolation/cleanup tested. Cloud deletion tombstone/races tested against backend fixtures, not live Cosmos user deletion. |
 | 14 | Experiment | Strict schema2/checksum, monotonic version, account cache, seven-day expiry and explicit control-mode warnings tested; compiled API origin, device timing toggle and actual-callback-only exposure. Bounded copy experiment remains OFF until genuine reviewed cohort/guardrail evidence, not fabricated data. |
 
@@ -27,8 +27,8 @@ This ledger is updated with verified outcomes, not inferred from source code.
 - Personal subscription is now available. Never use the corporate development
   subscription. Only free SKUs/allowances, explicit subscription targeting.
 - External ID customer tenant is separate from the Azure resource directory.
-  Microsoft personal/work-school federation and Google OAuth credentials must
-  be verified; email OTP is supported by customer user flows.
+  Email OTP, Google and Microsoft personal flow bindings/page options are
+  verified. Actual provider exchange and work-school support remain gates.
 - Developer Mode stays off by user choice; CI supplies native builds.
 - Legal/privacy/name review and exact provider production settings remain launch
   gates. A compiled, sign-in-gated preview is not the signed-in MVP.
@@ -37,12 +37,23 @@ This ledger is updated with verified outcomes, not inferred from source code.
   quotas and API/engagement kill switches are source-tested, not monetary hard
   caps. Dedicated free resource-tenant guard/FIC and least-reader roles are now
   provisioned; one-way operational pause and reviewed Admin resume source tested.
-  Actual audit run37217476414 passed with `warning_cost_unknown`, no pause.
+  Actual main audit run37222479302 passed with `warning_cost_unknown`, no pause.
   Current Cost Management query is unavailable
   for this new subscription, not zero cost. Trial spending limit On/free SKUs are
   verified; billing/trial expiration approval remains a launch gate.
 
 ## Latest verification
+
+Engineering source `b48bd73` passed full dual-architecture run37221239921 and
+versioned release run37222046474; merged main is `54298a0`.
+Public preview.2 downloads were independently verified:
+ARM64 `8adbf9eadd2f457cd5f6a4606d1cca5c337decfb38cdcca539d72ab97a1a83bb`,
+x64 `71b42f7de0324344defcf13e64fe484b103e4be732ae6ab2d7991b074bd8d9e8`.
+Native normal sign-in is rendered, enabled and contains no synthetic banner.
+Actual background Share invocation is rejected with `share_foreground_required`;
+the covered-window input preflight sent no foreign input. No visible OS Share
+pane/transmission is claimed. Customer/OS/launch gates are consolidated in
+`docs/acceptance.md`, not requested incrementally.
 
 121-test full serial Flutter suite passes, including Win32 notification
 permission/transport, observed session/sign-in
