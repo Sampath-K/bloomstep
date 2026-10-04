@@ -8,6 +8,7 @@ import 'package:uuid/uuid.dart';
 import 'models.dart';
 import 'rules.dart';
 import 'event_registry.g.dart' as registry;
+import 'measurement_receipt.dart';
 
 class GardenStore {
   GardenStore._(this._db, this._account);
@@ -717,6 +718,62 @@ class GardenStore {
     final account = _account;
     await _db.transaction((txn) async {
       await _trackWith(txn, account, name, properties: copy);
+    });
+  }
+
+  Future<int> importMeasurementReceipt(
+    MeasurementReceipt receipt, {
+    DateTime? now,
+  }) async {
+    final account = _account;
+    final generation = _syncGeneration;
+    return _db.transaction((txn) async {
+      requireSyncSession(account, generation);
+      receipt.requireCurrent((now ?? DateTime.now()).toUtc());
+      final consent = await txn.query(
+        'settings',
+        where: 'account = ? AND key = ?',
+        whereArgs: [account, 'analytics'],
+      );
+      if (consent.isEmpty || consent.single['value'] != 'true') {
+        throw StateError(
+          'Enable account product-event consent before explicitly linking a receipt.',
+        );
+      }
+      var inserted = 0;
+      final properties = <String, Object?>{
+        'platform': receipt.source == 'website' ? 'web' : 'windows',
+        'channel': receipt.source == 'website' ? 'website' : 'direct',
+        'measurementSource': '${receipt.source}_receipt',
+      };
+      for (final event in receipt.events) {
+        requireSyncSession(account, generation);
+        _validateEventProperties(event.name, properties);
+        final existing = await txn.query(
+          'events',
+          where: 'id = ?',
+          whereArgs: [event.id],
+        );
+        final record = <String, Object?>{
+          'id': event.id,
+          'account': account,
+          'name': event.name,
+          'ts': event.at.toIso8601String(),
+          'properties': jsonEncode(properties),
+        };
+        if (existing.isNotEmpty) {
+          if (record.entries.any((e) => existing.single[e.key] != e.value)) {
+            throw StateError(
+              'Receipt conflicts with existing observations or another account. No data was imported.',
+            );
+          }
+          continue;
+        }
+        await txn.insert('events', record);
+        inserted++;
+      }
+      requireSyncSession(account, generation);
+      return inserted;
     });
   }
 

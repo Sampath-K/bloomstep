@@ -19,6 +19,8 @@ import '../../services/invitation_service.dart';
 import '../../services/invitation_intent.dart';
 import '../../services/native_share.dart';
 import '../../services/session_diagnostics.dart';
+import '../../services/installer_measurement.dart';
+import 'measurement_controls.dart';
 
 import 'package:launch_at_startup/launch_at_startup.dart';
 
@@ -36,6 +38,7 @@ class GardenScreen extends StatefulWidget {
     this.invitationInbox,
     this.invitationService,
     this.diagnostics,
+    this.installerMeasurement,
   });
   final GardenStore store;
   final IdentityService? identity;
@@ -45,6 +48,7 @@ class GardenScreen extends StatefulWidget {
   final InvitationInbox? invitationInbox;
   final InvitationService? invitationService;
   final SessionDiagnostics? diagnostics;
+  final InstallerMeasurement? installerMeasurement;
   @override
   State<GardenScreen> createState() => _GardenScreenState();
 }
@@ -991,6 +995,7 @@ class _GardenScreenState extends State<GardenScreen> {
 
   Future<void> _settings() async {
     var analytics = await widget.store.setting('analytics') == 'true';
+    String? analyticsWarning;
     var personalized =
         await widget.store.setting('personalizedTiming') == 'true';
     if (!mounted) return;
@@ -1025,9 +1030,21 @@ class _GardenScreenState extends State<GardenScreen> {
                       await _act(() async {
                         await widget.store.setSetting('analytics', '$v');
                         await widget.diagnostics?.consentChanged();
+                        if (!v) await widget.installerMeasurement?.clear();
                       });
-                      update(() => analytics = v);
+                      analytics =
+                          await widget.store.setting('analytics') == 'true';
+                      if (context.mounted) {
+                        update(() => analyticsWarning = error);
+                      }
                     },
+                  ),
+                  if (analyticsWarning != null)
+                    SelectableText('Product-event choice: $analyticsWarning'),
+                  MeasurementControls(
+                    store: widget.store,
+                    analytics: analytics,
+                    installer: widget.installerMeasurement,
                   ),
                   if (reminders != null)
                     SwitchListTile(

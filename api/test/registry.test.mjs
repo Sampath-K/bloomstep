@@ -65,6 +65,23 @@ test('explicit opt-in observation allows only fixed platform, not remote consent
     assert.equal(eventSchema.safeParse(event('analytics_consent', properties)).success, false);
   }
 });
+test('receipt metadata requires matching source/event/platform/channel and no private envelope', () => {
+  for (const name of ['landing_view', 'invite_link_open', 'download_click']) {
+    assert.equal(eventSchema.safeParse(event(name, { measurementSource: 'website_receipt', platform: 'web', channel: 'website' })).success, true);
+  }
+  for (const name of ['installer_started', 'install_completed', 'first_launch', 'signin_view']) {
+    assert.equal(eventSchema.safeParse(event(name, { measurementSource: 'installer_receipt', platform: 'windows', channel: 'direct' })).success, true);
+  }
+  for (const row of [
+    event('landing_view', { measurementSource: 'installer_receipt', platform: 'web', channel: 'website' }),
+    event('installer_started', { measurementSource: 'website_receipt', platform: 'windows', channel: 'direct' }),
+    event('landing_view', { measurementSource: 'website_receipt', platform: 'windows', channel: 'website' }),
+    event('landing_view', { measurementSource: 'website_receipt' }),
+    event('first_launch', { measurementSource: 'installer_receipt', platform: 'windows', channel: 'website' }),
+    event('crash', { measurementSource: 'website_receipt' }),
+    event('download_click', { receipt: { email: 'private' } }),
+  ]) assert.equal(eventSchema.safeParse(row).success, false, row.name);
+});
 test('registry optional envelopes never make unobservable metrics or sparse ratios available', () => {
   const rows = Array.from({ length: 50 }, (_, i) => [
     row(String(i), 'checkin', '2026-09-01'),

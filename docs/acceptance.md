@@ -32,7 +32,14 @@ and foreground Share cancellation still need genuine OS observations. MSAA
 labels and an actual synthetic Did-it action were observed (67ms accessible
 celebration); that does not claim Narrator coverage or authenticated use.
 
-Acquisition/install attribution, crash-free diagnostics, a genuine reviewed
-cohort and a live bounded experiment are not fabricated. The experiment stays
-OFF. Operational workflow definitions are active on main and manual main runs
+Instrumentation is separate from population measurement. New source adds
+default-off browser/installer local observations, explicit consented account
+receipt linkage and bounded category-only Dart/Flutter diagnostics.
+No automatic web-to-identity attribution, complete crash census or crash-free
+rate is claimed. A genuine reviewed cohort and live bounded experiment are
+not fabricated. Minimum50 suppresses publishing sparse metrics, not an
+independent install/release-user threshold; cohort/guardrail review gates
+experiment activation. The original required experiment remains incomplete
+while OFF; no implicit specification deferral is assumed.
+Operational workflow definitions are active on main and manual main runs
 passed; an actual scheduled tick is recorded only when observed.

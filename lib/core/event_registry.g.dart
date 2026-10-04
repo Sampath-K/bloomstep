@@ -42,6 +42,12 @@ final Map<String, dynamic> eventRegistry = jsonDecode(r'''{
           "link",
           "email"
         ]
+      },
+      "measurementSource": {
+        "enum": [
+          "website_receipt",
+          "installer_receipt"
+        ]
       }
     },
     "observable": true,
@@ -69,6 +75,12 @@ final Map<String, dynamic> eventRegistry = jsonDecode(r'''{
           "link",
           "email"
         ]
+      },
+      "measurementSource": {
+        "enum": [
+          "website_receipt",
+          "installer_receipt"
+        ]
       }
     },
     "observable": true,
@@ -95,6 +107,12 @@ final Map<String, dynamic> eventRegistry = jsonDecode(r'''{
           "unknown",
           "link",
           "email"
+        ]
+      },
+      "measurementSource": {
+        "enum": [
+          "website_receipt",
+          "installer_receipt"
         ]
       }
     },
@@ -150,6 +168,12 @@ final Map<String, dynamic> eventRegistry = jsonDecode(r'''{
           "link",
           "email"
         ]
+      },
+      "measurementSource": {
+        "enum": [
+          "website_receipt",
+          "installer_receipt"
+        ]
       }
     },
     "observable": true,
@@ -176,6 +200,12 @@ final Map<String, dynamic> eventRegistry = jsonDecode(r'''{
           "unknown",
           "link",
           "email"
+        ]
+      },
+      "measurementSource": {
+        "enum": [
+          "website_receipt",
+          "installer_receipt"
         ]
       }
     },
@@ -207,6 +237,12 @@ final Map<String, dynamic> eventRegistry = jsonDecode(r'''{
       },
       "sessionId": {
         "type": "uuid"
+      },
+      "measurementSource": {
+        "enum": [
+          "website_receipt",
+          "installer_receipt"
+        ]
       }
     },
     "observable": true,
@@ -237,6 +273,12 @@ final Map<String, dynamic> eventRegistry = jsonDecode(r'''{
       },
       "sessionId": {
         "type": "uuid"
+      },
+      "measurementSource": {
+        "enum": [
+          "website_receipt",
+          "installer_receipt"
+        ]
       }
     },
     "observable": true,

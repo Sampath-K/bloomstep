@@ -130,8 +130,11 @@ jobs:
         run: |
           $installer = (Get-ChildItem release-output\*.exe).FullName
           $target = Join-Path $env:RUNNER_TEMP 'Bloomstep-smoke'
+          $measurement = Join-Path $env:LOCALAPPDATA 'Bloomstep\measurement\installer-receipt.json'
+          if (Test-Path $measurement) { throw 'Clean runner already has a measurement receipt; do not overwrite it.' }
           Start-Process $installer -ArgumentList "/VERYSILENT /SUPPRESSMSGBOXES /NORESTART /DIR=`"$target`"" -Wait
           if (-not (Test-Path "$target\bloomstep.exe")) { throw 'Install failed' }
+          if (Test-Path $measurement) { throw 'Silent install collected measurements without consent.' }
           $protocolKey = 'Registry::HKEY_CURRENT_USER\Software\Classes\bloomstep\shell\open\command'
           $protocol = (Get-Item $protocolKey).GetValue('')
           if ($protocol -ne "`"$target\bloomstep.exe`" `"%1`"") {
@@ -140,6 +143,7 @@ jobs:
           $app = Start-Process "$target\bloomstep.exe" -PassThru
           Start-Sleep 8
           if ($app.HasExited) { throw 'Installed app exited unexpectedly' }
+          if (Test-Path $measurement) { throw 'Default-off first launch manufactured installation observations.' }
           $second = Start-Process "$target\bloomstep.exe" -PassThru
           if (-not $second.WaitForExit(10000)) {
             Stop-Process -Id $second.Id
@@ -158,6 +162,11 @@ jobs:
           Stop-Process -Id $app.Id
           Start-Process "$target\unins000.exe" -ArgumentList '/VERYSILENT /SUPPRESSMSGBOXES /NORESTART' -Wait
           if (Test-Path "$target\bloomstep.exe") { throw 'Uninstall failed' }
+      - name: Verify optional measurement wizard and genuine installed observations
+        shell: pwsh
+        run: |
+          $installer = (Get-ChildItem release-output\*.exe).FullName
+          & .\tool\verify_measurement_install.ps1 -Installer $installer -Target (Join-Path $env:RUNNER_TEMP 'Bloomstep-measurement-smoke')
           if (Test-Path $protocolKey) { throw 'Owned invitation protocol survived uninstall.' }
       - uses: actions/upload-artifact@v4
         with:
