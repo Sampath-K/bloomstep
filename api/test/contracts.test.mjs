@@ -1,7 +1,21 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { randomUUID } from 'node:crypto';
-import { accountKey, isAdmin, syncSchema, eventSchema, voiceSchema, checkinSchema, reflectionSchema } from '../src/contracts.mjs';
+import { accountKey, isAdmin, syncSchema, eventSchema, voiceSchema, checkinSchema, reflectionSchema, newerRecipe, settingSchema } from '../src/contracts.mjs';
+
+test('settings exclude remote consent and validate quiet hours', () => {
+  const setting = { key: 'quietStart', value: '1200', updated: new Date().toISOString() };
+  assert.equal(settingSchema.safeParse(setting).success, true);
+  assert.equal(settingSchema.safeParse({...setting, value: '1500'}).success, false);
+  assert.equal(settingSchema.safeParse({...setting, key: 'analytics', value: 'true'}).success, false);
+});
+test('recipe ties use the same field ordering and preserve microsecond precedence', () => {
+  const first = {aspiration:'Calm',anchor:'coffee',behavior:'breathe',celebration:'smile',species:'Fern',status:'active',updated:'2026-09-01T12:00:00.000000Z'};
+  const second = {...first,anchor:'zzz'};
+  assert.equal(newerRecipe(second,first),true);
+  assert.equal(newerRecipe(first,second),false);
+  assert.equal(newerRecipe({...first,updated:'2026-09-01T12:00:00.000001Z'},second),true);
+});
 
 test('partition key binds issuer and subject, never email', () => {
   assert.equal(accountKey('https://issuer', 'alice').length, 64);

@@ -3,6 +3,58 @@ import 'package:flutter_test/flutter_test.dart';
 
 void main() {
   test(
+    'syncs only safe account preferences, never consent or startup opt-in',
+    () async {
+      final a = await GardenStore.open(':memory:', 'preferences-a');
+      final b = await GardenStore.open(':memory:', 'preferences-b');
+      addTearDown(a.close);
+      addTearDown(b.close);
+      await a.setSetting('quietStart', '1200');
+      await a.setSetting('analytics', 'true');
+      await a.setSetting('reminders', 'true');
+      final payload = await a.syncPayload();
+      final settings = payload['settings'] as List;
+      expect(settings.map((row) => (row as Map)['key']), ['quietStart']);
+      await b.mergeSync({...payload, 'acknowledgedEvents': []});
+      expect(await b.setting('quietStart'), '1200');
+      expect(await b.setting('analytics'), isNull);
+      expect(await b.setting('reminders'), isNull);
+    },
+  );
+  test(
+    'equal timestamp recipe edits converge and never lose attained stage',
+    () async {
+      final store = await GardenStore.open(':memory:', 'ties');
+      addTearDown(store.close);
+      final habit = await store.plant(
+        aspiration: 'Calm',
+        anchor: 'coffee',
+        behavior: 'breathe',
+        celebration: 'smile',
+        species: 'Fern',
+      );
+      final raw = Map<String, Object?>.from(
+        ((await store.syncPayload())['habits'] as List).single as Map,
+      );
+      final remote = {...raw, 'anchor': 'zzz', 'stage': 3};
+      final data = {
+        'habits': [remote],
+        'checkins': [],
+        'reflections': [],
+        'voice': [],
+      };
+      await store.mergeSync(data);
+      expect((await store.habits()).single.anchor, 'zzz');
+      expect((await store.habits()).single.id, habit.id);
+      await store.mergeSync({
+        ...data,
+        'habits': [raw],
+      });
+      expect((await store.habits()).single.anchor, 'zzz');
+      expect((await store.habits()).single.stage.index, 3);
+    },
+  );
+  test(
     'remote check-ins union by ID; stale recipes never replace local edits',
     () async {
       final store = await GardenStore.open(':memory:', 'account');

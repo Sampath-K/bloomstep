@@ -36,14 +36,46 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: subosito/flutter-action@v2
+        if: matrix.arch == 'x64'
         with:
-          channel: stable
+          flutter-version: '3.47.6'
           architecture: x64
           cache: true
+      - name: Bootstrap supported native ARM64 Dart from Flutter source
+        if: matrix.arch == 'arm64'
+        shell: pwsh
+        run: |
+          if ([Runtime.InteropServices.RuntimeInformation]::OSArchitecture -ne 'Arm64') {
+            throw 'This job requires a real Windows ARM64 host.'
+          }
+          $sdk = Join-Path $env:RUNNER_TEMP 'flutter-arm64'
+          git clone --quiet --depth 1 --branch 3.47.6 https://github.com/flutter/flutter.git $sdk
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          # Flutter's official bootstrap chooses the native Dart archive using this variable.
+          $env:PROCESSOR_ARCHITECTURE = 'ARM64'
+          & "$sdk\bin\flutter.bat" --version
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          $dart = [IO.File]::ReadAllBytes("$sdk\bin\cache\dart-sdk\bin\dart.exe")
+          $machine = [BitConverter]::ToUInt16($dart, [BitConverter]::ToInt32($dart, 60) + 4)
+          if ($machine -ne 0xaa64) { throw 'Flutter bootstrap did not provide ARM64 Dart.' }
+          Add-Content $env:GITHUB_PATH "$sdk\bin"
       - run: flutter pub get
       - run: flutter analyze
       - run: flutter test --reporter expanded
-      - run: flutter build windows --release
+      - name: Build real sign-in-gated release
+        env:
+          OIDC_ISSUER: ${{ vars.OIDC_ISSUER }}
+          OIDC_CLIENT_ID: ${{ vars.OIDC_CLIENT_ID }}
+          OIDC_API_SCOPE: ${{ vars.OIDC_API_SCOPE }}
+          API_ORIGIN: ${{ vars.API_ORIGIN }}
+        run: flutter build windows --release --dart-define="OIDC_ISSUER=$env:OIDC_ISSUER" --dart-define="OIDC_CLIENT_ID=$env:OIDC_CLIENT_ID" --dart-define="OIDC_API_SCOPE=$env:OIDC_API_SCOPE" --dart-define="API_ORIGIN=$env:API_ORIGIN"
+      - name: Verify executable architecture before labeling installer
+        shell: pwsh
+        run: |
+          $binary = [IO.File]::ReadAllBytes("build\windows\${{ matrix.arch }}\runner\Release\bloomstep.exe")
+          $machine = [BitConverter]::ToUInt16($binary, [BitConverter]::ToInt32($binary, 60) + 4)
+          $expected = if ('${{ matrix.arch }}' -eq 'arm64') { 0xaa64 } else { 0x8664 }
+          if ($machine -ne $expected) { throw 'Executable architecture does not match the installer.' }
       - name: Install Inno Setup
         shell: pwsh
         run: |

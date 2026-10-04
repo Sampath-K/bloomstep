@@ -2,7 +2,7 @@ import { app } from '@azure/functions';
 import { CosmosClient } from '@azure/cosmos';
 import { createRemoteJWKSet, jwtVerify } from 'jose';
 import { randomUUID } from 'node:crypto';
-import { accountKey, isAdmin, syncSchema, replySchema } from './contracts.mjs';
+import { accountKey, isAdmin, syncSchema, replySchema, newerRecipe, newerSetting } from './contracts.mjs';
 
 const issuer = process.env.OIDC_ISSUER;
 const audience = process.env.OIDC_API_AUDIENCE;
@@ -85,11 +85,11 @@ async function rateLimit(userId) {
 /** @param {string} userId */
 async function readGarden(userId) {
   const { resources } = await container().items.query({
-    query: 'SELECT c.type, c.record FROM c WHERE c.userId = @u AND c.type IN ("habits","checkins","reflections","voice")',
+    query: 'SELECT c.type, c.record FROM c WHERE c.userId = @u AND c.type IN ("habits","checkins","reflections","voice","settings")',
     parameters: [{ name: '@u', value: userId }],
   }, { partitionKey: userId }).fetchAll();
   /** @type {Record<string, unknown[]>} */
-  const data = { habits: [], checkins: [], reflections: [], voice: [] };
+  const data = { habits: [], checkins: [], reflections: [], voice: [], settings: [] };
   for (const resource of resources) data[resource.type].push(resource.record);
   return data;
 }
@@ -114,15 +114,20 @@ async function sync(request) {
   for (const [type, records] of Object.entries(incoming)) {
     for (const original of records) {
       /** @type {Record<string, string | number | number[] | null>} */
-      const record = { ...original };
-      const id = `${type}:${record.id}`;
+      let record = { ...original };
+      const id = `${type}:${type === 'settings' ? record.key : record.id}`;
       const item = container().item(id, userId);
       const { resource } = await item.read();
-      if (type !== 'habits' && resource) continue; // Immutable client IDs are idempotent.
+      if (!['habits', 'settings'].includes(type) && resource) continue;
+      if (type === 'settings' && resource && !newerSetting(record, resource.record)) continue;
       if (type === 'habits' && resource) {
         if (!('updated' in record) || typeof record.updated !== 'string') throw new ServiceError(400, 'Missing update version.');
-        if (Date.parse(resource.record.updated) >= Date.parse(record.updated)) continue;
-        record.stage = Math.max(resource.record.stage, Number(record.stage));
+        const stage = Math.max(resource.record.stage, Number(record.stage));
+        if (!newerRecipe(record, resource.record)) {
+          if (stage === resource.record.stage) continue;
+          record = { ...resource.record };
+        }
+        record.stage = stage;
       }
       if (type === 'voice') Object.assign(record, { status: 'received', replies: '[]' });
       if (type === 'reflections' && 'items' in record) record.items = JSON.stringify(record.items);

@@ -22,15 +22,41 @@ class ReminderRules {
       habitToday == 0 &&
       ignored < 7;
 
-  static int timing(List<int> minutes, int fallback) {
-    if (minutes.length < 5) return fallback;
-    final sorted = minutes.take(14).toList()..sort();
-    final middle = sorted.length ~/ 2;
-    final median = sorted.length.isOdd
-        ? sorted[middle].toDouble()
-        : (sorted[middle - 1] + sorted[middle]) / 2;
-    return ((median / 15).round() * 15).clamp(450, 1275);
+  static int timing(
+    List<int> minutes,
+    int fallback, {
+    int quietStart = 1290,
+    int quietEnd = 450,
+  }) {
+    var preferred = fallback;
+    if (minutes.length >= 5) {
+      final sorted = minutes.take(14).toList()..sort();
+      final middle = sorted.length ~/ 2;
+      final median = sorted.length.isOdd
+          ? sorted[middle].toDouble()
+          : (sorted[middle - 1] + sorted[middle]) / 2;
+      preferred = ((median / 15).round() * 15).clamp(0, 1439);
+    }
+    return inQuietHours(preferred, start: quietStart, end: quietEnd)
+        ? quietEnd
+        : preferred;
   }
+}
+
+bool reconnectDue(int absenceDays, int sent) =>
+    sent == 0 && absenceDays >= 3 || sent == 1 && absenceDays >= 7;
+
+bool newerVersionedRecord(
+  Map<String, Object?> incoming,
+  Map<String, Object?> existing,
+  List<String> fields,
+) {
+  final time = DateTime.parse(incoming['updated'] as String)
+      .compareTo(DateTime.parse(existing['updated'] as String));
+  if (time != 0) return time > 0;
+  return jsonEncode(fields.map((key) => incoming[key]).toList())
+          .compareTo(jsonEncode(fields.map((key) => existing[key]).toList())) >
+      0;
 }
 
 bool canGraduate(List<double> recentScores, int practiceDays) =>

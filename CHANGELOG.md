@@ -13,6 +13,14 @@
   Cosmos/Functions sync contracts. Integration is not claimed until provisioned.
 - ARM64/x64 Inno Setup installer CI, checksums, preview release workflow and
   honest landing/trust/changelog site.
+- Live free-tier website/API deployment; real email identity registrations and
+  user-flow association verified, actual user login still pending.
+- Safe account preference sync, deterministic recipe conflicts and microsecond
+  ordering; remote consent and startup enablement explicitly excluded.
+- Capped reconnect scheduling and practice-median reminder timing; Windows
+  delivery remains unverified.
+- x64 installer lifecycle passes CI. ARM64 builds bootstrap the official native
+  Dart SDK and verify executable architecture instead of guessing from the runner.
 
 No user feedback item is marked shipped yet. This is not a full authenticated
 MVP; deployment/native delivery and remaining loops are tracked in `docs/status.md`.

@@ -6,19 +6,19 @@ This ledger is updated with verified outcomes, not inferred from source code.
 
 | Iteration | Job | Current evidence / remaining gate |
 | --- | --- | --- |
-| 0 | Build, run, ship | Baseline shell CI green. Native plugin build requires Windows Developer Mode. New ARM64/x64 installer lifecycle matrix added; not yet observed green. |
+| 0 | Build, run, ship | x64 installer/install/launch/uninstall CI passed at `e2af435`; downloaded hash verified and new release launched locally. ARM runner exposed x64-Dart/native-JDK architecture mismatch; official native Dart bootstrap and PE verification added, new build pending. |
 | 1 | Plant first habit | SQLite tests and real widget journey pass: five starters, four recipe fields, three species, practiced celebration, restart-safe storage. |
 | 2 | Check in | Tests pass for did/more/rest, idempotency, append edits/undo, local midnight. Widget tap/celebration/undo pass. Native measured latency pending. |
 | 3 | Visual garden | Original vector plants and five stages, permanent attained growth, reduced-motion flag and semantics. Render/accessibility evidence being generated. |
 | 4 | Local reminders | Windows plugin APIs verified in installed packages; toast/tray/autostart opt-in wired. Quiet-hour/cap/backoff rules tested. Real minimized/closed/restarted delivery and OS Focus observation pending; no success claim yet. |
-| 5 | Sign in | Browser PKCE/state/nonce/JWT validation and Windows secure credentials implemented. Personal subscription approved; customer tenant/provider setup and real login pending. No fake login. |
-| 6 | Sync | JWT Functions/Cosmos contract, issuer-subject partitioning, private responses, idempotent union, recipe LWW implemented. Client merge tests pass; live two-device integration pending. Settings sync and incremental scalability remain gaps. |
+| 5 | Sign in | Customer tenant, public desktop/API registrations, narrow scope consent and email user-flow association verified through Graph. Real PKCE authorization surface HTTP 200; actual login/offline-session verification pending. Google/Microsoft federation not yet enabled. No fake login. |
+| 6 | Sync | Personal SWA Free/Cosmos free tier provisioned, JWT settings configured; live unauthenticated API returns 401. Safe preference sync, immutable union, microsecond ordering and deterministic equal-version recipe ties tested. Consent/reminder-enable/startup remain device-local. Live two-device integration and incremental scalability pending. |
 | 7 | Funnel | Explicit opt-in allowlisted event queue and API validation; no private text allowed. Full acquisition/install funnel, daily aggregates and four dashboards pending. |
 | 8 | Feedback | Private local queue, status/replies UI, role-protected admin API/console implemented; real round trip, audited read access and deployment pending. |
 | 9 | Invite | Copy/email/QR and safe static invitation link. Native OS share/deep-link install attribution and mutual reward pending. |
-| 10 | Reflection | Four original questions, fortnight gate, deterministic Doctor, criteria-based graduation implemented. Not marketed as a validated SRBAI instrument. Graduation integration and weekly cadence pending. |
-| 11 | Reconnect | Not yet implemented/observed. Must cap two nudges/absence and reset on return. |
-| 12 | Website/update | Static landing/trust/invite/changelog and release-page link. Actual SWA deployment/download and update version detection pending. |
+| 10 | Reflection | Four original questions, fortnight gate, deterministic Doctor, criteria-based graduation implemented. Real SQLite regression verifies fortnight spacing and graduation. Not marketed as a validated SRBAI instrument. Weekly cadence pending. |
+| 11 | Reconnect | Three/seven-day rule, max two/absence, activity reset and scheduler shared quiet-hour/day caps implemented; rules tested. Windows delivery and closed-app behavior not observed. |
+| 12 | Website/update | Live SWA landing/config return HTTP 200; invite now points to this deployed site. x64 download artifact verified. Public release assets and update version detection pending. |
 | 13 | Rating/privacy | Manual private rating queue, JSON export, local deletion, authenticated cloud deletion endpoint with race-resistant tombstone. Positive-moment prompt cadence, live deletion/response evidence pending. |
 | 14 | Experiment | Bounded static config authored, intentionally disabled. Fetch/cache/experiment telemetry/guardrails and deployed live A/B pending. |
 
@@ -29,7 +29,7 @@ This ledger is updated with verified outcomes, not inferred from source code.
 - External ID customer tenant is separate from the Azure resource directory.
   Microsoft personal/work-school federation and Google OAuth credentials must
   be verified; email OTP is supported by customer user flows.
-- Windows Developer Mode/plugin symlink permission is not yet confirmed.
+- Developer Mode stays off by user choice; CI supplies native builds.
 - Legal/privacy/name review and exact provider production settings remain launch
   gates. A compiled, sign-in-gated preview is not the signed-in MVP.
 
@@ -69,6 +69,8 @@ rendered images to an explicit local artifact directory (not committed).
 | Miss/undo after sprout | Attained stage persists | SQLite test |
 | Account switch | Cannot read or mutate old account IDs | SQLite test |
 | Stale remote recipe | Does not replace newer local recipe | Sync unit test |
+| Equal-version edits | Canonical recipe field tie-break, maximum attained stage, microsecond timestamp ordering | Flutter and API regression tests |
+| Remote preferences | Quiet hours/visual preferences sync; consent, reminder enablement and startup never remotely enabled | Flutter/API tests |
 | Duplicate remote events | Union by immutable client ID | Sync unit test |
 | Invalid future/oversized API records | Reject, don't silently truncate | Schema tests; timestamp-skew integration pending |
 | Cross-account API input | No client account field accepted | Strict schema tests; live adversarial API test pending |

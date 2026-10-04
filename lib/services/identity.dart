@@ -59,6 +59,8 @@ class IdentityService {
       scopes: ['openid', 'profile', 'email', 'offline_access', apiScope],
       additionalParameters: {'nonce': nonce},
     );
+    // Entra discovery lists OIDC scopes, not custom API scopes.
+    if (!flow.scopes.contains(apiScope)) flow.scopes.add(apiScope);
     // The package's IO Authenticator binds all interfaces; use loopback only.
     final server = await HttpServer.bind(InternetAddress.loopbackIPv4, 43821);
     flow.redirectUri = Uri.parse('http://127.0.0.1:43821/callback');

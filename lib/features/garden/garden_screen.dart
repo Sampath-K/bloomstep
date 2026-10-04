@@ -325,7 +325,7 @@ class _GardenScreenState extends State<GardenScreen> {
 
   Future<void> _share() async {
     const url =
-        'https://sampath-k.github.io/bloomstep/?invite=garden&channel=link';
+        'https://brave-plant-02c10e800.5.azurestaticapps.net/?invite=garden&channel=link';
     await widget.store.track('share_initiated');
     if (!mounted) return;
     await showDialog<void>(

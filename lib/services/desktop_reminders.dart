@@ -87,6 +87,9 @@ class DesktopReminders with TrayListener, WindowListener {
   Future<void> disable() async {
     timer?.cancel();
     enabled = false;
+    while (ticking) {
+      await Future<void>.delayed(const Duration(milliseconds: 50));
+    }
     await store.setSetting('reminders', 'false');
     if (Platform.isWindows) {
       await notifications.cancelAll();
@@ -99,7 +102,13 @@ class DesktopReminders with TrayListener, WindowListener {
 
   Future<void> dispose() async {
     timer?.cancel();
-    if (enabled && Platform.isWindows) {
+    final wasEnabled = enabled;
+    enabled = false;
+    while (ticking) {
+      await Future<void>.delayed(const Duration(milliseconds: 50));
+    }
+    if (wasEnabled && Platform.isWindows) {
+      await notifications.cancelAll();
       trayManager.removeListener(this);
       windowManager.removeListener(this);
       await trayManager.destroy();
@@ -115,7 +124,8 @@ class DesktopReminders with TrayListener, WindowListener {
       return;
     }
     final habitId = parts[0];
-    if (!(await store.habits()).any((h) => h.id == habitId)) {
+    if (habitId != '_reconnect' &&
+        !(await store.habits()).any((h) => h.id == habitId)) {
       throw StateError('Notification belongs to a different garden.');
     }
     switch (parts[1]) {
@@ -148,7 +158,6 @@ class DesktopReminders with TrayListener, WindowListener {
       final quietStart = int.parse(await store.setting('quietStart') ?? '1290');
       final quietEnd = int.parse(await store.setting('quietEnd') ?? '450');
       final due = int.parse(await store.setting('reminderMinute') ?? '1080');
-      if (minute < due) return;
       final snooze = await store.setting('snoozeUntil');
       if (snooze != null && date.isBefore(DateTime.parse(snooze))) return;
       final raw = await store.setting('reminderLog') ?? '[]';
@@ -159,6 +168,15 @@ class DesktopReminders with TrayListener, WindowListener {
       for (final habit in habits.where(
         (h) => h.status == 'active' && h.today == null,
       )) {
+        if (!enabled) break;
+        final practice = await store.practiceMinutes(habit.id);
+        final chosen = ReminderRules.timing(
+          practice,
+          due,
+          quietStart: quietStart,
+          quietEnd: quietEnd,
+        );
+        if (minute < chosen) continue;
         final prior = log.where((e) => e['habitId'] == habit.id).toList();
         final ignored = int.parse(
           await store.setting('ignored:${habit.id}') ?? '0',
@@ -181,7 +199,8 @@ class DesktopReminders with TrayListener, WindowListener {
         await notifications.show(
           id: id,
           title: config.title(store.account),
-          body: 'Your garden is here whenever you are. Open Bloomstep to celebrate or rest. Why: your chosen check-in time.',
+          body:
+              'Your garden is here whenever you are. Open Bloomstep to celebrate or rest. Why: ${practice.length >= 5 ? "your recent practice timing, adjusted for quiet hours" : "your chosen check-in time, adjusted for quiet hours"}.',
           payload: '${habit.id}:open',
           notificationDetails: NotificationDetails(
             windows: WindowsNotificationDetails(
@@ -213,6 +232,56 @@ class DesktopReminders with TrayListener, WindowListener {
         if (log.length > 42) log.removeRange(0, log.length - 42);
         await store.setSetting('reminderLog', jsonEncode(log));
       }
+      final lastInteraction = await store.setting('lastInteraction');
+      if (lastInteraction == null || !enabled || habits.isEmpty) return;
+      final absence = date
+          .toUtc()
+          .difference(DateTime.parse(lastInteraction))
+          .inDays;
+      final sent = int.parse(await store.setting('reconnectCount') ?? '0');
+      final chosen = ReminderRules.timing(
+        [],
+        due,
+        quietStart: quietStart,
+        quietEnd: quietEnd,
+      );
+      if (minute < chosen ||
+          !reconnectDue(absence, sent) ||
+          !ReminderRules.allowed(
+            minute: minute,
+            totalToday: log.where((e) => e['day'] == day).length,
+            habitToday: log
+                .where((e) => e['habitId'] == '_reconnect' && e['day'] == day)
+                .length,
+            ignored: 0,
+            quietStart: quietStart,
+            quietEnd: quietEnd,
+          )) {
+        return;
+      }
+      await notifications.show(
+        id: 1,
+        title: 'Your garden kept its growth',
+        body:
+            'Returning is a win. A little is enough. Why: reminders are enabled and no recipe activity was recorded for $absence days. At most two messages per absence.',
+        payload: '_reconnect:open',
+        notificationDetails: const NotificationDetails(
+          windows: WindowsNotificationDetails(
+            actions: [
+              WindowsAction(
+                content: 'Open garden',
+                arguments: '_reconnect:open',
+              ),
+              WindowsAction(content: 'Later', arguments: '_reconnect:snooze'),
+              WindowsAction(content: 'Turn off', arguments: '_reconnect:off'),
+            ],
+          ),
+        ),
+      );
+      log.add({'habitId': '_reconnect', 'day': day});
+      if (log.length > 42) log.removeRange(0, log.length - 42);
+      await store.setSetting('reminderLog', jsonEncode(log));
+      await store.setSetting('reconnectCount', '${sent + 1}');
     } finally {
       ticking = false;
     }

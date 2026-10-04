@@ -17,10 +17,17 @@ class SyncService {
     try {
       final token = await identity.accessToken();
       final payload = await store.syncPayload();
-      final tables = ['habits', 'checkins', 'reflections', 'voice', 'events'];
+      final tables = [
+        'habits',
+        'checkins',
+        'reflections',
+        'voice',
+        'events',
+        'settings',
+      ];
       for (final table in tables) {
         final records = payload[table] as List;
-        final size = table == 'checkins' || table == 'events' ? 500 : 100;
+        final size = table == 'checkins' || table == 'events' ? 500 : 25;
         for (var start = 0; start < records.length; start += size) {
           final chunk = <String, Object?>{for (final t in tables) t: []};
           chunk[table] = records.sublist(

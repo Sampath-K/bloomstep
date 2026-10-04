@@ -18,7 +18,14 @@ class GardenStore {
     final db = await databaseFactoryFfi.openDatabase(
       path,
       options: OpenDatabaseOptions(
-        version: 1,
+        version: 2,
+        onUpgrade: (db, oldVersion, _) async {
+          if (oldVersion < 2) {
+            await db.execute(
+              "ALTER TABLE settings ADD COLUMN updated TEXT NOT NULL DEFAULT '1970-01-01T00:00:00.000Z'",
+            );
+          }
+        },
         onCreate: (db, _) async {
           await db.execute(
             'CREATE TABLE habits (id TEXT PRIMARY KEY, account TEXT NOT NULL, aspiration TEXT NOT NULL, anchor TEXT NOT NULL, behavior TEXT NOT NULL, celebration TEXT NOT NULL, species TEXT NOT NULL, stage INTEGER NOT NULL DEFAULT 0, status TEXT NOT NULL DEFAULT \'active\', updated TEXT NOT NULL)',
@@ -36,7 +43,7 @@ class GardenStore {
             'CREATE TABLE voice (id TEXT PRIMARY KEY, account TEXT NOT NULL, kind TEXT NOT NULL, body TEXT NOT NULL, rating INTEGER, status TEXT NOT NULL, replies TEXT NOT NULL, ts TEXT NOT NULL)',
           );
           await db.execute(
-            'CREATE TABLE settings (account TEXT NOT NULL, key TEXT NOT NULL, value TEXT NOT NULL, PRIMARY KEY(account,key))',
+            'CREATE TABLE settings (account TEXT NOT NULL, key TEXT NOT NULL, value TEXT NOT NULL, updated TEXT NOT NULL, PRIMARY KEY(account,key))',
           );
           await db.execute(
             'CREATE TABLE events (id TEXT PRIMARY KEY, account TEXT NOT NULL, name TEXT NOT NULL, ts TEXT NOT NULL)',
@@ -75,6 +82,7 @@ class GardenStore {
       'species': species,
       'updated': DateTime.now().toUtc().toIso8601String(),
     });
+    await recordInteraction();
     await track('recipe_created');
     return (await habits()).firstWhere((h) => h.id == id);
   }
@@ -221,7 +229,30 @@ class GardenStore {
         whereArgs: [habitId, _account],
       );
     });
+    await recordInteraction();
     await track('checkin');
+  }
+
+  Future<void> recordInteraction({DateTime? now}) async {
+    await setSetting(
+      'lastInteraction',
+      (now ?? DateTime.now()).toUtc().toIso8601String(),
+    );
+    await setSetting('reconnectCount', '0');
+  }
+
+  Future<List<int>> practiceMinutes(String habitId) async {
+    await _owned(habitId, _db);
+    final records =
+        (await _current(
+            _db,
+            habitId,
+          )).where((row) => row['result'] != 'notToday').toList()
+          ..sort((a, b) => (b['ts'] as String).compareTo(a['ts'] as String));
+    return records.take(14).map((row) {
+      final time = DateTime.parse(row['ts'] as String).toLocal();
+      return time.hour * 60 + time.minute;
+    }).toList();
   }
 
   Future<List<Habit>> habits({DateTime? now}) async {
@@ -355,6 +386,7 @@ class GardenStore {
         'account': _account,
         'key': key,
         'value': value,
+        'updated': DateTime.now().toUtc().toIso8601String(),
       }, conflictAlgorithm: ConflictAlgorithm.replace)
       .then((_) {});
 
@@ -476,8 +508,20 @@ class GardenStore {
         return row;
       }).toList();
     }
+    payload['settings'] = (data['settings'] as List)
+        .map((raw) => Map<String, Object?>.from(raw as Map)..remove('account'))
+        .where((row) => syncedSettings.contains(row['key']))
+        .toList();
     return payload;
   }
+
+  static const syncedSettings = {
+    'reducedMotion',
+    'reminderMinute',
+    'quietStart',
+    'quietEnd',
+    'fewerReminders',
+  };
 
   Future<void> mergeSync(Map<String, dynamic> data) async {
     final columns = {
@@ -526,8 +570,14 @@ class GardenStore {
             final stage = (row['stage'] as int) > (old['stage'] as int)
                 ? row['stage']
                 : old['stage'];
-            if (DateTime.parse(row['updated'] as String)
-                .isAfter(DateTime.parse(old['updated'] as String))) {
+            if (newerVersionedRecord(row, old, [
+              'aspiration',
+              'anchor',
+              'behavior',
+              'celebration',
+              'species',
+              'status',
+            ])) {
               row['stage'] = stage;
               await txn.update(
                 entry.key,
@@ -551,6 +601,37 @@ class GardenStore {
               whereArgs: [row['id'], _account],
             );
           }
+        }
+      }
+      final settings = data['settings'] ?? [];
+      if (settings is! List) {
+        throw const FormatException('Invalid settings response.');
+      }
+      for (final raw in settings) {
+        if (raw is! Map ||
+            !syncedSettings.contains(raw['key']) ||
+            raw['value'] is! String ||
+            raw['updated'] is! String) {
+          throw const FormatException('Invalid synced preference.');
+        }
+        final row = <String, Object?>{
+          'account': _account,
+          'key': raw['key'],
+          'value': raw['value'],
+          'updated': raw['updated'],
+        };
+        final previous = await txn.query(
+          'settings',
+          where: 'account = ? AND key = ?',
+          whereArgs: [_account, row['key']],
+        );
+        if (previous.isEmpty ||
+            newerVersionedRecord(row, previous.single, ['value'])) {
+          await txn.insert(
+            'settings',
+            row,
+            conflictAlgorithm: ConflictAlgorithm.replace,
+          );
         }
       }
       for (final id in (data['acknowledgedEvents'] as List? ?? [])) {
