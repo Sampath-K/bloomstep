@@ -24,6 +24,10 @@ observations to that installation without exporting a path/device identifier.
 Only a matching, completed, explicitly opted-in installation can add one
 first owner-process launch and one actually displayed sign-in view. Portable
 or different installs cannot append to another installation's receipt.
+Every upgrade clears the old installation marker before copying files; a
+silent/default-off upgrade cannot inherit prior installation observation
+ownership. A previously consented local receipt can still be explicitly
+cleared or linked by its owner, but is not automatically appended.
 An installation failure can leave only the observed start, never a fabricated
 completion. The matching installation's uninstaller removes its own receipt.
 

@@ -4,7 +4,9 @@
 #ifndef AppVersion
   #define AppVersion "0.1.0-preview"
 #endif
-#define SourceDir "..\build\windows\" + AppArch + "\runner\Release"
+#ifndef SourceDir
+  #define SourceDir "..\build\windows\" + AppArch + "\runner\Release"
+#endif
 
 [Setup]
 AppId={{99BE7E95-0565-4C72-A4DD-46D1D5B6C679}
@@ -33,6 +35,9 @@ ArchitecturesInstallIn64BitMode=x64compatible
 
 [Files]
 Source: "{#SourceDir}\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs createallsubdirs
+
+[InstallDelete]
+Type: files; Name: "{app}\measurement-owner.txt"
 
 [Icons]
 Name: "{group}\Bloomstep"; Filename: "{app}\bloomstep.exe"
@@ -84,8 +89,8 @@ var
   Time: TMeasurementTime;
 begin
   GetSystemTime(Time);
-  Result := Format('%.4d-%.2d-%.2dT%.2d:%.2d:%.2d.%.3dZ',
-    [Time.Year, Time.Month, Time.Day, Time.Hour, Time.Minute, Time.Second, Time.Milliseconds]);
+  Result := Format('%.4d-%.2d-%.2dT%.2d:%.2d:%.2d.%.3dZ', [Time.Year,
+    Time.Month, Time.Day, Time.Hour, Time.Minute, Time.Second, Time.Milliseconds]);
 end;
 
 function MeasurementId(): String;
@@ -94,8 +99,8 @@ var
 begin
   if CoCreateGuid(Guid) <> 0 then
     RaiseException('Optional measurement ID could not be created.');
-  Result := Lowercase(Format('%.8x-%.4x-%.4x-%.2x%.2x-%.2x%.2x%.2x%.2x%.2x%.2x',
-    [Guid.D1, Guid.D2, Guid.D3, Guid.D4[0], Guid.D4[1],
+  Result := Lowercase(Format('%.8x-%.4x-%.4x-%.2x%.2x-%.2x%.2x%.2x%.2x%.2x%.2x', [Guid.D1,
+     Guid.D2, Guid.D3, Guid.D4[0], Guid.D4[1],
      Guid.D4[2], Guid.D4[3], Guid.D4[4], Guid.D4[5], Guid.D4[6], Guid.D4[7]]));
 end;
 

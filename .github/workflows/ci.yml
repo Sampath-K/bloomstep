@@ -46,7 +46,7 @@ jobs:
       - run: npm run check
       - run: npm test
       - run: node ../tool/generate_event_registry.mjs --check
-      - run: node --test ../test/site_console_test.mjs
+      - run: node --test ../test/site_console_test.mjs ../test/measurement_packaging_test.mjs
       - name: Verify bundled operator authentication
         working-directory: .
         run: |
@@ -66,6 +66,21 @@ jobs:
     runs-on: ${{ matrix.runner }}
     steps:
       - uses: actions/checkout@v4
+      - name: Install Inno Setup
+        shell: pwsh
+        run: |
+          if (-not (Test-Path "${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe")) {
+            choco install innosetup --no-progress -y
+          }
+      - name: Compile installer contract before native build
+        shell: pwsh
+        run: |
+          $fixture = Join-Path $env:RUNNER_TEMP 'bloomstep-installer-compile-fixture'
+          $output = Join-Path $env:RUNNER_TEMP 'bloomstep-installer-compile-output'
+          New-Item -ItemType Directory -Path $fixture, $output -Force | Out-Null
+          [IO.File]::WriteAllText((Join-Path $fixture 'syntax-probe.txt'), 'Compile-only fixture; never installed or distributed.')
+          & "${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe" /Qp /DAppArch=${{ matrix.arch }} /DAppVersion=0.0.0-contract "/DSourceDir=$fixture" "/O$output" packaging\bloomstep.iss
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
       - uses: subosito/flutter-action@v2
         if: matrix.arch == 'x64'
         with:
@@ -110,12 +125,6 @@ jobs:
           $machine = [BitConverter]::ToUInt16($binary, [BitConverter]::ToInt32($binary, 60) + 4)
           $expected = if ('${{ matrix.arch }}' -eq 'arm64') { 0xaa64 } else { 0x8664 }
           if ($machine -ne $expected) { throw 'Executable architecture does not match the installer.' }
-      - name: Install Inno Setup
-        shell: pwsh
-        run: |
-          if (-not (Test-Path "${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe")) {
-            choco install innosetup --no-progress -y
-          }
       - name: Build unsigned preview installer
         shell: pwsh
         env:
@@ -160,6 +169,13 @@ jobs:
           $app.Refresh()
           if ($app.HasExited) { throw 'Activating the existing app closed its owner.' }
           Stop-Process -Id $app.Id
+          # Synthetic previous-consent marker: every upgrade must invalidate it,
+          # including silent/default-off upgrades, without inventing a receipt.
+          $marker = Join-Path $target 'measurement-owner.txt'
+          [IO.File]::WriteAllText($marker, [Guid]::NewGuid().ToString())
+          Start-Process $installer -ArgumentList "/VERYSILENT /SUPPRESSMSGBOXES /NORESTART /DIR=`"$target`"" -Wait
+          if (Test-Path $marker) { throw 'Upgrade inherited a prior installation measurement owner.' }
+          if (Test-Path $measurement) { throw 'Silent upgrade manufactured a measurement receipt.' }
           Start-Process "$target\unins000.exe" -ArgumentList '/VERYSILENT /SUPPRESSMSGBOXES /NORESTART' -Wait
           if (Test-Path "$target\bloomstep.exe") { throw 'Uninstall failed' }
       - name: Verify optional measurement wizard and genuine installed observations
