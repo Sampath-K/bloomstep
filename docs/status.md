@@ -18,7 +18,7 @@ This ledger is updated with verified outcomes, not inferred from source code.
 | 9 | Invite | Authenticated opaque invitations, server-owned attribution, first-positive-practice mutual cosmetic saga and owner-only receipts implemented/tested. Native copy/email/QR/Windows Share UI, opt-in recipe card, accept/decline, cached retry IDs and export integrated. Per-user protocol and private IPC/inbox preserve intent across install/sign-in; web handoff/storage is explicit. Live customer reward and OS-share observations remain pending. |
 | 10 | Reflection | Weekly deterministic Doctor works independently of fortnight naturalness sliders; cooldown checked before collecting scores. Real SQLite graduation/spacing tests pass. Not a validated SRBAI instrument. Native learning interaction still pending. |
 | 11 | Reconnect | Three/seven-day rule, max two/absence, activity reset and scheduler shared quiet-hour/day caps implemented; rules tested. Windows delivery and closed-app behavior not observed. |
-| 12 | Website/update | Main consent-safe site/API deployment37230838798 passed/served HTTP200; public preview.3 ARM64/x64 installers/hash checks and local2->3 upgrade observed. Updated preview.3 landing links/changelog are source-validated; final live-link deployment readback pending. Manual trusted version/channel checks, never auto-execute; silent QA is not SmartScreen proof. |
+| 12 | Website/update | Final preview.3-link deployment37231886402 from `ba0af16` passed. Actual live dual links/consent/changelog/bundle HTTP200, all nine method-correct protected endpoints401 and isolated Edge checkbox/click/clear observed. Public installer hashes/local2->3 upgrade pass. Manual trusted updates, never auto-execute; silent QA is not SmartScreen proof. |
 | 13 | Rating/privacy | Positive-moment prompts wait for celebration and persist a 120-day cadence even when dismissed; rating text optional. Export/account isolation/cleanup tested. Cloud deletion tombstone/races tested against backend fixtures, not live Cosmos user deletion. |
 | 14 | Experiment | Strict schema2/checksum, monotonic version, account cache, seven-day expiry and explicit control-mode warnings tested; compiled API origin, device timing toggle and actual-callback-only exposure. Bounded copy experiment remains OFF until genuine reviewed cohort/guardrail evidence, not fabricated data. |
 
@@ -59,6 +59,14 @@ Actual local per-user preview.2 -> preview.3 upgrade verified changed executable
 installed version/PE ARM64/protocol, absent default-off receipt/marker,
 responsive normal/repeat launch and inspected app-only sign-in capture with
 new receipt-clear control, enabled real sign-in and no synthetic banner.
+Final site-link source `ba0af16` passed deployment37231886402; actual served
+preview.3 dual links/consent/changelog and all nine protected routes401 verified.
+Final main dual-native/API run37231886710 also passed at that exact source.
+Isolated Edge observed real live default-off/consent/download gesture/clear;
+navigation was prevented only for QA, so no download completion was inferred.
+Current live config schema2/version2/checksum/not-expired/experimentOFF was
+independently read back. Operational run history still contains only the
+verified manual dispatches, not a scheduled tick.
 Actual background Share invocation is rejected with `share_foreground_required`;
 the covered-window input preflight sent no foreign input. No visible OS Share
 pane/transmission is claimed. Customer/OS/launch gates are consolidated in
@@ -117,7 +125,7 @@ funnel or measured cohort are inferred. Contract details are in `measurement.md`
 
 | Workstream | Owner | Next action | Definition of done |
 | --- | --- | --- | --- |
-| Acquisition/install observation | Implementation session | Source/native/release/browser/local-install verified; finish final preview.3 live link readback | Default-off receipt/link/privacy/expiry/retry/account contracts and real dual installer+local normal entry pass; subsequent genuine signed-account roundtrip requires trusted session |
+| Acquisition/install observation | Implementation session | Independent implementation/release/live-link work verified; next genuine signed-account readback after authorization | Default-off receipt/link/privacy/expiry/retry/account contracts, real dual installer/local entry, fresh release/public hashes and deployed surface pass; live linked-account roundtrip/revocation requires trusted session |
 | Runtime error observation | Implementation session | Coverage ready within stated limits; population/native-death quality target remains unproved | Bounded consent-scoped hooks and strict server allowlist verified; never claim full crash census or >=99.5% crash-free |
 | Customer integration | Implementation session, after trusted-browser customer authorization | Real provider exchange, account/device/offline API round trips and readback/cleanup | Actual two-account isolation, feedback/rating/reply/referral/delete results; no fixtures substituted |
 | Operator/OS/launch decisions | Customer/controller | Select customer Admin; authorize OS permission; approve legal/provider/billing/unsigned trust | One consolidated final acceptance batch; agent owns subsequent component checks |
@@ -128,6 +136,17 @@ omit instrumentation or an independent minimum-user download requirement.
 Genuine cohort/guardrail review gates experiment activation. The original
 spec includes one bounded experiment; OFF/config-ready is not completion of
 that requirement, and no scope deferral has been assumed.
+
+No safe independent implementation/distribution work remains for this
+instrumentation increment. Full MVP remains incomplete: real provider and
+two-account/device/offline/private-loop readbacks, selected operator, authorized
+OS delivery/Share/Narrator and launch approvals remain genuine gates. The
+original native/process-death/full-session crash-free>=99.5% quality evidence
+and live bounded experiment/cohort are not supplied by optional diagnostic
+categories or configured OFF controls. Billing remains unknown. As of the
+final run-history check, only manual aggregate/guard runs exist; no actual
+scheduled tick is claimed. The implementation session owns all component/API
+readbacks and cleanup once the consolidated human-only gates are supplied.
 
 ## Verification and demo jobs
 
