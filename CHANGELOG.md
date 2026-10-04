@@ -54,6 +54,10 @@
   verified. GitHub's immutable OIDC subject is pinned, not recyclable repo names.
 - Dedicated least-reader free-tier guard with one-way pause; unknown billing
   data is disclosed, never reported as zero or a monetary hard cap.
+- Consent-bound observed session/sign-in events distinguish restored sessions
+  from newly verified authentication; no inferred installation or provider.
+- Windows Share runner uses standard C++20 coroutines, preserving compatibility
+  with current Visual Studio without suppressing deprecated-header errors.
 
 No user feedback item is marked shipped yet. This is not a full authenticated
 MVP; deployment/native delivery and remaining loops are tracked in `docs/status.md`.

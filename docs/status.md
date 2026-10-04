@@ -13,7 +13,7 @@ This ledger is updated with verified outcomes, not inferred from source code.
 | 4 | Local reminders | Real Windows plugin/tray wiring plus durable targeted Later, account-scoped IDs, Off/focus recovery, seven-unanswered pause/reset and personalized-timing control are source-tested. Separate release-forbidden runtime probe checks real OS history/tray/hide/caps/cleanup; actual run and popup/Focus/restart evidence remain pending. |
 | 5 | Sign in | Email OTP, Google and Microsoft personal-account providers are now created AND enabled on the actual native/console user flow. MSA issuer/discovery/client/scope/auth type and both callbacks verified; real PKCE sign-in page HTTP200 includes all three options. Actual provider login/token exchanges remain unobserved, not inferred from setup. No fake login. |
 | 6 | Sync | Personal SWA Free/Cosmos free tier provisioned; live unauthenticated sync API returns 401. SQLite v4 preserves durable fingerprints and adds typed event properties; partial upload/concurrent edits, consent purge and account isolation tested. Live probes exposed SWA replacing Authorization and reserved admin routes: dedicated client-token header and team routes fixed in source, deployment smoke gate added. Actual authenticated two-account/device/offline round trips remain pending. |
-| 7 | Funnel | Versioned48-event registry and strict optional metadata; four typed dashboards with minimum50 contributors. Persisted completed-day snapshots are now consumed by the console, distinctly from on-demand windows, with generation/deletion validation and no median/user-count summation. Real resource-directory worker/FIC/role provisioned; manual run proof pending and cron needs default-branch merge. Acquisition/install/auth/OS-delivery instrumentation remains incomplete; absent observations stay null. |
+| 7 | Funnel | Versioned48-event registry and strict optional metadata; four typed dashboards with minimum50 contributors. Persisted completed-day snapshots are consumed distinctly from on-demand windows, with generation/deletion validation and no median/user-count summation. Real worker run37214984889 wrote a snapshot and its token was rejected by customer/team routes. Observed consent-bound session and fresh sign-in events are wired; restore never fabricates sign-in/install/provider history. Acquisition/install/OS-delivery observations remain incomplete; cron needs default-branch merge. |
 | 8 | Feedback | Private queue/status/replies; audited pagination/retry/deletion protections tested. Real browser PKCE operator source and separately registered SPA/consent/flow binding now prepared; credentials memory-only, no pasted token. Actual selected customer Admin and feedback/rating round trip still pending. |
 | 9 | Invite | Authenticated opaque invitations, server-owned attribution, first-positive-practice mutual cosmetic saga and owner-only receipts implemented/tested. Native copy/email/QR/Windows Share UI, opt-in recipe card, accept/decline, cached retry IDs and export integrated. Per-user protocol and private IPC/inbox preserve intent across install/sign-in; web handoff/storage is explicit. Live customer reward and OS-share observations remain pending. |
 | 10 | Reflection | Weekly deterministic Doctor works independently of fortnight naturalness sliders; cooldown checked before collecting scores. Real SQLite graduation/spacing tests pass. Not a validated SRBAI instrument. Native learning interaction still pending. |
@@ -37,13 +37,15 @@ This ledger is updated with verified outcomes, not inferred from source code.
   quotas and API/engagement kill switches are source-tested, not monetary hard
   caps. Dedicated free resource-tenant guard/FIC and least-reader roles are now
   provisioned; one-way operational pause and reviewed Admin resume source tested.
-  Its actual run remains pending. Current Cost Management query is unavailable
+  Actual audit run37217476414 passed with `warning_cost_unknown`, no pause.
+  Current Cost Management query is unavailable
   for this new subscription, not zero cost. Trial spending limit On/free SKUs are
   verified; billing/trial expiration approval remains a launch gate.
 
 ## Latest verification
 
-114-test full serial Flutter suite passes, including invitation retries/export,
+116-test full serial Flutter suite passes, including observed session/sign-in
+consent, invitation retries/export,
 opaque intent IPC, capped reminders and active-session clock boundaries.
 Full analyzer is clean. API suite passes90; browser suite passes16; spend-guard
 policy suite passes8. Native Share bridge compiles with the existing ARM64 SDK.
@@ -53,6 +55,10 @@ The offline window expires at exactly 30 days and checks a secure-storage
 last-observed watermark. In-memory session access hides immediately at expiry or
 resume failure; serialized credential writes cannot resurrect a signed-out cache.
 Native screenshot timeline is kept privately, never copied with user account data.
+Deployment run37217202261 passed at `5a28346`. Both native jobs in run37217202495
+failed on Visual Studio's deprecated experimental coroutine headers. The runner
+now requests C++20 instead of suppressing that error; replacement full native
+builds and installer lifecycle evidence are pending.
 
 ## Verification and demo jobs
 
@@ -103,7 +109,7 @@ rendered images to an explicit local artifact directory (not committed).
 | Cross-account API input | No client account field accepted | Strict schema tests; live adversarial API test pending |
 | Telemetry free-text | Reject unregistered events/unknown fields | API contract tests |
 | Managed SWA proxy authentication | Never trust overwritten Authorization/proxy principal; require dedicated validated customer JWT header | Native/API/console tests; live authenticated proof pending |
-| Internal daily worker | Separate pinned resource issuer and explicit aggregate-only role; never garden/team access | API signed-token tests; actual free worker provisioning pending |
+| Internal daily worker | Separate pinned resource issuer and explicit aggregate-only role; never garden/team access | API signed-token tests and real run37214984889 |
 | Second native launch | Activate existing window, no duplicate reminder process | Windows socket/file-lock tests; dual-architecture installer CI gate added |
 | Damaged instance descriptor | Report corruption and always release owner lock | Windows regression test |
 | Client forged team status | Server owns received/status/replies | API contract tests |

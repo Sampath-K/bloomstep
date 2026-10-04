@@ -6,6 +6,7 @@ import '../core/garden_store.dart';
 import '../features/garden/garden_screen.dart';
 import '../services/identity.dart';
 import '../services/invitation_intent.dart';
+import '../services/session_events.dart';
 import 'theme.dart';
 import 'session_boundary.dart';
 
@@ -49,7 +50,7 @@ class _SignInScreenState extends State<SignInScreen> {
     }
   }
 
-  Future<void> _enter() async {
+  Future<void> _enter({bool authenticatedNow = false}) async {
     if (!identity.hasValidSession) {
       throw StateError('Your offline session has ended. Sign in again.');
     }
@@ -63,6 +64,8 @@ class _SignInScreenState extends State<SignInScreen> {
       return;
     }
     try {
+      await SessionEvents.entered(store, authenticatedNow: authenticatedNow);
+      if (!mounted) return;
       await Navigator.of(context).push(
         MaterialPageRoute<void>(
           builder: (_) => SessionBoundary(
@@ -105,7 +108,7 @@ class _SignInScreenState extends State<SignInScreen> {
     });
     try {
       await identity.signIn();
-      await _enter();
+      await _enter(authenticatedNow: true);
     } catch (e) {
       if (mounted) setState(() => error = 'Sign-in did not complete: $e');
     } finally {
