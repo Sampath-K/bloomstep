@@ -8,6 +8,12 @@ on:
   workflow_dispatch:
 
 jobs:
+  aggregate-proof:
+    if: github.event_name == 'workflow_dispatch'
+    permissions:
+      contents: read
+      id-token: write
+    uses: ./.github/workflows/aggregates.yml
   api:
     runs-on: ubuntu-latest
     defaults:

@@ -3,6 +3,7 @@ on:
   schedule:
     - cron: '20 2 * * *'
   workflow_dispatch:
+  workflow_call:
 permissions:
   contents: read
 concurrency:
@@ -29,6 +30,7 @@ jobs:
           import json, os, re, sys
           from urllib.parse import urlencode, urlsplit
           from urllib.request import Request, build_opener, HTTPRedirectHandler
+          from urllib.error import HTTPError
 
           class NoRedirect(HTTPRedirectHandler):
               def redirect_request(self, *args, **kwargs):
@@ -40,7 +42,7 @@ jobs:
               print("::error::" + message)
               raise SystemExit(1)
 
-          def call(request):
+          def call(request, stage):
               try:
                   with opener.open(request, timeout=45) as response:
                       if not 200 <= response.status < 300:
@@ -49,8 +51,10 @@ jobs:
                       if len(raw) > 524288:
                           fail("Worker response exceeds the bounded transport limit.")
                       return json.loads(raw)
-              except Exception:
-                  fail("Worker transport/auth/API request failed; credentials and response omitted.")
+              except HTTPError as error:
+                  fail(stage + " failed with HTTP " + str(error.code) + "; private response omitted.")
+              except (OSError, ValueError):
+                  fail(stage + " transport or JSON response failed; credentials omitted.")
 
           def mask(value):
               if not isinstance(value, str) or not value or any(c in value for c in "\r\n"):
@@ -71,7 +75,7 @@ jobs:
           assertion_url += ("&" if "?" in assertion_url else "?") + urlencode({"audience": "api://AzureADTokenExchange"})
           assertion = mask(call(Request(assertion_url, headers={
               "Authorization": "Bearer " + os.environ["ACTIONS_ID_TOKEN_REQUEST_TOKEN"]
-          }))["value"])
+          }), "GitHub assertion")["value"])
           form = urlencode({
               "client_id": client,
               "scope": "api://" + client + "/.default",
@@ -82,12 +86,25 @@ jobs:
           access_token = mask(call(Request(
               "https://login.microsoftonline.com/" + tenant + "/oauth2/v2.0/token",
               data=form, headers={"Content-Type": "application/x-www-form-urlencoded"}
-          ))["access_token"])
+          ), "Resource-directory token exchange")["access_token"])
+          for route in ("/api/sync", "/api/team/feedback", "/api/team/metrics"):
+              request = Request(origin + route, headers={
+                  "X-Bloomstep-Authorization": "Bearer " + access_token
+              })
+              try:
+                  with opener.open(request, timeout=45):
+                      fail("Aggregate worker unexpectedly accessed a customer/team route.")
+              except HTTPError as error:
+                  if error.code != 401:
+                      fail("Worker isolation check returned HTTP " + str(error.code) + " instead of 401.")
+              except OSError:
+                  fail("Worker isolation probe transport failed.")
           result = call(Request(origin + "/api/internal/aggregates", data=b"{}", method="POST", headers={
               "Content-Type": "application/json",
               "X-Bloomstep-Authorization": "Bearer " + access_token
-          }))
+          }), "Authenticated aggregate write")
           if not isinstance(result, dict) or not isinstance(result.get("snapshots"), list):
               fail("Unexpected aggregate response; body omitted.")
           print("Completed prior-UTC-day aggregate request; snapshots: " + str(len(result["snapshots"])))
+          print("Real worker token rejected by garden and team routes; issuer/role isolation verified.")
           PY
