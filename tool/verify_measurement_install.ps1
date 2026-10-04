@@ -82,7 +82,7 @@ try {
         }
         $selected = $true
       }
-      foreach ($caption in @('&Next >','&Install','&Finish','Finish')) {
+      foreach ($caption in @('&Next','&Next >','&Install','&Finish','Finish')) {
         $button = [MeasurementWizard]::Find($window, $caption)
         if ($button -eq [IntPtr]::Zero) { continue }
         if ($caption -match 'Finish') {

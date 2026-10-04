@@ -27,4 +27,6 @@ test('real wizard proof is separate from compile-only fixture and precedes distr
   assert.match(smoke, /Installer observation consent was not default-off/);
   assert.match(smoke, /installer_started,install_completed,first_launch,signin_view/);
   assert.match(smoke, /Owned uninstall did not remove the installer receipt/);
+  // Inno Setup 6 modern wizard actually exposes "&Next", without a chevron.
+  assert.match(smoke, /@\('&Next','&Next >'/);
 });
