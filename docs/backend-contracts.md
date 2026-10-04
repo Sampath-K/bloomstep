@@ -1,5 +1,63 @@
 # Bounded backend telemetry and engagement contracts
 
+## Persisted daily worker → operator dashboard
+
+`GET /api/team/metrics?days=1..30` retains strict customer `Bloomstep.Admin`,
+audit-before-disclosure, lifetime/daily read budgets and engagement/API kill
+switches. Existing top-level `daily`, `categories` and `dashboards` remain bounded
+**on-demand raw-event** calculations: compatibility includes today; typed
+dashboards use completed days. The console labels these separately.
+
+The additive `dailySnapshots` is the actual persisted daily-worker read path:
+`{source:"persisted_daily_worker",startDay,endDay,definition,days:[...]}`. It
+enumerates requested completed UTC days through yesterday, ascending, maximum30.
+Each available entry has `day`, `status:"available"`, `reason:null`, `generatedAt`
+(UTC ISO), `registryVersion:1`,
+`suppression:{minimumCohort:50,dailySuppressed:boolean}`, and `record`.
+`record` contains single-day `startDay/endDay/minimumCohort/daily/categories/
+limitations` plus typed `dashboards` (funnel, retention, outcomes, reminderHealth,
+appHealth, disabled experiment). No window cohort is derived by combining days.
+
+`snapshot-contracts.mjs` strictly validates every nested object, fixed registry
+event names/breakdown enums, literal approved definitions, UTC-day alignment,
+bounded arrays, null-or-publishable counts (minimum50), bounded rates/scores and
+unavailable diagnostics. Unknown/private fields fail validation and are never
+echoed. No account/event IDs or internal generation/digest/ETag are returned.
+
+Unavailable entries have `status:"unavailable"`, a reason, and
+`record/generatedAt/registryVersion/suppression:null`:
+- `not_generated`: missing run/day; never zero or raw-data fallback.
+- `stale_generation`: missing/mismatched current deletion-generation gate.
+- `generation_changed`: gate ETag changed during reading; suppress the series.
+- `invalid_snapshot`: missing/legacy metadata, future/same-day generation time,
+  invalid registry/schema/day, duplicate daily keys or deterministic digest.
+
+An available sparse snapshot has real generation metadata but null suppressed
+counts/rates/medians, distinctly different from an unscheduled day. Older dates
+are independent historical records, not substitutes for a missing latest day.
+Late/offline arrivals require explicit bounded worker backfill; console reads
+never pretend the stored day was freshly recomputed.
+
+Worker writes now persist `generatedAt`, registryVersion, stable generation and
+digest. Unchanged retries preserve generation time and consume no new snapshot
+records. Ordinary worker runs change transaction revision/ETag, not deletion
+generation, so earlier valid days survive. Deletion atomically rotates generation
+and deletes snapshots; in-flight worker writes conflict and changed-generation
+metrics reads suppress stored data. Reads do not create a missing gate. Existing
+pre-metadata snapshots stay unavailable until owner runs worker/backfill again;
+there is no implicit fake run/migration. Existing30-record/30-day retention and
+worker/lifetime quotas remain unchanged.
+
+The console renders actual persisted latest-completed-day four typed panels,
+per-day availability/generated-time history and stored records, separately from
+on-demand and raw compatibility windows. It never sums daily unique users,
+averages medians or combines retention cohorts to invent a window metric.
+Integration fixtures prove persisted-value consumption independent of raw counts,
+absence/range/stale generation, private/malformed rejection, sparse deterministic
+nulls and actual account-deletion read races. Source tests are not live worker
+evidence: owner must deploy API/site and execute the real provisioned worker
+token workflow to verify job→stored snapshot→served dashboard.
+
 Source and deterministic store tests only: this is **not** evidence of deployed
 dashboards, successful live JWT sign-in, Cosmos transactions/indexes, native
 reminder delivery, or an observed customer/team round trip. No cloud settings,

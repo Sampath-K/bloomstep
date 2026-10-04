@@ -3,6 +3,7 @@ import { isAdmin, syncSchema, replySchema, newerRecipe, newerSetting } from './c
 import { aggregateEvents, previewLimits, feedbackQuerySchema, metricsQuerySchema, decodeCursor } from './engagement.mjs';
 import { dashboardSummaries, addDays } from './dashboards.mjs';
 import { registryVersion } from './event_registry.g.mjs';
+import { dailySnapshotRecordSchema, snapshotMetadataSchema } from './snapshot-contracts.mjs';
 import { z } from 'zod';
 
 export class ServiceError extends Error {
@@ -254,7 +255,7 @@ export function createHandlers({ container, authenticate, authenticateAggregate 
     let { resource } = await item.read();
     if (!resource) {
       try {
-        resource = (await container().items.create({ id: 'generation', userId: aggregatePartition, type: 'aggregate_generation', revision: randomUUID(), ttl: -1 })).resource;
+        resource = (await container().items.create({ id: 'generation', userId: aggregatePartition, type: 'aggregate_generation', revision: randomUUID(), generation: randomUUID(), ttl: -1 })).resource;
       } catch (error) {
         if (!conflict(error)) throw error;
         resource = (await item.read()).resource;
@@ -274,7 +275,7 @@ export function createHandlers({ container, authenticate, authenticateAggregate 
     const gate = await aggregateGate();
     const rows = await snapshots();
     await batch([
-      { operationType: 'Replace', id: 'generation', ifMatch: gate._etag, resourceBody: gateBody(gate) },
+      { operationType: 'Replace', id: 'generation', ifMatch: gate._etag, resourceBody: { ...gateBody(gate), generation: randomUUID() } },
       ...rows.map(row => /** @type {import('@azure/cosmos').OperationInput} */ ({
         operationType: 'Delete', id: row.id,
       })),
@@ -293,6 +294,40 @@ export function createHandlers({ container, authenticate, authenticateAggregate 
     if (accounts.length > limits.accounts) throw new ServiceError(429, 'Legacy account volume exceeds metrics cap.');
     const active = new Set(accounts.filter(row => !row.deleted).map(row => row.userId));
     return resources.filter(row => active.has(row.userId));
+  }
+  /** @param {string} startDay @param {string} endDay */
+  async function persistedSeries(startDay, endDay) {
+    const item = container().item('generation', aggregatePartition);
+    const before = (await item.read()).resource;
+    const rows = await snapshots();
+    const after = (await item.read()).resource;
+    const changed = before?._etag !== after?._etag;
+    const generation = after?.id === 'generation' && after?.type === 'aggregate_generation'
+      ? after.generation ?? after.revision : undefined;
+    const days = [];
+    for (let day = startDay; day <= endDay; day = addDays(day, 1)) {
+      const matches = rows.filter(row => row.day === day);
+      const saved = matches[0];
+      let reason = changed ? 'generation_changed' : !saved ? 'not_generated'
+        : !generation || saved.generation !== generation ? 'stale_generation' : null;
+      const metadata = saved && snapshotMetadataSchema.safeParse({
+        day: saved.day, generatedAt: saved.generatedAt, registryVersion: saved.registryVersion,
+        generation: saved.generation, digest: saved.digest,
+      });
+      const record = saved && dailySnapshotRecordSchema.safeParse(saved.record);
+      if (!reason && (matches.length !== 1 || saved.id !== `daily:${day}` || !metadata?.success || !record?.success ||
+          saved.generatedAt > clock().toISOString() || saved.generatedAt.slice(0, 10) <= day ||
+          record.data.startDay !== day ||
+          createHash('sha256').update(JSON.stringify(saved.record)).digest('hex') !== saved.digest)) reason = 'invalid_snapshot';
+      days.push(reason ? { day, status: 'unavailable', reason, generatedAt: null, registryVersion: null, suppression: null, record: null }
+        : { day, status: 'available', reason: null, generatedAt: saved.generatedAt, registryVersion: saved.registryVersion,
+          suppression: { minimumCohort: 50, dailySuppressed: saved.record.daily[0].suppressed },
+          record: record.data });
+    }
+    return {
+      source: 'persisted_daily_worker', startDay, endDay, days,
+      definition: 'Independent completed UTC-day worker snapshots, not a window rollup. Never sum daily unique users, retention cohorts or medians. Missing/invalidated days remain unavailable; late arrivals require worker backfill. Older records are not substituted for the latest completed day.',
+    };
   }
   /** @param {string} actor @param {'feedback_read' | 'metrics_read'} action */
   async function auditRead(actor, action) {
@@ -376,7 +411,8 @@ export function createHandlers({ container, authenticate, authenticateAggregate 
     const resources = await rawEvents(addDays(startDay, -31), end.toISOString().slice(0, 10));
     const endDay = new Date(end.getTime() - 86400000).toISOString().slice(0, 10);
     return { jsonBody: { ...aggregateEvents(resources, startDay, endDay),
-      dashboards: dashboardSummaries(resources, addDays(startDay, -1), addDays(endDay, -1), clock().toISOString().slice(0, 10)) } };
+      dashboards: dashboardSummaries(resources, addDays(startDay, -1), addDays(endDay, -1), clock().toISOString().slice(0, 10)),
+      dailySnapshots: await persistedSeries(addDays(startDay, -1), addDays(endDay, -1)) } };
   }
   /** @param {import('@azure/functions').HttpRequest} request */
   async function aggregates(request) {
@@ -396,8 +432,9 @@ export function createHandlers({ container, authenticate, authenticateAggregate 
     const gate = await aggregateGate();
     const existing = await snapshots();
     const rows = await rawEvents(addDays(startDay, -30), addDays(endDay, 1));
+    const generation = gate.generation ?? gate.revision;
     /** @type {import('@azure/cosmos').OperationInput[]} */
-    const operations = [{ operationType: 'Replace', id: 'generation', ifMatch: gate._etag, resourceBody: gateBody(gate) }];
+    const operations = [{ operationType: 'Replace', id: 'generation', ifMatch: gate._etag, resourceBody: { ...gateBody(gate), generation } }];
     const result = [];
     let creates = 0;
     for (const old of existing.filter(row => row.day < addDays(today, -30))) {
@@ -406,15 +443,24 @@ export function createHandlers({ container, authenticate, authenticateAggregate 
     for (let day = startDay; day <= endDay; day = addDays(day, 1)) {
       const record = { ...aggregateEvents(rows, day, day),
         dashboards: dashboardSummaries(rows.filter(row => row.record.ts.slice(0, 10) <= day), day, day, addDays(day, 1)) };
+      dailySnapshotRecordSchema.parse(record);
       const digest = createHash('sha256').update(JSON.stringify(record)).digest('hex');
       const id = `daily:${day}`;
       const old = existing.find(row => row.id === id);
-      if (old?.digest !== digest) {
-        const document = { id, userId: aggregatePartition, type: 'aggregate', day, registryVersion, digest, record, ttl: auditTtl };
+      const oldMetadata = old && snapshotMetadataSchema.safeParse({
+        day: old.day, generatedAt: old.generatedAt, registryVersion: old.registryVersion,
+        generation: old.generation, digest: old.digest,
+      });
+      const updated = old?.digest !== digest || old?.generation !== generation || !oldMetadata?.success ||
+        old.generatedAt > clock().toISOString() || old.generatedAt.slice(0, 10) <= day ||
+        !dailySnapshotRecordSchema.safeParse(old.record).success ||
+        createHash('sha256').update(JSON.stringify(old.record)).digest('hex') !== old.digest;
+      if (updated) {
+        const document = { id, userId: aggregatePartition, type: 'aggregate', day, generatedAt: clock().toISOString(), generation, registryVersion, digest, record, ttl: auditTtl };
         operations.push(old ? { operationType: 'Replace', id, ifMatch: old._etag, resourceBody: document } : { operationType: 'Create', resourceBody: document });
         if (!old) creates++;
       }
-      result.push({ day, digest, updated: old?.digest !== digest });
+      result.push({ day, digest, updated });
     }
     await reserve(creates);
     await batch(operations, aggregatePartition);

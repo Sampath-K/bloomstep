@@ -142,15 +142,15 @@
     </section>
     <section>
       <details><summary>Product team console (deployment verification)</summary>
-        <p>For authorized operators only. Data access is enforced by the API's real <code>Bloomstep.Admin</code> role, not by hiding this panel. Nothing is fetched until you connect. Tokens stay in page memory, are never saved, and must be from the approved personal tenant.</p>
+        <p>For authorized operators only. Sign in through the real customer broker; data access is enforced by the API's explicitly assigned <code>Bloomstep.Admin</code> role, never email or subscription ownership. No private data is fetched until you request it. Tokens stay in page memory; only temporary sign-in state uses session storage. No bearer copying or client secret is required.</p>
         <form id="admin">
           <label>This deployed HTTPS API origin<input id="origin" type="url" required readonly></label>
-          <label>Short-lived API access token<input id="token" type="password" autocomplete="off" required></label>
+          <button id="signin-console" type="button">Sign in to operator console</button>
           <button type="submit">Load private feedback</button>
           <button id="next-feedback" type="button" disabled>Next private feedback page</button>
           <label>UTC measurement days<input id="metric-days" type="number" min="1" max="30" value="7"></label>
           <button id="metrics" type="button">Load private preview measurements</button>
-          <button id="clear-console" type="button">Clear token and private data</button>
+          <button id="clear-console" type="button">Sign out and clear private data</button>
         </form>
         <p id="admin-status" role="status"></p>
         <div id="feedback"></div>
@@ -160,6 +160,6 @@
     </section>
   </main>
   <footer class="small">Bloomstep contributors. Grow tiny behaviors into something natural.</footer>
-  <script type="module" src="console.mjs"></script>
+  <script type="module" src="assets/console.js"></script>
 </body>
 </html>

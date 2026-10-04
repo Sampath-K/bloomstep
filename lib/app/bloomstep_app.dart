@@ -6,6 +6,7 @@ import '../core/garden_store.dart';
 import '../features/garden/garden_screen.dart';
 import '../services/identity.dart';
 import 'theme.dart';
+import 'session_boundary.dart';
 
 class BloomstepApp extends StatelessWidget {
   const BloomstepApp({super.key});
@@ -46,6 +47,9 @@ class _SignInScreenState extends State<SignInScreen> {
   }
 
   Future<void> _enter() async {
+    if (!identity.hasValidSession) {
+      throw StateError('Your offline session has ended. Sign in again.');
+    }
     final directory = await getApplicationSupportDirectory();
     final store = await GardenStore.open(
       p.join(directory.path, '${identity.account!}.sqlite'),
@@ -58,12 +62,33 @@ class _SignInScreenState extends State<SignInScreen> {
     try {
       await Navigator.of(context).push(
         MaterialPageRoute<void>(
-          builder: (_) => GardenScreen(store: store, identity: identity),
+          builder: (_) => SessionBoundary(
+            expiresAt: identity.sessionExpiresAt!,
+            isValid: () => identity.hasValidSession,
+            onExpired: _expire,
+            onCheckpoint: identity.checkpoint,
+            child: GardenScreen(store: store, identity: identity),
+          ),
         ),
       );
     } finally {
       await store.close();
     }
+  }
+
+  Future<void> _expire(String? reason) async {
+    String message =
+        'Your offline session ended. Sign in again; your saved garden was not deleted.';
+    try {
+      await identity.signOut();
+    } catch (error) {
+      message =
+          'Your session ended, but saved authentication could not be cleared: $error';
+    }
+    if (reason != null) message = '$message\n\n$reason';
+    if (!mounted) return;
+    setState(() => error = message);
+    Navigator.of(context).popUntil((route) => route.isFirst);
   }
 
   Future<void> _signIn() async {

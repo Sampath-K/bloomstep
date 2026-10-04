@@ -44,6 +44,7 @@ class _GardenScreenState extends State<GardenScreen> {
   bool ratingInvitation = false;
   int ratingMoment = 0;
   Map<String, DateTime?> naturalnessDates = {};
+  Set<String> pausedReminders = {};
   String? error;
   String syncStatus = 'Local garden';
   bool syncing = false;
@@ -153,8 +154,16 @@ class _GardenScreenState extends State<GardenScreen> {
       final reduce = await widget.store.setting('reducedMotion') == 'true';
       final weekly = await widget.store.weeklyReflectionDue();
       final dates = <String, DateTime?>{};
+      final paused = <String>{};
       for (final habit in data) {
         dates[habit.id] = await widget.store.naturalnessAvailableAt(habit.id);
+        if ((int.tryParse(
+                  await widget.store.setting('ignored:${habit.id}') ?? '',
+                ) ??
+                0) >=
+            7) {
+          paused.add(habit.id);
+        }
       }
       if (mounted) {
         setState(() {
@@ -162,6 +171,7 @@ class _GardenScreenState extends State<GardenScreen> {
           reducedMotion = reduce;
           weeklyDue = weekly;
           naturalnessDates = dates;
+          pausedReminders = paused;
           loading = false;
         });
       }
@@ -774,7 +784,10 @@ class _GardenScreenState extends State<GardenScreen> {
                       onTap: () => _chooseMinute('quietEnd', 450),
                     ),
                     ListTile(
-                      title: const Text('Snooze for one hour'),
+                      title: const Text('Quiet for one hour'),
+                      subtitle: const Text(
+                        'Postpones unsent reminders only. A request already made today will not be repeated.',
+                      ),
                       onTap: () => _act(reminders!.snooze),
                     ),
                     ListTile(
@@ -1317,6 +1330,32 @@ class _GardenScreenState extends State<GardenScreen> {
                                             ),
                                           ],
                                         ),
+                                      if (pausedReminders.contains(
+                                        habit.id,
+                                      )) ...[
+                                        const Text(
+                                          'Reminders are paused after seven unanswered requests. Your garden kept its growth. Resume only if you want; daily limits still apply.',
+                                        ),
+                                        TextButton(
+                                          onPressed: working
+                                              ? null
+                                              : () => _act(() async {
+                                                  if (reminders != null) {
+                                                    await reminders!
+                                                        .resumeHabit(habit.id);
+                                                  } else {
+                                                    await widget.store
+                                                        .setSetting(
+                                                          'ignored:${habit.id}',
+                                                          '0',
+                                                        );
+                                                  }
+                                                }),
+                                          child: const Text(
+                                            'Resume gentle reminders',
+                                          ),
+                                        ),
+                                      ],
                                       TextButton.icon(
                                         onPressed: working
                                             ? null

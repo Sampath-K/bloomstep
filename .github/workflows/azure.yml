@@ -19,12 +19,25 @@ jobs:
         run: npm ci --ignore-scripts && npm run check && npm test
       - name: Verify generated event registry
         run: node tool/generate_event_registry.mjs --check
+      - name: Verify and build real operator sign-in
+        env:
+          CONSOLE_CLIENT_ID: ${{ vars.CONSOLE_CLIENT_ID }}
+          OIDC_ISSUER: ${{ vars.OIDC_ISSUER }}
+          OIDC_API_SCOPE: ${{ vars.OIDC_API_SCOPE }}
+          API_ORIGIN: ${{ vars.API_ORIGIN }}
+        run: |
+          npm --prefix site ci
+          node --test site/test/operator-auth.test.mjs test/site_console_test.mjs
+          npm --prefix site run build
+          mkdir deploy-site
+          cp site/index.html site/config.json site/staticwebapp.config.json site/operator-callback.html site/operator-config.json deploy-site/
+          cp -R site/assets deploy-site/assets
       - name: Deploy approved Free SWA
         uses: Azure/static-web-apps-deploy@v1
         with:
           azure_static_web_apps_api_token: ${{ secrets.AZURE_STATIC_WEB_APPS_API_TOKEN }}
           action: upload
-          app_location: site
+          app_location: deploy-site
           api_location: api
           output_location: ''
           skip_app_build: true

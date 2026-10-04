@@ -1,7 +1,24 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { approvedConnection, formatMetric, replyAttempt, metricPanels, tokenHeaders, dashboardPanels } from '../site/console.mjs';
+import { approvedConnection, formatMetric, replyAttempt, metricPanels, tokenHeaders, dashboardPanels, snapshotPanels } from '../site/console.mjs';
 import { dashboardSummaries } from '../api/src/dashboards.mjs';
+
+test('operator renders persisted latest-day panels and unavailable history separately, never window sums', () => {
+  const record = { dashboards: dashboardSummaries([], '2026-08-31', '2026-08-31', '2026-09-01') };
+  record.dashboards.reminderHealth.sentUsers = 77;
+  const series = { source: 'persisted_daily_worker', startDay: '2026-08-30', endDay: '2026-08-31', definition: 'Never sum daily unique users or medians.',
+    days: [{ day: '2026-08-30', status: 'unavailable', reason: 'not_generated', record: null },
+      { day: '2026-08-31', status: 'available', generatedAt: '2026-09-01T12:00:00.000Z', registryVersion: 1, record }] };
+  const panels = snapshotPanels({ dailySnapshots: series });
+  assert.equal(panels.length, 5);
+  assert.match(panels[0].title, /Persisted daily worker/);
+  assert.match(panels[0].rows[0].value, /Unavailable.*not_generated/);
+  assert.match(panels[0].rows[1].value, /2026-09-01T12:00/);
+  assert.equal(panels[4].rows[0].value, '77');
+  series.days[1] = { day: '2026-08-31', status: 'unavailable', reason: 'stale_generation', record: null };
+  assert.equal(snapshotPanels({ dailySnapshots: series }).length, 1);
+  assert.throws(() => snapshotPanels({}));
+});
 
 test('typed dashboards surface unavailable cohorts and completed-day definitions', () => {
   const data = { dashboards: dashboardSummaries([], '2026-09-01', '2026-09-01', '2026-09-02') };

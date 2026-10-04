@@ -1,6 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { randomUUID } from 'node:crypto';
+import { createHash } from 'node:crypto';
 import { createHandlers, ServiceError } from '../src/backend.mjs';
 import { aggregateEvents, previewLimits } from '../src/engagement.mjs';
 import { newerSetting } from '../src/contracts.mjs';
@@ -83,6 +84,139 @@ function harness({ roles = ['Bloomstep.Admin'], disabled = false, apiDisabled = 
   });
   return { ...handlers, put, read, documents, writes, store };
 }
+
+test('metrics consumes persisted daily records distinctly from on-demand values and missing days', async () => {
+  const h = harness();
+  await h.aggregates(request('POST', {}));
+  const saved = h.read('daily:2026-08-31', '__daily_aggregates');
+  saved.record.categories.activationRetention.checkins = 123;
+  saved.record.dashboards.reminderHealth.sentUsers = 77;
+  saved.digest = createHash('sha256').update(JSON.stringify(saved.record)).digest('hex');
+  h.put(saved);
+  const result = (await h.metrics(request('GET', null, { days: '2' }))).jsonBody;
+  assert.equal(result.categories.activationRetention.checkins, null);
+  assert.equal(result.dailySnapshots.source, 'persisted_daily_worker');
+  assert.deepEqual(result.dailySnapshots.days.map(row => [row.day, row.status]), [
+    ['2026-08-30', 'unavailable'], ['2026-08-31', 'available'],
+  ]);
+  const day = result.dailySnapshots.days[1];
+  assert.equal(day.generatedAt, now);
+  assert.equal(day.registryVersion, 1);
+  assert.equal(day.record.categories.activationRetention.checkins, 123);
+  assert.equal(day.record.dashboards.reminderHealth.sentUsers, 77);
+  assert.equal(day.record.dashboards.outcomes.daily[0].medianAutomaticity, null);
+  assert.equal(day.suppression.minimumCohort, 50);
+  assert.equal(result.dailySnapshots.days[0].record, null);
+  assert.equal(h.writes.filter(row => row.action === 'metrics_read').length, 1);
+});
+
+test('persisted series is unavailable without scheduling, for stale generations or malformed records', async () => {
+  const h = harness();
+  const absent = (await h.metrics(request('GET', null, { days: '1' }))).jsonBody.dailySnapshots;
+  assert.equal(absent.days[0].reason, 'not_generated');
+  assert.equal(h.read('generation', '__daily_aggregates'), undefined);
+  await h.aggregates(request('POST', {}));
+  const saved = h.read('daily:2026-08-31', '__daily_aggregates');
+  for (const patch of [
+    { generation: 'obsolete' }, { registryVersion: 999 },
+    { generatedAt: '2026-09-02T00:00:00.000Z' },
+    { generatedAt: '2026-08-31T12:00:00.000Z' },
+    { record: { ...saved.record, dashboards: { ...saved.record.dashboards, accountId: userId } } },
+    { record: { ...saved.record, startDay: '2026-08-30' } },
+    { record: { ...saved.record, privateText: 'must never escape' } },
+    { digest: 'invalid' },
+  ]) {
+    h.put({ ...saved, ...patch });
+    const row = (await h.metrics(request('GET', null, { days: '1' }))).jsonBody.dailySnapshots.days[0];
+    assert.equal(row.status, 'unavailable');
+    assert.equal(row.record, null);
+    assert.equal(JSON.stringify(row).includes('must never escape'), false);
+  }
+});
+
+test('sparse stored snapshots stay deterministically null and fail closed if their generation gate is absent', async () => {
+  const h = harness();
+  await h.aggregates(request('POST', {}));
+  const first = (await h.metrics(request('GET', null, { days: '1' }))).jsonBody.dailySnapshots;
+  const second = (await h.metrics(request('GET', null, { days: '1' }))).jsonBody.dailySnapshots;
+  assert.deepEqual(first, second);
+  assert.equal(first.days[0].status, 'available');
+  assert.equal(first.days[0].suppression.dailySuppressed, true);
+  assert.equal(first.days[0].record.daily[0].counts, null);
+  assert.equal(first.days[0].record.daily[0].users, null);
+  assert.equal(first.days[0].record.dashboards.funnel.sameDayActivation.rate, null);
+  assert.equal(JSON.stringify(first).includes(userId), false);
+  h.documents.delete('__daily_aggregates/generation');
+  const unavailable = (await h.metrics(request('GET', null, { days: '1' }))).jsonBody.dailySnapshots.days[0];
+  assert.equal(unavailable.reason, 'stale_generation');
+  assert.equal(unavailable.record, null);
+});
+
+test('actual account deletion during snapshot read invalidates the whole persisted series', async () => {
+  let deleting = false;
+  let customer;
+  const h = harness({ beforeQuery: async spec => {
+    if (deleting && spec.query.includes('c.type = "aggregate"')) {
+      deleting = false;
+      const deletion = request('DELETE');
+      deletion.headers.set('x-confirm-delete', 'delete-my-garden');
+      await customer.deleteAccount(deletion);
+    }
+  } });
+  customer = createHandlers({ container: () => h.store, authenticate: async () => ({ userId, roles: [] }), clock: () => new Date(now) });
+  h.put({ id: 'account', userId, type: 'account', deleted: false });
+  await h.aggregates(request('POST', { days: 2 }));
+  deleting = true;
+  const series = (await h.metrics(request('GET', null, { days: '2' }))).jsonBody.dailySnapshots;
+  assert.equal(h.read('account', userId).deleted, true);
+  assert.equal(series.days.every(row => row.record === null && row.reason === 'generation_changed'), true);
+});
+
+test('daily series range is completed UTC days and earlier snapshots survive later worker runs', async () => {
+  const h = harness();
+  await h.aggregates(request('POST', { endDay: '2026-08-30' }));
+  await h.aggregates(request('POST', {}));
+  const result = (await h.metrics(request('GET', null, { days: '2' }))).jsonBody.dailySnapshots;
+  assert.equal(result.startDay, '2026-08-30');
+  assert.equal(result.endDay, '2026-08-31');
+  assert.deepEqual(result.days.map(row => row.status), ['available', 'available']);
+  const one = (await h.metrics(request('GET', null, { days: '1' }))).jsonBody.dailySnapshots;
+  assert.equal(one.days.length, 1);
+  assert.equal(one.days[0].day, '2026-08-31');
+});
+
+test('explicit worker rerun repairs invalid legacy/private records instead of treating their digest as a valid retry', async () => {
+  const h = harness();
+  await h.aggregates(request('POST', {}));
+  const saved = h.read('daily:2026-08-31', '__daily_aggregates');
+  h.put({ ...saved, record: { ...saved.record, privateText: 'never publish' } });
+  const repaired = await h.aggregates(request('POST', {}));
+  assert.equal(repaired.jsonBody.snapshots[0].updated, true);
+  assert.equal((await h.metrics(request('GET', null, { days: '1' }))).jsonBody.dailySnapshots.days[0].status, 'available');
+  assert.equal(h.read(saved.id, saved.userId).record.privateText, undefined);
+});
+
+test('metrics generation race and account deletion cannot disclose a previous persisted record', async () => {
+  let race = false;
+  const h = harness({ beforeQuery: (spec, store) => {
+    if (race && spec.query.includes('c.type = "aggregate"')) {
+      const gate = store.read('generation', '__daily_aggregates');
+      store.put({ ...gate, generation: 'deleted', revision: 'deleted' });
+    }
+  } });
+  await h.aggregates(request('POST', {}));
+  race = true;
+  const rows = (await h.metrics(request('GET', null, { days: '1' }))).jsonBody.dailySnapshots.days;
+  assert.equal(rows[0].reason, 'generation_changed');
+  assert.equal(rows[0].record, null);
+  const customer = createHandlers({ container: () => h.store, authenticate: async () => ({ userId, roles: [] }), clock: () => new Date(now) });
+  h.put({ id: 'account', userId, type: 'account', deleted: false });
+  const deletion = request('DELETE');
+  deletion.headers.set('x-confirm-delete', 'delete-my-garden');
+  race = false;
+  await customer.deleteAccount(deletion);
+  assert.equal((await h.metrics(request('GET', null, { days: '1' }))).jsonBody.dailySnapshots.days[0].record, null);
+});
 
 test('metrics requires explicit admin role and reports four bounded categories', async () => {
   const denied = harness({ roles: [] });

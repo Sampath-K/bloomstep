@@ -25,6 +25,12 @@ jobs:
       - run: npm test
       - run: node ../tool/generate_event_registry.mjs --check
       - run: node --test ../test/site_console_test.mjs
+      - name: Verify bundled operator authentication
+        working-directory: .
+        run: |
+          npm --prefix site ci
+          node --test site/test/operator-auth.test.mjs
+          npm --prefix site run build
   test-and-build-windows:
     strategy:
       fail-fast: false

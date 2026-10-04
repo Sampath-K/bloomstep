@@ -1,3 +1,4 @@
+import { loadOperatorAuth, operatorRequest } from './operator-auth.mjs';
 const groups = [
   ['activationRetention', 'Activation / returning activity', [
     ['signins', 'Sign-ins'], ['recipesCreated', 'Recipes created'],
@@ -60,6 +61,7 @@ export function dashboardPanels(data) {
       !Array.isArray(dashboards.outcomes?.daily) || !dashboards.reminderHealth) {
     throw new Error('Incomplete typed dashboard response.');
   }
+
   const metric = (label, value) => ({ label, value: formatMetric(value) });
   const percentage = value => {
     if (value === null) return 'Unavailable / suppressed';
@@ -115,6 +117,33 @@ export function dashboardPanels(data) {
   ];
 }
 
+export function snapshotPanels(data) {
+  const series = data?.dailySnapshots;
+  if (series?.source !== 'persisted_daily_worker' || !Array.isArray(series.days) ||
+      typeof series.definition !== 'string' || series.days.length < 1 || series.days.length > 30) {
+    throw new Error('Incomplete persisted daily worker series.');
+  }
+  const history = { title: 'Persisted daily worker — completed UTC-day history', definition: series.definition,
+    rows: series.days.map(day => {
+      if (day.status === 'unavailable' && day.record === null) {
+        return { label: day.day, value: `Unavailable (${day.reason}); no raw-data fallback` };
+      }
+      if (day.status !== 'available' || !day.record || day.registryVersion !== 1 || typeof day.generatedAt !== 'string') {
+        throw new Error('Invalid persisted daily worker record.');
+      }
+      return { label: day.day, value: `Generated ${day.generatedAt}; registry v${day.registryVersion}; independent daily cohorts (null remains suppressed/unavailable)` };
+    }) };
+  const latest = series.days.find(day => day.day === series.endDay);
+  if (!latest || latest.status !== 'available') {
+    history.rows.push({ label: 'Latest completed UTC day', value: 'Unavailable; no older-day or on-demand substitute' });
+    return [history];
+  }
+  return [history, ...dashboardPanels(latest.record).map(panel => ({
+    ...panel, title: `Persisted ${latest.day} — ${panel.title}`,
+    definition: `Generated ${latest.generatedAt}. ${panel.definition}`,
+  }))];
+}
+
 export function replyAttempt(previous, payload, id = () => crypto.randomUUID()) {
   const key = JSON.stringify(payload);
   return previous?.key === key ? previous : { key, requestId: id() };
@@ -128,25 +157,35 @@ function initialize() {
   let cursor = null;
   let cursorSeen = new Set();
   const pending = new Set();
+  let auth;
+  let sessionGeneration = 0;
+  element('signin-console').disabled = true;
+  loadOperatorAuth(location.origin).then(value => {
+    auth = value;
+    element('signin-console').disabled = false;
+    return value;
+  }).catch(() => {
+    status.textContent = 'Operator identity is not configured. No manual-token fallback is available.';
+    return null;
+  });
   element('origin').value = location.origin;
   if (new URLSearchParams(location.search).get('invite') === 'garden') element('invitation').hidden = false;
 
   async function request(path, body) {
-    const connection = approvedConnection(element('origin').value, element('token').value, location.origin);
+    if(!auth) throw new Error('Sign in to the operator console first.');
+    const generation = sessionGeneration;
+    if(element('origin').value !== location.origin) throw new Error('Use this deployed HTTPS site only.');
+    if(generation !== sessionGeneration) throw new Error('Operator session was cleared.');
     const controller = new AbortController();
     pending.add(controller);
     const timeout = setTimeout(() => controller.abort(), 20000);
     try {
-      const response = await fetch(connection.origin + path, {
+      const data = await operatorRequest(auth,location.origin,path,{
         method: body ? 'POST' : 'GET',
         signal: controller.signal,
-        headers: tokenHeaders(connection.token),
         ...(body ? { body: JSON.stringify(body) } : {}),
       });
-      const data = await response.json();
-      if (!response.ok) {
-        throw new Error(`API request failed (HTTP ${response.status}): ${typeof data.error === 'string' ? data.error.slice(0, 500) : 'No private details shown.'}`);
-      }
+      if(generation !== sessionGeneration) throw new Error('Operator session was cleared.');
       return data;
     } finally {
       clearTimeout(timeout);
@@ -212,6 +251,19 @@ function initialize() {
     } catch (error) { status.textContent = error.message; }
   }
 
+  element('signin-console').addEventListener('click', async () => {
+    const cleared = clear();
+    const generation = sessionGeneration;
+    try {
+      if(!auth) throw new Error('Not configured');
+      await cleared;
+      if(generation !== sessionGeneration) return;
+      status.textContent = 'Opening real operator sign-in...';
+      await auth.signIn();
+      if(generation !== sessionGeneration) return;
+      status.textContent = 'Signed in. Server-assigned Bloomstep.Admin is required to load private data.';
+    } catch { if(generation === sessionGeneration) status.textContent = 'Operator sign-in failed, cancelled, or is not configured.'; }
+  });
   element('admin').addEventListener('submit', event => {
     event.preventDefault(); void loadFeedback(true);
   });
@@ -223,7 +275,11 @@ function initialize() {
       const days = Number(element('metric-days').value);
       if (!Number.isInteger(days) || days < 1 || days > 30) throw new Error('Choose 1-30 UTC days.');
       const data = await request(`/api/team/metrics?days=${days}`);
-      const cards = [...dashboardPanels(data), ...metricPanels(data)];
+      const cards = [
+        ...snapshotPanels(data),
+        ...dashboardPanels(data).map(panel => ({ ...panel, title: `On-demand window — ${panel.title}` })),
+        ...metricPanels(data).map(panel => ({ ...panel, title: `Raw compatibility window — ${panel.title}` })),
+      ];
       const grid = document.createElement('div'); grid.className = 'grid';
       for (const item of cards) {
         const card = document.createElement('article');
@@ -243,17 +299,20 @@ function initialize() {
         const line = document.createElement('li'); line.textContent = text; limits.append(line);
       }
       element('measurement').append(grid, limits);
-      element('daily-counts').textContent = JSON.stringify(data.daily, null, 2);
-      status.textContent = `Typed dashboards cover ${data.dashboards.startDay} through ${data.dashboards.endDay} (completed UTC days); compatibility counts include today. Cohorts below ${data.minimumCohort} are suppressed, not zero. Missing instrumentation is unavailable, not inferred. Experiment remains off; crash-free rate is unavailable. Live authenticated measurement is not yet verified.`;
+      element('daily-counts').textContent = JSON.stringify({ persistedDailyWorker: data.dailySnapshots.days,
+        rawCompatibilityDailyCounts: data.daily }, null, 2);
+      status.textContent = `Persisted worker history covers ${data.dailySnapshots.startDay} through ${data.dailySnapshots.endDay}; its latest completed-day panels require an available stored snapshot. Separately labelled on-demand dashboards cover ${data.dashboards.startDay} through ${data.dashboards.endDay}; raw compatibility counts include today. No daily unique-user/retention/median rollup is inferred. Cohorts below ${data.minimumCohort} are suppressed, not zero. Experiment remains off; crash-free rate is unavailable. Worker deployment and token execution need independent live verification.`;
     } catch (error) { status.textContent = error.message; }
   });
 
   function clear() {
     for (const controller of pending) controller.abort();
-    element('token').value = '';
+    ++sessionGeneration;
+    const cleared = auth?.clear();
     panel.replaceChildren(); element('measurement').replaceChildren();
     element('daily-counts').textContent = ''; status.textContent = '';
     cursor = null; cursorSeen.clear(); next.disabled = true;
+    return cleared;
   }
   element('clear-console').addEventListener('click', clear);
   window.addEventListener('pagehide', clear);

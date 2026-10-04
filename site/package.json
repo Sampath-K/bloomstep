@@ -1,0 +1,9 @@
+{
+  "name":"bloomstep-operator-site",
+  "private":true,
+  "type":"module",
+  "engines":{"node":">=22"},
+  "scripts":{"build":"node build.mjs","test":"node --test test/*.test.mjs"},
+  "dependencies":{"@azure/msal-browser":"^4.25.0"},
+  "devDependencies":{"esbuild":"^0.25.0"}
+}

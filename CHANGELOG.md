@@ -37,6 +37,14 @@
   explicit gates; absent observations are not substituted with zero.
 - Dedicated customer-token transport through managed SWA and non-reserved team
   routes, with post-deployment 401 smoke checks rather than deployment-only proof.
+- Public ARM64/x64 unsigned engineering installers with independently verified
+  downloads; native repeat-launch installer lifecycle passes on both architectures.
+- Durable targeted Later controls preserve daily caps, explicit reminder pause
+  recovery, account-scoped notification IDs and observed-action-only telemetry.
+- Active authenticated-session expiry/resume boundary and persisted clock
+  watermark; token refresh never extends the 30-day offline authorization window.
+- Real browser PKCE product-team sign-in source, memory-only credentials and a
+  separately provisioned public SPA; no pasted bearer-token workflow.
 
 No user feedback item is marked shipped yet. This is not a full authenticated
 MVP; deployment/native delivery and remaining loops are tracked in `docs/status.md`.

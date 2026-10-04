@@ -29,14 +29,48 @@ void main() {
     addTearDown(() => tester.binding.setSurfaceSize(null));
     await tester.runAsync(() => store.setSetting('analytics', 'true'));
     await tester.pumpWidget(MaterialApp(home: GardenScreen(store: store)));
-    Future<void> settleDatabase() async {
-      await tester.runAsync(() async {
-        await Future<void>.delayed(const Duration(milliseconds: 150));
-      });
-      await tester.pumpAndSettle();
+    Future<void> waitForReady(
+      Finder finder, {
+      Future<bool> Function()? databaseReady,
+      bool celebrationClosed = false,
+    }) async {
+      final deadline = Stopwatch()..start();
+      while (deadline.elapsed < const Duration(seconds: 10)) {
+        // SQLite uses real asynchronous work, outside the widget fake clock.
+        await tester.runAsync(
+          () => Future<void>.delayed(const Duration(milliseconds: 50)),
+        );
+        await tester.pump(const Duration(milliseconds: 50));
+        final matches = finder.evaluate().toList();
+        final enabled =
+            matches.isNotEmpty &&
+            matches.every((element) {
+              final widget = element.widget;
+              ButtonStyleButton? button = widget is ButtonStyleButton
+                  ? widget
+                  : null;
+              if (button == null) {
+                element.visitAncestorElements((ancestor) {
+                  if (ancestor.widget is ButtonStyleButton) {
+                    button = ancestor.widget as ButtonStyleButton;
+                    return false;
+                  }
+                  return true;
+                });
+              }
+              return button == null || button?.onPressed != null;
+            });
+        if (enabled &&
+            (!celebrationClosed || find.byType(SnackBar).evaluate().isEmpty) &&
+            (databaseReady == null ||
+                (await tester.runAsync(databaseReady) ?? false))) {
+          return;
+        }
+      }
+      fail('UI/database readiness timed out after 10 seconds: $finder');
     }
 
-    await settleDatabase();
+    await waitForReady(find.text('Plant a habit'));
     await tester.tap(find.text('Plant a habit'));
     await tester.pumpAndSettle();
     await tester.tap(find.widgetWithText(ActionChip, 'Calm'));
@@ -45,7 +79,10 @@ void main() {
     await tester.tap(find.text('I practiced my celebration'));
     await tester.pumpAndSettle();
     await tester.tap(find.text('Plant this seed'));
-    await settleDatabase();
+    await waitForReady(
+      find.text('Did it'),
+      databaseReady: () async => (await store.habits()).length == 1,
+    );
     expect((await tester.runAsync(store.habits))!.length, 1);
     final planted =
         ((await tester.runAsync(store.syncPayload))!['events'] as List);
@@ -58,15 +95,22 @@ void main() {
       containsPair('templateCategory', 'calm'),
     );
     await tester.tap(find.text('Did it'));
-    await settleDatabase();
+    await waitForReady(
+      find.text('Undo today'),
+      databaseReady: () async =>
+          (await store.habits()).single.practiceCount == 1,
+    );
     expect((await tester.runAsync(store.habits))!.single.practiceCount, 1);
     expect(find.textContaining('relax my shoulders'), findsWidgets);
-    await tester.pump(const Duration(seconds: 6));
-    await tester.pumpAndSettle();
+    await waitForReady(find.text('Undo today'), celebrationClosed: true);
     await tester.ensureVisible(find.text('Undo today'));
     await tester.pumpAndSettle();
     await tester.tap(find.text('Undo today'));
-    await settleDatabase();
+    await waitForReady(
+      find.text('Did it'),
+      databaseReady: () async =>
+          (await store.habits()).single.practiceCount == 0,
+    );
     expect((await tester.runAsync(store.habits))!.single.practiceCount, 0);
     final recorded =
         ((await tester.runAsync(store.syncPayload))!['events'] as List);

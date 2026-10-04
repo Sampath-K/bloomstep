@@ -15,16 +15,64 @@ class IdentityService {
   static const apiOrigin = String.fromEnvironment('API_ORIGIN');
   static const _storage = FlutterSecureStorage();
   Credential? _credential;
+  DateTime? _validatedAt;
+  DateTime? _lastObservedAt;
+  Future<void> _storageTail = Future<void>.value();
   String? account;
+  DateTime? get sessionExpiresAt => _validatedAt?.add(const Duration(days: 30));
+  bool get hasValidSession {
+    final now = DateTime.now().toUtc();
+    if (_credential == null ||
+        account == null ||
+        _validatedAt == null ||
+        !offlineSessionValid(
+          _validatedAt!,
+          now: now,
+          lastObservedAt: _lastObservedAt,
+        )) {
+      return false;
+    }
+    if (_lastObservedAt == null || now.isAfter(_lastObservedAt!)) {
+      _lastObservedAt = now;
+    }
+    return true;
+  }
+
   bool get configured =>
       issuerUrl.startsWith('https://') &&
       clientId.isNotEmpty &&
       apiScope.isNotEmpty &&
       apiOrigin.startsWith('https://');
 
-  static bool offlineSessionValid(DateTime validatedAt, {DateTime? now}) {
-    final age = (now ?? DateTime.now()).toUtc().difference(validatedAt.toUtc());
-    return age >= const Duration(minutes: -5) && age < const Duration(days: 30);
+  static bool offlineSessionValid(
+    DateTime validatedAt, {
+    DateTime? now,
+    DateTime? lastObservedAt,
+  }) {
+    final current = (now ?? DateTime.now()).toUtc();
+    final age = current.difference(validatedAt.toUtc());
+    return age >= const Duration(minutes: -5) &&
+        age < const Duration(days: 30) &&
+        (lastObservedAt == null ||
+            current.difference(lastObservedAt.toUtc()) >=
+                const Duration(minutes: -5));
+  }
+
+  Future<T> _serialized<T>(Future<T> Function() operation) async {
+    final previous = _storageTail;
+    final completed = Completer<void>();
+    _storageTail = completed.future;
+    try {
+      await previous;
+      return await operation();
+    } finally {
+      completed.complete();
+    }
+  }
+
+  Future<void> checkpoint() async {
+    if (!hasValidSession) throw StateError('The offline session has ended.');
+    await _save(_validatedAt!.toIso8601String());
   }
 
   Future<bool> restore() async {
@@ -53,7 +101,19 @@ class IdentityService {
       await signOut();
       return false;
     }
-    if (!offlineSessionValid(DateTime.parse(record['validatedAt'] as String))) {
+    if (record['lastObservedAt'] != null &&
+        record['lastObservedAt'] is! String) {
+      throw StateError(
+        'The saved session clock record is invalid. Sign in again.',
+      );
+    }
+    final observed = DateTime.parse(
+      (record['lastObservedAt'] ?? record['validatedAt']) as String,
+    ).toUtc();
+    if (!offlineSessionValid(
+      DateTime.parse(record['validatedAt'] as String),
+      lastObservedAt: observed,
+    )) {
       await signOut();
       return false;
     }
@@ -73,6 +133,8 @@ class IdentityService {
       );
     }
     _credential = credential;
+    _validatedAt = DateTime.parse(record['validatedAt'] as String).toUtc();
+    _lastObservedAt = observed;
     account = record['account'] as String;
     return true;
   }
@@ -143,22 +205,42 @@ class IdentityService {
     }
   }
 
-  Future<void> _save(String validatedAt) => _storage.write(
-    key: 'bloomstep-session',
-    value: jsonEncode({
-      'issuer': issuerUrl,
-      'clientId': clientId,
-      'account': account,
-      'validatedAt': validatedAt,
-      'credential': _credential!.toJson(),
-    }),
-  );
+  Future<void> _save(String validatedAt) => _serialized(() async {
+    if (_credential == null || account == null) {
+      throw StateError('A signed-out session cannot be saved.');
+    }
+    final now = DateTime.now().toUtc();
+    if (_lastObservedAt == null || now.isAfter(_lastObservedAt!)) {
+      _lastObservedAt = now;
+    }
+    await _storage.write(
+      key: 'bloomstep-session',
+      value: jsonEncode({
+        'issuer': issuerUrl,
+        'clientId': clientId,
+        'account': account,
+        'validatedAt': validatedAt,
+        'lastObservedAt': _lastObservedAt!.toIso8601String(),
+        'credential': _credential!.toJson(),
+      }),
+    );
+    _validatedAt = DateTime.parse(validatedAt).toUtc();
+  });
 
   Future<String> accessToken() async {
-    if (_credential == null) throw StateError('Sign in before syncing.');
+    if (!hasValidSession) {
+      throw StateError(
+        'Your offline session has ended. Sign in again before syncing.',
+      );
+    }
     final token = await _credential!.getTokenResponse().timeout(
       const Duration(seconds: 30),
     );
+    if (!hasValidSession) {
+      throw StateError(
+        'Your offline session ended during token refresh. Sign in again.',
+      );
+    }
     if (token.accessToken == null) {
       throw StateError(
         'The identity provider did not issue an API access token.',
@@ -173,8 +255,10 @@ class IdentityService {
   }
 
   Future<void> signOut() async {
-    await _storage.delete(key: 'bloomstep-session');
     _credential = null;
+    _validatedAt = null;
+    _lastObservedAt = null;
     account = null;
+    await _serialized(() => _storage.delete(key: 'bloomstep-session'));
   }
 }
