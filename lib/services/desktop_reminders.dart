@@ -14,6 +14,7 @@ import '../core/garden_store.dart';
 import '../core/models.dart';
 import '../core/rules.dart';
 import 'remote_config.dart';
+import 'windows_toast_history.dart';
 
 class ReminderRequest {
   const ReminderRequest({
@@ -75,30 +76,29 @@ class WindowsReminderGateway implements ReminderGateway {
     if (initialized != true) {
       throw StateError('Windows notifications could not be initialized.');
     }
+    await WindowsToastHistory.requireEnabled();
     await windowManager.ensureInitialized();
   }
 
   @override
-  Future<void> show(ReminderRequest request) => notifications.show(
+  Future<void> show(ReminderRequest request) => WindowsToastHistory.show(
     id: request.id,
     title: request.title,
     body: request.body,
     payload: request.payloadFor('open'),
-    notificationDetails: NotificationDetails(
-      windows: WindowsNotificationDetails(
-        actions: [
-          for (final action in request.actions.entries)
-            WindowsAction(
-              content: action.value,
-              arguments: request.payloadFor(action.key),
-            ),
-        ],
-      ),
-    ),
+    actions: {
+      for (final action in request.actions.entries)
+        action.value: request.payloadFor(action.key),
+    },
   );
 
   @override
-  Future<void> cancel(int id) => notifications.cancel(id: id);
+  Future<void> cancel(int id) async {
+    await WindowsToastHistory.cancel(id);
+    await notifications.cancel(id: id);
+  }
+
+  Future<List<String>> activeTags() => WindowsToastHistory.activeTags();
   @override
   Future<void> cancelAll() => notifications.cancelAll();
   @override

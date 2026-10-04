@@ -4,6 +4,7 @@ import 'dart:io';
 import 'package:bloomstep/core/garden_store.dart';
 import 'package:bloomstep/services/desktop_reminders.dart';
 import 'package:bloomstep/services/native_share.dart';
+import 'package:bloomstep/services/windows_toast_history.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:tray_manager/tray_manager.dart';
@@ -74,10 +75,10 @@ class _RuntimeProbeState extends State<RuntimeProbe> {
       if (errors.isNotEmpty) throw StateError(errors.join('; '));
       final gateway = reminders.gateway as WindowsReminderGateway;
       final deadline = DateTime.now().add(const Duration(seconds: 5));
-      var active = await gateway.notifications.getActiveNotifications();
+      var active = await gateway.activeTags();
       while (active.isEmpty && DateTime.now().isBefore(deadline)) {
         await Future<void>.delayed(const Duration(milliseconds: 200));
-        active = await gateway.notifications.getActiveNotifications();
+        active = await gateway.activeTags();
       }
       report['ownOsNotificationHistoryCount'] = active.length;
       if (active.isEmpty) {
@@ -86,28 +87,29 @@ class _RuntimeProbeState extends State<RuntimeProbe> {
         );
       }
       await reminders.tick();
-      final repeated = await gateway.notifications.getActiveNotifications();
+      final repeated = await gateway.activeTags();
       report['capPreservedInOsHistory'] = repeated.length == active.length;
       if (repeated.length != active.length) {
         throw StateError('A repeated tick created another OS notification.');
       }
+      final habit = (await store.habits()).single;
+      await gateway.cancel(
+        DesktopReminders.notificationId(store.account, habit.id),
+      );
+      report['individualRequestRemoved'] = (await gateway.activeTags()).isEmpty;
+      if (report['individualRequestRemoved'] != true) {
+        throw StateError(
+          'The Win32 notification was not individually removed.',
+        );
+      }
       await reminders.disable();
       report['offRestoredVisibleWindow'] = await windowManager.isVisible();
-      report['ownHistoryCleared'] =
-          (await gateway.notifications.getActiveNotifications()).isEmpty;
+      report['ownHistoryCleared'] = (await gateway.activeTags()).isEmpty;
       if (report['offRestoredVisibleWindow'] != true ||
           report['ownHistoryCleared'] != true) {
         throw StateError(
           'Turning reminders off did not restore the window and clear its history.',
         );
-      }
-      if (Platform.environment['BLOOMSTEP_RUNTIME_SHARE'] == '1') {
-        await NativeShare.share(
-          Uri.parse('https://example.com/bloomstep-synthetic-share-probe'),
-        );
-        report['shareSurfaceRequested'] = true;
-        report['shareSurfaceObserved'] = 'Requires independent OS observation';
-        report['shareTransmission'] = 'Not requested or inferred';
       }
       report['passed'] = true;
       if (mounted) {
@@ -135,6 +137,26 @@ class _RuntimeProbeState extends State<RuntimeProbe> {
         }
       }
       report['cleanupComplete'] = cleanupComplete;
+      try {
+        report['notificationSetting'] =
+            await WindowsToastHistory.notificationSetting();
+      } catch (error) {
+        report['notificationSettingError'] = error.toString();
+      }
+      if (Platform.environment['BLOOMSTEP_RUNTIME_SHARE'] == '1') {
+        try {
+          await NativeShare.share(
+            Uri.parse('https://example.com/bloomstep-synthetic-share-probe'),
+          );
+          report['shareSurfaceRequested'] = true;
+          report['shareSurfaceObserved'] =
+              'Requires independent OS observation';
+          report['shareTransmission'] = 'Not requested or inferred';
+        } catch (error) {
+          report['shareSurfaceRequested'] = false;
+          report['shareError'] = error.toString();
+        }
+      }
       report['capturedAt'] = DateTime.now().toUtc().toIso8601String();
       final output = Platform.environment['BLOOMSTEP_RUNTIME_REPORT'];
       if (output == null) {

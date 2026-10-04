@@ -58,6 +58,10 @@
   from newly verified authentication; no inferred installation or provider.
 - Windows Share runner uses standard C++20 coroutines, preserving compatibility
   with current Visual Studio without suppressing deprecated-header errors.
+- Real unpackaged Windows probing exposed unsupported dependency history/single
+  cancellation. A native explicit-AUMID/grouped toast adapter and permission
+  preflight now surface disabled Windows notifications instead of fake success.
+  Actual OS delivery remains a permission/acceptance gate.
 
 No user feedback item is marked shipped yet. This is not a full authenticated
 MVP; deployment/native delivery and remaining loops are tracked in `docs/status.md`.

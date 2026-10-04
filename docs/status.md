@@ -9,8 +9,8 @@ This ledger is updated with verified outcomes, not inferred from source code.
 | 0 | Build, run, ship | Public unsigned `v0.1.0-preview.1` engineering installers published; ARM64/x64 install-launch-second-launch-uninstall CI passed. Both public downloads independently hash-verified. Local upgrade/SmartScreen and authenticated acceptance remain gates. |
 | 1 | Plant first habit | SQLite tests and real widget journey pass: five starters, four recipe fields, three species, practiced celebration, restart-safe storage. |
 | 2 | Check in | Tests pass for did/more/rest, idempotency, append edits/undo, local midnight. Widget tap/celebration/undo pass. Native measured latency pending. |
-| 3 | Visual garden | Newer true ARM64 synthetic profile `f92473d` launched and app-only capture inspected: readable banner and reserved Plant bar fixes observed. Responsive/200%-text regressions pass. Native screen-reader evidence remains pending; UIAutomation did not expose button controls in the current OS mode. |
-| 4 | Local reminders | Real Windows plugin/tray wiring plus durable targeted Later, account-scoped IDs, Off/focus recovery, seven-unanswered pause/reset and personalized-timing control are source-tested. Separate release-forbidden runtime probe checks real OS history/tray/hide/caps/cleanup; actual run and popup/Focus/restart evidence remain pending. |
+| 3 | Visual garden | True ARM64 synthetic profile captures inspected: readable banner and reserved Plant bar fixes observed. Responsive/200%-text regressions pass. Actual Flutter child HWND exposes38 MSAA nodes including labeled action buttons; UIA is empty, not evidence of no MSAA support. Narrator interaction remains unobserved. |
+| 4 | Local reminders | Real runtime probe observed tray bounds/hidden window and clean teardown. It exposed the dependency's unpackaged Win32 history/individual-cancel limitation. Native explicit-AUMID/grouped WinRT request/history/removal now replaces that path, with OS permission preflight and surfaced errors. This machine reports NotificationSetting2 (DisabledForUser); no OS settings changed or delivery claimed. New adapter full native/link/removal and popup/Focus/restart observations remain pending. |
 | 5 | Sign in | Email OTP, Google and Microsoft personal-account providers are now created AND enabled on the actual native/console user flow. MSA issuer/discovery/client/scope/auth type and both callbacks verified; real PKCE sign-in page HTTP200 includes all three options. Actual provider login/token exchanges remain unobserved, not inferred from setup. No fake login. |
 | 6 | Sync | Personal SWA Free/Cosmos free tier provisioned; live unauthenticated sync API returns 401. SQLite v4 preserves durable fingerprints and adds typed event properties; partial upload/concurrent edits, consent purge and account isolation tested. Live probes exposed SWA replacing Authorization and reserved admin routes: dedicated client-token header and team routes fixed in source, deployment smoke gate added. Actual authenticated two-account/device/offline round trips remain pending. |
 | 7 | Funnel | Versioned48-event registry and strict optional metadata; four typed dashboards with minimum50 contributors. Persisted completed-day snapshots are consumed distinctly from on-demand windows, with generation/deletion validation and no median/user-count summation. Real worker run37214984889 wrote a snapshot and its token was rejected by customer/team routes. Observed consent-bound session and fresh sign-in events are wired; restore never fabricates sign-in/install/provider history. Acquisition/install/OS-delivery observations remain incomplete; cron needs default-branch merge. |
@@ -44,7 +44,8 @@ This ledger is updated with verified outcomes, not inferred from source code.
 
 ## Latest verification
 
-116-test full serial Flutter suite passes, including observed session/sign-in
+121-test full serial Flutter suite passes, including Win32 notification
+permission/transport, observed session/sign-in
 consent, invitation retries/export,
 opaque intent IPC, capped reminders and active-session clock boundaries.
 Full analyzer is clean. API suite passes90; browser suite passes16; spend-guard
@@ -56,9 +57,14 @@ last-observed watermark. In-memory session access hides immediately at expiry or
 resume failure; serialized credential writes cannot resurrect a signed-out cache.
 Native screenshot timeline is kept privately, never copied with user account data.
 Deployment run37217202261 passed at `5a28346`. Both native jobs in run37217202495
-failed on Visual Studio's deprecated experimental coroutine headers. The runner
-now requests C++20 instead of suppressing that error; replacement full native
-builds and installer lifecycle evidence are pending.
+failed on Visual Studio's deprecated experimental coroutine headers. C++20
+replacement runs37217695852 and37217961254 subsequently passed, including both
+installer/protocol lifecycles and release-forbidden profiles. The newer native
+toast adapter compiles locally with production warning/exception settings;
+its replacement full link/build/lifecycle remains pending.
+Live Edge invite handoff, optional storage save/restore/remove and invalid-code
+handling passed with no page errors; no app launch, customer login or referral
+redemption was inferred.
 
 ## Verification and demo jobs
 
