@@ -87,6 +87,10 @@ Core UI test: choose Plant; Calm; practice celebration; Plant this seed; Did it;
 Undo today. A test-only injected SQLite account drives the widget harness; there
 is no anonymous release entry point. `BLOOMSTEP_SCREENSHOTS` optionally writes
 rendered images to an explicit local artifact directory (not committed).
+The separate runtime profile accepts `BLOOMSTEP_RUNTIME_REPORT` for a private
+report and `BLOOMSTEP_RUNTIME_SHARE=1` to request the actual Share surface with
+an example.com synthetic link. It never sends an invitation; inspect and cancel
+the OS surface independently. A returned request is not evidence of transmission.
 
 ## Edge matrix
 

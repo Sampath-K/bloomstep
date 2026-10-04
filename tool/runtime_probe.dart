@@ -3,6 +3,7 @@ import 'dart:io';
 
 import 'package:bloomstep/core/garden_store.dart';
 import 'package:bloomstep/services/desktop_reminders.dart';
+import 'package:bloomstep/services/native_share.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:tray_manager/tray_manager.dart';
@@ -99,6 +100,14 @@ class _RuntimeProbeState extends State<RuntimeProbe> {
         throw StateError(
           'Turning reminders off did not restore the window and clear its history.',
         );
+      }
+      if (Platform.environment['BLOOMSTEP_RUNTIME_SHARE'] == '1') {
+        await NativeShare.share(
+          Uri.parse('https://example.com/bloomstep-synthetic-share-probe'),
+        );
+        report['shareSurfaceRequested'] = true;
+        report['shareSurfaceObserved'] = 'Requires independent OS observation';
+        report['shareTransmission'] = 'Not requested or inferred';
       }
       report['passed'] = true;
       if (mounted) {
