@@ -83,7 +83,12 @@ redemption was inferred.
 The first main release-link deployment37223371502 exposed the SWA resource still
 bound to the feature branch. The existing Free resource is now bound to main;
 main-only, explicit-production, serialized deployment and all protected-route
-smoke gates repair that integration. Replacement main deployment proof is pending.
+smoke gates repair that integration.
+Replacement run37223995243 subsequently passed from `0535358`; Azure reports
+the default environment main/Ready/Free. Independent served-content checks
+verified both preview.2 links, schema2 config checksum/version/expiry with the
+experiment OFF, and all nine protected routes401 using actual methods.
+Full final-main run37223995427 also passed, including both native architectures.
 
 ## Verification and demo jobs
 
