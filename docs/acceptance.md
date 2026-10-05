@@ -24,8 +24,11 @@ it closed with the original synthetic database bytes restored and no typing.
 The first separately approved true ARM64 CI dispatch reached a banner readiness
 timeout before input, retained its failed artifact and cleaned its own process/
 new files. The corrected default-off CI harness verifies real foreground first
-and uses read-only bundled SQLite for exact synthetic fixture state; actual
-dispatch evidence is separate from source tests. See
+and uses read-only bundled SQLite for exact synthetic fixture state. The
+single corrected dispatch37320187531 failed because that host could not give
+the synthetic window actual foreground ownership; no input, with exact process/
+new-file cleanup confirmed. No further same-host retry; interactive tooling
+requires an approved surface or ordinary user foreground click in a new slot. See
 `native-input-verification.md`. No customer foreground slot remains reserved.
 Native-health collection is unimplemented/disabled; separate controller consent
 and coverage interpretation remain pending.

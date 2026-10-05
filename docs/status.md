@@ -66,7 +66,10 @@ No policy bypass or customer input. Initial true ARM64 synthetic CI input
 dispatch37316627023 failed banner readiness before typing and preserved its
 failed result/cleanup. Evidence-backed foreground-before-readiness correction
 and read-only exact SQLite fixture checks are in a separate default-off harness;
-the current dispatch result is not replaced by source tests. See
+the single corrected dispatch37320187531 failed exact foreground ownership on the
+existing CI host before input. Its safe failed artifact/cleanup are retained;
+no further same-host retry. Native focus/text/save/cancel/practice/delete remain
+unverified and require an approved interactive surface, not a green fallback. See
 `native-input-verification.md`. Native-health collection remains OFF/
 unimplemented pending independent controller consent/coverage interpretation.
 

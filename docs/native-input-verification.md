@@ -46,3 +46,22 @@ journey on that host. It does not validate the installed customer's foreground,
 provider exchange, authenticated API round trips, cross-account isolation,
 reminder delivery or cleanup of real account records. Those require their
 separately coordinated acceptance surfaces and permissions.
+
+## Actual host boundary
+
+Initial dispatch37316627023 (source `6df4382`) found the owned Flutter view but
+timed out waiting for its synthetic banner before sending input. Its result
+artifact and exact process/new-file cleanup were retained. The corrected single
+retry37320187531 (source `dc57ea0`) checked foreground first and **failed because
+the existing runner could not give the synthetic window actual foreground
+ownership**. Artifact11350702230 records `customerAcceptance=false`,
+`cloudUsed=false`, no input/fixture writes, exact synthetic process closure and
+removal of only its new synthetic files. No further same-host retry is planned.
+
+PowerShell parsing, managed helper compilation, source/wiring contracts and
+headless bundled-SQLite parameter binding/read-only denial/hash preservation
+pass. Native focus/text/save/cancel/practice/undo/deletion interaction remains
+**unverified**, not a green fallback. It requires an explicitly approved
+interactive host or ordinary user foreground click on the labeled synthetic
+window during a new coordinated slot. The default-off dispatch remains a
+fail-closed diagnostic, not an install/permission/focus-policy workaround.
