@@ -9,6 +9,7 @@ import 'models.dart';
 import 'rules.dart';
 import 'event_registry.g.dart' as registry;
 import 'measurement_receipt.dart';
+import 'reminder_preference_episode.dart';
 
 class GardenStore {
   GardenStore._(this._db, this._account);
@@ -859,6 +860,7 @@ class GardenStore {
         'updated': DateTime.now().toUtc().toIso8601String(),
       }, conflictAlgorithm: ConflictAlgorithm.replace);
       if (key == 'analytics' && value != 'true') {
+        await _purgeReminderObservation(txn, account);
         await txn.delete('events', where: 'account = ?', whereArgs: [account]);
         await txn.delete(
           'sync_state',
@@ -875,6 +877,236 @@ class GardenStore {
           properties: {'platform': telemetryPlatform},
         );
       }
+    });
+  }
+
+  static Future<String?> _valueWith(
+    DatabaseExecutor txn,
+    String owner,
+    String key,
+  ) async {
+    final rows = await txn.query(
+      'settings',
+      where: 'account = ? AND key = ?',
+      whereArgs: [owner, key],
+    );
+    return rows.isEmpty ? null : rows.single['value'] as String;
+  }
+
+  static Future<ReminderObservationConsent?> _reminderConsentWith(
+    DatabaseExecutor txn,
+    String owner,
+  ) async {
+    final raw = await _valueWith(txn, owner, 'reminderObservationConsent');
+    return ReminderObservationConsent.read(
+      raw == null ? null : (jsonDecode(raw) as Map).cast<String, Object?>(),
+      analyticsEnabled: await _valueWith(txn, owner, 'analytics') == 'true',
+    );
+  }
+
+  static Future<void> _purgeReminderObservation(
+    DatabaseExecutor txn,
+    String owner,
+  ) async {
+    final rows = await txn.query(
+      'events',
+      columns: ['id'],
+      where: "account = ? AND name LIKE 'reminder_preference_%'",
+      whereArgs: [owner],
+    );
+    for (final row in rows) {
+      await txn.delete(
+        'sync_state',
+        where: 'account = ? AND tableName = ? AND recordId = ?',
+        whereArgs: [owner, 'events', row['id']],
+      );
+    }
+    await txn.delete(
+      'events',
+      where: "account = ? AND name LIKE 'reminder_preference_%'",
+      whereArgs: [owner],
+    );
+    await txn.delete(
+      'settings',
+      where: 'account = ? AND key IN (?, ?)',
+      whereArgs: [
+        owner,
+        'reminderObservationConsent',
+        'reminderObservationEpisode',
+      ],
+    );
+  }
+
+  Future<bool> reminderObservationOptedIn() async {
+    final owner = _account, generation = _syncGeneration;
+    final consent = await _db.transaction(
+      (txn) => _reminderConsentWith(txn, owner),
+    );
+    requireSyncSession(owner, generation);
+    return consent != null;
+  }
+
+  Future<void> setReminderObservationConsent(bool enabled) async {
+    final owner = _account, generation = _syncGeneration;
+    await _db.transaction((txn) async {
+      requireSyncSession(owner, generation);
+      if (enabled) {
+        if (await _valueWith(txn, owner, 'analytics') != 'true') {
+          throw StateError(
+            'Enable product event counts before this separate reminder observation choice.',
+          );
+        }
+        if (await _reminderConsentWith(txn, owner) == null) {
+          await txn.insert('settings', {
+            'account': owner,
+            'key': 'reminderObservationConsent',
+            'value': jsonEncode(
+              ReminderObservationConsent.explicitChoice(_uuid.v4()).toJson(),
+            ),
+            'updated': DateTime.now().toUtc().toIso8601String(),
+          }, conflictAlgorithm: ConflictAlgorithm.replace);
+        }
+      } else {
+        await _purgeReminderObservation(txn, owner);
+      }
+      requireSyncSession(owner, generation);
+    });
+  }
+
+  static Future<void> _saveEpisodeWith(
+    DatabaseExecutor txn,
+    String owner,
+    ReminderPreferenceEpisode episode,
+    DateTime at,
+  ) => txn
+      .insert('settings', {
+        'account': owner,
+        'key': 'reminderObservationEpisode',
+        'value': jsonEncode(episode.toJson()),
+        'updated': at.toUtc().toIso8601String(),
+      }, conflictAlgorithm: ConflictAlgorithm.replace)
+      .then((_) {});
+
+  static Future<ReminderPreferenceEpisode?> _episodeWith(
+    DatabaseExecutor txn,
+    String owner,
+    ReminderObservationConsent consent,
+  ) async {
+    final raw = await _valueWith(txn, owner, 'reminderObservationEpisode');
+    if (raw == null) return null;
+    final episode = ReminderPreferenceEpisode.fromJson(
+      (jsonDecode(raw) as Map).cast<String, Object?>(),
+    );
+    if (episode.consentEpoch != consent.consentEpoch) {
+      throw StateError(
+        'Reminder observation consent epoch changed; no outcome recorded.',
+      );
+    }
+    return episode;
+  }
+
+  static Future<void> _trackEpisodeWith(
+    DatabaseExecutor txn,
+    String owner,
+    String name,
+    ReminderPreferenceEpisode episode,
+    DateTime at,
+  ) => _trackWith(
+    txn,
+    owner,
+    name,
+    at: at,
+    properties: {
+      'disclosureVersion': ReminderPreferenceEpisode.disclosureVersion,
+      'cohortId': episode.cohortId,
+      'consentEpoch': episode.consentEpoch,
+      'platform': 'windows',
+      'localDay': localDate(at.toLocal()),
+    },
+  );
+
+  Future<void> saveReminderPreference(
+    bool enabled, {
+    required bool explicitChoice,
+    DateTime? now,
+  }) async {
+    final owner = _account, generation = _syncGeneration;
+    final at = (now ?? DateTime.now()).toUtc();
+    await _db.transaction((txn) async {
+      requireSyncSession(owner, generation);
+      final previous = await _valueWith(txn, owner, 'reminders') == 'true';
+      final consent = await _reminderConsentWith(txn, owner);
+      final episode = consent == null
+          ? null
+          : await _episodeWith(txn, owner, consent);
+      if (previous != enabled && consent != null) {
+        if (enabled && explicitChoice) {
+          final started = ReminderPreferenceEpisode.start(
+            consentEpoch: consent.consentEpoch,
+            cohortId: _uuid.v4(),
+            startedAt: at,
+          );
+          await _saveEpisodeWith(txn, owner, started, at);
+          await _trackEpisodeWith(
+            txn,
+            owner,
+            'reminder_preference_started',
+            started,
+            at,
+          );
+        } else if (!enabled && explicitChoice && episode != null) {
+          final disabled = episode.disable(at);
+          if (disabled != null) {
+            await _saveEpisodeWith(txn, owner, disabled, at);
+            await _trackEpisodeWith(
+              txn,
+              owner,
+              'reminder_preference_disabled',
+              disabled,
+              at,
+            );
+          }
+        } else if (!explicitChoice) {
+          await txn.delete(
+            'settings',
+            where: 'account = ? AND key = ?',
+            whereArgs: [owner, 'reminderObservationEpisode'],
+          );
+        }
+      }
+      await txn.insert('settings', {
+        'account': owner,
+        'key': 'reminders',
+        'value': '$enabled',
+        'updated': at.toIso8601String(),
+      }, conflictAlgorithm: ConflictAlgorithm.replace);
+      requireSyncSession(owner, generation);
+    });
+  }
+
+  Future<void> observeReminderPreferenceFollowup({DateTime? now}) async {
+    final owner = _account, generation = _syncGeneration;
+    final at = (now ?? DateTime.now()).toUtc();
+    await _db.transaction((txn) async {
+      requireSyncSession(owner, generation);
+      final consent = await _reminderConsentWith(txn, owner);
+      if (consent == null ||
+          await _valueWith(txn, owner, 'reminders') != 'true') {
+        return;
+      }
+      final episode = await _episodeWith(txn, owner, consent);
+      final followed = episode?.followup(at);
+      if (followed != null) {
+        await _saveEpisodeWith(txn, owner, followed, at);
+        await _trackEpisodeWith(
+          txn,
+          owner,
+          'reminder_preference_followup',
+          followed,
+          at,
+        );
+      }
+      requireSyncSession(owner, generation);
     });
   }
 
@@ -909,6 +1141,11 @@ class GardenStore {
 
   Future<void> track(String name, {Map<String, Object?>? properties}) async {
     _validateEventProperties(name, properties);
+    if (name.startsWith('reminder_preference_')) {
+      throw StateError(
+        'Reminder observations require an atomic explicit preference transition or persisted followup.',
+      );
+    }
     final copy = properties == null
         ? null
         : Map<String, Object?>.from(properties);
@@ -979,6 +1216,7 @@ class GardenStore {
     String account,
     String name, {
     Map<String, Object?>? properties,
+    DateTime? at,
   }) async {
     _validateEventProperties(name, properties);
     final habitId = properties?['habitId'];
@@ -996,11 +1234,20 @@ class GardenStore {
       whereArgs: [account, 'analytics'],
     );
     if (consent.isEmpty || consent.single['value'] != 'true') return;
+    if (name.startsWith('reminder_preference_')) {
+      final choice = await _reminderConsentWith(txn, account);
+      if (choice == null ||
+          choice.consentEpoch != properties?['consentEpoch']) {
+        throw StateError(
+          'Reminder observation requires current separate consent.',
+        );
+      }
+    }
     await txn.insert('events', {
       'id': _uuid.v4(),
       'account': account,
       'name': name,
-      'ts': DateTime.now().toUtc().toIso8601String(),
+      'ts': (at ?? DateTime.now()).toUtc().toIso8601String(),
       'properties': properties == null ? null : jsonEncode(properties),
     });
   }

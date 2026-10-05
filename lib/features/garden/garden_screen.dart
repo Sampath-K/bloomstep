@@ -19,6 +19,7 @@ import '../../services/invitation_service.dart';
 import '../../services/invitation_intent.dart';
 import '../../services/native_share.dart';
 import '../../services/session_diagnostics.dart';
+import 'reminder_observation_controls.dart';
 import '../../services/installer_measurement.dart';
 import 'measurement_controls.dart';
 
@@ -1029,6 +1030,7 @@ class _GardenScreenState extends State<GardenScreen> {
 
   Future<void> _settings() async {
     var analytics = await widget.store.setting('analytics') == 'true';
+    var reminderObservation = await widget.store.reminderObservationOptedIn();
     String? analyticsWarning;
     var personalized =
         await widget.store.setting('personalizedTiming') == 'true';
@@ -1068,6 +1070,8 @@ class _GardenScreenState extends State<GardenScreen> {
                       });
                       analytics =
                           await widget.store.setting('analytics') == 'true';
+                      reminderObservation = await widget.store
+                          .reminderObservationOptedIn();
                       if (context.mounted) {
                         update(() => analyticsWarning = error);
                       }
@@ -1075,6 +1079,20 @@ class _GardenScreenState extends State<GardenScreen> {
                   ),
                   if (analyticsWarning != null)
                     SelectableText('Product-event choice: $analyticsWarning'),
+                  ReminderObservationControls(
+                    analyticsEnabled: analytics,
+                    optedIn: reminderObservation,
+                    onChanged: (value) async {
+                      await _act(
+                        () => widget.store.setReminderObservationConsent(value),
+                      );
+                      reminderObservation = await widget.store
+                          .reminderObservationOptedIn();
+                      if (context.mounted) {
+                        update(() => analyticsWarning = error);
+                      }
+                    },
+                  ),
                   MeasurementControls(
                     store: widget.store,
                     analytics: analytics,
@@ -1237,7 +1255,7 @@ class _GardenScreenState extends State<GardenScreen> {
                               const Duration(milliseconds: 50),
                             );
                           }
-                          await reminders?.disable();
+                          await reminders?.disable(explicitChoice: false);
                           await widget.store.deleteLocalAccount();
                           if (pendingInvitation != null) {
                             await _clearCurrentInvitation(
@@ -1272,7 +1290,7 @@ class _GardenScreenState extends State<GardenScreen> {
                               const Duration(milliseconds: 50),
                             );
                           }
-                          await reminders?.disable();
+                          await reminders?.disable(explicitChoice: false);
                           await SyncService(
                             widget.identity!,
                             widget.store,
@@ -1313,7 +1331,7 @@ class _GardenScreenState extends State<GardenScreen> {
                               const Duration(milliseconds: 50),
                             );
                           }
-                          await reminders?.disable();
+                          await reminders?.disable(explicitChoice: false);
                           await widget.store.deleteLocalAccount();
                           if (pendingInvitation != null) {
                             await _clearCurrentInvitation(

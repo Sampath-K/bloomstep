@@ -74,6 +74,52 @@ requires dual native CI/future compatible candidate and a separately approved
 customer upgrade/readback; no current installed preview is represented as
 having this new export contract.
 
+## Optional app reminder-preference observation (disclosure version 1)
+
+This is a separate, unchecked Settings choice, even when existing product-event
+analytics is enabled. Both choices are required. It observes only an explicit
+post-consent app preference false-to-true transition after gateway initialization
+succeeds. Startup restoration, retry, repeated enable, opting in while already
+enabled, disposal, sign-out and account erasure never enroll or count as an
+explicit disable. It does not read Windows permission, delivery, contacts,
+location, private habit text or a lifetime notification census.
+
+Three immutable event envelopes use required `disclosureVersion:1`,
+random UUID `cohortId` and `consentEpoch`, `platform:"windows"` and `localDay`:
+`reminder_preference_started`, `reminder_preference_disabled` and
+`reminder_preference_followup`. Generated native/wire/type contracts share
+required fields and the fixed Windows platform. General-purpose tracking cannot
+manufacture these events. Local preference/state/event writes are transactional
+and owner/generation guarded. An explicit true-to-false transition records one
+linked disable; a still-enabled same-epoch persisted preference may record one
+followup after exactly 30 elapsed days. Clock regression fails explicitly.
+Missing followup, lost state or non-preference shutdown is unknown, never
+inferred continued enablement.
+
+Consent/episode settings remain device-local and appear in owner JSON export;
+they cannot sync or opt another device in. Revoking either consent purges added
+local state, queued observations and their sync fingerprints. Re-consent starts
+a fresh epoch with no backfill. Already-sent requests cannot be recalled; synced
+facts retain existing 13-month raw event retention/account deletion behavior.
+No unconsented lifetime identifier or historical enablement marker is added.
+
+Selected Admin `/api/team/metrics` adds `reminderPreferenceCohorts`, using the
+existing shared 10,000-row scan/200-account caps and final account/deletion
+filter. It selects the first observed episode per owner within retained bounded
+input, not a lifetime-first claim. UTC windows select the dates when 30-day
+horizons close; microseconds are preserved at boundaries. Duplicates coalesce;
+conflicting or malformed observations make results unavailable. Missing
+same-epoch followup makes the disable fraction unavailable. Counts and
+contributing subsets require 50 distinct owners; a nonempty sub-50 outcome also
+suppresses its parent total to prevent subtraction inference. The fraction
+requires both disabled and confirmed-followup contributor groups of at least
+50 owners and no unknown outcomes. Suppressed values stay null, never zero.
+The private console labels this separately from the original goal.
+Original full-coverage notification-disable <=10% stays `not_observable`;
+this narrower sample supplies no OS-delivery or original-goal pass/fail claim.
+Source readiness does not prove actual native/customer observation or genuine
+30-day populations. Experiment remains OFF.
+
 ## Operational spending guard: isolated one-way pause
 
 `POST /api/internal/operational-pause` uses **only** a separately pinned normal

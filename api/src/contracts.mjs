@@ -43,10 +43,14 @@ function propertySchema(rule) {
 const propertySchemas = Object.fromEntries(Object.entries(eventRegistry).map(([name, entry]) => [
   name, z.object(Object.fromEntries(Object.entries(entry.properties).map(([key, rule]) => [key, propertySchema(rule).optional()]))).strict(),
 ]));
+const requiredProperties = new Map(Object.entries(eventRegistry).map(([name, entry]) => [name, entry.required ?? []]));
 export const eventSchema = z.object({
   id, name: z.enum(eventNames), ts: timestamp, schemaVersion: z.literal(registryVersion).optional(),
   properties: z.record(z.string(), z.unknown()).optional(),
 }).strict().superRefine((event, context) => {
+  if (requiredProperties.get(event.name)?.some(key => event.properties?.[key] === undefined)) {
+    context.addIssue({ code: 'custom', message: 'Required event-specific metadata is missing.', path: ['properties'] });
+  }
   if (event.properties && !propertySchemas[event.name].safeParse(event.properties).success) {
     context.addIssue({ code: 'custom', message: 'Invalid event-specific properties.', path: ['properties'] });
   }

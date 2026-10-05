@@ -4,20 +4,35 @@
 cloud deployment and native background behavior require integration evidence.
 This ledger is updated with verified outcomes, not inferred from source code.
 
-**Current developer increment: private support receipts/response measurement.**
-New-record atomic server receipt/first actual operator reply metadata, legacy/
-older-writer unknowns, bounded private48h measurement and typed separate console
-panel are implemented in source. Native read-only owner JSON sidecar export and
-visible incomplete-component warnings are wired without SQLite migration,
-uploads or implicit merges. All132 API,169 Flutter and33 website/source contract
-tests pass; API type-check and Flutter analyzer pass. Local Flutter tests use
-the supported no-assets/serial mode because of the existing OneDrive asset/
-compiler-cache boundary; no OS permission was changed. This is source evidence,
-not actual service-role or customer GUI acceptance.
-Current source is ready for coherent publication;
-publication, exact dual native CI/future candidate and separately coordinated
-customer upgrade/API/export readback remain required. Business-day calendar,
-full native crash census and original full-coverage goals remain incomplete.
+**Current developer increment: fresh-consent app reminder-preference observations.**
+A separate unchecked/versioned choice is wired into Settings, owner SQLite
+transactions, real reminder initialization/preference transitions, existing
+authenticated event sync and a separately labeled private metrics panel.
+Existing analytics consent never grants this choice; restoration, retries,
+disposal/sign-out and missing followup never become inferred outcomes.
+Revocation purges added local state/queue; generated native/wire contracts
+require the same exact fields. Original full notification-disable <=10%
+remains unavailable, not replaced by this narrower sample. Source verification
+and publication evidence are tracked separately; no current customer upgrade,
+collection, OS setting or native-health consent is inferred.
+Current source validation: 148 API, 194 Flutter and 49 website/source tests pass;
+API type-check, Flutter analyzer, generated registry reproduction and site build
+pass, including legacy-disk analytics-true/no-new-consent reopening, epoch
+rotation, export/revoke/acknowledgment races, final deleted-owner filtering and
+low-count subtraction protection. Source publication/native CI remain required.
+
+**Support source publication:** corrected PR10 merged `cf5a322`; exact
+PR37335150702, main37338563004 and API/site deployment37338562518 succeeded.
+The publisher owns tagged preview.7 run37340194397 and final public artifact/
+hash readback, pending at this update. The whitespace/malformed reply-array
+provenance correction supersedes original source-only receipts evidence.
+Read-only owner export warnings, legacy/older-writer unknowns and server-only
+receipt/first committed reply metadata are implemented without SQLite migration.
+Actual selected operator/Cosmos query/reply and preserved-session customer
+upgrade/export readbacks remain separate acceptance gates. Business-day
+calendar, full native crash census and original full-coverage goals remain
+incomplete. Local validation uses supported no-assets/serial Flutter mode;
+no OS permission changed.
 
 **Website/guarded diagnostic publication is complete:** PR9/main `cb83657`,
 PR CI37322996096, main CI37324820288 and deployment37324819165 all SUCCESS;
@@ -39,7 +54,7 @@ library/education/animation enhancements are frozen outside launch scope.
 | # | Package / owner | Next action and definition of done | Dependency / class |
 | --- | --- | --- | --- |
 | 1 | Real single-account private loop — implementation session | Actual coordinated preview.5 NEW private export/schema/per-row ownership/server-invitation readback and fresh HTTP200 merge PASS. First text setter stopped before Plant; canceled, fixtures0, app handed back. Guarded CI harness shipped; host foreground was genuinely unavailable. Next interaction needs an ordinary user foreground click/new slot or approved interactive host, then separately coordinated preserved-session compatible upgrade and labeled own check-in/edit/undo/reflection/feedback/rating/owner-delete/API readbacks with only exact owned fixture cleanup. | Preview.5 remains installed; former owner closed/cause unknown, no foreground reservation. Text/foreground tooling failures are not product defects or customer write-loop acceptance. |
-| 2 | Target-aligned telemetry and goal/actual UI — implementation session | Version1 original launch85%/day0/D7>=3/D30>=4 dates/30-60-90 graduation/D90 contracts shipped through PR7/mainb890250/deploy37298456876 with served bundle readback. Finish missing notification cohort-start/invite delivery/support receipt/SLA/native collection contracts; no private population fetched. | 8 projections implemented,5 original goals explicitly unobservable rather than proxies. Engineering; genuine results separately await cohorts and calendar/controller decisions. |
+| 2 | Target-aligned telemetry and goal/actual UI — implementation session | Original projections shipped through PR7; support receipt/first-reply source now published via corrected PR10/API deploy, preview.7 pending. Fresh versioned consent and narrower app reminder-preference observations are wired in source; finish exact native CI/publication. Verified invitation delivery, business-day calendar and full native-health coverage still require their actual contracts/decisions. | 8 original projections implemented; 5 original coverage goals still unavailable rather than proxies. Narrower support/preference panels do not replace original goals or prove populations. |
 | 3 | Session/native health coverage — implementation session, privacy/controller review | Headless ARM64 native fixture proved normal0, real exception hook signal and deliberate exit with identical0xc0000005 code but no signal. No customer process/GUI/data touched or dump requested. Implement bounded category-only hook plus independent lifecycle/recovery/consent/offline handling; prove fast-fail/kill/uncertain coverage and original99.5% canary interpretation. | Feasibility evidence is partial: exit-code classification alone disproved. Controller/coverage decisions, source/release and controlled/live observation remain; no crash-free claim. |
 | 4 | Genuine identity/device/offline/recovery/isolation — implementation session, customer approves identities/destruction | Real approved second-account/device state, foreign-account denial, offline/restart/reconnect/idempotency/conflict/revocation/recovery and separately approved disposable-account deletion, with actual API readback/cleanup. Preserve current session; no forced sign-out/new identity/account erasure from launch urgency. | 1 and explicit additional identity/offline/destructive test decisions. Mixed acceptance. |
 | 5 | Private operator/team/referral round trips — implementation session, customer selects operator and communication scope | Explicit customer operator before any Admin assignment; trusted-browser operator auth, private feedback/rating pagination/status/reply and owner deletion readback. Separately authorized invite/redemption/first-practice/cosmetic/retraction/cleanup acceptance with genuine participants, no automatic message sending. | 1, selected operator/Admin permission, approved participants/link/communication/cleanup boundaries. Mixed acceptance. |
@@ -419,6 +434,11 @@ requests are explicitly rejected. No other app or provider window is captured.
 | Duplicate remote events | Union by immutable client ID | Sync unit test |
 | Failed upload / restart / edit while uploading | Durable snapshot acknowledgment, changed versions remain pending | SQLite outbox tests |
 | Analytics disabled while upload queued | Atomic queue purge and pre-chunk consent recheck | Store/service tests; already-sent requests cannot be recalled |
+| Old analytics consent / fresh reminder choice | Separate unchecked version 1 choice; no forced prompt, restore/retry or already-enabled backfill | Native schema, Settings widget/store and scheduler tests |
+| Genuine reminder preference start / explicit disable | Gateway success then atomic owner/epoch/event; repeats idempotent, disposal/sign-out not disable proof | Store/scheduler tests; actual native/customer observation pending |
+| Reminder observation revoke / account race / restart | Purge local added state/queue/fingerprints, no stale-epoch binding; generation rollback; durable original time/IDs | SQLite/FFI tests; no customer account touched |
+| Thirty-day reminder preference / unknown followup | Exact elapsed UTC microseconds; missing/lost state unknown; malformed/conflicting facts unavailable and under-50 subsets suppressed | Pure projection/native tests; genuine 30-day data absent, original notification goal unavailable |
+| Native withdrawal fails | Persist explicit app off, surface error and still shut down owned reminder gateway; never claim Windows cancellation succeeded | Injected gateway scheduler test, not actual OS proof |
 | Weekly review during naturalness cooldown | Weekly loop available, no wasted slider entry | Widget/store regression |
 | Rating dismiss/snooze | <=one prompted invitation per 120 days, after celebration | Store/widget regressions |
 | Invalid future/oversized API records | Reject, don't silently truncate | Schema tests; timestamp-skew integration pending |

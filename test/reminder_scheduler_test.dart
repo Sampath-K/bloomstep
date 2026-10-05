@@ -11,9 +11,16 @@ class FakeReminderGateway implements ReminderGateway {
   final requests = <ReminderRequest>[];
   final operations = <String>[];
   bool failShow = false;
+  bool failInitialize = false;
+  bool failCancelAll = false;
+  Future<void> Function()? beforeInitialize;
   Future<void> Function(ReminderRequest)? beforeShow;
   @override
-  Future<void> initialize(Future<void> Function(String) action) async {}
+  Future<void> initialize(Future<void> Function(String) action) async {
+    await beforeInitialize?.call();
+    if (failInitialize) throw StateError('Synthetic initialization failed');
+  }
+
   @override
   Future<void> show(ReminderRequest request) async {
     await beforeShow?.call(request);
@@ -25,7 +32,11 @@ class FakeReminderGateway implements ReminderGateway {
   @override
   Future<void> cancel(int id) async => operations.add('cancel:$id');
   @override
-  Future<void> cancelAll() async => operations.add('cancelAll');
+  Future<void> cancelAll() async {
+    operations.add('cancelAll');
+    if (failCancelAll) throw StateError('Synthetic withdrawal failed');
+  }
+
   @override
   Future<void> showAndFocus() async => operations.add('showAndFocus');
   @override
@@ -83,6 +94,107 @@ void main() {
       );
     },
   );
+
+  test('restoration never enrolls; genuine fresh-consent enable, followup and explicit disable use app preference provenance', () async {
+    await reminders.disable(explicitChoice: false);
+    await store.setSetting('analytics', 'true');
+    await store.setReminderObservationConsent(true);
+    await reminders.enable();
+    final started = ((await store.export())['events'] as List)
+        .where((row) => (row as Map)['name'] == 'reminder_preference_started')
+        .single;
+    await reminders.dispose();
+    await reminders.initialize();
+    expect(
+      ((await store.export())['events'] as List).where(
+        (row) => (row as Map)['name'] == 'reminder_preference_started',
+      ),
+      hasLength(1),
+    );
+    now = now.add(const Duration(days: 30));
+    await reminders.tick();
+    expect(
+      ((await store.export())['events'] as List).where(
+        (row) => (row as Map)['name'] == 'reminder_preference_followup',
+      ),
+      hasLength(1),
+    );
+    expect(started['ts'], DateTime(2026, 10, 4, 18).toUtc().toIso8601String());
+    now = now.add(const Duration(days: 1));
+    await reminders.disable(explicitChoice: false);
+    expect(
+      ((await store.export())['events'] as List).where(
+        (row) => (row as Map)['name'] == 'reminder_preference_disabled',
+      ),
+      isEmpty,
+    );
+  });
+
+  test('failed gateway enable produces no new preference episode or success-shaped enabled state', () async {
+    await reminders.disable(explicitChoice: false);
+    await store.setSetting('analytics', 'true');
+    await store.setReminderObservationConsent(true);
+    gateway.failInitialize = true;
+    await expectLater(reminders.enable(), throwsStateError);
+    expect(reminders.enabled, isFalse);
+    expect(await store.setting('reminders'), 'false');
+    expect(
+      ((await store.export())['events'] as List).where(
+        (row) =>
+            (row as Map)['name'].toString().startsWith('reminder_preference_'),
+      ),
+      isEmpty,
+    );
+  });
+
+  test('overlapping enables retain the initiating owner guard after another account initializes', () async {
+    await reminders.disable(explicitChoice: false);
+    await store.switchAccount('account-b');
+    await store.setSetting('analytics', 'true');
+    await store.setReminderObservationConsent(true);
+    await store.switchAccount('account-a');
+    final waiting = Completer<void>(), resume = Completer<void>();
+    var calls = 0;
+    gateway.beforeInitialize = () async {
+      if (++calls == 1) {
+        waiting.complete();
+        await resume.future;
+      }
+    };
+    final first = reminders.enable();
+    final rejected = expectLater(first, throwsStateError);
+    await waiting.future;
+    await store.switchAccount('account-b');
+    await reminders.enable();
+    resume.complete();
+    await rejected;
+    expect(
+      ((await store.export())['events'] as List).where(
+        (row) => (row as Map)['name'] == 'reminder_preference_started',
+      ),
+      hasLength(1),
+    );
+  });
+
+  test('withdrawal failure remains an error without losing app preference or tray shutdown', () async {
+    await reminders.disable(explicitChoice: false);
+    await store.setSetting('analytics', 'true');
+    await store.setReminderObservationConsent(true);
+    await reminders.enable();
+    now = now.add(const Duration(days: 1));
+    gateway.failCancelAll = true;
+    gateway.operations.clear();
+    await expectLater(reminders.disable(), throwsStateError);
+    expect(await store.setting('reminders'), 'false');
+    expect(reminders.enabled, isFalse);
+    expect(gateway.operations, ['showAndFocus', 'cancelAll', 'shutdown']);
+    expect(
+      ((await store.export())['events'] as List).where(
+        (row) => (row as Map)['name'] == 'reminder_preference_disabled',
+      ),
+      hasLength(1),
+    );
+  });
 
   test('deletion withdraws only removed recipe notifications, without changing preference or daily caps', () async {
     final a = await plantReminder(store);

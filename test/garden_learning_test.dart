@@ -50,6 +50,38 @@ Future<(GardenStore, Habit)> fixture(WidgetTester tester) async {
 }
 
 void main() {
+  testWidgets(
+    'Settings mounts a fresh reminder observation choice and revokes it with product-event consent',
+    (tester) async {
+      final (store, _) = await fixture(tester);
+      await tester.runAsync(() => store.setSetting('analytics', 'true'));
+      await tester.pumpWidget(MaterialApp(home: GardenScreen(store: store)));
+      await settleDatabase(tester);
+      await tester.tap(find.byTooltip('Settings and privacy'));
+      await settleDatabase(tester);
+      final choice = find.widgetWithText(
+        CheckboxListTile,
+        'Observe my app reminder preference (optional)',
+      );
+      expect(tester.widget<CheckboxListTile>(choice).value, isFalse);
+      await tester.ensureVisible(choice);
+      await tester.tap(choice);
+      await settleDatabase(tester);
+      expect(tester.widget<CheckboxListTile>(choice).value, isTrue);
+      expect(await tester.runAsync(store.reminderObservationOptedIn), isTrue);
+      final analytics = find.widgetWithText(
+        SwitchListTile,
+        'Share product event counts',
+      );
+      await tester.ensureVisible(analytics);
+      await tester.tap(analytics);
+      await settleDatabase(tester);
+      expect(tester.widget<CheckboxListTile>(choice).value, isFalse);
+      expect(tester.widget<CheckboxListTile>(choice).onChanged, isNull);
+      expect(await tester.runAsync(store.reminderObservationOptedIn), isFalse);
+      expect(tester.takeException(), isNull);
+    },
+  );
   testWidgets('foreground return celebrates once and resets absence state', (
     tester,
   ) async {

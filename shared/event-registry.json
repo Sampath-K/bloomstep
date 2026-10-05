@@ -21,7 +21,10 @@
     "variant": {"enum":["control","gentle"]},
     "errorKind": {"enum":["network","authentication","conflict","quota","validation","unavailable","unknown"]},
     "diagnosticSource": {"enum":["flutter_framework","dart_unhandled"]},
-    "measurementSource": {"enum":["website_receipt","installer_receipt"]}
+    "measurementSource": {"enum":["website_receipt","installer_receipt"]},
+    "disclosureVersion": {"type":"integer","min":1,"max":1},
+    "cohortId": {"type":"uuid"},
+    "consentEpoch": {"type":"uuid"}
   },
   "events": {
     "analytics_consent": {"properties":["platform"]},
@@ -65,6 +68,9 @@
     "notif_actioned": {"properties":["notificationId","action","platform"]},
     "notif_dismissed": {"properties":["notificationId","platform"]},
     "notif_disabled": {"properties":["platform","localDay"]},
+    "reminder_preference_started": {"properties":["disclosureVersion","cohortId","consentEpoch","platform","localDay"],"required":["disclosureVersion","cohortId","consentEpoch","platform","localDay"],"fixed":{"platform":"windows"}},
+    "reminder_preference_disabled": {"properties":["disclosureVersion","cohortId","consentEpoch","platform","localDay"],"required":["disclosureVersion","cohortId","consentEpoch","platform","localDay"],"fixed":{"platform":"windows"}},
+    "reminder_preference_followup": {"properties":["disclosureVersion","cohortId","consentEpoch","platform","localDay"],"required":["disclosureVersion","cohortId","consentEpoch","platform","localDay"],"fixed":{"platform":"windows"}},
     "session_started": {"properties":["sessionId","platform"]},
     "crash": {"properties":["sessionId","platform","errorKind","diagnosticSource"]},
     "app_hang": {"properties":["sessionId","platform","latencyMs"]},

@@ -58,6 +58,34 @@ sync and clears the local installer receipt; browser storage/exported copies
 remain a separate user choice. Server event retention is13 months; receipt
 time is preserved, never replaced with import time.
 
+## Fresh app reminder-preference choice
+
+The next native candidate adds disclosure version 1 as a separate unchecked
+Settings choice. Existing product-event consent does not grant it. Local
+`reminderObservationConsent` and `reminderObservationEpisode` settings in the
+same owner SQLite store are the source of truth; they export with local records
+but never sync as preferences or enable another device.
+
+A genuine explicit post-consent app reminder enable after successful gateway
+initialization starts an episode. Startup restore and repeated enable do not.
+The three required-field events carry only random episode/consent UUIDs, fixed
+Windows platform, version, local date and original UTC timestamp. Explicit
+disable and a persisted same-epoch enabled preference after 30 days are linked,
+idempotent observations, not Windows permission/delivery or lifetime history.
+Missing followup remains unknown. General-purpose tracking cannot emit them.
+Revoking either choice clears added local state/events/sync fingerprints;
+new consent cannot bind old episodes. Already-sent facts use existing retention
+and account deletion, not a promise to recall an in-flight HTTP request.
+
+Private Admin metrics and a separately labeled console panel project bounded
+observed episodes, suppress under 50 distinct owners/contributors and reject
+conflicting facts. The original notification-disable <=10% goal remains
+`not_observable`, with no comparison to this narrower sample. See
+`backend-contracts.md` for schema, horizon, privacy and failure semantics.
+Source tests do not prove real native preference/OS surfaces, customer sync or
+actual 30-day cohorts. No new customer collection, OS change or native-health
+collection is authorized by publishing the source.
+
 ## Runtime errors and interpretation
 
 Current consent/account/generation gates framework and unhandled Dart hooks.

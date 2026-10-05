@@ -1060,6 +1060,102 @@ export const eventRegistry = {
     "observable": true,
     "legacy": false
   },
+  "reminder_preference_started": {
+    "properties": {
+      "disclosureVersion": {
+        "type": "integer",
+        "min": 1,
+        "max": 1
+      },
+      "cohortId": {
+        "type": "uuid"
+      },
+      "consentEpoch": {
+        "type": "uuid"
+      },
+      "platform": {
+        "enum": [
+          "windows"
+        ]
+      },
+      "localDay": {
+        "type": "date"
+      }
+    },
+    "observable": true,
+    "legacy": false,
+    "required": [
+      "disclosureVersion",
+      "cohortId",
+      "consentEpoch",
+      "platform",
+      "localDay"
+    ]
+  },
+  "reminder_preference_disabled": {
+    "properties": {
+      "disclosureVersion": {
+        "type": "integer",
+        "min": 1,
+        "max": 1
+      },
+      "cohortId": {
+        "type": "uuid"
+      },
+      "consentEpoch": {
+        "type": "uuid"
+      },
+      "platform": {
+        "enum": [
+          "windows"
+        ]
+      },
+      "localDay": {
+        "type": "date"
+      }
+    },
+    "observable": true,
+    "legacy": false,
+    "required": [
+      "disclosureVersion",
+      "cohortId",
+      "consentEpoch",
+      "platform",
+      "localDay"
+    ]
+  },
+  "reminder_preference_followup": {
+    "properties": {
+      "disclosureVersion": {
+        "type": "integer",
+        "min": 1,
+        "max": 1
+      },
+      "cohortId": {
+        "type": "uuid"
+      },
+      "consentEpoch": {
+        "type": "uuid"
+      },
+      "platform": {
+        "enum": [
+          "windows"
+        ]
+      },
+      "localDay": {
+        "type": "date"
+      }
+    },
+    "observable": true,
+    "legacy": false,
+    "required": [
+      "disclosureVersion",
+      "cohortId",
+      "consentEpoch",
+      "platform",
+      "localDay"
+    ]
+  },
   "session_started": {
     "properties": {
       "sessionId": {
@@ -3476,6 +3572,195 @@ export const eventJsonSchema = {
                 "android",
                 "ios",
                 "web"
+              ]
+            },
+            "localDay": {
+              "type": "string",
+              "format": "date"
+            }
+          }
+        }
+      }
+    },
+    {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "name",
+        "ts",
+        "properties"
+      ],
+      "properties": {
+        "id": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "name": {
+          "const": "reminder_preference_started"
+        },
+        "ts": {
+          "type": "string",
+          "format": "date-time",
+          "pattern": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}(?:\\.\\d{1,6})?Z$"
+        },
+        "schemaVersion": {
+          "const": 1
+        },
+        "properties": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "disclosureVersion",
+            "cohortId",
+            "consentEpoch",
+            "platform",
+            "localDay"
+          ],
+          "properties": {
+            "disclosureVersion": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 1
+            },
+            "cohortId": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "consentEpoch": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "platform": {
+              "type": "string",
+              "enum": [
+                "windows"
+              ]
+            },
+            "localDay": {
+              "type": "string",
+              "format": "date"
+            }
+          }
+        }
+      }
+    },
+    {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "name",
+        "ts",
+        "properties"
+      ],
+      "properties": {
+        "id": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "name": {
+          "const": "reminder_preference_disabled"
+        },
+        "ts": {
+          "type": "string",
+          "format": "date-time",
+          "pattern": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}(?:\\.\\d{1,6})?Z$"
+        },
+        "schemaVersion": {
+          "const": 1
+        },
+        "properties": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "disclosureVersion",
+            "cohortId",
+            "consentEpoch",
+            "platform",
+            "localDay"
+          ],
+          "properties": {
+            "disclosureVersion": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 1
+            },
+            "cohortId": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "consentEpoch": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "platform": {
+              "type": "string",
+              "enum": [
+                "windows"
+              ]
+            },
+            "localDay": {
+              "type": "string",
+              "format": "date"
+            }
+          }
+        }
+      }
+    },
+    {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "name",
+        "ts",
+        "properties"
+      ],
+      "properties": {
+        "id": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "name": {
+          "const": "reminder_preference_followup"
+        },
+        "ts": {
+          "type": "string",
+          "format": "date-time",
+          "pattern": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}(?:\\.\\d{1,6})?Z$"
+        },
+        "schemaVersion": {
+          "const": 1
+        },
+        "properties": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "disclosureVersion",
+            "cohortId",
+            "consentEpoch",
+            "platform",
+            "localDay"
+          ],
+          "properties": {
+            "disclosureVersion": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 1
+            },
+            "cohortId": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "consentEpoch": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "platform": {
+              "type": "string",
+              "enum": [
+                "windows"
               ]
             },
             "localDay": {
