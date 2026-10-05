@@ -47,14 +47,18 @@ test('site, operator popup and download labels are product-branded', () => {
   assert.match(read('site/operator-callback.html'), /Completing Bloomstep operator sign-in/);
 });
 
-test('public release links verified preview7 support artifacts without implying installed acceptance', () => {
+test('public release links verified preview8 reminder artifacts without implying customer acceptance', () => {
   const site = read('site/index.html');
   for (const arch of ['arm64', 'x64']) {
-    assert.ok(site.includes(`releases/download/v0.1.0-preview.7/Bloomstep-0.1.0-preview.7-windows-${arch}-setup.exe`));
+    assert.ok(site.includes(`releases/download/v0.1.0-preview.8/Bloomstep-0.1.0-preview.8-windows-${arch}-setup.exe`));
   }
-  assert.ok(site.includes('releases/tag/v0.1.0-preview.7'));
-  assert.ok(site.includes('4cc35ee84676da9c0004e8e4fe7a60fac032d901a8e68ee32e1ea7ee561de0c2'));
-  assert.ok(site.includes('aff0cfd988c075165261358f92fbb8a48396f60ba1b52f811ccebf5ef5b350b4'));
+  assert.ok(site.includes('releases/tag/v0.1.0-preview.8'));
+  assert.ok(site.includes('2d87612664f91a099ca9201983259d728a6c768bba482c6e663d72c91358a562'));
+  assert.ok(site.includes('ecd122fd8cc222fc197157595960210ed413e1aa4824c25b24bf3793649e2ae3'));
+  assert.match(site, /0\.1\.0-preview\.8 - fresh-consent app reminder observations/);
+  assert.match(site, /original OS notification disable goal remains unavailable/i);
+  assert.match(site, /does not establish real-user consent, OS permission\/delivery, private cohort acceptance/i);
+  assert.match(site, /experiment stays OFF/);
   assert.match(site, /0\.1\.0-preview\.7 - private support receipts/);
   assert.match(site, /No customer upgrade, authenticated operator acceptance or live private-record acceptance is claimed/);
   assert.match(site, /0\.1\.0-preview\.6 - safe schema recovery/);
