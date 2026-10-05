@@ -493,7 +493,7 @@ export function createHandlers({ container, authenticate, authenticateAggregate 
   /** @param {{remaining:number}} scan */
   async function rawSupport(scan) {
     const { resources } = await container().items.query({
-      query: `SELECT TOP ${scan.remaining + 1} c.userId, c.id, c.support, c.record.kind AS kind, c.record.rating AS rating, IIF(IS_STRING(c.record.replies), c.record.replies != "[]", null) AS hasResponses FROM c WHERE c.type = "voice"`,
+      query: `SELECT TOP ${scan.remaining + 1} c.userId, c.id, c.support, c.record.kind AS kind, c.record.rating AS rating, IIF(IS_ARRAY(STRINGTOARRAY(c.record.replies)) AND NOT EXISTS(SELECT VALUE r FROM r IN STRINGTOARRAY(c.record.replies) WHERE NOT IS_STRING(r) OR LENGTH(r) > 2100), ARRAY_LENGTH(STRINGTOARRAY(c.record.replies)) > 0, null) AS hasResponses FROM c WHERE c.type = "voice"`,
     }).fetchAll();
     if (resources.length > scan.remaining) throw new ServiceError(429, 'Combined metrics scan cap exceeded; no partial counts returned.');
     scan.remaining -= resources.length;

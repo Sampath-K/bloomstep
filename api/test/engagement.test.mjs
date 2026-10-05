@@ -11,6 +11,13 @@ const userId = 'a'.repeat(64);
 const teamId = 'b'.repeat(64);
 const voice = () => ({ id: randomUUID(), kind: 'Idea', body: 'Private question', rating: null, ts: now });
 const payload = (overrides = {}) => ({ habits: [], checkins: [], reflections: [], voice: [], events: [], ...overrides });
+const validReplyPresence = value => {
+  if (typeof value !== 'string') return null;
+  let replies;
+  try { replies = JSON.parse(value); } catch { return null; }
+  return Array.isArray(replies) && replies.every(reply => typeof reply === 'string' && reply.length <= 2100)
+    ? replies.length > 0 : null;
+};
 const request = (method, data, query = {}, params = {}) => ({
   method, params, query: new URLSearchParams(query), headers: new Headers(),
   text: async () => JSON.stringify(data),
@@ -79,7 +86,7 @@ function harness({ roles = ['Bloomstep.Admin'], scopes = ['Garden.ReadWrite'], a
           const result = rows.slice(0, top);
           return { resources: structuredClone(spec.query.includes('AS kind') ? result.map(row => ({
             userId: row.userId, id: row.id, kind: row.record.kind, rating: row.record.rating,
-            hasResponses: typeof row.record.replies === 'string' ? row.record.replies !== '[]' : null,
+            hasResponses: validReplyPresence(row.record.replies),
             ...(row.support === undefined ? {} : { support: row.support }),
           })) : result) };
         },
@@ -238,7 +245,7 @@ test('private support metrics use bounded server-only metadata, share raw scan c
   const projection = queryLog.find(sql => sql.includes('AS kind'));
   assert.ok(projection);
   assert.doesNotMatch(projection, /c\.record\.body|c\.record\.replies\s*,|SELECT.*\*/);
-  assert.match(projection, /IIF\(IS_STRING\(c\.record\.replies\), c\.record\.replies != "\[\]", null\) AS hasResponses/);
+  assert.match(projection, /IIF\(IS_ARRAY\(STRINGTOARRAY\(c\.record\.replies\)\) AND NOT EXISTS\(SELECT VALUE r FROM r IN STRINGTOARRAY\(c\.record\.replies\) WHERE NOT IS_STRING\(r\) OR LENGTH\(r\) > 2100\), ARRAY_LENGTH\(STRINGTOARRAY\(c\.record\.replies\)\) > 0, null\) AS hasResponses/);
   for (let i = 0; i < 2; i++) {
     const event = { id: randomUUID(), name: 'session_started', ts: '2026-08-30T12:00:00.000Z' };
     h.put({ id: `events:${event.id}`, userId, type: 'events', record: event, ttl: 3600 });
@@ -253,6 +260,57 @@ test('private support metrics use bounded server-only metadata, share raw scan c
     deletedRecords: { [`voice:${note.id}`]: { id: randomUUID(), type: 'voice', recordId: note.id, ts: now } }, ttl: -1 });
   removed.put({ id: `voice:${note.id}`, userId, type: 'voice', record: note, support: { invalid: true }, ttl: -1 });
   assert.equal((await removed.metrics(request('GET'))).jsonBody.supportMetrics.lowRatings48h.reason, 'cohort_below_50');
+});
+
+test('support response provenance validates serialized replies without projecting private text', async () => {
+  const invalidReplyLists = [
+    ['whitespace-empty array', ' [ ] '],
+    ['malformed JSON', 'not-json'],
+    ['non-array JSON', '{"reply":"synthetic"}'],
+    ['non-string array member', '["synthetic",7]'],
+    ['oversized array member', JSON.stringify(['x'.repeat(2101)])],
+  ];
+  for (const [label, replies] of invalidReplyLists) {
+    const h = harness();
+    for (let index = 1; index <= 50; index++) {
+      const owner = index.toString(16).padStart(64, '0');
+      const note = voice();
+      h.put({ id: 'account', userId: owner, type: 'account', deleted: false, deletedRecords: {}, ttl: -1 });
+      h.put({ id: `voice:${note.id}`, userId: owner, type: 'voice',
+        record: { ...note, kind: 'Rating', rating: 2, status: 'received', replies }, ttl: -1,
+        support: { schemaVersion: 1, receivedAt: '2026-08-31T12:00:00.000Z', firstRespondedAt: '2026-08-31T14:00:00.000Z' } });
+    }
+    const metrics = (await h.metrics(request('GET', null, { days: '1' }))).jsonBody.supportMetrics;
+    assert.equal(metrics.firstResponses.reason, 'invalid_receipts', label);
+    assert.equal(metrics.firstResponses.medianHours, null, label);
+  }
+
+  const valid = harness();
+  for (let index = 1; index <= 50; index++) {
+    const owner = index.toString(16).padStart(64, '0');
+    const note = voice();
+    valid.put({ id: 'account', userId: owner, type: 'account', deleted: false, deletedRecords: {}, ttl: -1 });
+    valid.put({ id: `voice:${note.id}`, userId: owner, type: 'voice',
+      record: { ...note, kind: 'Rating', rating: 2, status: 'received', replies: ' [ "Synthetic private reply" ] ' }, ttl: -1,
+      support: { schemaVersion: 1, receivedAt: '2026-08-31T12:00:00.000Z', firstRespondedAt: '2026-08-31T14:00:00.000Z' } });
+  }
+  const validResult = (await valid.metrics(request('GET', null, { days: '1' }))).jsonBody;
+  assert.equal(validResult.supportMetrics.firstResponses.reason, null);
+  assert.equal(validResult.supportMetrics.firstResponses.medianHours, 2);
+  assert.equal(JSON.stringify(validResult.supportMetrics).includes('Synthetic private reply'), false);
+
+  const missingTimestamp = harness();
+  for (let index = 1; index <= 50; index++) {
+    const owner = index.toString(16).padStart(64, '0');
+    const note = voice();
+    missingTimestamp.put({ id: 'account', userId: owner, type: 'account', deleted: false, deletedRecords: {}, ttl: -1 });
+    missingTimestamp.put({ id: `voice:${note.id}`, userId: owner, type: 'voice',
+      record: { ...note, kind: 'Rating', rating: 2, status: 'received', replies: '["Synthetic private reply"]' }, ttl: -1,
+      support: { schemaVersion: 1, receivedAt: '2026-08-31T12:00:00.000Z', firstRespondedAt: null } });
+  }
+  const missingResult = (await missingTimestamp.metrics(request('GET', null, { days: '1' }))).jsonBody.supportMetrics;
+  assert.equal(missingResult.firstResponses.reason, 'first_response_unavailable');
+  assert.equal(missingResult.firstResponses.medianHours, null);
 });
 
 test('combined metrics use one final account/deletion snapshot after both raw scans', async () => {
