@@ -46,7 +46,7 @@ jobs:
       - run: npm run check
       - run: npm test
       - run: node ../tool/generate_event_registry.mjs --check
-      - run: node --test ../test/site_console_test.mjs ../test/measurement_packaging_test.mjs
+      - run: node --test ../test/site_console_test.mjs ../test/measurement_packaging_test.mjs ../test/identity_callbacks_test.mjs
       - name: Verify bundled operator authentication
         working-directory: .
         run: |

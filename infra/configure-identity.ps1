@@ -2,6 +2,7 @@ param(
   [Parameter(Mandatory)][ValidatePattern('^[a-f0-9-]{36}$')][string]$TenantId
 )
 $ErrorActionPreference = 'Stop'
+. (Join-Path $PSScriptRoot 'identity-callbacks.ps1')
 $token = az account get-access-token --tenant $TenantId --resource https://graph.microsoft.com --query accessToken -o tsv --only-show-errors
 if ($LASTEXITCODE -ne 0 -or -not $token) { throw 'Sign into the approved customer tenant first.' }
 $headers = @{ Authorization = "Bearer $token" }
@@ -74,10 +75,7 @@ $organizations = Graph 'organization'
 $domain = @($organizations.value[0].verifiedDomains | Where-Object isInitial)[0].name
 if (-not $domain.EndsWith('.onmicrosoft.com')) { throw 'Customer initial domain could not be verified.' }
 $subdomain = $domain.Substring(0, $domain.Length - '.onmicrosoft.com'.Length)
-$callbacks = @(
-  "https://$subdomain.ciamlogin.com/$TenantId/federation/oauth2",
-  "https://$subdomain.ciamlogin.com/$domain/federation/oauth2"
-)
+$callbacks = @(Get-BloomstepFederationCallbacks -TenantId $TenantId -Subdomain $subdomain -Domain $domain)
 $microsoft = ManagedApp 'Bloomstep consumer federation' @{
   displayName = 'Bloomstep consumer federation'
   signInAudience = 'AzureADandPersonalMicrosoftAccount'
@@ -85,6 +83,15 @@ $microsoft = ManagedApp 'Bloomstep consumer federation' @{
   api = @{ requestedAccessTokenVersion = 2 }
   web = @{ redirectUris = $callbacks }
   requiredResourceAccess = @()
+}
+$microsoft = Graph "applications/$($microsoft.id)"
+$mergedCallbacks = @(Merge-BloomstepFederationCallbacks -Existing @($microsoft.web.redirectUris) -Required $callbacks)
+if (@(Compare-Object @($microsoft.web.redirectUris) $mergedCallbacks -CaseSensitive).Count) {
+  $null = Graph "applications/$($microsoft.id)" 'PATCH' @{ web = @{ redirectUris = $mergedCallbacks } }
+}
+$microsoft = Graph "applications/$($microsoft.id)"
+if (@(Compare-Object $mergedCallbacks @($microsoft.web.redirectUris) -CaseSensitive).Count) {
+  throw 'Federation callback readback mismatch; do not attempt customer sign-in.'
 }
 @{
   apiClientId = $api.appId
@@ -94,7 +101,7 @@ $microsoft = ManagedApp 'Bloomstep consumer federation' @{
   userFlow = 'Requires customer tenant user-flow setup and app association.'
   microsoftFederationClientId = $microsoft.appId
   microsoftFederationObjectId = $microsoft.id
-  microsoftFederationCallbacks = $callbacks
+  microsoftFederationCallbacks = @($microsoft.web.redirectUris)
   microsoftFederationSecret = 'Not created or exported; create and paste directly in Entra provider settings.'
 } | ConvertTo-Json
 Remove-Variable token,headers
