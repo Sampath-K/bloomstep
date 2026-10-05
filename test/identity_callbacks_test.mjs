@@ -5,6 +5,11 @@ import { fileURLToPath } from 'node:url';
 import { readFileSync } from 'node:fs';
 
 const helper = fileURLToPath(new URL('../infra/identity-callbacks.ps1', import.meta.url));
+const provisioning = readFileSync(new URL('../infra/configure-identity.ps1', import.meta.url), 'utf8').replaceAll('\r\n', '\n');
+const reconciliation = provisioning.slice(
+  provisioning.indexOf('$microsoft = Graph "applications/$($microsoft.id)"'),
+  provisioning.indexOf('\n@{\n  apiClientId'),
+);
 const tenant = '11111111-2222-4333-8444-555555555555';
 function evaluate(expression) {
   const script = `$ErrorActionPreference = 'Stop'; . '${helper.replaceAll("'", "''")}'; ${expression}`;
@@ -31,8 +36,43 @@ test('callback reconciliation preserves existing registrations and is idempotent
 });
 
 test('provisioning reconciles the existing managed federation app and verifies readback', () => {
-  const source = readFileSync(new URL('../infra/configure-identity.ps1', import.meta.url), 'utf8');
-  assert.match(source, /Merge-BloomstepFederationCallbacks/);
-  assert.match(source, /Graph "applications\/\$\(\$microsoft\.id\)" 'PATCH'/);
-  assert.match(source, /Federation callback readback mismatch/);
+  assert.match(provisioning, /Merge-BloomstepFederationCallbacks/);
+  assert.match(provisioning, /Graph "applications\/\$\(\$microsoft\.id\)" 'PATCH'/);
+  assert.match(provisioning, /Federation callback readback mismatch/);
+});
+
+test('actual provisioning block adds missing callbacks once and preserves unrelated entries', () => {
+  const result = evaluate(`
+    $script:app = @{ id = 'synthetic'; web = @{ redirectUris = @('https://preserved.example/callback') } }
+    $script:writes = 0
+    function Graph($Path, $Method = 'GET', $Body = $null) {
+      if ($Method -eq 'PATCH') {
+        $script:writes++
+        $script:app.web.redirectUris = $Body.web.redirectUris
+      } else { $script:app }
+    }
+    $microsoft = $script:app
+    $callbacks = @(Get-BloomstepFederationCallbacks -TenantId '${tenant}' -Subdomain 'examplecustomers' -Domain 'examplecustomers.onmicrosoft.com')
+    ${reconciliation}
+    ${reconciliation}
+    @{ writes = $script:writes; callbacks = $microsoft.web.redirectUris } | ConvertTo-Json -Depth 4
+  `);
+  assert.equal(result.writes, 1);
+  assert.equal(result.callbacks.length, 4);
+  assert.equal(result.callbacks[0], 'https://preserved.example/callback');
+});
+
+test('actual provisioning block rejects unsuccessful registration readback', () => {
+  const result = evaluate(`
+    $script:app = @{ id = 'synthetic'; web = @{ redirectUris = @('https://preserved.example/callback') } }
+    function Graph($Path, $Method = 'GET', $Body = $null) {
+      if ($Method -ne 'PATCH') { $script:app }
+    }
+    $microsoft = $script:app
+    $callbacks = @(Get-BloomstepFederationCallbacks -TenantId '${tenant}' -Subdomain 'examplecustomers' -Domain 'examplecustomers.onmicrosoft.com')
+    $message = ''
+    try { ${reconciliation} } catch { $message = $_.Exception.Message }
+    @{ error = $message } | ConvertTo-Json
+  `);
+  assert.match(result.error, /Federation callback readback mismatch/);
 });
