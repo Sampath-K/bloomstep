@@ -1,9 +1,11 @@
 # One consolidated candidate acceptance
 
-**Published candidate is unsigned preview.6**, source `6d559b4`; the customer's
-normal **installed preview.5 remains preserved**. Recovery PR8/main/tag API,
-true ARM64/x64 builds, installer lifecycle and public hashes pass, with main
-deployment verified. No preview.6 customer installation or acceptance is inferred.
+**Historical preview.5/preview.6 record; superseded 2026-10-06.** Current
+state is the [MVP exit matrix](mvp-exit-matrix.md): unsigned preview.8 is
+published and installed as ARM64, the pre-upgrade support-file bytes were
+preserved, and startup authenticated sync succeeded. No acceptance fixture was
+created, and the full MVP remains incomplete. The historical evidence below is
+retained for provenance and must not be read as the current candidate status.
 An unsupported future schema is left unchanged; compatible legacy-label recovery
 validates/reapplies the current account's deletion ledger transactionally.
 
