@@ -20,8 +20,10 @@ widget flows are implemented. Public builds are sign-in gated until real persona
 identity/cloud services are provisioned and verified; there is no fake login.
 
 See [product contract](docs/product-spec.md), [iteration/edge ledger](docs/status.md)
-and [deployment prerequisites](docs/deployment.md). Windows reminders and cloud
-round trips must be observed before claiming they work.
+and [deployment prerequisites](docs/deployment.md). The current
+[MVP exit matrix](docs/mvp-exit-matrix.md) records observed evidence and exact
+remaining acceptance gates. Windows reminders and cloud round trips must be
+observed before claiming they work.
 
 The small static website lives in `site`; authenticated Functions live in `api`.
 CI tests and packages per-user unsigned Windows ARM64 and x64 preview installers
