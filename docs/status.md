@@ -4,7 +4,45 @@
 cloud deployment and native background behavior require integration evidence.
 This ledger is updated with verified outcomes, not inferred from source code.
 
-**Latest genuine integration observation:** After the branding upgrade, the
+## Finite launch backlog
+
+**Nine open launch-readiness task packages, plus one separate elapsed-user
+evidence/experiment workstream.** Counts are packages, not estimates of nine
+small changes. All code/process readiness and independently authorized live
+checks must finish; human-only decisions cannot silently be inferred. Planned
+library/education/animation enhancements are frozen outside launch scope.
+
+| # | Package / owner | Next action and definition of done | Dependency / class |
+| --- | --- | --- | --- |
+| 1 | Real single-account private loop — implementation session | Normal preview.5 upgrade/restored-session sync observed; repair native export automation in isolation before a coordinated interactive slot for labeled own recipe/check-in/edit/undo/reflection/feedback/rating/export readbacks, then delete ONLY exact owned fixtures and verify remote suppression/cleanup and preservation of customer content. Export locator failed; exact owned modal safely canceled, no save or fixtures. | Preview.5 installed; foreground testing paused for customer self-use. Engineering/live acceptance, not a new login-permission wait. |
+| 2 | Target-aligned telemetry and goal/actual UI — implementation session | Contract-first original attempt-success, day0 activation, D7>=3 check-ins, D30 days23-30 frequency,30/60/90 graduated-habits/activated-user north star and D90 graduation,30-day disable/invitation and support/low-star SLA measures. Expose goal, numerator, denominator, window/maturity, coverage, evidence and suppression; never substitute current exact-day proxies. | 1 critical path first; resolve denominator/coverage/business-calendar definitions against original spec. Engineering; genuine results separately await cohorts. |
+| 3 | Session/native health coverage — implementation session, privacy/controller review | Prove a $0 bounded privacy-safe session lifecycle/native-fatal capture/recovery approach with no habit text/message/stack/token capture; validate normal/fatal/uncertain exits, offline/retry/consent and coverage denominators. Unclean exits are not automatically crashes; opt-in sample is not all users. Establish original99.5% criterion/canary evidence and explicit launch interpretation, not an inferred passing rate. | Native feasibility spike, policy/coverage decision, then source/release and controlled/live observation. Engineering + decision; current bounded Dart categories insufficient. |
+| 4 | Genuine identity/device/offline/recovery/isolation — implementation session, customer approves identities/destruction | Real approved second-account/device state, foreign-account denial, offline/restart/reconnect/idempotency/conflict/revocation/recovery and separately approved disposable-account deletion, with actual API readback/cleanup. Preserve current session; no forced sign-out/new identity/account erasure from launch urgency. | 1 and explicit additional identity/offline/destructive test decisions. Mixed acceptance. |
+| 5 | Private operator/team/referral round trips — implementation session, customer selects operator and communication scope | Explicit customer operator before any Admin assignment; trusted-browser operator auth, private feedback/rating pagination/status/reply and owner deletion readback. Separately authorized invite/redemption/first-practice/cosmetic/retraction/cleanup acceptance with genuine participants, no automatic message sending. | 1, selected operator/Admin permission, approved participants/link/communication/cleanup boundaries. Mixed acceptance. |
+| 6 | Windows surfaces — implementation session, customer approves OS/surface actions | Observe actual foreground/background/tray/snooze/cap/quiet-hours/default-silent reminder behavior, then authorized Share cancellation and keyboard/Narrator/reduced-motion usability. No success from a toast API acknowledgment alone; no global permission change or foreground-policy bypass. | 1; explicit notification/OS/Narrator/Share decisions. Mixed acceptance. |
+| 7 | Worker freshness/cron/guard process — implementation session | Verify latest completed-day snapshots, missing/stale/invalidation/backfill labels and actual scheduled tick against the committed cron; guarded bounded worker/customer-role isolation and readback. Keep spend/billing unknown until authoritative review. | Deployed API/service actor already prepared; real scheduler clock/execution plus1 cleanup/invalidation. Engineering/process + elapsed tick. |
+| 8 | Production trust/auth/legal/budget — customer/controller, implementation supplies exact checks | Review production scope/provider publishing/consent branding/email boundary, controller/contact/privacy/age/retention/processors/support/name claims, exact subscription/trial/free-SKU/billing and unsigned download/SmartScreen policy. No domain/paid upgrade, fake provider coverage or inferred controller/operator. | Source/evidence supplied; explicit human decisions. No paid change implied. |
+| 9 | Release/deploy/rollback/security freeze — implementation session, customer final UX | Review exact source provenance/dependency/security/permission contracts, reproducible dual architecture builds/install/uninstall/storage/schema upgrade and compatible rollback/recovery; actual served assets/protected routes/config/OFF hashes; preserve data/session and reconcile all requirements/edge cases/evidence. Consolidated customer UX acceptance after developer work, not one test per increment. | 1-8 code/process decisions; current exact PR/main/tag/API/dual installer evidence is partial, not final launch sign-off. |
+
+Separate **workstream10: genuine elapsed-user evidence** keeps D7/D30/D90
+targets, native crash-free quality measurement and a reviewed bounded experiment
+honestly pending. Targets are not fabricated or waived; capture/formulas and
+operational readiness must be completed before collecting outcomes. This does
+not assert every launch must wait90 days: product hypotheses mature afterward,
+while true safety/quality launch gates need their explicit approved canary/
+production interpretation. Experiment remains OFF until genuine reviewed
+cohort/exposure/guardrail evidence, not an invented install-count release gate.
+
+**Timing:** observed dual native build/test/package/lifecycle checks take
+roughly8-13 minutes per version once code is ready, followed by deployment/
+upgrade/readback. Total coding/acceptance ETA is not grounded yet: metric
+definitions, native coverage feasibility and human decisions remain unresolved.
+No same-day completion guarantee. Implementation continues independently safe
+work; original feature gaps are not reassigned to the user as population gaps.
+
+## Current evidence
+
+**Latest genuine integration observation:** After the preview.5 deletion upgrade, the
 normal installed app restored an available session and opened its garden.
 Fresh startup displayed "Saved on this device and synced", not "Sync needs
 attention". That outcome is set only after the actual sync request returns
@@ -14,10 +52,12 @@ observed provider exchange, two-account isolation or full private-loop
 acceptance. Verification inspected only fixed public status/action labels;
 no account text, credential store, token, payload or garden screenshot was
 recorded. Reversible test approval was subsequently received; fixture writes
-are not yet run while the approved cleanup increment below is being implemented. Operator roles, real account deletion and OS changes still
+are not yet run: export automation failed and foreground testing is paused.
+The owned Save As dialog was safely canceled and the app remained responsive.
+Operator roles, real account deletion and OS changes still
 require their separate authorization.
 
-**Authorized read-only acceptance:** After explicit signed-account reversible
+**Historical preview.4 authorized read-only acceptance:** After explicit signed-account reversible
 test approval, the implementation session invoked the normal app's Sync now and
 Settings/Export my data (JSON), saved an actual export through its owned native
 dialog, and verified schema1, single-account row ownership, fresh lastSync and
@@ -29,21 +69,25 @@ whole-local-garden/account wipes exist, and check-in Undo preserves append-only
 history. Those are not reversible fixture cleanup. Controlled habit/feedback
 writes remained gated before the user explicitly selected **owner-only
 individual habit/feedback deletion with cross-device handling**. That feature
-is now approved and in progress, not shipped in installed preview.4. No
+subsequently shipped in preview.5 through PR5 merge `e844fea`. No
 fixture has been created, and no customer-existing content/session, Admin,
 account deletion, identity switching, OS permission or invite sending is
 authorized by this feature approval.
 
 | Workstream | Owner / next action | Definition of done / current evidence |
 | --- | --- | --- |
-| Owner-record deletion | Implementation session: new PR/exact dual CI, API-first deployment, candidate release and real fixture checks | Local156 Flutter tests/analyzer and99 API tests/type-check pass, plus unchanged site/packaging/operator contracts. Includes actual v4->5 migration fixtures, dual-device canonical ID convergence, delete/edit/child/reply/read races, exact10000-row cleanup-cap retry,1000-marker caps, private dependencies/events/audits, cancellation and notification withdrawal. Source/mocks only: no live customer deletion acceptance yet. |
+| Owner-record deletion | Implementation session: finish isolated export automation and coordinated live fixture checks | PR5 merge `e844fea`, API-first deploy37286713837, main37286714078 and tag/release37286791882 all SUCCESS. Dual public unsigned hashes verified; normal ARM644->5 upgrade and genuine restored-session sync observed.156 Flutter/99 API tests include migration, canonical-ID convergence, races, exact10000-row cleanup retry,1000-marker caps, dependencies and notification withdrawal. No live customer deletion acceptance yet; fixtures0. |
 | Reversible signed-account acceptance | Implementation session: create only explicitly labeled own fixtures after deployed cleanup is available, then remove them | Normal app sync/check-in/edit/undo/reflection/feedback/rating/export, relational/API round-trip/readback and only own fixture cleanup; preserve existing customer content. Genuine sync/schema/account-consistent export already observed. |
 | Skill/confidence learning enhancements | Product/content review, then separately sequenced implementation | Planned only in product-spec addendum; original versioned catalog/citations, optional short self-selected education, privacy/accessibility/performance acceptance. No new feature readiness claim. |
 
 Latest developer-owned workflow recheck: scheduled spending guard37271400930
 (October 5) completed successfully. This is workflow history, not a new billing
-or cost-zero proof. Aggregate history still shows only manual37222477262;
-no scheduled aggregate tick is observed.
+or cost-zero proof. Scheduled aggregate37288175463 completed successfully on
+October5 at09:09UTC: one prior-UTC-day snapshot acknowledged, real worker
+token rejected by garden/team routes. Committed cron is02:20UTC daily; this
+observed scheduled run was delayed, so exact firing time/freshness is not
+guaranteed. Private metric values were not fetched; snapshot completeness,
+late-event invalidation/backfill and customer-role readback remain separate.
 
 Product-owned branding shipped in PR4 merge `5b675a5` and unsigned
 `v0.1.0-preview.4`. Exact source PR/push, merged-main and versioned release
@@ -63,7 +107,7 @@ Google verified/published OAuth branding remain genuine gates.
 
 | Iteration | Job | Current evidence / remaining gate |
 | --- | --- | --- |
-| 0 | Build, run, ship | Public unsigned `v0.1.0-preview.4` branding engineering installers from merged green `5b675a5`; both public downloads/hash checks pass. Actual local ARM64 preview.3 -> preview.4 upgrade, version/PE/protocol ownership/default-off marker absence/normal+repeat launch/app-only branded sign-in capture/stable existing storage namespace pass. Versioned dual jobs pass actual interactive consent/install/entry/owned-uninstall. SmartScreen/customer acceptance remain gates. |
+| 0 | Build, run, ship | Public unsigned `v0.1.0-preview.5` owner-deletion installers from merged green `e844fea`; both public download/hash checks pass. Actual normal ARM644->5 upgrade/version/PE/protocol/stable namespace and restored-session sync observed. Prior preview.4 branding/installer lifecycle evidence retained below; SmartScreen/customer acceptance and live deletion remain gates. |
 | 1 | Plant first habit | SQLite tests and real widget journey pass: five starters, four recipe fields, three species, practiced celebration, restart-safe storage. |
 | 2 | Check in | Tests pass for did/more/rest, idempotency, append edits/undo, local midnight. Actual MSAA Did-it action in the newer synthetic native garden exposed celebration in67ms (<=300ms); not a customer-use measurement. |
 | 3 | Visual garden | True ARM64 synthetic profile captures inspected: readable banner and reserved Plant bar fixes observed. Responsive/200%-text regressions pass. Actual Flutter child HWND exposes38 MSAA nodes including labeled action buttons; UIA is empty, not evidence of no MSAA support. Narrator interaction remains unobserved. |
