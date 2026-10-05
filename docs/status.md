@@ -4,7 +4,7 @@
 cloud deployment and native background behavior require integration evidence.
 This ledger is updated with verified outcomes, not inferred from source code.
 
-**Current developer increment: fresh-consent app reminder-preference observations.**
+**Current developer increment: fresh-consent app reminder-preference observations (preview.8).**
 A separate unchecked/versioned choice is wired into Settings, owner SQLite
 transactions, real reminder initialization/preference transitions, existing
 authenticated event sync and a separately labeled private metrics panel.
@@ -12,19 +12,24 @@ Existing analytics consent never grants this choice; restoration, retries,
 disposal/sign-out and missing followup never become inferred outcomes.
 Revocation purges added local state/queue; generated native/wire contracts
 require the same exact fields. Original full notification-disable <=10%
-remains unavailable, not replaced by this narrower sample. Source verification
-and publication evidence are tracked separately; no current customer upgrade,
+remains unavailable, not replaced by this narrower sample. PR12 merged at
+`0724ed0`; reconciled-head PR CI, merged-main CI, API-first deployment and the
+preview.8 tag workflow passed. The tag is exactly that main commit. Both
+published installer hashes were checked against the downloadable binaries;
+the site now links those same artifacts. No current customer upgrade,
 collection, OS setting or native-health consent is inferred.
 Current source validation: 148 API, 194 Flutter and 49 website/source tests pass;
 API type-check, Flutter analyzer, generated registry reproduction and site build
 pass, including legacy-disk analytics-true/no-new-consent reopening, epoch
 rotation, export/revoke/acknowledgment races, final deleted-owner filtering and
-low-count subtraction protection. Source publication/native CI remain required.
+low-count subtraction protection. The released build also passed Windows x64
+and ARM64 analyzer, test, build and synthetic installer lifecycle jobs.
 
 **Support source publication:** corrected PR10 merged `cf5a322`; exact
 PR37335150702, main37338563004 and API/site deployment37338562518 succeeded.
-The publisher owns tagged preview.7 run37340194397 and final public artifact/
-hash readback, pending at this update. The whitespace/malformed reply-array
+Preview.7 artifacts were subsequently published and their website links were
+promoted by PR11/main deployment37343872479; preview.8 now supersedes them as
+the current download. The whitespace/malformed reply-array
 provenance correction supersedes original source-only receipts evidence.
 Read-only owner export warnings, legacy/older-writer unknowns and server-only
 receipt/first committed reply metadata are implemented without SQLite migration.
@@ -54,7 +59,7 @@ library/education/animation enhancements are frozen outside launch scope.
 | # | Package / owner | Next action and definition of done | Dependency / class |
 | --- | --- | --- | --- |
 | 1 | Real single-account private loop — implementation session | Actual coordinated preview.5 NEW private export/schema/per-row ownership/server-invitation readback and fresh HTTP200 merge PASS. First text setter stopped before Plant; canceled, fixtures0, app handed back. Guarded CI harness shipped; host foreground was genuinely unavailable. Next interaction needs an ordinary user foreground click/new slot or approved interactive host, then separately coordinated preserved-session compatible upgrade and labeled own check-in/edit/undo/reflection/feedback/rating/owner-delete/API readbacks with only exact owned fixture cleanup. | Preview.5 remains installed; former owner closed/cause unknown, no foreground reservation. Text/foreground tooling failures are not product defects or customer write-loop acceptance. |
-| 2 | Target-aligned telemetry and goal/actual UI — implementation session | Original projections shipped through PR7; support receipt/first-reply source now published via corrected PR10/API deploy, preview.7 pending. Fresh versioned consent and narrower app reminder-preference observations are wired in source; finish exact native CI/publication. Verified invitation delivery, business-day calendar and full native-health coverage still require their actual contracts/decisions. | 8 original projections implemented; 5 original coverage goals still unavailable rather than proxies. Narrower support/preference panels do not replace original goals or prove populations. |
+| 2 | Target-aligned telemetry and goal/actual UI — implementation session | Original projections shipped through PR7; support receipt/first-reply source published via corrected PR10/API deploy. Fresh versioned consent and narrower app reminder-preference observations shipped in PR12 and preview.8; verified invitation delivery, business-day calendar and full native-health coverage still require their actual contracts/decisions. | 8 original projections implemented; 5 original coverage goals still unavailable rather than proxies. Narrower support/preference panels do not replace original goals or prove populations. |
 | 3 | Session/native health coverage — implementation session, privacy/controller review | Headless ARM64 native fixture proved normal0, real exception hook signal and deliberate exit with identical0xc0000005 code but no signal. No customer process/GUI/data touched or dump requested. Implement bounded category-only hook plus independent lifecycle/recovery/consent/offline handling; prove fast-fail/kill/uncertain coverage and original99.5% canary interpretation. | Feasibility evidence is partial: exit-code classification alone disproved. Controller/coverage decisions, source/release and controlled/live observation remain; no crash-free claim. |
 | 4 | Genuine identity/device/offline/recovery/isolation — implementation session, customer approves identities/destruction | Real approved second-account/device state, foreign-account denial, offline/restart/reconnect/idempotency/conflict/revocation/recovery and separately approved disposable-account deletion, with actual API readback/cleanup. Preserve current session; no forced sign-out/new identity/account erasure from launch urgency. | 1 and explicit additional identity/offline/destructive test decisions. Mixed acceptance. |
 | 5 | Private operator/team/referral round trips — implementation session, customer selects operator and communication scope | Explicit customer operator before any Admin assignment; trusted-browser operator auth, private feedback/rating pagination/status/reply and owner deletion readback. Separately authorized invite/redemption/first-practice/cosmetic/retraction/cleanup acceptance with genuine participants, no automatic message sending. | 1, selected operator/Admin permission, approved participants/link/communication/cleanup boundaries. Mixed acceptance. |
