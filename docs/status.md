@@ -13,9 +13,23 @@ setting. This establishes one real restored-session/API readback, not a freshly
 observed provider exchange, two-account isolation or full private-loop
 acceptance. Verification inspected only fixed public status/action labels;
 no account text, credential store, token, payload or garden screenshot was
-recorded. Controlled test writes await confirmation of the approved test
-identity/content; operator roles, real account deletion and OS changes still
+recorded. Reversible test approval was subsequently received; fixture writes
+remain blocked by the cleanup gap below. Operator roles, real account deletion and OS changes still
 require their separate authorization.
+
+**Authorized read-only acceptance:** After explicit signed-account reversible
+test approval, the implementation session invoked the normal app's Sync now and
+Settings/Export my data (JSON), saved an actual export through its owned native
+dialog, and verified schema1, single-account row ownership, fresh lastSync and
+included live server invitation export without an offline warning. Customer
+content remains private; no fixture record or existing-customer edit was made.
+Mutation testing exposed a cleanup gap before creating records: this candidate
+has no individual habit/feedback removal or sync deletion tombstones. Only
+whole-local-garden/account wipes exist, and check-in Undo preserves append-only
+history. Those are not reversible fixture cleanup. Controlled habit/feedback
+writes remain gated on an explicitly approved cleanup design or separately
+authorized disposable-account/retained-fixture strategy; neither new deletion
+semantics, residual records nor account deletion is silently authorized.
 
 Product-owned branding shipped in PR4 merge `5b675a5` and unsigned
 `v0.1.0-preview.4`. Exact source PR/push, merged-main and versioned release

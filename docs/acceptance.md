@@ -25,6 +25,16 @@ nor authenticated garden acceptance is claimed. Authorized hosted Bloomstep
 branding is live; Google published/verified consent branding is a separate gate.
 See `deployment.md` for branding and upstream-versus-native callback boundaries.
 
+**Current batch outcome:** The customer confirmed sign-in and authorized
+reversible checks. Actual app-managed Sync now and private JSON export passed
+schema/account/fresh-sync validation, including live server invitation export.
+No fixture record was created. The candidate lacks precise per-habit/feedback
+deletion and sync tombstones, so creating records cannot yet satisfy the promised
+fixture-only cleanup without whole-account/local wipes. Further mutation checks
+need an explicitly approved cleanup design, disposable test-account strategy or
+honest retained-fixture exception. Existing content, roles, OS settings and
+account deletion remain protected; check-in Undo is not record deletion.
+
 1. In installed preview.4, use the trusted provider browser for approved genuine
    customer identities, credentials/MFA/consent; explicitly select the customer
    operator before any Admin grant. No credential/token pasting.
