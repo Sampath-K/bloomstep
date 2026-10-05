@@ -1,24 +1,40 @@
 # One consolidated candidate acceptance
 
-**Current candidate is unsigned preview.5**, source `e844fea`. Owner-scoped
-habit/feedback deletion source, exact API/ARM64/x64 PR/main/tag CI, API deployment,
-dual public download hashes and normal ARM644->5 upgrade/version/protocol/stable
-namespace pass. Normal5 restored an available genuine session with fresh
-HTTP200/account merge. This is not full private-loop or launch acceptance.
+**Published candidate is unsigned preview.6**, source `6d559b4`; the customer's
+normal **installed preview.5 remains preserved**. Recovery PR8/main/tag API,
+true ARM64/x64 builds, installer lifecycle and public hashes pass, with main
+deployment verified. No preview.6 customer installation or acceptance is inferred.
+An unsupported future schema is left unchanged; compatible legacy-label recovery
+validates/reapplies the current account's deletion ledger transactionally.
 
-**Export automation failure/recovery:** the owned normal5 export action opened
-the real native Save As dialog, but the test's UIA filename/Save locator failed.
-The user observed a blocked modal. Exact installed owner, common dialog title/
-class and native Cancel control ID/name/parent/PID were then proved; cancellation
-destroyed that dialog and the app remained responsive. No file was saved,
-overwritten or deleted; no fixture was written. This test is FAILED/BLOCKED,
-not success. Foreground probes are paused for customer self-use; diagnose the
-native locator using isolated synthetic fixtures and coordinate an explicit
-interactive slot before resuming. No repeated commandeering of the customer
-window. Machine/API/readback/cleanup ownership stays with implementation.
+**Actual preview.5 coordinated-slot outcome:** The repaired owned native export
+helper saved a NEW private JSON file; schema1/seven account tables/single per-row
+owner/current server invitation export and no offline warning passed without
+exposing private values. Fresh Sync now completed HTTP200/account merge. The
+first recipe text setter then failed COM before any Plant/feedback action.
+The builder was canceled, fixtures0, and the responsive garden handed back.
+This is a tooling blocker, not a demonstrated product defect. Earlier export
+locator failure/cancellation is historical and superseded by this actual save.
+No overwrites, customer-existing edits, signout, Admin, invitations, account wipe
+or OS changes occurred. Machine/API/readback/cleanup ownership remains here.
+
+**Synthetic input is separate:** An explicitly approved visible current-source
+synthetic window verified its banner but Windows refused foreground ownership;
+it closed with the original synthetic database bytes restored and no typing.
+The first separately approved true ARM64 CI dispatch reached a banner readiness
+timeout before input, retained its failed artifact and cleaned its own process/
+new files. The corrected default-off CI harness verifies real foreground first
+and uses read-only bundled SQLite for exact synthetic fixture state. The
+single corrected dispatch37320187531 failed because that host could not give
+the synthetic window actual foreground ownership; no input, with exact process/
+new-file cleanup confirmed. No further same-host retry; interactive tooling
+requires an approved surface or ordinary user foreground click in a new slot. See
+`native-input-verification.md`. No customer foreground slot remains reserved.
+Native-health collection is unimplemented/disabled; separate controller consent
+and coverage interpretation remain pending.
 
 The following preview.4 evidence remains historical; it does not substitute
-for the failed preview.5 export/fixture acceptance or the finite launch backlog.
+for current private-loop acceptance or the finite launch backlog.
 
 Preview.4 (`v0.1.0-preview.4`, release source `5b675a5`) is an unsigned Windows engineering candidate, **not a customer-accepted
 MVP**. Developer-owned source, native build, distribution, actual local upgrade,
@@ -32,8 +48,9 @@ normal/repeat launch and app-only branded sign-in capture are verified.
 Actual isolated Windows v4 DPAPI synthetic upgrade readback preserves the same
 encrypted file; no real customer credential store was inspected. Both versioned native jobs passed actual interactive
 unchecked checkbox/explicit synthetic selection/installation+installed-entry
-events/owned uninstall. That preservation evidence applies to preview.4. Use current preview.5 for
-customer self-use, with the paused test and remaining gates above explicit.
+events/owned uninstall. That preservation evidence applies to preview.4.
+Preserve installed preview.5 for customer self-use; preview.6 upgrade requires
+a new explicitly coordinated slot and preserved-session readback.
 
 ## Compact final acceptance sequence
 
@@ -51,15 +68,12 @@ See `deployment.md` for branding and upstream-versus-native callback boundaries.
 **Current batch outcome:** The customer confirmed sign-in and authorized
 reversible checks. Actual app-managed Sync now and private JSON export passed
 schema/account/fresh-sync validation, including live server invitation export.
-No fixture record was created. The candidate lacks precise per-habit/feedback
-deletion and sync tombstones, so creating records cannot yet satisfy the promised
-fixture-only cleanup without whole-account/local wipes. Further mutation checks
-now use the user's explicitly approved owner-only habit/feedback deletion
-design, which is being implemented with per-account minimal tombstones,
-dependent-content purge, cross-device stale suppression, retries and migration
-contracts. It must be deployed/released and observed on the normal candidate
-before writing real acceptance fixtures. Existing content, roles, OS settings and
-account deletion remain protected; check-in Undo is not record deletion.
+No fixture record was created. Preview.5 subsequently shipped the explicitly
+approved owner-only habit/feedback deletion and stable sync tombstones;
+preview.6 adds safe schema recovery. Actual preview.5 export/fresh sync now
+pass, while text tooling and live own-record check-in/edit/undo/feedback/deletion
+remain incomplete. Existing content, roles, OS settings and account deletion
+remain protected; check-in Undo is not record deletion.
 
 Implementation-owned completion: exact API/ARM64/x64 green new PR, API-first
 deployment, verified unsigned dual candidate and stable signed-session upgrade;
@@ -68,9 +82,11 @@ actual exports/API relational readback, then owner-delete only those exact
 records and verify remote markers/no private fixture residuals. Source/mocks
 do not count as live customer deletion or a second identity/OS/Admin approval.
 
-1. In installed preview.4, use the trusted provider browser for approved genuine
-   customer identities, credentials/MFA/consent; explicitly select the customer
-   operator before any Admin grant. No credential/token pasting.
+1. In a new coordinated slot, preserve the signed-in preview.5 session through
+   the verified preview.6 upgrade and owned-loop readbacks. Additional customer
+   identities and the operator require separate explicit selection/approval;
+   credentials/MFA/consent stay in the trusted provider browser. No forced
+   signout, inferred Admin or credential/token pasting.
 2. Review and authorize any desired Windows notification permission, then use
    the owned foreground app for visible reminders/Share cancellation and
    keyboard/Narrator review. No automatic global OS change or communication.

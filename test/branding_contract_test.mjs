@@ -47,13 +47,17 @@ test('site, operator popup and download labels are product-branded', () => {
   assert.match(read('site/operator-callback.html'), /Completing Bloomstep operator sign-in/);
 });
 
-test('public release links verified native preview5 artifacts and distinguishes cleanup readiness from live acceptance', () => {
+test('public release links verified preview6 recovery artifacts without implying installed acceptance', () => {
   const site = read('site/index.html');
   for (const arch of ['arm64', 'x64']) {
-    assert.ok(site.includes(`releases/download/v0.1.0-preview.5/Bloomstep-0.1.0-preview.5-windows-${arch}-setup.exe`));
+    assert.ok(site.includes(`releases/download/v0.1.0-preview.6/Bloomstep-0.1.0-preview.6-windows-${arch}-setup.exe`));
   }
+  assert.match(site, /0\.1\.0-preview\.6 - safe schema recovery/);
+  assert.match(site, /future schema versions unchanged/i);
+  assert.match(site, /installed preview\.5 remains preserved/);
+  assert.match(site, /new private export and fresh authenticated sync passed/);
   assert.match(site, /0\.1\.0-preview\.5 - owner-scoped record deletion/);
-  assert.match(site, /live fixture acceptance remains pending/);
+  assert.match(site, /live fixture acceptance remains pending/i);
   assert.match(site, /minimal ID-only record markers/);
   assert.match(site, /0\.1\.0-preview\.4 - Bloomstep identity and Windows branding/);
   assert.match(site, /not the full MVP/);
