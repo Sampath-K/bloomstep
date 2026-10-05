@@ -112,6 +112,21 @@ machine identifiers; never rename authentication hosts or rewrite security error
 to hide their origin. Installer publisher remains the existing "Bloomstep
 contributors" label. Scaffold copyright/company claims are removed; legal
 controller/contact/copyright approval is still required, not invented.
+`path_provider_windows` and secure-storage v4 derive their default data path from
+executable company/product metadata. Before either storage or the instance lock
+opens, Bloomstep pins their support/cache directory to the existing machine
+namespace `com.bloomstep\bloomstep` under the corresponding Windows known folder.
+Changing customer-visible branding therefore neither relocates gardens/DPAPI
+credentials nor creates a second instance lock. No private file is copied,
+decoded, migrated or deleted; the legacy folder name is a deliberate persistent
+identifier, not a customer-facing legal company claim.
+All three prior published previews pin `flutter_secure_storage_windows` 4.1.0.
+Windows storage therefore disables that plugin's obsolete pre-v4 native migration
+path, which independently derives directories from executable metadata. Other
+platform options are unchanged. A Windows-only regression writes a synthetic
+record using the actual v4 DPAPI backend in an isolated temporary preview.3 path,
+reinitializes storage with the stable branded provider, and verifies the same
+record/file survives unchanged. It never reads a customer credential store.
 
 `tool/generate_brand_assets.py` generates the original flower ICO/PNG and
 245-by-36 sign-in wordmark from the source drawing. Its optional `--font` selects

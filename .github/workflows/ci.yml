@@ -149,9 +149,21 @@ jobs:
           if ($protocol -ne "`"$target\bloomstep.exe`" `"%1`"") {
             throw 'Per-user invitation protocol was not registered to the installed app.'
           }
+          $roaming = [Environment]::GetFolderPath('ApplicationData')
+          $legacyData = Join-Path $roaming 'com.bloomstep\bloomstep'
+          $brandedData = Join-Path $roaming 'Bloomstep contributors\Bloomstep'
+          if (Test-Path $brandedData) { throw 'Storage preservation proof requires a clean runner.' }
+          New-Item -ItemType Directory -Path $legacyData -Force | Out-Null
+          $storageMarker = Join-Path $legacyData 'storage-identity-smoke.txt'
+          if (Test-Path $storageMarker) { throw 'Do not replace an existing storage proof marker.' }
+          [IO.File]::WriteAllText($storageMarker, 'Synthetic upgrade fixture; not customer data.')
           $app = Start-Process "$target\bloomstep.exe" -PassThru
           Start-Sleep 8
           if ($app.HasExited) { throw 'Installed app exited unexpectedly' }
+          if ((Test-Path $brandedData) -or -not (Test-Path (Join-Path $legacyData 'instance'))) {
+            Stop-Process -Id $app.Id
+            throw 'Branding relocated the existing Windows storage namespace.'
+          }
           if (Test-Path $measurement) { throw 'Default-off first launch manufactured installation observations.' }
           $second = Start-Process "$target\bloomstep.exe" -PassThru
           if (-not $second.WaitForExit(10000)) {
@@ -176,6 +188,10 @@ jobs:
           Start-Process $installer -ArgumentList "/VERYSILENT /SUPPRESSMSGBOXES /NORESTART /DIR=`"$target`"" -Wait
           if (Test-Path $marker) { throw 'Upgrade inherited a prior installation measurement owner.' }
           if (Test-Path $measurement) { throw 'Silent upgrade manufactured a measurement receipt.' }
+          if ([IO.File]::ReadAllText($storageMarker) -ne 'Synthetic upgrade fixture; not customer data.') {
+            throw 'Branding altered the synthetic upgrade preservation marker.'
+          }
+          Remove-Item -LiteralPath $storageMarker
           Start-Process "$target\unins000.exe" -ArgumentList '/VERYSILENT /SUPPRESSMSGBOXES /NORESTART' -Wait
           if (Test-Path "$target\bloomstep.exe") { throw 'Uninstall failed' }
           if (Test-Path $protocolKey) { throw 'Owned invitation protocol survived uninstall.' }

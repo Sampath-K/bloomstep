@@ -28,6 +28,16 @@ test('native sign-in and both callback outcomes identify Bloomstep without hidin
   assert.match(read('lib/features/garden/garden_screen.dart'), /A tiny step together with Bloomstep/);
 });
 
+test('stable Windows storage is installed before instance, invitations and credentials open', () => {
+  const main = read('lib/main.dart');
+  assert.ok(main.indexOf('installWindowsStorageIdentity();') > main.indexOf('WidgetsFlutterBinding.ensureInitialized();'));
+  assert.ok(main.indexOf('installWindowsStorageIdentity();') < main.indexOf('getApplicationSupportDirectory()'));
+  assert.match(read('lib/services/identity.dart'), /wOptions: WindowsOptions\(useBackwardCompatibility: false\)/);
+  const workflow = read('.github/workflows/ci.yml');
+  assert.match(workflow, /Branding relocated the existing Windows storage namespace/);
+  assert.match(workflow, /Branding altered the synthetic upgrade preservation marker/);
+});
+
 test('site, operator popup and download labels are product-branded', () => {
   const site = read('site/index.html');
   assert.match(site, /Download Bloomstep ARM64/);

@@ -4,6 +4,13 @@
 cloud deployment and native background behavior require integration evidence.
 This ledger is updated with verified outcomes, not inferred from source code.
 
+Product-owned branding is prepared in PR4, not yet shipped to the installed
+preview.3. Review caught metadata-derived storage relocation before distribution:
+startup now pins the existing Windows namespace before instance/session/garden
+access, and disables unpublished pre-v4 credential migration. Actual isolated
+Windows v4 DPAPI synthetic upgrade readback and nine related Flutter tests pass;
+dual native CI/install proof and a new release remain required.
+
 | Iteration | Job | Current evidence / remaining gate |
 | --- | --- | --- |
 | 0 | Build, run, ship | Public unsigned `v0.1.0-preview.3` engineering installers from merged green `df085e3`; both public downloads/hash checks pass. Actual local ARM64 preview.2 -> preview.3 upgrade, version/PE/protocol ownership/default-off receipt+marker absence/normal+repeat launch/app-only sign-in capture pass. Versioned dual jobs pass actual interactive consent/install/entry/owned-uninstall. SmartScreen/customer acceptance remain gates. |
