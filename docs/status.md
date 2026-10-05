@@ -14,13 +14,13 @@ library/education/animation enhancements are frozen outside launch scope.
 
 | # | Package / owner | Next action and definition of done | Dependency / class |
 | --- | --- | --- | --- |
-| 1 | Real single-account private loop — implementation session | Normal preview.5 upgrade/restored-session sync observed; repair native export automation in isolation before a coordinated interactive slot for labeled own recipe/check-in/edit/undo/reflection/feedback/rating/export readbacks, then delete ONLY exact owned fixtures and verify remote suppression/cleanup and preservation of customer content. Export locator failed; exact owned modal safely canceled, no save or fixtures. | Preview.5 installed; foreground testing paused for customer self-use. Engineering/live acceptance, not a new login-permission wait. |
-| 2 | Target-aligned telemetry and goal/actual UI — implementation session | Version1 source/contract tests now cover original first-launch->sign-in85% (not an attempt rate), explicit-local-day activation60%, D7>=3 effective habit/day check-ins, D30>=4 dates23-30,30/60/90 graduated-habits/activated-user and D90 graduate fraction. Goal/actual card exposes target, numerator/denominator, window/coverage/suppression with no fake pass. Finish exact CI/deploy/readback and missing notification cohort-start/invite delivery/support receipt/SLA/native collection contracts. | Independent source progress despite1 foreground pause;5 original goals explicitly unobservable rather than proxies. Engineering; genuine results separately await cohorts and calendar/controller decisions. |
+| 1 | Real single-account private loop — implementation session | Actual coordinated preview.5 NEW private export/schema/per-row ownership/server-invitation readback and fresh HTTP200 merge PASS. First text setter stopped before Plant; canceled, fixtures0, app handed back. Finish bounded synthetic CI tooling, then separately coordinated preserved-session preview.6 upgrade and labeled own check-in/edit/undo/reflection/feedback/rating/owner-delete/API readbacks with only exact owned fixture cleanup. | Preview.5 remains installed; no foreground reservation. Text/foreground tooling failures are not product defects or customer write-loop acceptance. |
+| 2 | Target-aligned telemetry and goal/actual UI — implementation session | Version1 original launch85%/day0/D7>=3/D30>=4 dates/30-60-90 graduation/D90 contracts shipped through PR7/mainb890250/deploy37298456876 with served bundle readback. Finish missing notification cohort-start/invite delivery/support receipt/SLA/native collection contracts; no private population fetched. | 8 projections implemented,5 original goals explicitly unobservable rather than proxies. Engineering; genuine results separately await cohorts and calendar/controller decisions. |
 | 3 | Session/native health coverage — implementation session, privacy/controller review | Headless ARM64 native fixture proved normal0, real exception hook signal and deliberate exit with identical0xc0000005 code but no signal. No customer process/GUI/data touched or dump requested. Implement bounded category-only hook plus independent lifecycle/recovery/consent/offline handling; prove fast-fail/kill/uncertain coverage and original99.5% canary interpretation. | Feasibility evidence is partial: exit-code classification alone disproved. Controller/coverage decisions, source/release and controlled/live observation remain; no crash-free claim. |
 | 4 | Genuine identity/device/offline/recovery/isolation — implementation session, customer approves identities/destruction | Real approved second-account/device state, foreign-account denial, offline/restart/reconnect/idempotency/conflict/revocation/recovery and separately approved disposable-account deletion, with actual API readback/cleanup. Preserve current session; no forced sign-out/new identity/account erasure from launch urgency. | 1 and explicit additional identity/offline/destructive test decisions. Mixed acceptance. |
 | 5 | Private operator/team/referral round trips — implementation session, customer selects operator and communication scope | Explicit customer operator before any Admin assignment; trusted-browser operator auth, private feedback/rating pagination/status/reply and owner deletion readback. Separately authorized invite/redemption/first-practice/cosmetic/retraction/cleanup acceptance with genuine participants, no automatic message sending. | 1, selected operator/Admin permission, approved participants/link/communication/cleanup boundaries. Mixed acceptance. |
 | 6 | Windows surfaces — implementation session, customer approves OS/surface actions | Observe actual foreground/background/tray/snooze/cap/quiet-hours/default-silent reminder behavior, then authorized Share cancellation and keyboard/Narrator/reduced-motion usability. No success from a toast API acknowledgment alone; no global permission change or foreground-policy bypass. | 1; explicit notification/OS/Narrator/Share decisions. Mixed acceptance. |
-| 7 | Worker freshness/cron/guard process — implementation session | Scheduled tick37288175463/one snapshot/real worker isolation observed. New source exposes02:20UTC declared due time, signed snapshot-generation offset, explicit no-firing-SLA distinction and30-day bounded backfill guidance. Finish exact deployment and authorized latest-day/late-event/invalidation/backfill/customer-role readbacks. | A scheduled success is not freshness or private population proof. Engineering/process; billing remains unknown. |
+| 7 | Worker freshness/cron/guard process — implementation session | Scheduled tick37288175463/one snapshot/real worker isolation observed. Due-time/signed-generation-offset/bounded backfill UI shipped with PR7/deploy37298456876; public bundle readback passed. Finish authorized latest-day/late-event/invalidation/backfill/customer-role readbacks. | A scheduled success is not freshness or private population proof. Engineering/process; billing remains unknown. |
 | 8 | Production trust/auth/legal/budget — customer/controller, implementation supplies exact checks | Review production scope/provider publishing/consent branding/email boundary, controller/contact/privacy/age/retention/processors/support/name claims, exact subscription/trial/free-SKU/billing and unsigned download/SmartScreen policy. No domain/paid upgrade, fake provider coverage or inferred controller/operator. | Source/evidence supplied; explicit human decisions. No paid change implied. |
 | 9 | Release/deploy/rollback/security freeze — implementation session, customer final UX | Review exact source provenance/dependency/security/permission contracts, reproducible dual architecture builds/install/uninstall/storage/schema upgrade and compatible rollback/recovery; actual served assets/protected routes/config/OFF hashes; preserve data/session and reconcile all requirements/edge cases/evidence. Consolidated customer UX acceptance after developer work, not one test per increment. | 1-8 code/process decisions; current exact PR/main/tag/API/dual installer evidence is partial, not final launch sign-off. |
 
@@ -42,12 +42,41 @@ work; original feature gaps are not reassigned to the user as population gaps.
 
 ## Current evidence
 
+**Published schema-recovery candidate:** PR8 merged `6d559b4`; PR37308015695,
+main37315191507 and tag/release37316761348 API/true ARM64/x64 all PASS, including
+architecture, installer lifecycle and optional wizard proof. Main deployment
+37315191177 PASS. Unsigned `v0.1.0-preview.6` public downloads/manifests verified:
+ARM64 `6c09e4aef404d9b55e449897d134fcd63dcd1ce4f11ae251f48573cad62e8e04`;
+x64 `d8ce6eb0fc68ec906d8219ccf2f1e26f29a25ceebcd4704646d606010f7e5b63`.
+Future schemas are rejected unchanged; compatible legacy relabel recovery
+validates the ledger and reapplies current-account markers transactionally.
+160 Flutter tests/analyzer and111 API tests passed source validation. Customer
+preview.5 remains installed; no preview.6 upgrade or real fixture deletion is
+inferred. Latest website source points to6; deployment readback is separately
+tracked, not assumed from source.
+
+**Actual coordinated private loop:** Normal preview.5 NEW private export,
+schema1/seven tables/single per-row owner/current server invitation readback/no
+offline warning and fresh Sync now HTTP200/account merge PASS. First recipe
+text setter failed COM before Plant or feedback; builder canceled, fixtures0,
+responsive app handed back. The earlier export locator failure is superseded.
+An explicitly approved visible synthetic profile verified its banner but failed
+actual foreground ownership; only its exact process/store were cleaned/restored.
+No policy bypass or customer input. Initial true ARM64 synthetic CI input
+dispatch37316627023 failed banner readiness before typing and preserved its
+failed result/cleanup. Evidence-backed foreground-before-readiness correction
+and read-only exact SQLite fixture checks are in a separate default-off harness;
+the current dispatch result is not replaced by source tests. See
+`native-input-verification.md`. Native-health collection remains OFF/
+unimplemented pending independent controller consent/coverage interpretation.
+
 **Website publication:** PR6 merged `4178f5a`; exact PR CI37293954776 and
 production deploy37295547475 SUCCESS. Actual served preview.5 ARM64/x64 links,
 honest incomplete changelog, schema2/configversion2/OFF/reviewnull and nine
 unauthenticated protected methods401 verified. No new native candidate,
 customer foreground input or private metric read. Target-aligned goals/worker
-timing source below is a subsequent increment, not yet claimed deployed.
+timing subsequently shipped through PR7/mainb890250/deploy37298456876; the
+publisher verified the public served bundle, not private cohort values.
 
 **Latest genuine integration observation:** After the preview.5 deletion upgrade, the
 normal installed app restored an available session and opened its garden.
@@ -59,8 +88,8 @@ observed provider exchange, two-account isolation or full private-loop
 acceptance. Verification inspected only fixed public status/action labels;
 no account text, credential store, token, payload or garden screenshot was
 recorded. Reversible test approval was subsequently received; fixture writes
-are not yet run: export automation failed and foreground testing is paused.
-The owned Save As dialog was safely canceled and the app remained responsive.
+are not yet run: repaired export readback passed, first text-entry automation
+failed before creating any fixture, and foreground testing ended with handback.
 Operator roles, real account deletion and OS changes still
 require their separate authorization.
 
@@ -114,7 +143,7 @@ Google verified/published OAuth branding remain genuine gates.
 
 | Iteration | Job | Current evidence / remaining gate |
 | --- | --- | --- |
-| 0 | Build, run, ship | Public unsigned `v0.1.0-preview.5` owner-deletion installers from merged green `e844fea`; both public download/hash checks pass. Actual normal ARM644->5 upgrade/version/PE/protocol/stable namespace and restored-session sync observed. Prior preview.4 branding/installer lifecycle evidence retained below; SmartScreen/customer acceptance and live deletion remain gates. |
+| 0 | Build, run, ship | Public unsigned `v0.1.0-preview.6` recovery installers from exact green `6d559b4`; both public download/hash checks pass. Actual customer install remains5 with verified earlier4->5 upgrade/restored-session sync;6 upgrade requires a new coordinated slot. Prior branding/lifecycle evidence retained; SmartScreen/customer acceptance and live deletion remain gates. |
 | 1 | Plant first habit | SQLite tests and real widget journey pass: five starters, four recipe fields, three species, practiced celebration, restart-safe storage. |
 | 2 | Check in | Tests pass for did/more/rest, idempotency, append edits/undo, local midnight. Actual MSAA Did-it action in the newer synthetic native garden exposed celebration in67ms (<=300ms); not a customer-use measurement. |
 | 3 | Visual garden | True ARM64 synthetic profile captures inspected: readable banner and reserved Plant bar fixes observed. Responsive/200%-text regressions pass. Actual Flutter child HWND exposes38 MSAA nodes including labeled action buttons; UIA is empty, not evidence of no MSAA support. Narrator interaction remains unobserved. |
