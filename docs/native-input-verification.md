@@ -55,8 +55,9 @@ artifact and exact process/new-file cleanup were retained. The corrected single
 retry37320187531 (source `dc57ea0`) checked foreground first and **failed because
 the existing runner could not give the synthetic window actual foreground
 ownership**. Artifact11350702230 records `customerAcceptance=false`,
-`cloudUsed=false`, no input/fixture writes, exact synthetic process closure and
-removal of only its new synthetic files. No further same-host retry is planned.
+`cloudUsed=false`, no input or interaction-created recipes, exact synthetic
+process closure and removal of only its new synthetic files (including any
+startup seeds). No further same-host retry is planned.
 
 PowerShell parsing, managed helper compilation, source/wiring contracts and
 headless bundled-SQLite parameter binding/read-only denial/hash preservation
