@@ -2,6 +2,7 @@ import { createHash, randomUUID } from 'node:crypto';
 import { isAdmin, syncSchema, replySchema, newerRecipe, newerSetting } from './contracts.mjs';
 import { aggregateEvents, previewLimits, feedbackQuerySchema, metricsQuerySchema, decodeCursor } from './engagement.mjs';
 import { dashboardSummaries, addDays } from './dashboards.mjs';
+import { goalMetrics } from './goals.mjs';
 import { registryVersion } from './event_registry.g.mjs';
 import { dailySnapshotRecordSchema, snapshotMetadataSchema } from './snapshot-contracts.mjs';
 import { createInvitations } from './invitations.mjs';
@@ -456,6 +457,8 @@ export function createHandlers({ container, authenticate, authenticateAggregate 
     const changed = before?._etag !== after?._etag;
     const generation = after?.id === 'generation' && after?.type === 'aggregate_generation'
       ? after.generation ?? after.revision : undefined;
+    const observedAt = clock().toISOString();
+    const latestDueAt = `${observedAt.slice(0, 10)}T02:20:00.000Z`;
     const days = [];
     for (let day = startDay; day <= endDay; day = addDays(day, 1)) {
       const matches = rows.filter(row => row.day === day);
@@ -468,16 +471,24 @@ export function createHandlers({ container, authenticate, authenticateAggregate 
       });
       const record = saved && dailySnapshotRecordSchema.safeParse(saved.record);
       if (!reason && (matches.length !== 1 || saved.id !== `daily:${day}` || !metadata?.success || !record?.success ||
-          saved.generatedAt > clock().toISOString() || saved.generatedAt.slice(0, 10) <= day ||
+          saved.generatedAt > observedAt || saved.generatedAt.slice(0, 10) <= day ||
           record.data.startDay !== day ||
           createHash('sha256').update(JSON.stringify(saved.record)).digest('hex') !== saved.digest)) reason = 'invalid_snapshot';
-      days.push(reason ? { day, status: 'unavailable', reason, generatedAt: null, registryVersion: null, suppression: null, record: null }
-        : { day, status: 'available', reason: null, generatedAt: saved.generatedAt, registryVersion: saved.registryVersion,
+      const scheduledAt = `${addDays(day, 1)}T02:20:00.000Z`;
+      days.push(reason ? { day, status: 'unavailable', reason, scheduledAt, generationOffsetSeconds: null,
+        generatedAt: null, registryVersion: null, suppression: null, record: null }
+        : { day, status: 'available', reason: null, scheduledAt,
+          generationOffsetSeconds: (Date.parse(saved.generatedAt) - Date.parse(scheduledAt)) / 1000,
+          generatedAt: saved.generatedAt, registryVersion: saved.registryVersion,
           suppression: { minimumCohort: 50, dailySuppressed: saved.record.daily[0].suppressed },
           record: record.data });
     }
     return {
       source: 'persisted_daily_worker', startDay, endDay, days,
+      schedule: { cron: '20 2 * * *', latestDueAt,
+        latestTickDue: observedAt >= latestDueAt,
+        backfillMaxDays: 30,
+        definition: 'Declared daily02:20 UTC cron, not a guaranteed firing SLA. Generation offset is relative to that due time, not proof of a scheduled invocation; manual/backfill can generate early or late. Missing/stale latest-day records need explicit bounded worker backfill, never substitution with older data.' },
       definition: 'Independent completed UTC-day worker snapshots, not a window rollup. Never sum daily unique users, retention cohorts or medians. Missing/invalidated days remain unavailable; late arrivals require worker backfill. Older records are not substituted for the latest completed day.',
     };
   }
@@ -564,10 +575,11 @@ export function createHandlers({ container, authenticate, authenticateAggregate 
     const start = new Date(end);
     start.setUTCDate(start.getUTCDate() - (parsed.data.days ?? 7));
     const startDay = start.toISOString().slice(0, 10);
-    const resources = await rawEvents(addDays(startDay, -31), end.toISOString().slice(0, 10));
+    const resources = await rawEvents(addDays(startDay, -91), end.toISOString().slice(0, 10));
     const endDay = new Date(end.getTime() - 86400000).toISOString().slice(0, 10);
     return { jsonBody: { ...aggregateEvents(resources, startDay, endDay),
       dashboards: dashboardSummaries(resources, addDays(startDay, -1), addDays(endDay, -1), clock().toISOString().slice(0, 10)),
+      goalMetrics: goalMetrics(resources, addDays(startDay, -1), addDays(endDay, -1), clock().toISOString().slice(0, 10)),
       dailySnapshots: await persistedSeries(addDays(startDay, -1), addDays(endDay, -1)) } };
   }
   /** @param {import('@azure/functions').HttpRequest} request */

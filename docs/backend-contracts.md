@@ -262,6 +262,25 @@ switches. Existing top-level `daily`, `categories` and `dashboards` remain bound
 **on-demand raw-event** calculations: compatibility includes today; typed
 dashboards use completed days. The console labels these separately.
 
+The additive `goalMetrics` has schemaVersion1 and source
+`on_demand_target_aligned`, separate from persisted snapshot records. It
+publishes original goals and privacy-suppressed observed values, numerator,
+denominator, unit/comparison, reason, completed window and opt-in coverage.
+Target-aligned D7/D30 frequency and30/60/90 graduation definitions are in
+`docs/measurement.md`; raw history includes an additional90 days without
+raising the10,000-row/200-account ceilings. Over-cap reads fail429, never
+silently truncate. No account/habit/event IDs escape this projection.
+Unobservable notification-start/delivery/SLA/native-census goals stay null,
+not replaced with current approximate panels. Legacy daily worker records
+and their strict schema remain unchanged.
+
+The daily-series envelope additionally reports `schedule` with declared cron
+`20 2 * * *`, UTC latest-day due timestamp, `latestTickDue`, backfillMaxDays30
+and explicit non-SLA definition. Entries expose `scheduledAt` plus
+`generationOffsetSeconds` (signed; null if unavailable). Offset describes
+stored generation versus declared due time, not invocation event type or
+the availability of a freshly complete population.
+
 The additive `dailySnapshots` is the actual persisted daily-worker read path:
 `{source:"persisted_daily_worker",startDay,endDay,definition,days:[...]}`. It
 enumerates requested completed UTC days through yesterday, ascending, maximum30.

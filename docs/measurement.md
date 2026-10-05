@@ -108,7 +108,7 @@ self-selected observations, not all downloads/installs/customers.
 
 | Original spec hypothesis/goal | Current measure and explicit gap |
 | --- | --- |
-| Sign-in success85% of attempts | Ordered distinct-account launch-to-sign-in rate is not an attempt-success rate; initial unauthenticated broker coverage is incomplete. |
+| First launch to signed in85% | Authoritative original spec section20 says first launch, not attempts. Ordered distinct-account launch-to-sign-in measures the observed window only; initial broker/installer coverage is incomplete. An attempt-success85% claim would be a different requirement and is not inferred. |
 | Day0 activation60% | Same-local-day positive first-check-in after observed sign-in, divided by observed signed-in accounts; opt-in coverage is not an all-user denominator. |
 | D7 at least3 check-ins40% | Current D7 measures effective positive practice on exactly cohort day+7, not at least3 check-ins in a seven-day interval. |
 | D30 practice on at least50% of days23-30,25% | Current D30 measures exactly day+30, not the day23-30 frequency criterion. |
@@ -120,8 +120,8 @@ self-selected observations, not all downloads/installs/customers.
 | Crash-free sessions at least99.5% | Deliberately null: bounded opt-in Dart/Flutter error categories may be nonfatal; complete all-session/native/process-death census is absent. |
 
 These original targets are hypotheses/acceptance requirements, not newly
-proposed goals or achieved outcomes. The console does not yet display
-goal-versus-actual target comparisons. Formula/SLA/north-star gaps above are
+proposed goals or achieved outcomes. Historical four-panel gaps above describe
+the pre-goal baseline. Formula/SLA/north-star gaps are
 implementation work, not merely blocked on population; record their owner and
 sequence separately from live cohort/permission gates. No automatic all-user
 attribution or native-death coverage is inferred from a registered event name.
@@ -139,3 +139,62 @@ not punctuality, metric values, completeness or all freshness/backfill cases.
 The bounded experiment stays OFF pending genuinely reviewed exposure/
 guardrail/cohort evidence; this is not an invented minimum-install preview
 release threshold. Financial/billing status remains a separate unknown.
+
+## Version1 target-aligned goal contracts
+
+Source now adds a separately versioned on-demand `goalMetrics` response and
+goal/actual console card, preserving existing exact-day panels and strict daily
+snapshot schemas. Release/deployment/readback is tracked in `docs/status.md`;
+source validation is not current population evidence. Numeric targets, observed
+actuals, numerator/denominator, reason, coverage and window are displayed.
+Unavailable measurements never produce a pass/fail badge or substitute proxy.
+
+Activation is the earliest observed explicit positive `first_checkin` with
+habit UUID/localDay, an historical observation even if subsequently undone.
+D7 counts at least3 latest-effective positive **habit/local-day** check-ins
+in offsets1-7. D30 requires at least4 distinct positive **dates** in offsets23-30
+inclusive, not four habits on one date. Cohorts are mature only when day+7/30
+falls in the selected completed UTC window; immature cohorts are excluded, not
+classified as failures. Graduation means at30/60/90 use distinct account/habit
+UUIDs observed from activation through the inclusive horizon, with activated
+users as denominator. D90 graduates count each graduating user once. No
+numeric north-star target was specified, so it is tracking-only.
+
+An extra90-day activation lookback replaces the previous30-day raw scan
+lookback for this read, retaining the same10,000-event/200-account scan ceilings,
+role/audit/budget gates and deletion filtering. Exceeded scans fail429 before
+any partial values. Duplicate immutable envelopes converge; conflicting ones
+are excluded independent of order, and later edits/undo revise effective
+practice. Missing IDs/dates and absent opt-in history are not imputed. Both
+denominator and contributing-user count must reach50; low-frequency goals can
+remain suppressed within the200-account preview cap even with a mature cohort.
+All source fixtures are synthetic, not a claimed launch population.
+
+Notification30-day cohort start, verified invite delivery/K-factor, server
+receipt/first-response SLA evidence/business calendar and complete native
+session/fatal coverage are not supplied by the old events. Their original
+numeric goals remain explicitly unavailable. Codeable collection gaps remain
+developer work; a selected operator, genuine users and calendar/controller
+decisions are separate gates.
+
+Daily-worker availability now also exposes the committed02:20UTC cron,
+latest-day due time, whether that time has passed and each valid snapshot's
+signed generation offset in seconds. Early manual/backfill generation is not
+a scheduled-run proof; a late generation is not a guaranteed scheduler SLA.
+Missing/stale/invalidated records stay unavailable with no raw/old-day fallback.
+Repair is explicit worker backfill of at most30 completed UTC days; unchanged
+retries preserve original generation time.
+
+## Native health feasibility evidence
+
+An isolated headless ARM64 C++ fixture, compiled using the already approved
+Visual Studio/Windows SDK, observed normal exit0 and a real unhandled native
+exception. A deliberate `ExitProcess` with the same exception status produced
+the identical `0xc0000005` exit code without the native-exception hook signal.
+No customer process/GUI/data was touched and no dump was requested. This proves
+exit codes or unclean-session markers alone cannot identify fatal crashes.
+It does not prove fast-fail, kill, power-loss, hook replacement, transport,
+consent or all-session coverage. A category-only native hook plus independent
+lifecycle observation/recovery requires further design/implementation and
+controller/canary interpretation. Original99.5% evidence remains incomplete;
+unknown exits cannot be silently counted as healthy or crashed.

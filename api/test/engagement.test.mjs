@@ -739,6 +739,21 @@ test('daily series range is completed UTC days and earlier snapshots survive lat
   assert.equal(one.days[0].day, '2026-08-31');
 });
 
+test('worker freshness exposes declared UTC due time and generation delay without inferring a scheduled invocation', async () => {
+  const h = harness();
+  let series = (await h.metrics(request('GET', null, { days: '1' }))).jsonBody.dailySnapshots;
+  assert.equal(series.schedule.cron, '20 2 * * *');
+  assert.equal(series.schedule.latestDueAt, '2026-09-01T02:20:00.000Z');
+  assert.equal(series.schedule.latestTickDue, true);
+  assert.equal(series.days[0].generationOffsetSeconds, null);
+  await h.aggregates(request('POST', {}));
+  series = (await h.metrics(request('GET', null, { days: '1' }))).jsonBody.dailySnapshots;
+  assert.equal(series.days[0].scheduledAt, '2026-09-01T02:20:00.000Z');
+  assert.equal(series.days[0].generationOffsetSeconds, 34800);
+  assert.match(series.schedule.definition, /not.*scheduled.*invocation/i);
+  assert.equal(series.schedule.backfillMaxDays, 30);
+});
+
 test('explicit worker rerun repairs invalid legacy/private records instead of treating their digest as a valid retry', async () => {
   const h = harness();
   await h.aggregates(request('POST', {}));
@@ -1069,6 +1084,33 @@ test('metrics filters account deletion that wins during the event scan', async (
   }
   h.put({ id: 'events:deleted', userId, type: 'events', record: { id: randomUUID(), name: 'checkin', ts: now } });
   assert.equal((await h.metrics(request('GET', null, { days: '1' }))).jsonBody.daily[0].counts, null);
+});
+
+test('target metrics fetch90-day cohort history under the existing scan cap and exclude deleted accounts', async () => {
+  const h = harness();
+  const habitId = randomUUID();
+  for (let index = 0; index < 50; index++) {
+    const partition = index.toString(16).padStart(64, '0');
+    h.put({ id: 'account', userId: partition, type: 'account', deleted: false });
+    for (const [name, day, extra] of [
+      ['first_checkin', '2026-06-02', { result: 'did' }],
+      ['habit_graduated', '2026-07-01', {}],
+    ]) {
+      const id = randomUUID();
+      h.put({ id: `events:${id}`, userId: partition, type: 'events',
+        record: { id, name, ts: `${day}T12:00:00Z`, properties: { habitId, localDay: day, ...extra } } });
+    }
+  }
+  let data = (await h.metrics(request('GET', null, { days: '1' }))).jsonBody;
+  const graduation = () => data.goalMetrics.goals.find(row => row.id === 'graduated_d90');
+  assert.equal(graduation().value, 1);
+  assert.equal(data.goalMetrics.startDay, '2026-08-31');
+  h.put({ id: 'account', userId: '0'.repeat(64), type: 'account', deleted: true });
+  data = (await h.metrics(request('GET', null, { days: '1' }))).jsonBody;
+  assert.equal(graduation().value, null);
+  const capped = harness({ limits: { metricRecords: 1 } });
+  for (const row of h.documents.values()) if (row.type !== 'audit') capped.put(row);
+  await assert.rejects(capped.metrics(request('GET', null, { days: '1' })), error => error.status === 429);
 });
 
 test('aggregate order never selects a different envelope for a duplicate account/client key', () => {

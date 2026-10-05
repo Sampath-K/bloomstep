@@ -6,14 +6,12 @@ export function addDays(day, offset) {
   return new Date(Date.parse(`${day}T00:00:00Z`) + offset * 86400000).toISOString().slice(0, 10);
 }
 /** @param {string} value */
-const timestampKey = value => value.replace(/(?:\.(\d+))?Z$/, (_, digits = '') => `.${digits.padEnd(6, '0')}Z`);
+export const timestampKey = value => value.replace(/(?:\.(\d+))?Z$/, (_, digits = '') => `.${digits.padEnd(6, '0')}Z`);
 /**
  * No identity linkage across web/install/broker boundaries is inferred.
  * @param {{userId: string, record: unknown}[]} rows
- * @param {string} startDay @param {string} endDay @param {string} observedThrough
  */
-export function dashboardSummaries(rows, startDay, endDay, observedThrough) {
-  const minimumCohort = 50;
+export function normalizedEvents(rows) {
   /** @type {Map<string, {userId:string, record:import('zod').infer<typeof eventSchema>} | null>} */
   const unique = new Map();
   for (const row of rows) {
@@ -23,19 +21,31 @@ export function dashboardSummaries(rows, startDay, endDay, observedThrough) {
     const previous = unique.get(key);
     if (previous === null) continue;
     // Parsed property objects are normalized for deterministic immutable union.
-    const normalize = (/** @type {any} */ r) => JSON.stringify([r.name, r.ts, Object.entries(r.properties ?? {}).sort(([a], [b]) => a.localeCompare(b))]);
+    const normalize = (/** @type {import('zod').infer<typeof eventSchema>} */ r) => JSON.stringify([r.name, r.ts, Object.entries(r.properties ?? {}).sort(([a], [b]) => a.localeCompare(b))]);
     unique.set(key, previous && normalize(previous.record) !== normalize(parsed.data) ? null : { userId: row.userId, record: parsed.data });
   }
-  const events = [...unique.values()].filter(value => value !== null).sort((a, b) =>
+  return [...unique.values()].filter(value => value !== null).sort((a, b) =>
     timestampKey(a.record.ts).localeCompare(timestampKey(b.record.ts)) || a.record.id.localeCompare(b.record.id) || a.userId.localeCompare(b.userId));
-  const window = events.filter(row => row.record.ts.slice(0, 10) >= startDay && row.record.ts.slice(0, 10) <= endDay);
+}
+/** @param {ReturnType<typeof normalizedEvents>} events */
+export function effectiveCheckins(events) {
   const effective = new Map();
   for (const row of events) {
     if (!['checkin','first_checkin'].includes(row.record.name)
       || typeof row.record.properties?.localDay !== 'string' || typeof row.record.properties?.result !== 'string') continue;
     effective.set(`${row.userId}:${row.record.properties.habitId ?? '__unidentified'}:${row.record.properties.localDay}`, row);
   }
-  const practicing = [...effective.values()].filter(row => ['did','didMore'].includes(String(row.record.properties?.result)));
+  return [...effective.values()].filter(row => ['did','didMore'].includes(String(row.record.properties?.result)));
+}
+/**
+ * @param {{userId: string, record: unknown}[]} rows
+ * @param {string} startDay @param {string} endDay @param {string} observedThrough
+ */
+export function dashboardSummaries(rows, startDay, endDay, observedThrough) {
+  const minimumCohort = 50;
+  const events = normalizedEvents(rows);
+  const window = events.filter(row => row.record.ts.slice(0, 10) >= startDay && row.record.ts.slice(0, 10) <= endDay);
+  const practicing = effectiveCheckins(events);
   /** @param {string[]} names */
   const users = names => new Set(window.filter(row => names.includes(row.record.name)).map(row => row.userId));
   /** @param {Set<string>} group */
