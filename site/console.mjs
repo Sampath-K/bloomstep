@@ -260,7 +260,7 @@ function initialize() {
       if(!auth) throw new Error('Not configured');
       await cleared;
       if(generation !== sessionGeneration) return;
-      status.textContent = 'Opening real operator sign-in...';
+      status.textContent = 'Opening secure Bloomstep operator sign-in...';
       await auth.signIn();
       if(generation !== sessionGeneration) return;
       status.textContent = 'Signed in. Server-assigned Bloomstep.Admin is required to load private data.';

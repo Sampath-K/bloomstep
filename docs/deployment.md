@@ -102,6 +102,88 @@ Microsoft work/school federation is a different configuration and can need
 organizational approval; `common` is not a substitute for personal-account setup.
 Never merge gardens by email or treat resource-tenant ownership as an API role.
 
+### Customer-visible Bloomstep branding
+
+Product-owned names are **Bloomstep**: Windows window/file/product metadata and
+original flower icon, native sign-in/callback/error text, invitation email
+subject/body, website title/favicon/download controls and operator popup.
+The executable, protocol, storage keys and package identifiers remain lowercase
+machine identifiers; never rename authentication hosts or rewrite security errors
+to hide their origin. Installer publisher remains the existing "Bloomstep
+contributors" label. Scaffold copyright/company claims are removed; legal
+controller/contact/copyright approval is still required, not invented.
+`path_provider_windows` and secure-storage v4 derive their default data path from
+executable company/product metadata. Before either storage or the instance lock
+opens, Bloomstep pins their support/cache directory to the existing machine
+namespace `com.bloomstep\bloomstep` under the corresponding Windows known folder.
+Changing customer-visible branding therefore neither relocates gardens/DPAPI
+credentials nor creates a second instance lock. No private file is copied,
+decoded, migrated or deleted; the legacy folder name is a deliberate persistent
+identifier, not a customer-facing legal company claim.
+All three prior published previews pin `flutter_secure_storage_windows` 4.1.0.
+Windows storage therefore disables that plugin's obsolete pre-v4 native migration
+path, which independently derives directories from executable metadata. Other
+platform options are unchanged. A Windows-only regression writes a synthetic
+record using the actual v4 DPAPI backend in an isolated temporary preview.3 path,
+reinitializes storage with the stable branded provider, and verifies the same
+record/file survives unchanged. It never reads a customer credential store.
+
+`tool/generate_brand_assets.py` generates the original flower ICO/PNG and
+245-by-36 sign-in wordmark from the source drawing. Its optional `--font` selects
+an available font; checked-in outputs need no image library during normal CI.
+The generator uses Pillow, and default Windows Segoe UI Bold. Only the three
+explicit public brand PNGs are tracked under `site/assets`; bundled auth/config
+outputs remain ignored.
+
+After explicit customer-branding authorization, run
+`infra/configure-customer-branding.ps1 -TenantId <customer-id> -LogoPath
+site\assets\bloomstep-wordmark.png -ConfirmCustomerBranding` with existing
+customer-tenant Graph access. It verifies the tenant before mutations, creates
+branding only if absent, preserves unrelated content keys/MFA strings, writes
+only supported product text/banner/favicon, and verifies readback.
+The parent `/branding` alias follows `Accept-Language`; actual default fallback
+is `/branding/localizations/0`, distinct from `/localizations/en-US`.
+The observed tenant returned500 for parent-alias PATCH, while both documented
+localization writes succeeded. Do not waive service errors or claim English-only
+branding covers other browser languages. Actual isolated English and French
+fallback pages now show the Bloomstep wordmark and "Sign in to Bloomstep".
+The fallback text is English, not a claim of fully localized product copy.
+
+Company branding does **not** rename the address-bar `ciamlogin.com` hostname,
+Google's destination-domain label, Microsoft's own account page, or the hosted
+service's generic localized browser-tab title. Keep those trusted-service labels
+truthful. The native login and website explain that Microsoft hosts Bloomstep's
+secure sign-in at `ciamlogin.com`; passwords stay with the chosen provider.
+
+Google's actual unauthenticated page currently says **"to continue to
+ciamlogin.com"**. Existing-project operator action is at
+[Google Auth Platform > Branding](https://console.cloud.google.com/auth/branding):
+review/set App name **Bloomstep**, accurate approved home/privacy/support/contact
+information, then review the actual draft/verification/published state.
+For production app name/logo display, Google's current
+[brand-verification requirements](https://developers.google.com/identity/verification/authentication-verification)
+require verification and **Publish branding**, not merely Save or changing an
+OAuth client's internal name. Google requires authorized-domain ownership
+verification; shared Microsoft broker domains can need provider-specific review,
+so no approval or displayed-name guarantee is inferred. Do not submit external
+review, invent contacts, switch production audience or change credentials without
+operator approval. No authorized Google management session is available to the
+implementation agent; this surface remains a genuine branding gate.
+
+Microsoft-hosted email OTP templates/sender are a separate provider surface,
+not changed by invitation email copy or a sign-in heading. A custom OTP sender
+requires a supported
+[email OTP send extension and mail relay](https://learn.microsoft.com/en-us/entra/identity-platform/custom-extension-email-otp-get-started).
+No relay, new credential-handling endpoint, sending service or paid add-on is
+provisioned under the current $0 budget, and no email delivery/branding is claimed
+without a genuine approved observation.
+
+An owned `login.<product-domain>` address requires domain/DNS control and the
+documented [custom URL domain infrastructure](https://learn.microsoft.com/en-us/entra/external-id/customers/how-to-custom-url-domain),
+including Azure Front Door Standard/Premium. It is not a free display-name
+setting and is outside the approved budget. No purchase, license upgrade,
+issuer/callback migration or counterfeit sign-in page is performed.
+
 API app settings (deployment secret store only):
 `COSMOS_CONNECTION_STRING`, `OIDC_ISSUER`, `OIDC_API_AUDIENCE`,
 `OIDC_JWKS_URI`. The issuer and JWKS must be the tenant's exact discovery values,

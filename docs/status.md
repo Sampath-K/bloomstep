@@ -4,6 +4,13 @@
 cloud deployment and native background behavior require integration evidence.
 This ledger is updated with verified outcomes, not inferred from source code.
 
+Product-owned branding is prepared in PR4, not yet shipped to the installed
+preview.3. Review caught metadata-derived storage relocation before distribution:
+startup now pins the existing Windows namespace before instance/session/garden
+access, and disables unpublished pre-v4 credential migration. Actual isolated
+Windows v4 DPAPI synthetic upgrade readback and nine related Flutter tests pass;
+dual native CI/install proof and a new release remain required.
+
 | Iteration | Job | Current evidence / remaining gate |
 | --- | --- | --- |
 | 0 | Build, run, ship | Public unsigned `v0.1.0-preview.3` engineering installers from merged green `df085e3`; both public downloads/hash checks pass. Actual local ARM64 preview.2 -> preview.3 upgrade, version/PE/protocol ownership/default-off receipt+marker absence/normal+repeat launch/app-only sign-in capture pass. Versioned dual jobs pass actual interactive consent/install/entry/owned-uninstall. SmartScreen/customer acceptance remain gates. |
@@ -11,7 +18,7 @@ This ledger is updated with verified outcomes, not inferred from source code.
 | 2 | Check in | Tests pass for did/more/rest, idempotency, append edits/undo, local midnight. Actual MSAA Did-it action in the newer synthetic native garden exposed celebration in67ms (<=300ms); not a customer-use measurement. |
 | 3 | Visual garden | True ARM64 synthetic profile captures inspected: readable banner and reserved Plant bar fixes observed. Responsive/200%-text regressions pass. Actual Flutter child HWND exposes38 MSAA nodes including labeled action buttons; UIA is empty, not evidence of no MSAA support. Narrator interaction remains unobserved. |
 | 4 | Local reminders | Real runtime probe observed tray bounds/hidden window and clean teardown. It exposed the dependency's unpackaged Win32 history/individual-cancel limitation. Native explicit-AUMID/grouped WinRT request/history/removal now replaces that path, with OS permission preflight and surfaced errors. This machine reports NotificationSetting2 (DisabledForUser); no OS settings changed or delivery claimed. New adapter full native/link/removal and popup/Focus/restart observations remain pending. |
-| 5 | Sign in | Consolidated acceptance exposed real Google `redirect_uri_mismatch` and MSA `invalid_request`: both request the canonical tenant-ID-host federation callback, not the previously registered subdomain variants. MSA exact callback added with authorized Graph, existing entries preserved/read back; isolated provider now offers credential entry. Google exact registration correction awaits authorized operator. Genuine exchanges remain unverified; no fake login or substitute provider. |
+| 5 | Sign in | Real Google/MSA callback mismatches corrected: operator saved exact Google Authorized redirect URI; MSA narrowly added with authorized Graph/preserved entries/readback. Fresh isolated expected clients/callbacks reach BOTH credential forms without mismatch. Genuine exchanges remain unverified. Actual default/en-US hosted Bloomstep wordmark, favicon and product text applied; English/French-browser fallback verified. Google published/verified consent branding remains an operator gate. |
 | 6 | Sync | Personal SWA Free/Cosmos free tier provisioned; live unauthenticated sync API returns 401. SQLite v4 preserves durable fingerprints and adds typed event properties; partial upload/concurrent edits, consent purge and account isolation tested. Live probes exposed SWA replacing Authorization and reserved admin routes: dedicated client-token header and team routes fixed in source, deployment smoke gate added. Actual authenticated two-account/device/offline round trips remain pending. |
 | 7 | Funnel | Versioned48-event registry and strict metadata, four typed dashboards/minimum50. Default-off browser/installer local receipts and independently consented explicit account linkage preserve original times/IDs; strict privacy/expiry/retry/account tests and actual browser+dual installer observations pass. Bounded opt-in Dart categories are not a native-death census; crash-free remains null. Actual main worker37222477262 wrote one snapshot; worker rejected by garden/team. Scheduled tick/customer population/OS-delivery remain unobserved. |
 | 8 | Feedback | Private queue/status/replies; audited pagination/retry/deletion protections tested. Real browser PKCE operator source and separately registered SPA/consent/flow binding now prepared; credentials memory-only, no pasted token. Actual selected customer Admin and feedback/rating round trip still pending. |
@@ -29,8 +36,8 @@ This ledger is updated with verified outcomes, not inferred from source code.
 - External ID customer tenant is separate from the Azure resource directory.
   Email OTP, Google and Microsoft personal flow bindings/page options are
   verified, but actual Google/MSA acceptance failed callback registration.
-  MSA registration corrected; Google operator correction and genuine provider
-  exchanges remain gates. Work-school support is separate.
+  Both registrations corrected and isolated credential entry verified; genuine
+  provider exchanges remain gates. Work-school support is separate.
 - Developer Mode stays off by user choice; CI supplies native builds.
 - Legal/privacy/name review and exact provider production settings remain launch
   gates. A compiled, sign-in-gated preview is not the signed-in MVP.
@@ -163,13 +170,36 @@ host. The implementation session added only that exact callback using existing
 authorized Graph access and verified all prior entries remained. Fresh isolated
 MSA navigation then reached credential entry without redirect mismatch;
 no credentials were entered and no successful exchange is inferred.
-Google independently still reports `redirect_uri_mismatch`; no authorized
-Google management route is available without operator involvement. The operator
-must add the exact observed callback on the existing Google web OAuth client,
-not change secrets or replace the broker. The implementation session owns
-post-correction isolated verification before requesting another customer attempt.
+The Google operator subsequently saved the exact Authorized redirect URI.
+Fresh isolated traversal now verifies expected clients/canonical callbacks and
+credential entry without mismatch for BOTH providers. No credentials were
+entered, and no successful exchange is inferred. A fresh app-start Sign in
+securely attempt is required; the failed tab's old state cannot be reused.
+The implementation session owns actual callback/integration/readback after
+trusted-browser customer authentication.
 Provider acceptance and full MVP remain incomplete. Installed preview.3 is
 unchanged; no new native release is needed for this registration correction.
+
+## Authorized branding increment
+
+The real hosted broker page formerly showed "BLOOMSTEP CUSTOMERS"; Google's
+own page actually showed "continue to ciamlogin.com". Authorized no-cost Graph
+branding now supplies Bloomstep's original wordmark/favicon, product headings,
+signup/account/OTP-page strings and truthful credential/domain explanation.
+Actual default locale0 and en-US writes/readbacks succeeded; fresh isolated
+English and French-browser fallback both load the245-by-36 wordmark and show
+"Sign in to Bloomstep", without the previous Customers fallback.
+No auth screenshot, credentials, issuer/callback/secret/contact/license change.
+The platform's generic localized browser-tab title remains unchanged.
+
+Native window/file/product scaffold defaults, original flower icon, native
+domain explanation/callback error, invitation email subject and site/operator
+labels are being shipped as one coherent tested branding increment. Installed
+preview.3 does not yet contain those native changes; fresh release/deployment
+and exact surfaced verification remain required. Google verified/published
+consent name and actual Microsoft-hosted OTP email remain external branding
+gates, not fixed by Entra display text. No paid custom domain/Front Door/relay
+or fabricated legal contact is created. See `deployment.md` for exact controls.
 
 ## Verification and demo jobs
 

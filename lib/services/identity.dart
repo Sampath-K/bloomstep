@@ -13,7 +13,11 @@ class IdentityService {
   static const clientId = String.fromEnvironment('OIDC_CLIENT_ID');
   static const apiScope = String.fromEnvironment('OIDC_API_SCOPE');
   static const apiOrigin = String.fromEnvironment('API_ORIGIN');
-  static const _storage = FlutterSecureStorage();
+  // All published previews use Windows v4 DPAPI JSON. Its obsolete pre-v4
+  // migration uses executable metadata and must not open a second namespace.
+  static const _storage = FlutterSecureStorage(
+    wOptions: WindowsOptions(useBackwardCompatibility: false),
+  );
   Credential? _credential;
   DateTime? _validatedAt;
   DateTime? _lastObservedAt;
@@ -164,7 +168,7 @@ class IdentityService {
       if (request.uri.path != '/callback' ||
           parameters['state'] != flow.state) {
         request.response.statusCode = HttpStatus.badRequest;
-        request.response.write('Invalid authentication response.');
+        request.response.write('Bloomstep sign-in response is invalid. Return to Bloomstep and start sign-in again.');
       } else {
         request.response.write(
           'Return to Bloomstep. You may close this browser tab.',

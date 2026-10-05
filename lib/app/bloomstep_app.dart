@@ -156,7 +156,7 @@ class _SignInScreenState extends State<SignInScreen> {
       await identity.signIn();
       await _enter(authenticatedNow: true);
     } catch (e) {
-      if (mounted) setState(() => error = 'Sign-in did not complete: $e');
+      if (mounted) setState(() => error = 'Bloomstep sign-in did not complete: $e');
     } finally {
       if (mounted) setState(() => busy = false);
     }
@@ -238,7 +238,7 @@ class _SignInScreenState extends State<SignInScreen> {
               ),
               const SizedBox(height: 16),
               const Text(
-                'Microsoft personal accounts, Google and email options depend on the configured identity provider. Your provider handles its password and account consent in the system browser; Bloomstep never collects your password.',
+                "Microsoft personal accounts, Google and email options depend on the configured identity provider. ciamlogin.com is Microsoft's sign-in service for Bloomstep. Your provider handles its password and account consent in the system browser; Bloomstep never collects your password.",
                 textAlign: TextAlign.center,
               ),
             ],

@@ -12,6 +12,12 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.text('Bloomstep'), findsOneWidget);
     expect(
+      find.textContaining(
+        "ciamlogin.com is Microsoft's sign-in service for Bloomstep",
+      ),
+      findsOneWidget,
+    );
+    expect(
       find.textContaining('sign-in is not yet configured'),
       findsOneWidget,
     );

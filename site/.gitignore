@@ -1,3 +1,6 @@
 node_modules/
-assets/
+assets/*
+!assets/bloomstep-icon.png
+!assets/bloomstep-wordmark.png
+!assets/bloomstep-favicon.png
 operator-config.json

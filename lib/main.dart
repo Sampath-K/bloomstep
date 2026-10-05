@@ -9,9 +9,11 @@ import 'app/bloomstep_app.dart';
 import 'services/single_instance.dart';
 import 'services/invitation_intent.dart';
 import 'services/installer_measurement.dart';
+import 'services/windows_storage_identity.dart';
 
 Future<void> main(List<String> arguments) async {
   WidgetsFlutterBinding.ensureInitialized();
+  installWindowsStorageIdentity();
   InvitationInbox? invitations;
   InstallerMeasurement? measurement;
   String? measurementWarning;
@@ -42,6 +44,7 @@ Future<void> main(List<String> arguments) async {
     } catch (_) {
       runApp(
         const MaterialApp(
+          title: 'Bloomstep',
           home: Scaffold(
             body: Center(
               child: Padding(
