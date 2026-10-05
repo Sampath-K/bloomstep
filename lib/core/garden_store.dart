@@ -35,8 +35,16 @@ class GardenStore {
           if (oldVersion < 4) {
             await db.execute('ALTER TABLE events ADD COLUMN properties TEXT');
           }
-          if (oldVersion < 5) await _createDeletions(db);
+          if (oldVersion < 5) {
+            await _createDeletions(db);
+            await _purgeDeleted(db, account);
+          }
         },
+        onDowngrade: (_, oldVersion, newVersion) => throw StateError(
+          'This garden uses a newer Bloomstep data format '
+          '($oldVersion; this app supports $newVersion). '
+          'Install a compatible newer version. Your data was not changed.',
+        ),
         onCreate: (db, _) async {
           await db.execute(
             'CREATE TABLE habits (id TEXT PRIMARY KEY, account TEXT NOT NULL, aspiration TEXT NOT NULL, anchor TEXT NOT NULL, behavior TEXT NOT NULL, celebration TEXT NOT NULL, species TEXT NOT NULL, stage INTEGER NOT NULL DEFAULT 0, status TEXT NOT NULL DEFAULT \'active\', updated TEXT NOT NULL)',
@@ -71,9 +79,41 @@ class GardenStore {
     'CREATE TABLE sync_state (account TEXT NOT NULL, tableName TEXT NOT NULL, recordId TEXT NOT NULL, fingerprint TEXT NOT NULL, PRIMARY KEY(account,tableName,recordId))',
   );
 
-  static Future<void> _createDeletions(DatabaseExecutor db) => db.execute(
-    'CREATE TABLE deletions (id TEXT NOT NULL, account TEXT NOT NULL, type TEXT NOT NULL, recordId TEXT NOT NULL, ts TEXT NOT NULL, PRIMARY KEY(account,type,recordId), UNIQUE(account,id))',
-  );
+  static Future<void> _createDeletions(DatabaseExecutor db) async {
+    await db.execute(
+      'CREATE TABLE IF NOT EXISTS deletions (id TEXT NOT NULL, account TEXT NOT NULL, type TEXT NOT NULL, recordId TEXT NOT NULL, ts TEXT NOT NULL, PRIMARY KEY(account,type,recordId), UNIQUE(account,id))',
+    );
+    const expected = {'id': 0, 'account': 1, 'type': 2, 'recordId': 3, 'ts': 0};
+    final columns = await db.rawQuery('PRAGMA table_info(deletions)');
+    if (columns.length != expected.length ||
+        columns.any(
+          (column) =>
+              !expected.containsKey(column['name']) ||
+              column['type'] != 'TEXT' ||
+              column['notnull'] != 1 ||
+              column['pk'] != expected[column['name']],
+        )) {
+      throw StateError(
+        'Saved deletion history has an unsupported format. '
+        'No migration was applied.',
+      );
+    }
+    final indices = await db.rawQuery('PRAGMA index_list(deletions)');
+    final uniqueKeys = <String>{};
+    for (final index in indices.where((row) => row['unique'] == 1)) {
+      final entries = await db.rawQuery(
+        'SELECT name FROM pragma_index_info(?) ORDER BY seqno',
+        [index['name']],
+      );
+      uniqueKeys.add(entries.map((entry) => entry['name']).join(','));
+    }
+    if (!uniqueKeys.containsAll({'account,type,recordId', 'account,id'})) {
+      throw StateError(
+        'Saved deletion history is missing required identity constraints. '
+        'No migration was applied.',
+      );
+    }
+  }
 
   Future<void> deleteRecord(String type, String recordId) async {
     if (!['habits', 'voice'].contains(type)) {
