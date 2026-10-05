@@ -47,6 +47,15 @@ test('site, operator popup and download labels are product-branded', () => {
   assert.match(read('site/operator-callback.html'), /Completing Bloomstep operator sign-in/);
 });
 
+test('public branding release links both verified native preview4 artifacts without claiming accepted MVP', () => {
+  const site = read('site/index.html');
+  for (const arch of ['arm64', 'x64']) {
+    assert.ok(site.includes(`releases/download/v0.1.0-preview.4/Bloomstep-0.1.0-preview.4-windows-${arch}-setup.exe`));
+  }
+  assert.match(site, /0\.1\.0-preview\.4 - Bloomstep identity and Windows branding/);
+  assert.match(site, /not the full MVP/);
+});
+
 test('branding assets have genuine binary formats and do not replace protocol identifiers', () => {
   const png = readFileSync(new URL('../site/assets/bloomstep-wordmark.png', import.meta.url));
   assert.equal(png.subarray(0, 8).toString('hex'), '89504e470d0a1a0a');

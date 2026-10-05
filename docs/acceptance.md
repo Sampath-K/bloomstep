@@ -1,16 +1,18 @@
 # One consolidated candidate acceptance
 
-Preview.3 (`v0.1.0-preview.3`, release source `df085e3`) is an unsigned Windows engineering candidate, **not a customer-accepted
+Preview.4 (`v0.1.0-preview.4`, release source `5b675a5`) is an unsigned Windows engineering candidate, **not a customer-accepted
 MVP**. Developer-owned source, native build, distribution, actual local upgrade,
 protocol lifecycle and main-branch operational proofs are recorded in
 `status.md`. Fixtures and synthetic profiles never substitute for real identity.
 
 Published ARM64/x64 hashes are independently verified; actual local
-preview.2 -> preview.3 ARM64 upgrade, version/architecture/protocol ownership,
-default-off receipt/marker absence, normal/repeat launch and app-only sign-in
-capture are verified. Both versioned native jobs passed actual interactive
+preview.3 -> preview.4 ARM64 upgrade, version/architecture/protocol ownership,
+default-off marker absence, stable existing storage/instance namespace,
+normal/repeat launch and app-only branded sign-in capture are verified.
+Actual isolated Windows v4 DPAPI synthetic upgrade readback preserves the same
+encrypted file; no real customer credential store was inspected. Both versioned native jobs passed actual interactive
 unchecked checkbox/explicit synthetic selection/installation+installed-entry
-events/owned uninstall. Use this installed candidate, not preview.2.
+events/owned uninstall. Use this installed candidate, not earlier previews.
 
 ## Compact final acceptance sequence
 
@@ -23,7 +25,7 @@ nor authenticated garden acceptance is claimed. Authorized hosted Bloomstep
 branding is live; Google published/verified consent branding is a separate gate.
 See `deployment.md` for branding and upstream-versus-native callback boundaries.
 
-1. In installed preview.3, use the trusted provider browser for approved genuine
+1. In installed preview.4, use the trusted provider browser for approved genuine
    customer identities, credentials/MFA/consent; explicitly select the customer
    operator before any Admin grant. No credential/token pasting.
 2. Review and authorize any desired Windows notification permission, then use

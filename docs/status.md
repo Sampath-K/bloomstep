@@ -4,16 +4,23 @@
 cloud deployment and native background behavior require integration evidence.
 This ledger is updated with verified outcomes, not inferred from source code.
 
-Product-owned branding is prepared in PR4, not yet shipped to the installed
-preview.3. Review caught metadata-derived storage relocation before distribution:
-startup now pins the existing Windows namespace before instance/session/garden
-access, and disables unpublished pre-v4 credential migration. Actual isolated
-Windows v4 DPAPI synthetic upgrade readback and nine related Flutter tests pass;
-dual native CI/install proof and a new release remain required.
+Product-owned branding shipped in PR4 merge `5b675a5` and unsigned
+`v0.1.0-preview.4`. Exact source PR/push, merged-main and versioned release
+`37265253407` API/ARM64/x64 pass, including142 Flutter tests per architecture and
+real dual native installer lifecycle/consent/storage-upgrade proofs. Review caught
+metadata-derived storage relocation before distribution: startup pins the
+existing namespace before instance/session/garden, and disables unpublished
+pre-v4 migration. Actual isolated Windows v4 DPAPI synthetic upgrade readback
+preserves its encrypted file. Production branding deployment `37265236789`,
+actual served text/three exact asset hashes/render, dual public downloads/hashes,
+normal ARM64 preview.3->4 upgrade/title/icon/sign-in/native metadata/protocol/
+repeat-launch and unchanged namespace are verified. No customer store was read.
+Final preview.4 website-link deployment follows publication; acceptance and
+Google verified/published OAuth branding remain genuine gates.
 
 | Iteration | Job | Current evidence / remaining gate |
 | --- | --- | --- |
-| 0 | Build, run, ship | Public unsigned `v0.1.0-preview.3` engineering installers from merged green `df085e3`; both public downloads/hash checks pass. Actual local ARM64 preview.2 -> preview.3 upgrade, version/PE/protocol ownership/default-off receipt+marker absence/normal+repeat launch/app-only sign-in capture pass. Versioned dual jobs pass actual interactive consent/install/entry/owned-uninstall. SmartScreen/customer acceptance remain gates. |
+| 0 | Build, run, ship | Public unsigned `v0.1.0-preview.4` branding engineering installers from merged green `5b675a5`; both public downloads/hash checks pass. Actual local ARM64 preview.3 -> preview.4 upgrade, version/PE/protocol ownership/default-off marker absence/normal+repeat launch/app-only branded sign-in capture/stable existing storage namespace pass. Versioned dual jobs pass actual interactive consent/install/entry/owned-uninstall. SmartScreen/customer acceptance remain gates. |
 | 1 | Plant first habit | SQLite tests and real widget journey pass: five starters, four recipe fields, three species, practiced celebration, restart-safe storage. |
 | 2 | Check in | Tests pass for did/more/rest, idempotency, append edits/undo, local midnight. Actual MSAA Did-it action in the newer synthetic native garden exposed celebration in67ms (<=300ms); not a customer-use measurement. |
 | 3 | Visual garden | True ARM64 synthetic profile captures inspected: readable banner and reserved Plant bar fixes observed. Responsive/200%-text regressions pass. Actual Flutter child HWND exposes38 MSAA nodes including labeled action buttons; UIA is empty, not evidence of no MSAA support. Narrator interaction remains unobserved. |
@@ -177,8 +184,9 @@ entered, and no successful exchange is inferred. A fresh app-start Sign in
 securely attempt is required; the failed tab's old state cannot be reused.
 The implementation session owns actual callback/integration/readback after
 trusted-browser customer authentication.
-Provider acceptance and full MVP remain incomplete. Installed preview.3 is
-unchanged; no new native release is needed for this registration correction.
+Provider acceptance and full MVP remain incomplete. The registration-only repair
+did not require a native release; the later authorized branding increment ships
+the new preview.4 candidate described below.
 
 ## Authorized branding increment
 
@@ -194,9 +202,20 @@ The platform's generic localized browser-tab title remains unchanged.
 
 Native window/file/product scaffold defaults, original flower icon, native
 domain explanation/callback error, invitation email subject and site/operator
-labels are being shipped as one coherent tested branding increment. Installed
-preview.3 does not yet contain those native changes; fresh release/deployment
-and exact surfaced verification remain required. Google verified/published
+labels shipped as one coherent tested branding increment. Installed normal
+preview.4 title/original flower icon/native metadata/service-domain explanation
+and sign-in-only screenshot are observed, without initiating login or reading
+customer stores. Actual previous Windows support namespace and repeat-launch
+ownership are preserved. Public unsigned installer SHA-256:
+
+- ARM64: `db371308664a27d70f5944ea4f8f6b190ca1398522f8345bff5e7aaee8bf7b3a`
+- x64: `dc7c431323cf04329b57eac34fa28e743a662858d3c96ff3166537f9e0017c01`
+
+Exact head PR `37264394120`, push `37264391076`, merged-main `37265236894`
+and tagged release `37265253407` API/ARM64/x64 jobs pass. Production branding
+deployment `37265236789` and actual HTTP/render/asset hashes pass; final download
+links are updated only after published artifacts and checksums were verified.
+Google verified/published
 consent name and actual Microsoft-hosted OTP email remain external branding
 gates, not fixed by Entra display text. No paid custom domain/Front Door/relay
 or fabricated legal contact is created. See `deployment.md` for exact controls.
