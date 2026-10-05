@@ -92,8 +92,8 @@ export function goalMetrics(rows, startDay, endDay, observedThrough) {
   goals.push(
     unavailable('notification_disable_30', 'Notification disable rate (30 days)', .10, 'fraction', 'A bounded first-observed reminder request is not lifetime notification enablement. Requires an explicit consented cohort-start observation and30-day follow-up; the legacy selected-window disable proxy is not substituted.'),
     unavailable('invites_30', 'Invites per activated user (30 days)', .3, 'per_user', 'Share initiation is not verified invitation delivery. No delivery census or K-factor is inferred.'),
-    unavailable('feedback_response', 'Feedback first response', 2, 'business_days', 'Requires server receipt/first-response timestamps plus an approved business timezone/holiday calendar; private status or client timestamps are not an SLA.'),
-    unavailable('low_rating_response', 'First response to ratings of3 stars or less', 48, 'hours', 'Requires server receipt and first-response timestamps for private low ratings; no response-time median or compliance rate is inferred.'),
+    unavailable('feedback_response', 'Feedback first response', 2, 'business_days', 'Server receipt/first committed reply facts are reported separately; an approved business timezone/holiday calendar is still required. Private status, elapsed-hour summaries and client timestamps are not a business-day SLA.'),
+    unavailable('low_rating_response', 'First response to ratings of3 stars or less', 48, 'hours', 'Separate server-backed closed48h compliance includes overdue unanswered records but excludes unknown legacy provenance. That partial receipt cohort and answered median do not substitute for this full-coverage response goal; no100% target is invented.'),
     unavailable('crash_free', 'Crash-free sessions', .995, 'fraction', 'Observed Dart errors may be nonfatal; complete session/native fatal census is absent. Unclean exits are not automatically crashes.'),
   );
   return { schemaVersion: 1, source: 'on_demand_target_aligned', startDay, endDay, observedThrough,

@@ -2,6 +2,31 @@ import 'package:bloomstep/core/garden_store.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
+  test('additive server support receipt sidecar never becomes a native row or unpurged collector', () async {
+    final store = await GardenStore.open(
+      ':memory:',
+      'synthetic-sidecar-compatibility',
+    );
+    addTearDown(store.close);
+    final before = await store.export();
+    await store.mergeSync({
+      'habits': [],
+      'checkins': [],
+      'reflections': [],
+      'voice': [],
+      'settings': [],
+      'voiceReceipts': [
+        {
+          'id': 'd2bb9b7d-481f-4ac5-bfba-808bdf4e2fda',
+          'schemaVersion': 1,
+          'receivedAt': '2026-09-01T12:00:00.000Z',
+          'firstRespondedAt': null,
+        },
+      ],
+    });
+    expect(await store.export(), before);
+  });
+
   test(
     'syncs only safe account preferences, never consent or startup opt-in',
     () async {

@@ -3,6 +3,7 @@ import { isAdmin, syncSchema, replySchema, newerRecipe, newerSetting } from './c
 import { aggregateEvents, previewLimits, feedbackQuerySchema, metricsQuerySchema, decodeCursor } from './engagement.mjs';
 import { dashboardSummaries, addDays } from './dashboards.mjs';
 import { goalMetrics } from './goals.mjs';
+import { supportReceiptSchema, supportMetrics } from './support.mjs';
 import { registryVersion } from './event_registry.g.mjs';
 import { dailySnapshotRecordSchema, snapshotMetadataSchema } from './snapshot-contracts.mjs';
 import { createInvitations } from './invitations.mjs';
@@ -186,7 +187,7 @@ export function createHandlers({ container, authenticate, authenticateAggregate 
   async function readGarden(userId) {
     await assertActive(userId, false);
     const { resources } = await container().items.query({
-      query: `SELECT TOP ${limits.gardenRecords + 1} c.type, c.record FROM c WHERE c.userId = @u AND c.type IN ("habits","checkins","reflections","voice","settings")`,
+      query: `SELECT TOP ${limits.gardenRecords + 1} c.type, c.record, c.support FROM c WHERE c.userId = @u AND c.type IN ("habits","checkins","reflections","voice","settings")`,
       parameters: [{ name: '@u', value: userId }],
     }, { partitionKey: userId }).fetchAll();
     const gate = await assertActive(userId, false);
@@ -194,12 +195,41 @@ export function createHandlers({ container, authenticate, authenticateAggregate 
     const deletions = Object.values(gate.deletedRecords ?? {});
     if (resources.length > limits.gardenRecords) throw new ServiceError(429, 'Legacy garden exceeds preview cap; operator review required.');
     /** @type {Record<string, any[]>} */
-    const data = { habits: [], checkins: [], reflections: [], voice: [], settings: [] };
+    const data = { habits: [], checkins: [], reflections: [], voice: [], settings: [], voiceReceipts: [] };
     for (const row of resources) {
-      if (!recordDeleted(gate, row.type, row.record)) data[row.type].push(row.record);
+      if (!recordDeleted(gate, row.type, row.record)) {
+        data[row.type].push(row.record);
+        if (row.type === 'voice') {
+          const support = readSupport(row.support);
+          const replies = support ? readReplies(row.record.replies) : null;
+          if (support && support.firstRespondedAt !== null && !replies?.length) {
+            throw new ServiceError(409, 'First response receipt has no stored reply.');
+          }
+          data.voiceReceipts.push(support ? { id: row.record.id, ...support }
+            : { id: row.record.id, schemaVersion: 1, receivedAt: null, firstRespondedAt: null, reason: 'legacy_receipt_unavailable' });
+          if (support && support.firstRespondedAt === null && replies?.length) {
+            data.voiceReceipts[data.voiceReceipts.length - 1].reason = 'first_response_unavailable';
+          }
+        }
+      }
     }
     data.deletions = deletions;
     return data;
+  }
+  /** @param {unknown} value */
+  function readSupport(value) {
+    if (value === undefined) return null;
+    const parsed = supportReceiptSchema.safeParse(value);
+    if (!parsed.success) throw new ServiceError(409, 'Server support receipt provenance is invalid.');
+    return parsed.data;
+  }
+  /** @param {unknown} value */
+  function readReplies(value) {
+    let replies;
+    try { replies = typeof value === 'string' ? JSON.parse(value) : null; }
+    catch { throw new ServiceError(409, 'Feedback thread is invalid.'); }
+    if (!Array.isArray(replies) || replies.some(reply => typeof reply !== 'string' || Array.from(reply).length > 2100)) throw new ServiceError(409, 'Feedback thread is invalid.');
+    return replies;
   }
   /** @param {any} gate @param {string} type @param {any} record */
   function recordDeleted(gate, type, record) {
@@ -341,6 +371,9 @@ export function createHandlers({ container, authenticate, authenticateAggregate 
           referralEligible: ['did', 'didMore'].includes(record.result) &&
             record.day <= clock().toISOString().slice(0, 10) && Date.parse(record.ts) <= clock().getTime() + 300000,
         } : {};
+        /** @type {Record<string, z.infer<typeof supportReceiptSchema>>} */
+        const supportProof = type === 'voice'
+          ? { support: { schemaVersion: 1, receivedAt: clock().toISOString(), firstRespondedAt: null } } : {};
         if (practiceProof.referralEligible) updated.gardenPositiveSeen = true;
         await reserve(resource ? 0 : 1);
         await operationalEnabled();
@@ -348,7 +381,7 @@ export function createHandlers({ container, authenticate, authenticateAggregate 
           { operationType: 'Replace', id: 'account', ifMatch: gate._etag, resourceBody: updated },
           resource
             ? { operationType: 'Replace', id, ifMatch: resource._etag, resourceBody: { id, userId, type, record, ttl } }
-            : { operationType: 'Create', resourceBody: { id, userId, type, record, ...practiceProof, ttl } },
+            : { operationType: 'Create', resourceBody: { id, userId, type, record, ...practiceProof, ...supportProof, ttl } },
         ], userId);
       }
     }
@@ -434,19 +467,37 @@ export function createHandlers({ container, authenticate, authenticateAggregate 
       })),
     ], aggregatePartition);
   }
-  /** @param {string} startDay @param {string} endExclusive */
-  async function rawEvents(startDay, endExclusive) {
-    const { resources } = await container().items.query({
-      query: `SELECT TOP ${limits.metricRecords + 1} c.userId, c.record FROM c WHERE c.type = "events" AND c.record.ts >= @start AND c.record.ts < @end`,
-      parameters: [{ name: '@start', value: startDay }, { name: '@end', value: endExclusive }],
-    }).fetchAll();
-    if (resources.length > limits.metricRecords) throw new ServiceError(429, 'Metrics scan cap exceeded; no partial counts returned.');
+  async function metricAccounts() {
     const { resources: accounts } = await container().items.query({
       query: `SELECT TOP ${limits.accounts + 1} c.userId, c.deleted, c.deletedRecords FROM c WHERE c.type = "account"`,
     }).fetchAll();
     if (accounts.length > limits.accounts) throw new ServiceError(429, 'Legacy account volume exceeds metrics cap.');
-    const active = new Map(accounts.filter(row => !row.deleted).map(row => [row.userId, row]));
+    return new Map(accounts.filter(row => !row.deleted).map(row => [row.userId, row]));
+  }
+  /** @param {string} startDay @param {string} endExclusive @param {{remaining:number}} scan */
+  async function rawEventRecords(startDay, endExclusive, scan = { remaining: limits.metricRecords }) {
+    const { resources } = await container().items.query({
+      query: `SELECT TOP ${scan.remaining + 1} c.userId, c.record FROM c WHERE c.type = "events" AND c.record.ts >= @start AND c.record.ts < @end`,
+      parameters: [{ name: '@start', value: startDay }, { name: '@end', value: endExclusive }],
+    }).fetchAll();
+    if (resources.length > scan.remaining) throw new ServiceError(429, 'Metrics scan cap exceeded; no partial counts returned.');
+    scan.remaining -= resources.length;
+    return resources;
+  }
+  /** @param {string} startDay @param {string} endExclusive */
+  async function rawEvents(startDay, endExclusive) {
+    const resources = await rawEventRecords(startDay, endExclusive);
+    const active = await metricAccounts();
     return resources.filter(row => active.has(row.userId) && !recordDeleted(active.get(row.userId), 'events', row.record));
+  }
+  /** @param {{remaining:number}} scan */
+  async function rawSupport(scan) {
+    const { resources } = await container().items.query({
+      query: `SELECT TOP ${scan.remaining + 1} c.userId, c.id, c.support, c.record.kind AS kind, c.record.rating AS rating, IIF(IS_ARRAY(STRINGTOARRAY(c.record.replies)) AND NOT EXISTS(SELECT VALUE r FROM r IN STRINGTOARRAY(c.record.replies) WHERE NOT IS_STRING(r) OR LENGTH(r) > 2100), ARRAY_LENGTH(STRINGTOARRAY(c.record.replies)) > 0, null) AS hasResponses FROM c WHERE c.type = "voice"`,
+    }).fetchAll();
+    if (resources.length > scan.remaining) throw new ServiceError(429, 'Combined metrics scan cap exceeded; no partial counts returned.');
+    scan.remaining -= resources.length;
+    return resources;
   }
   /** @param {string} startDay @param {string} endDay */
   async function persistedSeries(startDay, endDay) {
@@ -535,9 +586,9 @@ export function createHandlers({ container, authenticate, authenticateAggregate 
     const id = `voice:${parsed.data.id}`;
     const { resource } = await container().item(id, userId).read();
     if (!resource) throw new ServiceError(404, 'Feedback not found.');
-    let replies;
-    try { replies = JSON.parse(resource.record.replies); } catch { throw new ServiceError(409, 'Feedback thread is invalid.'); }
-    if (!Array.isArray(replies) || replies.some(reply => typeof reply !== 'string' || reply.length > 2100)) throw new ServiceError(409, 'Feedback thread is invalid.');
+    const replies = readReplies(resource.record.replies);
+    const support = readSupport(resource.support);
+    if (support && support.firstRespondedAt !== null && !replies.length) throw new ServiceError(409, 'Server support response provenance is inconsistent.');
     /** @type {{id: string, digest: string}[]} */
     const replyRequests = resource.replyRequests ?? [];
     if (!Array.isArray(replyRequests) || replyRequests.length > limits.replies
@@ -554,10 +605,12 @@ export function createHandlers({ container, authenticate, authenticateAggregate 
     }
     if (replies.length >= limits.replies) throw new ServiceError(429, 'Feedback reply cap reached.');
     const ts = clock().toISOString();
+    if (support && ts < (support.firstRespondedAt ?? support.receivedAt)) throw new ServiceError(503, 'Server response clock predates support provenance; retry later.');
     await reserve(1);
     await batch([
       { operationType: 'Replace', id: 'account', ifMatch: gate._etag, resourceBody: gateBody(gate) },
       { operationType: 'Replace', id, ifMatch: resource._etag, resourceBody: { ...resource,
+        ...(support ? { support: { ...support, firstRespondedAt: support.firstRespondedAt ?? (replies.length ? null : ts) } } : {}),
         replyRequests: parsed.data.requestId ? [...replyRequests, { id: parsed.data.requestId, digest }] : replyRequests,
         record: { ...resource.record, status: parsed.data.status, replies: JSON.stringify([...replies, `${ts}: ${parsed.data.reply}`]) } } },
       { operationType: 'Create', resourceBody: { id: randomUUID(), userId, type: 'audit', actor: actor.userId, action: 'feedback_reply', targetId: parsed.data.id, ts, ttl: auditTtl } },
@@ -575,11 +628,18 @@ export function createHandlers({ container, authenticate, authenticateAggregate 
     const start = new Date(end);
     start.setUTCDate(start.getUTCDate() - (parsed.data.days ?? 7));
     const startDay = start.toISOString().slice(0, 10);
-    const resources = await rawEvents(addDays(startDay, -91), end.toISOString().slice(0, 10));
+    const scan = { remaining: limits.metricRecords };
+    const eventRecords = await rawEventRecords(addDays(startDay, -91), end.toISOString().slice(0, 10), scan);
+    const supportRecords = await rawSupport(scan);
+    const active = await metricAccounts();
+    const resources = eventRecords.filter(row => active.has(row.userId) && !recordDeleted(active.get(row.userId), 'events', row.record));
+    const supportRows = supportRecords.filter(row => active.has(row.userId) && !recordDeleted(active.get(row.userId), 'voice',
+      { id: typeof row.id === 'string' && row.id.startsWith('voice:') ? row.id.slice(6) : row.id }));
     const endDay = new Date(end.getTime() - 86400000).toISOString().slice(0, 10);
     return { jsonBody: { ...aggregateEvents(resources, startDay, endDay),
       dashboards: dashboardSummaries(resources, addDays(startDay, -1), addDays(endDay, -1), clock().toISOString().slice(0, 10)),
       goalMetrics: goalMetrics(resources, addDays(startDay, -1), addDays(endDay, -1), clock().toISOString().slice(0, 10)),
+      supportMetrics: supportMetrics(supportRows, addDays(startDay, -1), addDays(endDay, -1), clock().toISOString()),
       dailySnapshots: await persistedSeries(addDays(startDay, -1), addDays(endDay, -1)) } };
   }
   /** @param {import('@azure/functions').HttpRequest} request */

@@ -1,5 +1,79 @@
 # Bounded backend telemetry and engagement contracts
 
+## Private support receipts and response measurement (schema1)
+
+This is service-operational metadata on existing private feedback/rating
+documents, **not opt-in product-event analytics** or native crash collection.
+No new route, role, public feedback feed or client-editable field is introduced.
+New voice creation commits outer `support` metadata atomically with the account
+gate and voice document:
+
+```json
+{"schemaVersion":1,"receivedAt":"2026-09-01T12:00:00.000Z","firstRespondedAt":null}
+```
+
+`receivedAt` is server UTC captured for the successfully committed creation,
+not the client timestamp or exact Cosmos commit instant. The first actual,
+nonempty operator reply stamps `firstRespondedAt` in the existing
+account/voice/audit CAS batch. Retries and later replies preserve both first
+times; failed CAS does not persist them. It proves a committed private reply,
+not customer-read, email, push or message delivery. Clock regression, invalid
+provenance and a known first response without a stored reply are errors, never
+clamped or repaired. An older compatible writer that already appended a reply
+without stamping the first time leaves it unavailable, not "unanswered".
+
+Owner-only GET/POST `/api/sync` adds `voiceReceipts` outside the unchanged native
+`voice` row shape:
+
+```json
+[{"id":"00000000-0000-4000-8000-000000000001","schemaVersion":1,"receivedAt":"2026-09-01T12:00:00.000Z","firstRespondedAt":null}]
+```
+
+Legacy metadata is not backfilled from now, client timestamps or reply prefixes:
+both times are null with `reason:"legacy_receipt_unavailable"`. Known receipt
+but lost first-response provenance uses `reason:"first_response_unavailable"`.
+Account/owner-record deletion removes the same-document metadata and suppresses
+it from readback; deletion markers retain no receipt times or private text.
+Existing clients may ignore the additive sidecar without merging new columns.
+
+Selected real Admin GET `/api/team/metrics` adds `supportMetrics`, privately.
+The metadata-only query returns owner/document IDs, kind, rating, support times
+and a response-existence boolean after parsing the stored JSON array; malformed
+JSON, non-array values, non-string replies or replies over2100 Unicode code
+points yield invalid provenance, **never body or reply text**. It shares the exact10,000 scanned-row
+budget and200-account cap with raw event scans, including removed/inactive rows
+in scan accounting; caps fail429 without partial counts. One final owner/
+deletion filtering snapshot after both raw scans excludes removed owners/
+records from both projections; this is not cross-partition transactional
+snapshot isolation. No consent-off feedback is joined into an
+opt-in event cohort.
+
+Receipt windows are completed UTC dates, at most30 days. Answered elapsed
+median/maximum are descriptive only. Ratings of3 or less mature only *after*
+receipt+48h; exactly-at-deadline remains open, exactly48h reply is timely.
+Mature unanswered and late records remain in the denominator; immature records
+are separate. Fractions/counts/subsets need50 distinct contributing owners,
+not50 rows from one owner; suppressed values are null, not zero. Malformed,
+conflicting or future server facts, or a recorded reply with missing first time,
+make timing unavailable rather than publish partial success. Legacy coverage is
+over all retained scanned feedback because its receipt window is unknowable.
+There is no invented100% response target. The original13-goal panel stays
+separate: neither this partial receipt cohort nor an answered median proves its
+full-coverage48h goal. The <=2-business-day goal remains
+`calendar_not_configured` until an explicit timezone/holiday calendar exists.
+
+Native Settings JSON export fetches this sidecar through authenticated
+read-only GETsync, with no merge, acknowledgment, upload or lastSync change.
+It validates shape/UTC provenance/duplicates, filters local owner tombstones
+and rejects changed identity/account generation. `serverSupportReceipts`
+identifies the source and includes explicit historical unknown reasons.
+Offline/old-service/malformed/unavailable components produce a JSON warning and
+visible local-export warning, not a complete-server-export claim. Account
+changes cancel saving even when an optional component failed. This source
+requires dual native CI/future compatible candidate and a separately approved
+customer upgrade/readback; no current installed preview is represented as
+having this new export contract.
+
 ## Operational spending guard: isolated one-way pause
 
 `POST /api/internal/operational-pause` uses **only** a separately pinned normal

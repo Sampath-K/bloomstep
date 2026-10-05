@@ -161,14 +161,18 @@ class GardenStore {
     });
   }
 
-  Future<List<String>> deletedHabitIds() async {
+  Future<List<String>> deletedHabitIds() => _deletedRecordIds('habits');
+
+  Future<List<String>> deletedVoiceIds() => _deletedRecordIds('voice');
+
+  Future<List<String>> _deletedRecordIds(String type) async {
     final owner = _account;
     final generation = _syncGeneration;
     final rows = await _db.query(
       'deletions',
       columns: ['recordId'],
       where: 'account = ? AND type = ?',
-      whereArgs: [owner, 'habits'],
+      whereArgs: [owner, type],
     );
     requireSyncSession(owner, generation);
     return rows.map((row) => row['recordId'] as String).toList();
