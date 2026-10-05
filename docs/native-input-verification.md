@@ -22,6 +22,12 @@ and restarts to check saved/canceled state. It then invokes only the uniquely
 scoped synthetic recipe's check-in, undo and individual delete, followed by
 restart/deletion readback. No account wipe, sign-in, operator role, invitation,
 notification permission or native-health collection is involved.
+The bundled SQLite library is opened read-only for exact account/fixture row,
+latest effective check-in/undo, deletion-marker and dependent-cleanup readback.
+Original synthetic seed counts must remain unchanged; rendered absence alone
+is not persistence or correct-record proof. The actual foreground is verified
+before diagnosing accessibility readiness, so a missing banner is not mislabeled
+as a focus-policy failure.
 
 Readiness and state waits are bounded, and the CI step has a three-minute
 deadline. `finally` closes only the exact launched synthetic process and removes

@@ -24,6 +24,9 @@ test('native actions require exact ownership, real foreground and semantic focus
   assert.match(harness, /Stop-Process -Id \$app\.Id/);
   assert.match(harness, /Synthetic database cleanup failed/);
   assert.match(harness, /Host lacks synthetic interactive foreground/);
+  const start = harness.split('function Start-Synthetic')[1].split('function Wait-Label')[0];
+  assert.ok(start.indexOf('SetForegroundWindow') < start.indexOf('AutomationElement'),
+    'Verify the actual foreground before diagnosing missing rendered accessibility.');
 });
 test('save, cancel, scoped practice, undo, delete and restart evidence stay synthetic', () => {
   const harness = read('tool/verify_synthetic_input.ps1');
@@ -34,6 +37,9 @@ test('save, cancel, scoped practice, undo, delete and restart evidence stay synt
   assert.match(harness, /savedPersisted/);
   assert.match(harness, /cancelAbsentAfterRestart/);
   assert.match(harness, /deletedAbsentAfterRestart/);
+  assert.match(harness, /sqlite3_open_v2/);
+  assert.match(harness, /readOnlyLocalState/);
+  assert.match(harness, /originalSeedCheckinsPreserved/);
   assert.match(harness, /customerAcceptance.*false/);
   assert.doesNotMatch(harness, /Sign in securely|Export my data|Delete my account|Bloomstep\.Admin/);
 });

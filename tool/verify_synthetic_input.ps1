@@ -10,7 +10,7 @@ if([IO.Path]::GetFullPath($Executable) -ne $expected) {throw 'Only the CI-built 
 $binary=[IO.File]::ReadAllBytes($expected)
 $peMachine=[BitConverter]::ToUInt16($binary,[BitConverter]::ToInt32($binary,60)+4)
 if($peMachine -ne 0xaa64) {throw 'Synthetic fixture architecture is not ARM64.'}
-$database=Join-Path $env:TEMP 'bloomstep-synthetic-preview.sqlite'
+$database=Join-Path ([IO.Path]::GetTempPath()) 'bloomstep-synthetic-preview.sqlite'
 $databaseFiles=@($database,($database+'-wal'),($database+'-shm'),($database+'-journal'))
 foreach($path in $databaseFiles) {
   if(Test-Path -LiteralPath $path) {throw 'Existing synthetic database; refusing overwrite.'}
@@ -39,6 +39,40 @@ public static class SyntheticInput {
   [DllImport("user32.dll")] static extern bool GetWindowRect(IntPtr window,out Rect rectangle);
   [DllImport("user32.dll",EntryPoint="PostMessageW")] static extern bool PostMessage(IntPtr window,uint message,IntPtr w,IntPtr l);
   [DllImport("oleacc.dll")] static extern int AccessibleObjectFromWindow(IntPtr window,uint id,ref Guid iid,[MarshalAs(UnmanagedType.Interface)] out object result);
+  [UnmanagedFunctionPointer(CallingConvention.Cdecl)] delegate int SqlOpen([MarshalAs(UnmanagedType.LPUTF8Str)] string path,out IntPtr db,int flags,IntPtr vfs);
+  [UnmanagedFunctionPointer(CallingConvention.Cdecl)] delegate int SqlClose(IntPtr db);
+  [UnmanagedFunctionPointer(CallingConvention.Cdecl)] delegate int SqlPrepare(IntPtr db,[MarshalAs(UnmanagedType.LPUTF8Str)] string sql,int bytes,out IntPtr statement,IntPtr tail);
+  [UnmanagedFunctionPointer(CallingConvention.Cdecl)] delegate int SqlBind(IntPtr statement,int index,[MarshalAs(UnmanagedType.LPUTF8Str)] string value,int bytes,IntPtr destructor);
+  [UnmanagedFunctionPointer(CallingConvention.Cdecl)] delegate int SqlStep(IntPtr statement);
+  [UnmanagedFunctionPointer(CallingConvention.Cdecl)] delegate IntPtr SqlText(IntPtr statement,int column);
+  [UnmanagedFunctionPointer(CallingConvention.Cdecl)] delegate int SqlFinalize(IntPtr statement);
+  [UnmanagedFunctionPointer(CallingConvention.Cdecl)] delegate int SqlTimeout(IntPtr db,int milliseconds);
+  public static string Scalar(string path,string library,string sql,string value) {
+    IntPtr module=NativeLibrary.Load(library),db=IntPtr.Zero,statement=IntPtr.Zero;
+    var close=Marshal.GetDelegateForFunctionPointer<SqlClose>(NativeLibrary.GetExport(module,"sqlite3_close"));
+    var finish=Marshal.GetDelegateForFunctionPointer<SqlFinalize>(NativeLibrary.GetExport(module,"sqlite3_finalize"));
+    try {
+      var open=Marshal.GetDelegateForFunctionPointer<SqlOpen>(NativeLibrary.GetExport(module,"sqlite3_open_v2"));
+      if(open(path,out db,1,IntPtr.Zero)!=0)throw new InvalidOperationException("Synthetic read-only SQLite open failed.");
+      var timeout=Marshal.GetDelegateForFunctionPointer<SqlTimeout>(NativeLibrary.GetExport(module,"sqlite3_busy_timeout"));
+      if(timeout(db,2000)!=0)throw new InvalidOperationException("Synthetic SQLite read timeout setup failed.");
+      var prepare=Marshal.GetDelegateForFunctionPointer<SqlPrepare>(NativeLibrary.GetExport(module,"sqlite3_prepare_v2"));
+      if(prepare(db,sql,-1,out statement,IntPtr.Zero)!=0)throw new InvalidOperationException("Synthetic SQLite scalar preparation failed.");
+      if(value!=null) {
+        var bind=Marshal.GetDelegateForFunctionPointer<SqlBind>(NativeLibrary.GetExport(module,"sqlite3_bind_text"));
+        if(bind(statement,1,value,-1,new IntPtr(-1))!=0)throw new InvalidOperationException("Synthetic SQLite parameter bind failed.");
+      }
+      var step=Marshal.GetDelegateForFunctionPointer<SqlStep>(NativeLibrary.GetExport(module,"sqlite3_step"));
+      if(step(statement)!=100)throw new InvalidOperationException("Synthetic SQLite readback missing or unavailable.");
+      var text=Marshal.GetDelegateForFunctionPointer<SqlText>(NativeLibrary.GetExport(module,"sqlite3_column_text"));
+      return Marshal.PtrToStringUTF8(text(statement,0))??"";
+    } finally {
+      if(statement!=IntPtr.Zero)finish(statement);
+      if(db!=IntPtr.Zero)close(db);
+      NativeLibrary.Free(module);
+    }
+  }
+  public static int NodeCount(IntPtr view) {return Walk(Root(view)).Count;}
   sealed class Element {
     public Accessibility.IAccessible node; public int child,depth;
     public string Name {get{return node.get_accName(child)??"";}}
@@ -205,17 +239,26 @@ function Start-Synthetic {
   [void][SyntheticInput]::EnumChildWindows($script:app.MainWindowHandle,$callback,[IntPtr]::Zero)
   if($views.Count -ne 1) {throw 'Expected exactly one owned synthetic Flutter view.'}
   $script:view=$views[0]
+  [void][SyntheticInput]::SetForegroundWindow($script:app.MainWindowHandle)
+  [SyntheticInput]::Foreground([uint32]$script:app.Id)
+  $result.actualForegroundVerified=$true
   $uia=[System.Windows.Automation.AutomationElement]::FromHandle($script:view)
   [void]$uia.FindAll([System.Windows.Automation.TreeScope]::Descendants,[System.Windows.Automation.Condition]::TrueCondition)
   $deadline=[DateTime]::UtcNow.AddSeconds(10)
   while(![SyntheticInput]::Has($script:view,'ISOLATED SYNTHETIC PREVIEW')) {
-    if([DateTime]::UtcNow -ge $deadline) {throw 'Synthetic banner readiness timeout; no input sent.'}
+    if([DateTime]::UtcNow -ge $deadline) {
+      $result.accessibleNodeCount=[SyntheticInput]::NodeCount($script:view)
+      throw 'Synthetic banner readiness timeout on verified foreground; no input sent.'
+    }
     Start-Sleep -Milliseconds 100
   }
-  [void][SyntheticInput]::SetForegroundWindow($script:app.MainWindowHandle)
-  [SyntheticInput]::Foreground([uint32]$script:app.Id)
   $result.syntheticBannerVerified=$true
-  $result.actualForegroundVerified=$true
+}
+function Store-Scalar([string]$Sql,[string]$Value) {
+  [SyntheticInput]::Scalar($database,(Join-Path (Split-Path $expected) 'sqlite3.dll'),$Sql,$Value)
+}
+function Assert-Count([string]$Sql,[string]$Value,[string]$Expected,[string]$Stage) {
+  if((Store-Scalar $Sql $Value) -ne $Expected) {throw "Synthetic read-only local state mismatch: $Stage"}
 }
 function Wait-Label([string]$Label,[bool]$Present=$true) {
   $deadline=[DateTime]::UtcNow.AddSeconds(10)
@@ -243,6 +286,8 @@ function Find-Fixture([string]$Label) {
 }
 try {
   Start-Synthetic
+  $seedHabitCount=Store-Scalar "SELECT count(*) FROM habits WHERE account='synthetic-preview-only'" $null
+  $seedCheckinCount=Store-Scalar "SELECT count(*) FROM checkins WHERE account='synthetic-preview-only'" $null
   $result.phase='text-save'
   Open-Builder
   Action 'Calm'
@@ -263,6 +308,11 @@ try {
   $result.cancelReturnedToGarden=$true
   $result.phase='restart-save-cancel-readback'
   Close-Synthetic
+  Assert-Count "SELECT count(*) FROM habits WHERE account='synthetic-preview-only' AND aspiration=?1" $saved '1' 'saved recipe'
+  Assert-Count "SELECT count(*) FROM habits WHERE account='synthetic-preview-only' AND aspiration=?1" $canceled '0' 'canceled recipe'
+  $fixtureId=Store-Scalar "SELECT id FROM habits WHERE account='synthetic-preview-only' AND aspiration=?1" $saved
+  if($fixtureId -notmatch '^[0-9a-f-]{36}$') {throw 'Synthetic fixture identity readback malformed.'}
+  $result.readOnlyLocalState=$true
   Start-Synthetic
   Find-Fixture $saved
   $result.savedPersisted=$true
@@ -275,6 +325,7 @@ try {
     if([DateTime]::UtcNow -ge $deadline) {throw 'Scoped synthetic check-in readback timeout.'}
     Start-Sleep -Milliseconds 100
   }
+  Assert-Count "SELECT CASE WHEN result='did' THEN 1 ELSE 0 END FROM checkins WHERE account='synthetic-preview-only' AND habitId=?1 ORDER BY ts DESC,id DESC LIMIT 1" $fixtureId '1' 'owned check-in'
   $result.scopedCheckinObserved=$true
   $result.phase='undo'
   Action 'Undo today' 43 $saved
@@ -283,6 +334,7 @@ try {
     if([DateTime]::UtcNow -ge $deadline) {throw 'Scoped synthetic undo readback timeout.'}
     Start-Sleep -Milliseconds 100
   }
+  Assert-Count "SELECT CASE WHEN result IS NULL THEN 1 ELSE 0 END FROM checkins WHERE account='synthetic-preview-only' AND habitId=?1 ORDER BY ts DESC,id DESC LIMIT 1" $fixtureId '1' 'owned undo'
   $result.scopedUndoObserved=$true
   $result.phase='delete'
   Action 'Delete this recipe' 43 $saved
@@ -293,6 +345,12 @@ try {
   $result.scopedLocalDeleteObserved=$true
   $result.phase='restart-deletion-readback'
   Close-Synthetic
+  Assert-Count "SELECT count(*) FROM habits WHERE account='synthetic-preview-only' AND aspiration=?1" $saved '0' 'deleted recipe'
+  Assert-Count "SELECT count(*) FROM deletions WHERE account='synthetic-preview-only' AND type='habits' AND recordId=?1" $fixtureId '1' 'owned deletion marker'
+  Assert-Count "SELECT count(*) FROM checkins WHERE account='synthetic-preview-only' AND habitId=?1" $fixtureId '0' 'owned dependent check-in cleanup'
+  Assert-Count "SELECT count(*) FROM habits WHERE account='synthetic-preview-only'" $null $seedHabitCount 'original seed habits'
+  Assert-Count "SELECT count(*) FROM checkins WHERE account='synthetic-preview-only'" $null $seedCheckinCount 'original seed check-ins'
+  $result.originalSeedCheckinsPreserved=$true
   Start-Synthetic
   for($i=0;$i -lt 12;$i++) {
     if([SyntheticInput]::Has($script:view,$saved) -or [SyntheticInput]::Has($script:view,$canceled)) {throw 'Deleted/canceled synthetic recipe reappeared after restart.'}
