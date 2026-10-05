@@ -1,4 +1,10 @@
 $ErrorActionPreference = 'Stop'
+class OfflineBrandingHttpException : System.Exception {
+  [object]$Response
+  OfflineBrandingHttpException([int]$StatusCode) : base('Synthetic branding HTTP failure.') {
+    $this.Response = @{ StatusCode = $StatusCode }
+  }
+}
 $global:brandingTenant = '11111111-2222-4333-8444-555555555555'
 $global:brandingRecord = $null
 $global:brandingCreated = 0
@@ -28,8 +34,7 @@ function global:Invoke-RestMethod {
   }
   if ($Uri -match '/branding(?:/localizations/(?:en-US|0))?$') {
     if ($null -eq $global:brandingRecord) {
-      $response = [Net.Http.HttpResponseMessage]::new([Net.HttpStatusCode]::NotFound)
-      throw [Microsoft.PowerShell.Commands.HttpResponseException]::new('No branding.', $response)
+      throw [OfflineBrandingHttpException]::new(404)
     }
     if ($Method -eq 'PATCH') {
       if ($Uri -match '/branding$') { throw 'Observed service requires the default branding locale endpoint, not the parent alias.' }
