@@ -11,7 +11,7 @@ This ledger is updated with verified outcomes, not inferred from source code.
 | 2 | Check in | Tests pass for did/more/rest, idempotency, append edits/undo, local midnight. Actual MSAA Did-it action in the newer synthetic native garden exposed celebration in67ms (<=300ms); not a customer-use measurement. |
 | 3 | Visual garden | True ARM64 synthetic profile captures inspected: readable banner and reserved Plant bar fixes observed. Responsive/200%-text regressions pass. Actual Flutter child HWND exposes38 MSAA nodes including labeled action buttons; UIA is empty, not evidence of no MSAA support. Narrator interaction remains unobserved. |
 | 4 | Local reminders | Real runtime probe observed tray bounds/hidden window and clean teardown. It exposed the dependency's unpackaged Win32 history/individual-cancel limitation. Native explicit-AUMID/grouped WinRT request/history/removal now replaces that path, with OS permission preflight and surfaced errors. This machine reports NotificationSetting2 (DisabledForUser); no OS settings changed or delivery claimed. New adapter full native/link/removal and popup/Focus/restart observations remain pending. |
-| 5 | Sign in | Email OTP, Google and Microsoft personal-account providers are now created AND enabled on the actual native/console user flow. MSA issuer/discovery/client/scope/auth type and both callbacks verified; real PKCE sign-in page HTTP200 includes all three options. Actual provider login/token exchanges remain unobserved, not inferred from setup. No fake login. |
+| 5 | Sign in | Consolidated acceptance exposed real Google `redirect_uri_mismatch` and MSA `invalid_request`: both request the canonical tenant-ID-host federation callback, not the previously registered subdomain variants. MSA exact callback added with authorized Graph, existing entries preserved/read back; isolated provider now offers credential entry. Google exact registration correction awaits authorized operator. Genuine exchanges remain unverified; no fake login or substitute provider. |
 | 6 | Sync | Personal SWA Free/Cosmos free tier provisioned; live unauthenticated sync API returns 401. SQLite v4 preserves durable fingerprints and adds typed event properties; partial upload/concurrent edits, consent purge and account isolation tested. Live probes exposed SWA replacing Authorization and reserved admin routes: dedicated client-token header and team routes fixed in source, deployment smoke gate added. Actual authenticated two-account/device/offline round trips remain pending. |
 | 7 | Funnel | Versioned48-event registry and strict metadata, four typed dashboards/minimum50. Default-off browser/installer local receipts and independently consented explicit account linkage preserve original times/IDs; strict privacy/expiry/retry/account tests and actual browser+dual installer observations pass. Bounded opt-in Dart categories are not a native-death census; crash-free remains null. Actual main worker37222477262 wrote one snapshot; worker rejected by garden/team. Scheduled tick/customer population/OS-delivery remain unobserved. |
 | 8 | Feedback | Private queue/status/replies; audited pagination/retry/deletion protections tested. Real browser PKCE operator source and separately registered SPA/consent/flow binding now prepared; credentials memory-only, no pasted token. Actual selected customer Admin and feedback/rating round trip still pending. |
@@ -28,7 +28,9 @@ This ledger is updated with verified outcomes, not inferred from source code.
   subscription. Only free SKUs/allowances, explicit subscription targeting.
 - External ID customer tenant is separate from the Azure resource directory.
   Email OTP, Google and Microsoft personal flow bindings/page options are
-  verified. Actual provider exchange and work-school support remain gates.
+  verified, but actual Google/MSA acceptance failed callback registration.
+  MSA registration corrected; Google operator correction and genuine provider
+  exchanges remain gates. Work-school support is separate.
 - Developer Mode stays off by user choice; CI supplies native builds.
 - Legal/privacy/name review and exact provider production settings remain launch
   gates. A compiled, sign-in-gated preview is not the signed-in MVP.
@@ -65,8 +67,9 @@ Final main dual-native/API run37231886710 also passed at that exact source.
 Isolated Edge observed real live default-off/consent/download gesture/clear;
 navigation was prevented only for QA, so no download completion was inferred.
 Current live config schema2/version2/checksum/not-expired/experimentOFF was
-independently read back. Operational run history still contains only the
-verified manual dispatches, not a scheduled tick.
+independently read back. Acceptance recheck observed actual scheduled guard
+run37238140888 passing with `warning_cost_unknown`, cost null and no pause.
+An aggregate scheduled tick remains unobserved.
 Actual background Share invocation is rejected with `share_foreground_required`;
 the covered-window input preflight sent no foreign input. No visible OS Share
 pane/transmission is claimed. Customer/OS/launch gates are consolidated in
@@ -144,9 +147,29 @@ OS delivery/Share/Narrator and launch approvals remain genuine gates. The
 original native/process-death/full-session crash-free>=99.5% quality evidence
 and live bounded experiment/cohort are not supplied by optional diagnostic
 categories or configured OFF controls. Billing remains unknown. As of the
-final run-history check, only manual aggregate/guard runs exist; no actual
-scheduled tick is claimed. The implementation session owns all component/API
+acceptance recheck, scheduled guard37238140888 is observed; an aggregate
+scheduled tick is not. The implementation session owns all component/API
 readbacks and cleanup once the consolidated human-only gates are supplied.
+
+## Acceptance callback defect (October 5)
+
+The customer's real Google and Microsoft personal-account attempts both failed.
+Fresh isolated unauthenticated traversal captured only public upstream client
+identifiers and the exact shared callback
+`https://<tenant-id>.ciamlogin.com/<tenant-id>/federation/oauth2`.
+The native loopback is downstream and must not be registered at Google.
+MSA's two registered subdomain callbacks did not include the actual canonical
+host. The implementation session added only that exact callback using existing
+authorized Graph access and verified all prior entries remained. Fresh isolated
+MSA navigation then reached credential entry without redirect mismatch;
+no credentials were entered and no successful exchange is inferred.
+Google independently still reports `redirect_uri_mismatch`; no authorized
+Google management route is available without operator involvement. The operator
+must add the exact observed callback on the existing Google web OAuth client,
+not change secrets or replace the broker. The implementation session owns
+post-correction isolated verification before requesting another customer attempt.
+Provider acceptance and full MVP remain incomplete. Installed preview.3 is
+unchanged; no new native release is needed for this registration correction.
 
 ## Verification and demo jobs
 

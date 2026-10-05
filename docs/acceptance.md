@@ -14,6 +14,14 @@ events/owned uninstall. Use this installed candidate, not preview.2.
 
 ## Compact final acceptance sequence
 
+**Current pause:** October 5 acceptance exposed genuine Google and MSA callback
+mismatches. MSA's exact observed canonical-host callback is now registered and
+isolated credential entry passes; Google registration needs the authorized
+operator's exact-URI correction. Do not repeat customer attempts until the
+implementation session verifies that correction. Neither successful provider
+exchange nor authenticated garden acceptance is claimed. See `deployment.md`
+for the upstream federation versus native-loopback distinction.
+
 1. In installed preview.3, use the trusted provider browser for approved genuine
    customer identities, credentials/MFA/consent; explicitly select the customer
    operator before any Admin grant. No credential/token pasting.
@@ -69,4 +77,5 @@ The original crash-free >=99.5% quality target is not established by bounded
 opt-in categories; native/process deaths/full-session census and population
 evidence remain gaps, not assumed passes.
 Operational workflow definitions are active on main and manual main runs
-passed; an actual scheduled tick is recorded only when observed.
+passed. Scheduled guard37238140888 is now observed successful, with cost unknown
+and no pause; an aggregate scheduled tick remains unobserved.

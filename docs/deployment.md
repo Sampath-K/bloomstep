@@ -50,8 +50,15 @@ Use only `openid profile email`. For testing, add the owner's Google account as
 a test user; testing is not publicly available sign-in. Configure the authorized
 domains/callbacks in the current
 [Google federation instructions](https://learn.microsoft.com/en-us/entra/external-id/customers/how-to-google-federation-customers).
-Include both customer-subdomain and tenant-ID callback variants listed there;
-the canonical tenant-ID host can use `/federation/oidc/accounts.google.com`.
+Treat the actual upstream authorization request's `redirect_uri` as authoritative,
+not a guessed callback from a documentation template. Our isolated runtime
+traversal observed the tenant-ID host with
+`https://<tenant-id>.ciamlogin.com/<tenant-id>/federation/oauth2` for both
+Google and MSA. Google's documented built-in OIDC variants can instead use
+`/federation/oidc/accounts.google.com`; registering only those variants does not
+authorize the observed OAuth2 callback. Add the exact observed HTTPS URI to
+the existing Google web client's **Authorized redirect URIs**, preserving
+existing entries. Never add a wildcard or the native app's loopback callback.
 Paste credentials **directly** into Entra's built-in Google provider, never into
 chat, source, native build defines or SWA settings. Enable Google in the existing
 customer user flow. Public consent publishing/verification is a separate gate.
@@ -60,10 +67,14 @@ Microsoft **personal** Outlook/Hotmail accounts are explicitly supported by the
 current [customer MSA federation instructions](https://learn.microsoft.com/en-us/entra/external-id/customers/how-to-microsoft-accounts-federation-customers).
 Use a separate confidential federation registration (not the public desktop
 client), multi-org + personal-account audience and v2 tokens. Its documented web
-callbacks are `https://<subdomain>.ciamlogin.com/<tenant-id>/federation/oauth2`
-and the equivalent `<subdomain>.onmicrosoft.com` tenant path.
+callbacks include `https://<subdomain>.ciamlogin.com/<tenant-id>/federation/oauth2`
+and the equivalent `<subdomain>.onmicrosoft.com` tenant path. The deployed
+tenant-ID issuer actually requested
+`https://<tenant-id>.ciamlogin.com/<tenant-id>/federation/oauth2`; subdomain-only
+registration failed with `invalid_request`.
 `infra/configure-identity.ps1` prepares this registration without exporting a
-secret; the operator creates/pastes its secret directly in Entra's custom OIDC
+secret, includes the observed canonical callback and reconciles existing
+managed web callbacks additively with readback; the operator creates/pastes its secret directly in Entra's custom OIDC
 provider and enables it in the user flow. The provider configuration is:
 
 - Metadata: `https://login.microsoftonline.com/consumers/v2.0/.well-known/openid-configuration`.
@@ -79,6 +90,14 @@ provider and enables it in the user flow. The provider configuration is:
 
 No broker replacement is required for this documented path. Actual Google and
 MSA sign-ins, consent, claims mapping and callback behavior must still be observed.
+Before asking a customer to retry, traverse each option in a fresh isolated,
+unauthenticated browser context and record only the public upstream `client_id`
+and exact `redirect_uri`. Never inspect the customer's existing browser, persist
+full authorization URLs/state/nonce/cookies or capture authentication screens.
+Compare the observed URI with the selected web registration. After correction,
+confirm that the isolated provider page offers credential entry rather than a
+redirect mismatch, without entering credentials. This is registration proof,
+not successful customer authentication or a token exchange.
 Microsoft work/school federation is a different configuration and can need
 organizational approval; `common` is not a substitute for personal-account setup.
 Never merge gardens by email or treat resource-tenant ownership as an API role.
