@@ -761,7 +761,7 @@ class _GardenScreenState extends State<GardenScreen> {
                   Uri(
                     scheme: 'mailto',
                     query:
-                        'subject=${Uri.encodeComponent('A tiny step together')}&body=${Uri.encodeComponent('Grow a tiny habit with Bloomstep. $url')}',
+                        'subject=${Uri.encodeComponent('A tiny step together with Bloomstep')}&body=${Uri.encodeComponent('Grow a tiny habit with Bloomstep. $url')}',
                   ),
                 )) {
                   throw StateError(

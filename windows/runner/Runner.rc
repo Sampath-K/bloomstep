@@ -89,13 +89,13 @@ BEGIN
     BEGIN
         BLOCK "040904e4"
         BEGIN
-            VALUE "CompanyName", "com.bloomstep" "\0"
-            VALUE "FileDescription", "bloomstep" "\0"
+            VALUE "CompanyName", "Bloomstep contributors" "\0"
+            VALUE "FileDescription", "Bloomstep" "\0"
             VALUE "FileVersion", VERSION_AS_STRING "\0"
             VALUE "InternalName", "bloomstep" "\0"
-            VALUE "LegalCopyright", "Copyright (C) 2026 com.bloomstep. All rights reserved." "\0"
+            VALUE "LegalCopyright", "" "\0"
             VALUE "OriginalFilename", "bloomstep.exe" "\0"
-            VALUE "ProductName", "bloomstep" "\0"
+            VALUE "ProductName", "Bloomstep" "\0"
             VALUE "ProductVersion", VERSION_AS_STRING "\0"
         END
     END

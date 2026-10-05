@@ -42,6 +42,7 @@ Future<void> main(List<String> arguments) async {
     } catch (_) {
       runApp(
         const MaterialApp(
+          title: 'Bloomstep',
           home: Scaffold(
             body: Center(
               child: Padding(

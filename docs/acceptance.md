@@ -14,13 +14,14 @@ events/owned uninstall. Use this installed candidate, not preview.2.
 
 ## Compact final acceptance sequence
 
-**Current pause:** October 5 acceptance exposed genuine Google and MSA callback
-mismatches. MSA's exact observed canonical-host callback is now registered and
-isolated credential entry passes; Google registration needs the authorized
-operator's exact-URI correction. Do not repeat customer attempts until the
-implementation session verifies that correction. Neither successful provider
-exchange nor authenticated garden acceptance is claimed. See `deployment.md`
-for the upstream federation versus native-loopback distinction.
+**Current identity status:** October 5 acceptance exposed genuine Google/MSA
+callback mismatches. Both exact canonical-host registrations are now corrected,
+and fresh isolated expected-client/callback verification reaches both credential
+forms without mismatch. Close failed tabs and start sign-in again from the
+installed app, not the old expired state. Neither successful provider exchange
+nor authenticated garden acceptance is claimed. Authorized hosted Bloomstep
+branding is live; Google published/verified consent branding is a separate gate.
+See `deployment.md` for branding and upstream-versus-native callback boundaries.
 
 1. In installed preview.3, use the trusted provider browser for approved genuine
    customer identities, credentials/MFA/consent; explicitly select the customer

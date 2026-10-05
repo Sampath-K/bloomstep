@@ -164,7 +164,7 @@ class IdentityService {
       if (request.uri.path != '/callback' ||
           parameters['state'] != flow.state) {
         request.response.statusCode = HttpStatus.badRequest;
-        request.response.write('Invalid authentication response.');
+        request.response.write('Bloomstep sign-in response is invalid. Return to Bloomstep and start sign-in again.');
       } else {
         request.response.write(
           'Return to Bloomstep. You may close this browser tab.',
