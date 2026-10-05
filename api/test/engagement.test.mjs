@@ -15,7 +15,7 @@ const validReplyPresence = value => {
   if (typeof value !== 'string') return null;
   let replies;
   try { replies = JSON.parse(value); } catch { return null; }
-  return Array.isArray(replies) && replies.every(reply => typeof reply === 'string' && reply.length <= 2100)
+  return Array.isArray(replies) && replies.every(reply => typeof reply === 'string' && Array.from(reply).length <= 2100)
     ? replies.length > 0 : null;
 };
 const request = (method, data, query = {}, params = {}) => ({
@@ -269,6 +269,7 @@ test('support response provenance validates serialized replies without projectin
     ['non-array JSON', '{"reply":"synthetic"}'],
     ['non-string array member', '["synthetic",7]'],
     ['oversized array member', JSON.stringify(['x'.repeat(2101)])],
+    ['oversized Unicode array member', JSON.stringify(['😀'.repeat(2101)])],
   ];
   for (const [label, replies] of invalidReplyLists) {
     const h = harness();
@@ -286,18 +287,19 @@ test('support response provenance validates serialized replies without projectin
   }
 
   const valid = harness();
+  const unicodeReply = `2026-08-31T14:00:00.000Z: ${'😀'.repeat(1051)}`;
   for (let index = 1; index <= 50; index++) {
     const owner = index.toString(16).padStart(64, '0');
     const note = voice();
     valid.put({ id: 'account', userId: owner, type: 'account', deleted: false, deletedRecords: {}, ttl: -1 });
     valid.put({ id: `voice:${note.id}`, userId: owner, type: 'voice',
-      record: { ...note, kind: 'Rating', rating: 2, status: 'received', replies: ' [ "Synthetic private reply" ] ' }, ttl: -1,
+      record: { ...note, kind: 'Rating', rating: 2, status: 'received', replies: JSON.stringify([unicodeReply]) }, ttl: -1,
       support: { schemaVersion: 1, receivedAt: '2026-08-31T12:00:00.000Z', firstRespondedAt: '2026-08-31T14:00:00.000Z' } });
   }
   const validResult = (await valid.metrics(request('GET', null, { days: '1' }))).jsonBody;
   assert.equal(validResult.supportMetrics.firstResponses.reason, null);
   assert.equal(validResult.supportMetrics.firstResponses.medianHours, 2);
-  assert.equal(JSON.stringify(validResult.supportMetrics).includes('Synthetic private reply'), false);
+  assert.equal(JSON.stringify(validResult.supportMetrics).includes(unicodeReply), false);
 
   const missingTimestamp = harness();
   for (let index = 1; index <= 50; index++) {
@@ -311,6 +313,18 @@ test('support response provenance validates serialized replies without projectin
   const missingResult = (await missingTimestamp.metrics(request('GET', null, { days: '1' }))).jsonBody.supportMetrics;
   assert.equal(missingResult.firstResponses.reason, 'first_response_unavailable');
   assert.equal(missingResult.firstResponses.medianHours, null);
+});
+
+test('owner read accepts replies within the Cosmos character limit even when UTF-16 storage uses two code units', async () => {
+  const h = harness({ roles: [] });
+  const note = voice();
+  h.put({ id: 'account', userId, type: 'account', deleted: false, deletedRecords: {}, ttl: -1 });
+  h.put({ id: `voice:${note.id}`, userId, type: 'voice',
+    record: { ...note, status: 'received', replies: JSON.stringify([`2026-09-01T13:00:00.000Z: ${'😀'.repeat(1051)}`]) },
+    support: { schemaVersion: 1, receivedAt: '2026-09-01T12:00:00.000Z', firstRespondedAt: '2026-09-01T13:00:00.000Z' }, ttl: -1 });
+  const garden = (await h.sync(request('GET'))).jsonBody;
+  assert.equal(garden.voice.length, 1);
+  assert.equal(garden.voiceReceipts.length, 1);
 });
 
 test('combined metrics use one final account/deletion snapshot after both raw scans', async () => {

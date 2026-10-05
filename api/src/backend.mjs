@@ -228,7 +228,7 @@ export function createHandlers({ container, authenticate, authenticateAggregate 
     let replies;
     try { replies = typeof value === 'string' ? JSON.parse(value) : null; }
     catch { throw new ServiceError(409, 'Feedback thread is invalid.'); }
-    if (!Array.isArray(replies) || replies.some(reply => typeof reply !== 'string' || reply.length > 2100)) throw new ServiceError(409, 'Feedback thread is invalid.');
+    if (!Array.isArray(replies) || replies.some(reply => typeof reply !== 'string' || Array.from(reply).length > 2100)) throw new ServiceError(409, 'Feedback thread is invalid.');
     return replies;
   }
   /** @param {any} gate @param {string} type @param {any} record */

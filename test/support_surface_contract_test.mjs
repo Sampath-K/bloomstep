@@ -30,8 +30,9 @@ test('support export does not migrate SQLite or introduce a separate unpurged co
   assert.match(backend, /IIF\(IS_ARRAY\(STRINGTOARRAY\(c\.record\.replies\)\) AND NOT EXISTS\(SELECT VALUE r FROM r IN STRINGTOARRAY\(c\.record\.replies\) WHERE NOT IS_STRING\(r\) OR LENGTH\(r\) > 2100\), ARRAY_LENGTH\(STRINGTOARRAY\(c\.record\.replies\)\) > 0, null\) AS hasResponses/);
   const projection = backend.split('async function rawSupport(scan)')[1].split('async function')[0];
   assert.doesNotMatch(projection, /c\.record\.body|SELECT.*c\.record\.replies\s*,/);
+  assert.match(backend, /Array\.from\(reply\)\.length > 2100/);
   assert.match(readFileSync(new URL('../docs/backend-contracts.md', import.meta.url), 'utf8'),
-    /malformed\s+JSON,\s+non-array values,\s+non-string replies or replies over2100 characters yield\s+invalid provenance/);
+    /malformed\s+JSON,\s+non-array values,\s+non-string replies or replies over2100 Unicode code\s+points yield\s+invalid provenance/);
 });
 
 test('public trust notice discloses service support facts separately from optional analytics without filling historical gaps', () => {

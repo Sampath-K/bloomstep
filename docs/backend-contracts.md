@@ -39,8 +39,8 @@ Existing clients may ignore the additive sidecar without merging new columns.
 Selected real Admin GET `/api/team/metrics` adds `supportMetrics`, privately.
 The metadata-only query returns owner/document IDs, kind, rating, support times
 and a response-existence boolean after parsing the stored JSON array; malformed
-JSON, non-array values, non-string replies or replies over2100 characters yield
-invalid provenance, **never body or reply text**. It shares the exact10,000 scanned-row
+JSON, non-array values, non-string replies or replies over2100 Unicode code
+points yield invalid provenance, **never body or reply text**. It shares the exact10,000 scanned-row
 budget and200-account cap with raw event scans, including removed/inactive rows
 in scan accounting; caps fail429 without partial counts. One final owner/
 deletion filtering snapshot after both raw scans excludes removed owners/
