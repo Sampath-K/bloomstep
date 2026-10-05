@@ -475,3 +475,35 @@ sync, with explicit conflict/quota/storage errors instead of a success fallback.
 See `backend-contracts.md` for permanent ID-only retention, preview bounds and
 processor/export-copy boundaries. Normal unsigned distribution remains labeled
 as an engineering candidate, not full-MVP acceptance or a crash/cohort result.
+
+### Compatible recovery, not arbitrary downgrade
+
+Do not roll back the API to code predating record-deletion suppression: an old
+writer/read path can restore content despite the permanent account ledger.
+Pause affected non-deletion writes and deploy a compatible forward fix instead;
+preserve ledger/pending-cleanup and data namespace. Account/record erasure or
+clearing a garden is not a rollback mechanism. Prior exports and encrypted
+credential files must not be copied into a different account/namespace.
+
+SQLite's absent `onDowngrade` callback does **not** automatically reject an
+older client: isolated fixtures reproduced version5 silently relabeled4,
+followed by preview.5 failing its repeated deletion-table creation. They also
+reproduced the current client silently relabeling a simulated future6 database5.
+This is a genuine compatibility defect, not an observed customer incident.
+Never install preview.4 over a version5 garden as a supported recovery step.
+
+The subsequent source fix explicitly rejects a newer database format without
+changing its version/content. Valid deletion-table creation is idempotent and
+validates columns, primary key and canonical-ID uniqueness before repairing a
+legacy version-label reset. Recorded deletions are reapplied to that account
+within the upgrade transaction, suppressing an old client's stale local copy.
+Malformed history fails visibly and rolls back the migration rather than
+silently replacing it. Synthetic tests prove these boundaries; exact native
+CI/release and any preserved-session upgrade remain separate pending evidence.
+Do not claim the already installed preview.5 contains this later fix.
+
+Generated event registry files are repository-pinned to LF in `.gitattributes`.
+The API suite checks an actual isolated `core.autocrlf=true` Git checkout of
+all three generated files, not just the author's local settings. This prevents
+Windows CRLF conversion from causing a false generator-drift failure without
+weakening exact generated-content checks or changing global Git preferences.
