@@ -69,6 +69,10 @@ function harness({ roles = ['Bloomstep.Admin'], scopes = ['Garden.ReadWrite'], a
           else if (spec.query.includes('c.type = "referral_reward"')) rows = rows.filter(row => row.type === 'referral_reward');
           else if (spec.query.includes('c.type = "invitation_secret"')) rows = rows.filter(row => row.type === 'invitation_secret');
           else if (spec.query.includes('c.type != "account"')) rows = rows.filter(row => row.type !== 'account');
+          if (parameters['@target']) rows = rows.filter(row =>
+            row.type === parameters['@targetType'] && row.record?.id === parameters['@target'] ||
+            parameters['@targetType'] === 'habits' && (row.record?.habitId === parameters['@target'] || row.record?.properties?.habitId === parameters['@target']) ||
+            parameters['@targetType'] === 'voice' && row.type === 'audit' && row.targetId === parameters['@target']);
           rows.sort((a, b) => a.userId.localeCompare(b.userId) || a.id.localeCompare(b.id));
           if (parameters['@after']) rows = rows.filter(row => `${row.userId}:${row.id}` > parameters['@after']);
           const top = Number(/TOP (\d+)/.exec(spec.query)?.[1] ?? rows.length);
@@ -97,6 +101,168 @@ const friendHandlers = (h, id = friendId, roles = [], scopes = ['Garden.ReadWrit
 const recipe = () => ({ id: randomUUID(), aspiration: 'Private aspiration', anchor: 'Private anchor',
   behavior: 'Private behavior', celebration: 'Private celebration', species: 'Fern', stage: 0, status: 'active', updated: now });
 const practice = (habitId, result = 'did') => ({ id: randomUUID(), habitId, day: '2026-09-01', result, reason: null, ts: now });
+
+test('garden read rechecks deletion ledger after rows are fetched', async () => {
+  const habit = recipe();
+  let armed = false;
+  const deletion = { id: randomUUID(), type: 'habits', recordId: habit.id, ts: now };
+  const h = harness({ roles: [], beforeQuery: async (spec, { put, read }) => {
+    if (armed && spec.query.includes('c.type IN')) {
+      armed = false;
+      put({ ...read('account', userId), deletedRecords: { [`habits:${habit.id}`]: deletion } });
+    }
+  } });
+  await h.sync(request('POST', payload({ habits: [habit] })));
+  armed = true;
+  const result = (await h.sync(request('GET'))).jsonBody;
+  assert.deepEqual(result.habits, []);
+  assert.deepEqual(result.deletions, [deletion]);
+});
+
+test('delete racing a recipe edit, child insert or admin reply rejects stale CAS and retries without resurrection', async () => {
+  for (const type of ['habits', 'checkins', 'voice']) {
+    const habit = recipe(), note = voice();
+    let armed = false;
+    const deletion = { id: randomUUID(), type: type === 'voice' ? 'voice' : 'habits',
+      recordId: type === 'voice' ? note.id : habit.id, ts: now };
+    const h = harness({ roles: [], beforeBatch: async (ops, partition, { put, read }) => {
+      if (armed && partition === userId && ops.some(op => op.resourceBody?.type === type)) {
+        armed = false;
+        put({ ...read('account', userId), deletedRecords: { [`${deletion.type}:${deletion.recordId}`]: deletion },
+          pendingRecordCleanup: [`${deletion.type}:${deletion.recordId}`] });
+      }
+    } });
+    await h.sync(request('POST', payload({ habits: [habit], voice: [note] })));
+    armed = true;
+    const write = type === 'voice'
+      ? () => friendHandlers(h, teamId, ['Bloomstep.Admin']).admin(request('POST', { id: note.id, status: 'received', reply: 'Synthetic reply' }, {}, { userId }))
+      : () => h.sync(request('POST', payload(type === 'habits'
+        ? { habits: [{ ...habit, anchor: 'Edited', updated: '2026-09-01T12:00:01.000Z' }] }
+        : { checkins: [practice(habit.id)] })));
+    await assert.rejects(write(), e => e.status === 409);
+    await h.sync(request('GET'));
+    assert.equal(h.read(`${deletion.type}:${deletion.recordId}`, userId), undefined);
+    if (type === 'voice') await assert.rejects(write(), e => e.status === 410 || e.status === 404);
+    else assert.deepEqual((await write()).jsonBody.habits, []);
+  }
+});
+
+test('permanent ledger cap is explicit and retry IDs cannot change timestamp', async () => {
+  const h = harness({ roles: [] });
+  await h.sync(request('GET'));
+  const deletions = Array.from({ length: 1000 }, () =>
+    ({ id: randomUUID(), type: 'habits', recordId: randomUUID(), ts: now }));
+  h.put({ ...h.read('account', userId),
+    deletedRecords: Object.fromEntries(deletions.map(row => [`habits:${row.recordId}`, row])) });
+  const next = { id: randomUUID(), type: 'habits', recordId: randomUUID(), ts: now };
+  await assert.rejects(h.sync(request('POST', payload({ deletions: [next] }))), e => e.status === 429);
+  assert.equal((await h.sync(request('GET'))).jsonBody.deletions.length, 1000);
+  await assert.rejects(h.sync(request('POST', payload({ deletions: [{ ...deletions[0], ts: '2026-09-01T11:59:00.000Z' }] }))), e => e.status === 409);
+});
+
+test('cleanup at the exact 10000-row request cap resumes rather than acknowledging residual private content', async () => {
+  const h = harness({ roles: [] });
+  const habit = recipe();
+  await h.sync(request('POST', payload({ habits: [habit] })));
+  for (let index = 0; index < 10000; index++) {
+    const row = practice(habit.id);
+    h.put({ id: `checkins:${row.id}`, userId, type: 'checkins', record: row, ttl: -1 });
+  }
+  const deletion = { id: randomUUID(), type: 'habits', recordId: habit.id, ts: now };
+  await assert.rejects(h.sync(request('POST', payload({ deletions: [deletion] }))), e => e.status === 429 && /cleanup scan cap/.test(e.message));
+  assert.deepEqual(h.read('account', userId).pendingRecordCleanup, [`habits:${habit.id}`]);
+  assert.equal([...h.documents.values()].filter(row => row.userId === userId && row.type === 'checkins').length, 0);
+  const readback = (await h.sync(request('GET'))).jsonBody;
+  assert.deepEqual(readback.habits, []);
+  assert.deepEqual(readback.deletions, [deletion]);
+  assert.equal(h.read(`habits:${habit.id}`, userId), undefined);
+  assert.deepEqual(h.read('account', userId).pendingRecordCleanup, []);
+});
+
+test('owner record tombstones purge dependent content, survive stale devices and never touch foreign IDs', async () => {
+  const h = harness({ roles: [] });
+  const habit = recipe(), note = voice(), check = practice(habit.id);
+  const reflection = { id: randomUUID(), habitId: habit.id, items: '[4,4,4,4]', score: 4, ts: now };
+  const event = { id: randomUUID(), name: 'automaticity_score', ts: now,
+    properties: { habitId: habit.id, score: 4, localDay: '2026-09-01', platform: 'windows' } };
+  await h.sync(request('POST', payload({ habits: [habit], checkins: [check], reflections: [reflection], voice: [note], events: [event] })));
+  await friendHandlers(h, teamId, ['Bloomstep.Admin']).admin(request('POST',
+    { id: note.id, status: 'received', reply: 'Synthetic private reply' }, {}, { userId }));
+  const deletion = { id: randomUUID(), type: 'habits', recordId: habit.id, ts: now };
+  const removal = { id: randomUUID(), type: 'voice', recordId: note.id, ts: now };
+  const result = (await h.sync(request('POST', payload({ deletions: [deletion, removal] })))).jsonBody;
+  assert.deepEqual(result.habits, []);
+  assert.deepEqual(result.checkins, []);
+  assert.deepEqual(result.voice, []);
+  assert.deepEqual(result.reflections, []);
+  assert.equal(result.deletions.length, 2);
+  assert.equal(h.read(`habits:${habit.id}`, userId), undefined);
+  assert.equal(h.read(`checkins:${check.id}`, userId), undefined);
+  assert.equal(h.read(`voice:${note.id}`, userId), undefined);
+  assert.equal(h.read(`reflections:${reflection.id}`, userId), undefined);
+  assert.equal(h.read(`events:${event.id}`, userId), undefined);
+  assert.equal([...h.documents.values()].some(row => row.userId === userId && row.type === 'audit' && row.targetId === note.id), false);
+  const stale = (await h.sync(request('POST', payload({ habits: [habit], checkins: [check], reflections: [reflection], voice: [note], events: [event] })))).jsonBody;
+  assert.deepEqual(stale.habits, []);
+  assert.deepEqual(stale.voice, []);
+  await h.sync(request('POST', payload({ deletions: [deletion, removal] })));
+  const friend = friendHandlers(h);
+  await friend.sync(request('POST', payload({ habits: [habit] })));
+  await h.sync(request('POST', payload({ deletions: [deletion] })));
+  assert.equal(h.read(`habits:${habit.id}`, friendId).record.anchor, habit.anchor);
+  await assert.rejects(h.sync(request('POST', payload({ deletions: [{ ...deletion, recordId: randomUUID() }] }))), e => e.status === 409);
+  assert.ok(!JSON.stringify(h.read('account', userId).deletedRecords).includes('Private'));
+});
+
+test('deleted feedback is absent from team pagination and cannot receive a reply; explicit customer scope required', async () => {
+  const h = harness({ roles: [] });
+  const note = voice();
+  await h.sync(request('POST', payload({ voice: [note] })));
+  await h.sync(request('POST', payload({ deletions: [{ id: randomUUID(), type: 'voice', recordId: note.id, ts: now }] })));
+  const admin = friendHandlers(h, teamId, ['Bloomstep.Admin']);
+  assert.deepEqual((await admin.admin(request('GET', null))).jsonBody.feedback, []);
+  await assert.rejects(admin.admin(request('POST', { id: note.id, status: 'received', reply: 'not retained' }, {}, { userId })), e => e.status === 404 || e.status === 410);
+  const noScope = friendHandlers(h, userId, ['Bloomstep.Admin'], []);
+  await assert.rejects(noScope.sync(request('POST', payload({ deletions: [{ id: randomUUID(), type: 'habits', recordId: randomUUID(), ts: now }] }))), e => e.status === 403);
+});
+
+test('partial cleanup stays hidden, retries drain multiple pages, and concurrent edits cannot cross deletion gate', async () => {
+  let fail = true;
+  const h = harness({ roles: [], beforeBatch: async (operations) => {
+    if (fail && operations.some(op => op.operationType === 'Delete' && op.id.startsWith('checkins:'))) {
+      fail = false;
+      throw new Error('Synthetic cleanup interruption');
+    }
+  } });
+  const habit = recipe();
+  await h.sync(request('POST', payload({ habits: [habit] })));
+  for (let index = 0; index < 205; index++) {
+    const row = practice(habit.id);
+    h.put({ id: `checkins:${row.id}`, userId, type: 'checkins', record: row, ttl: -1 });
+  }
+  const deletion = { id: randomUUID(), type: 'habits', recordId: habit.id, ts: now };
+  await assert.rejects(h.sync(request('POST', payload({ deletions: [deletion] }))), /Synthetic cleanup interruption/);
+  const hidden = (await h.sync(request('GET'))).jsonBody;
+  assert.deepEqual(hidden.habits, []);
+  assert.deepEqual(hidden.checkins, []);
+  assert.equal(hidden.deletions.length, 1);
+  await h.sync(request('POST', payload({ deletions: [deletion] })));
+  assert.equal([...h.documents.values()].filter(row => row.userId === userId && row.type === 'checkins').length, 0);
+  const stale = { ...habit, updated: '2026-09-01T12:01:00.000Z', anchor: 'later edit' };
+  assert.deepEqual((await h.sync(request('POST', payload({ habits: [stale] })))).jsonBody.habits, []);
+});
+
+test('record deletion remains available under API/operational/engagement pause without accepting unrelated writes', async () => {
+  const h = harness({ roles: [] });
+  const note = voice();
+  await h.sync(request('POST', payload({ voice: [note] })));
+  const paused = createHandlers({ container: () => h.store, authenticate: async () => ({ userId, roles: [], scopes: ['Garden.ReadWrite'] }),
+    environment: () => ({ BLOOMSTEP_API_DISABLED: 'true', BLOOMSTEP_ENGAGEMENT_DISABLED: 'true' }), clock: () => new Date(now) });
+  const deletion = { id: randomUUID(), type: 'voice', recordId: note.id, ts: now };
+  assert.deepEqual((await paused.sync(request('POST', payload({ deletions: [deletion] })))).jsonBody.voice, []);
+  await assert.rejects(paused.sync(request('POST', payload({ deletions: [deletion], habits: [recipe()] }))), e => e.status === 503);
+  await assert.rejects(h.sync(request('POST', payload({ deletions: [{ ...deletion, body: 'not retained' }] }))), e => e.status === 400);
+});
 
 test('native invitation channels qr/native preserve the canonical 32-byte opaque token contract', async () => {
   const h = harness();
@@ -822,7 +988,7 @@ test('customer feedback sync → private team reply → customer sync preserves 
   assert.deepEqual(JSON.parse(retried.jsonBody.voice[0].replies), [`${now}: Reason supplied privately`]);
   assert.equal('replyRequests' in retried.jsonBody.voice[0], false);
   const garden = (await customer.sync(request('GET'))).jsonBody;
-  assert.deepEqual(Object.keys(garden), ['habits', 'checkins', 'reflections', 'voice', 'settings']);
+  assert.deepEqual(Object.keys(garden), ['habits', 'checkins', 'reflections', 'voice', 'settings', 'deletions']);
 });
 
 test('recipe/settings ties, attained stage and immutable events survive backend retries', async () => {

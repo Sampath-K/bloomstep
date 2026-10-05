@@ -76,6 +76,7 @@ void main() {
         DesktopReminders.notificationId('a', 'h'),
         DesktopReminders.notificationId('a', 'h'),
       );
+
       expect(
         DesktopReminders.notificationId('a', 'h'),
         isNot(DesktopReminders.notificationId('b', 'h')),
@@ -83,6 +84,48 @@ void main() {
     },
   );
 
+  test('deletion withdraws only removed recipe notifications, without changing preference or daily caps', () async {
+    final a = await plantReminder(store);
+    final b = await plantReminder(store);
+    await reminders.tick();
+    final log = await store.setting('reminderLog');
+    gateway.operations.clear();
+    await store.deleteRecord('habits', a.id);
+    await reminders.removeDeletedRecipes();
+    expect(gateway.operations, [
+      'cancel:${DesktopReminders.notificationId(store.account, a.id)}',
+    ]);
+    expect(await store.setting('reminders'), 'true');
+    expect(await store.setting('reminderLog'), log);
+    expect((await store.habits()).single.id, b.id);
+    await reminders.removeDeletedRecipes();
+    expect(gateway.operations, hasLength(1));
+    await reminders.disable();
+    gateway.operations.clear();
+    await reminders.removeDeletedRecipes();
+    expect(gateway.operations, isEmpty);
+    expect(await store.setting('reminders'), 'false');
+  });
+
+  test('recipe deleted during a toast request is withdrawn before telemetry and later actions', () async {
+    final h = await plantReminder(store);
+    await store.setSetting('analytics', 'true');
+    gateway.beforeShow = (_) => store.deleteRecord('habits', h.id);
+    await reminders.tick();
+    expect(
+      gateway.operations,
+      contains(
+        'cancel:${DesktopReminders.notificationId(store.account, h.id)}',
+      ),
+    );
+    final events = (await store.syncPayload())['events'] as List;
+    expect(events.where((row) => row['name'] == 'notif_sent'), isEmpty);
+    await expectLater(
+      reminders.handleAction(gateway.requests.single.payloadFor('did')),
+      throwsStateError,
+    );
+    expect((await store.export())['checkins'], isEmpty);
+  });
   test(
     'unsent targeted Later postpones only that habit and survives restart',
     () async {

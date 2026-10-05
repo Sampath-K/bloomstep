@@ -42,6 +42,127 @@ Map<String, dynamic> _emptyGarden() => {
 };
 
 void main() {
+  test('deletions upload before surviving records; retry uses same ID and never uploads removed text', () async {
+    final store = await GardenStore.open(':memory:', 'deletion-transport');
+    addTearDown(store.close);
+    await _plant(store);
+    final h = (await store.habits()).single;
+    await store.checkIn(h.id, CheckInResult.did);
+    await store.deleteRecord('habits', h.id);
+    final tombstone = ((await store.syncPayload())['deletions'] as List).single;
+    await _plant(store);
+    var fail = true;
+    final methods = <String>[];
+    final client = MockClient((request) async {
+      methods.add(request.method);
+      if (request.method == 'POST') {
+        final body = jsonDecode(request.body) as Map;
+        if ((body['deletions'] as List? ?? []).isNotEmpty) {
+          expect(body['deletions'], [tombstone]);
+          expect(body['habits'], isEmpty);
+          expect(body['checkins'], isEmpty);
+          if (fail) return http.Response('temporary', 503);
+        } else {
+          expect(
+            (body['habits'] as List).any((row) => row['id'] == h.id),
+            isFalse,
+          );
+        }
+      }
+      return http.Response(
+        jsonEncode({
+          ..._emptyGarden(),
+          'deletions': [tombstone],
+        }),
+        200,
+      );
+    });
+    addTearDown(client.close);
+    final service = SyncService(
+      _Identity(store.account),
+      store,
+      client: client,
+    );
+    await expectLater(service.sync(), throwsStateError);
+    expect(methods, ['POST']);
+    expect((await store.syncPayload())['deletions'], [tombstone]);
+    fail = false;
+    methods.clear();
+    await service.sync();
+    expect(methods, ['POST', 'POST', 'GET']);
+    expect((await store.syncPayload())['deletions'], isEmpty);
+    expect((await store.export())['checkins'], isEmpty);
+  });
+
+  test('HTTP200 without matching deletion confirmation cannot acknowledge local removal', () async {
+    final store = await GardenStore.open(':memory:', 'missing-deletion-ack');
+    addTearDown(store.close);
+    await _plant(store);
+    await store.deleteRecord('habits', (await store.habits()).single.id);
+    final pending = (await store.syncPayload())['deletions'];
+    final client = MockClient(
+      (_) async => http.Response(jsonEncode(_emptyGarden()), 200),
+    );
+    addTearDown(client.close);
+    await expectLater(
+      SyncService(_Identity(store.account), store, client: client).sync(),
+      throwsStateError,
+    );
+    expect((await store.syncPayload())['deletions'], pending);
+    expect(await store.setting('lastSync'), isNull);
+  });
+
+  test(
+    'partial deletion batches resume after restart with no false sync success',
+    () async {
+      final path =
+          'test-deletion-batch-${DateTime.now().microsecondsSinceEpoch}.db';
+      var store = await GardenStore.open(path, 'deletion-batches');
+      addTearDown(() async {
+        await store.close();
+        await databaseFactoryFfi.deleteDatabase(path);
+      });
+      for (var i = 0; i < 101; i++) {
+        await store.submitVoice('Idea', 'Synthetic $i');
+        await store.deleteRecord(
+          'voice',
+          (await store.voice()).single['id'] as String,
+        );
+      }
+      final remote = <Map>[];
+      final sizes = <int>[];
+      var fail = true;
+      final client = MockClient((request) async {
+        if (request.method == 'POST') {
+          final incoming =
+              (jsonDecode(request.body) as Map)['deletions'] as List;
+          sizes.add(incoming.length);
+          if (incoming.length == 1 && fail) return http.Response('', 409);
+          remote.addAll(incoming.cast<Map>());
+        }
+        return http.Response(
+          jsonEncode({..._emptyGarden(), 'deletions': remote}),
+          200,
+        );
+      });
+      addTearDown(client.close);
+      await expectLater(
+        SyncService(_Identity(store.account), store, client: client).sync(),
+        throwsStateError,
+      );
+      expect(sizes, [100, 1]);
+      expect((await store.syncPayload())['deletions'], hasLength(1));
+      expect(await store.setting('lastSync'), isNull);
+      await store.close();
+      store = await GardenStore.open(path, 'deletion-batches');
+      fail = false;
+      await SyncService(_Identity(store.account), store, client: client).sync();
+      expect(sizes, [100, 1, 1]);
+      expect((await store.syncPayload())['deletions'], isEmpty);
+      expect((await store.export())['voice'], isEmpty);
+    },
+  );
+
   test(
     'sync and deletion preserve CIAM token in dedicated SWA-safe header',
     () async {
@@ -538,9 +659,10 @@ void main() {
       expect(await store.setting('reducedMotion'), 'true');
       expect((await store.syncPayload())['settings'], hasLength(1));
       expect(
-        (await store.syncPayload()).values.every(
-          (v) => (v as List).length == 1,
-        ),
+        (await store.syncPayload()).entries
+            .where((e) => e.key != 'deletions')
+            .map((e) => e.value)
+            .every((v) => (v as List).length == 1),
         isTrue,
       );
       await store.acknowledgeSync(await store.syncPayload());

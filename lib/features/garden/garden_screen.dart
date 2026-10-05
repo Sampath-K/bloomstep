@@ -158,6 +158,7 @@ class _GardenScreenState extends State<GardenScreen> {
     if (mounted) setState(() => syncStatus = 'Syncing...');
     try {
       await SyncService(identity, widget.store).sync();
+      await reminders?.removeDeletedRecipes();
       if (mounted) {
         setState(() => syncStatus = 'Saved on this device and synced');
       }
@@ -309,6 +310,26 @@ class _GardenScreenState extends State<GardenScreen> {
         ),
       ) ??
       false;
+
+  Future<bool> _removeRecord(String type, String id) async {
+    if (working) return false;
+    final recipe = type == 'habits';
+    if (!await _confirm(
+      recipe ? 'Delete this recipe?' : 'Delete this feedback?',
+      recipe
+          ? 'Removes only this recipe, its check-ins, reflections and linked event records. Deletion cannot be undone. Offline deletion is queued until sync; other devices apply it when they reconnect. A minimal ID-only marker prevents stale copies from returning.'
+          : 'Removes only this feedback or rating and its private replies. Deletion cannot be undone. Offline deletion is queued until sync; the team can see it until the server receives deletion. A minimal ID-only marker prevents stale copies from returning.',
+      recipe ? 'Delete recipe' : 'Delete feedback',
+    )) {
+      return false;
+    }
+    if (working || !mounted) return false;
+    await _act(() async {
+      await widget.store.deleteRecord(type, id);
+      if (recipe) await reminders?.removeDeletedRecipes();
+    });
+    return error == null;
+  }
 
   Future<void> _check(Habit habit, CheckInResult result) async {
     String? reason;
@@ -978,6 +999,19 @@ class _GardenScreenState extends State<GardenScreen> {
                   ),
                   subtitle: Text(
                     '${record['kind']} - ${record['status']}\n${(jsonDecode(record['replies'] as String) as List).join('\n')}',
+                  ),
+                  trailing: IconButton(
+                    tooltip: 'Delete this feedback',
+                    icon: const Icon(Icons.delete_outline),
+                    onPressed: () async {
+                      if (await _removeRecord(
+                            'voice',
+                            record['id'] as String,
+                          ) &&
+                          context.mounted) {
+                        Navigator.pop(context);
+                      }
+                    },
                   ),
                 ),
             ],
@@ -1664,6 +1698,18 @@ class _GardenScreenState extends State<GardenScreen> {
                                                 : () => _edit(habit),
                                             icon: const Icon(
                                               Icons.edit_outlined,
+                                            ),
+                                          ),
+                                          IconButton(
+                                            tooltip: 'Delete this recipe',
+                                            onPressed: working
+                                                ? null
+                                                : () => _removeRecord(
+                                                    'habits',
+                                                    habit.id,
+                                                  ),
+                                            icon: const Icon(
+                                              Icons.delete_outline,
                                             ),
                                           ),
                                         ],

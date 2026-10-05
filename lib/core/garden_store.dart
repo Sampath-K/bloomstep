@@ -24,7 +24,7 @@ class GardenStore {
     final db = await databaseFactoryFfi.openDatabase(
       path,
       options: OpenDatabaseOptions(
-        version: 4,
+        version: 5,
         onUpgrade: (db, oldVersion, _) async {
           if (oldVersion < 2) {
             await db.execute(
@@ -35,6 +35,7 @@ class GardenStore {
           if (oldVersion < 4) {
             await db.execute('ALTER TABLE events ADD COLUMN properties TEXT');
           }
+          if (oldVersion < 5) await _createDeletions(db);
         },
         onCreate: (db, _) async {
           await db.execute(
@@ -59,6 +60,7 @@ class GardenStore {
             'CREATE TABLE events (id TEXT PRIMARY KEY, account TEXT NOT NULL, name TEXT NOT NULL, ts TEXT NOT NULL, properties TEXT)',
           );
           await _createSyncState(db);
+          await _createDeletions(db);
         },
       ),
     );
@@ -68,6 +70,130 @@ class GardenStore {
   static Future<void> _createSyncState(DatabaseExecutor db) => db.execute(
     'CREATE TABLE sync_state (account TEXT NOT NULL, tableName TEXT NOT NULL, recordId TEXT NOT NULL, fingerprint TEXT NOT NULL, PRIMARY KEY(account,tableName,recordId))',
   );
+
+  static Future<void> _createDeletions(DatabaseExecutor db) => db.execute(
+    'CREATE TABLE deletions (id TEXT NOT NULL, account TEXT NOT NULL, type TEXT NOT NULL, recordId TEXT NOT NULL, ts TEXT NOT NULL, PRIMARY KEY(account,type,recordId), UNIQUE(account,id))',
+  );
+
+  Future<void> deleteRecord(String type, String recordId) async {
+    if (!['habits', 'voice'].contains(type)) {
+      throw ArgumentError(
+        'Only an individual recipe or feedback item can be removed.',
+      );
+    }
+    final owner = _account;
+    final generation = _syncGeneration;
+    await _db.transaction((txn) async {
+      requireSyncSession(owner, generation);
+      final removed = await txn.query(
+        'deletions',
+        where: 'account = ? AND type = ? AND recordId = ?',
+        whereArgs: [owner, type, recordId],
+      );
+      if (removed.isNotEmpty) return;
+      final existing = await txn.query(
+        type,
+        where: 'id = ? AND account = ?',
+        whereArgs: [recordId, owner],
+      );
+      if (existing.isEmpty) {
+        throw StateError('This record is not in the signed-in garden.');
+      }
+      if ((await txn.rawQuery(
+                'SELECT count(*) AS n FROM deletions WHERE account = ?',
+                [owner],
+              )).single['n']
+              as int >=
+          1000) {
+        throw StateError(
+          'Record deletion safety ledger is full. Export or delete the account separately.',
+        );
+      }
+      await txn.insert('deletions', {
+        'id': _uuid.v4(),
+        'account': owner,
+        'type': type,
+        'recordId': recordId,
+        'ts': DateTime.now().toUtc().toIso8601String(),
+      });
+      await _purgeDeleted(txn, owner);
+      requireSyncSession(owner, generation);
+    });
+  }
+
+  Future<List<String>> deletedHabitIds() async {
+    final owner = _account;
+    final generation = _syncGeneration;
+    final rows = await _db.query(
+      'deletions',
+      columns: ['recordId'],
+      where: 'account = ? AND type = ?',
+      whereArgs: [owner, 'habits'],
+    );
+    requireSyncSession(owner, generation);
+    return rows.map((row) => row['recordId'] as String).toList();
+  }
+
+  static Future<void> _purgeDeleted(DatabaseExecutor db, String owner) async {
+    final rows = await db.query(
+      'deletions',
+      where: 'account = ?',
+      whereArgs: [owner],
+    );
+    for (final deletion in rows) {
+      final type = deletion['type'] as String;
+      final id = deletion['recordId'] as String;
+      if (type == 'habits') {
+        for (final table in ['checkins', 'reflections']) {
+          await db.rawDelete(
+            'DELETE FROM sync_state WHERE account = ? AND tableName = ? AND recordId IN (SELECT id FROM $table WHERE account = ? AND habitId = ?)',
+            [owner, table, owner, id],
+          );
+          await db.delete(
+            table,
+            where: 'account = ? AND habitId = ?',
+            whereArgs: [owner, id],
+          );
+        }
+      }
+      await db.delete(
+        type,
+        where: 'account = ? AND id = ?',
+        whereArgs: [owner, id],
+      );
+      await db.delete(
+        'sync_state',
+        where: 'account = ? AND tableName = ? AND recordId = ?',
+        whereArgs: [owner, type, id],
+      );
+    }
+    final habitIds = rows
+        .where((row) => row['type'] == 'habits')
+        .map((row) => row['recordId'])
+        .toSet();
+    if (habitIds.isEmpty) return;
+    final events = await db.query(
+      'events',
+      where: 'account = ?',
+      whereArgs: [owner],
+    );
+    for (final event in events) {
+      final properties = event['properties'];
+      if (properties is String &&
+          habitIds.contains((jsonDecode(properties) as Map)['habitId'])) {
+        await db.delete(
+          'events',
+          where: 'account = ? AND id = ?',
+          whereArgs: [owner, event['id']],
+        );
+        await db.delete(
+          'sync_state',
+          where: 'account = ? AND tableName = ? AND recordId = ?',
+          whereArgs: [owner, 'events', event['id']],
+        );
+      }
+    }
+  }
 
   Future<void> switchAccount(String account) async {
     _syncGeneration++;
@@ -422,58 +548,100 @@ class GardenStore {
       throw ArgumentError('Four scores from 1 to 7 are required.');
     }
     final date = now ?? DateTime.now();
-    await _owned(habitId, _db);
-    final previous = await _db.query(
-      'reflections',
-      where: 'account = ? AND habitId = ?',
-      whereArgs: [_account, habitId],
-      orderBy: 'ts DESC',
-      limit: 1,
-    );
-    if (previous.isNotEmpty &&
-        date
-                .toUtc()
-                .difference(DateTime.parse(previous.first['ts'] as String))
-                .inDays <
-            14) {
-      throw StateError(
-        'Your next naturalness check is available 14 days after the previous one.',
+    final owner = _account;
+    final generation = _syncGeneration;
+    await _db.transaction((txn) async {
+      requireSyncSession(owner, generation);
+      final habit = await _owned(habitId, txn);
+      final previous = await txn.query(
+        'reflections',
+        where: 'account = ? AND habitId = ?',
+        whereArgs: [_account, habitId],
+        orderBy: 'ts DESC',
+        limit: 1,
       );
-    }
-    final score = items.reduce((a, b) => a + b) / 4;
-    await _db.insert('reflections', {
-      'id': _uuid.v4(),
-      'account': _account,
-      'habitId': habitId,
-      'items': jsonEncode(items),
-      'score': score,
-      'ts': date.toUtc().toIso8601String(),
-    });
-    final scores = await _db.query(
-      'reflections',
-      where: 'account = ? AND habitId = ?',
-      whereArgs: [_account, habitId],
-      orderBy: 'ts DESC',
-      limit: 2,
-    );
-    final habit = (await habits(now: date)).firstWhere((h) => h.id == habitId);
-    if (habit.status != 'graduated' &&
-        canGraduate(
-          scores.map((r) => (r['score'] as num).toDouble()).toList(),
-          habit.recentPractice,
-        )) {
-      await _db.update(
-        'habits',
-        {
-          'status': 'graduated',
-          'stage': 4,
-          'updated': date.toUtc().toIso8601String(),
-        },
-        where: 'id = ? AND account = ?',
-        whereArgs: [habitId, _account],
+      if (previous.isNotEmpty &&
+          date
+                  .toUtc()
+                  .difference(DateTime.parse(previous.first['ts'] as String))
+                  .inDays <
+              14) {
+        throw StateError(
+          'Your next naturalness check is available 14 days after the previous one.',
+        );
+      }
+      final score = items.reduce((a, b) => a + b) / 4;
+      await txn.insert('reflections', {
+        'id': _uuid.v4(),
+        'account': _account,
+        'habitId': habitId,
+        'items': jsonEncode(items),
+        'score': score,
+        'ts': date.toUtc().toIso8601String(),
+      });
+      final scores = await txn.query(
+        'reflections',
+        where: 'account = ? AND habitId = ?',
+        whereArgs: [_account, habitId],
+        orderBy: 'ts DESC',
+        limit: 2,
       );
-      await track(
-        'habit_graduated',
+      final practiced = (await _current(
+        txn,
+        habitId,
+      )).where((row) => row['result'] != 'notToday').toList();
+      final cutoff = localDate(
+        DateTime(
+          date.year,
+          date.month,
+          date.day,
+        ).subtract(const Duration(days: 27)),
+      );
+      final recent = practiced
+          .where(
+            (row) =>
+                (row['day'] as String).compareTo(cutoff) >= 0 &&
+                (row['day'] as String).compareTo(localDate(date)) <= 0,
+          )
+          .length;
+      if (habit['status'] != 'graduated' &&
+          canGraduate(
+            scores.map((r) => (r['score'] as num).toDouble()).toList(),
+            recent,
+          )) {
+        await txn.update(
+          'habits',
+          {
+            'status': 'graduated',
+            'stage': 4,
+            'updated': date.toUtc().toIso8601String(),
+          },
+          where: 'id = ? AND account = ?',
+          whereArgs: [habitId, _account],
+        );
+        await _trackWith(
+          txn,
+          owner,
+          'habit_graduated',
+          properties: {
+            'habitId': habitId,
+            'score': score,
+            'localDay': localDate(date),
+            'platform': telemetryPlatform,
+          },
+        );
+      } else if (practiced.length >= 30 && score >= 4) {
+        await txn.update(
+          'habits',
+          {'stage': 4, 'updated': date.toUtc().toIso8601String()},
+          where: 'id = ? AND account = ?',
+          whereArgs: [habitId, _account],
+        );
+      }
+      await _trackWith(
+        txn,
+        owner,
+        'automaticity_score',
         properties: {
           'habitId': habitId,
           'score': score,
@@ -481,23 +649,8 @@ class GardenStore {
           'platform': telemetryPlatform,
         },
       );
-    } else if (habit.practiceCount >= 30 && score >= 4) {
-      await _db.update(
-        'habits',
-        {'stage': 4, 'updated': date.toUtc().toIso8601String()},
-        where: 'id = ? AND account = ?',
-        whereArgs: [habitId, _account],
-      );
-    }
-    await track(
-      'automaticity_score',
-      properties: {
-        'habitId': habitId,
-        'score': score,
-        'localDay': localDate(date),
-        'platform': telemetryPlatform,
-      },
-    );
+      requireSyncSession(owner, generation);
+    });
   }
 
   Future<DateTime?> naturalnessAvailableAt(String habitId) async {
@@ -784,6 +937,15 @@ class GardenStore {
     Map<String, Object?>? properties,
   }) async {
     _validateEventProperties(name, properties);
+    final habitId = properties?['habitId'];
+    if (habitId != null &&
+        (await txn.query(
+          'deletions',
+          where: 'account = ? AND type = ? AND recordId = ?',
+          whereArgs: [account, 'habits', habitId],
+        )).isNotEmpty) {
+      return;
+    }
     final consent = await txn.query(
       'settings',
       where: 'account = ? AND key = ?',
@@ -887,6 +1049,7 @@ class GardenStore {
       'voice',
       'settings',
       'events',
+      'deletions',
     ]) {
       data[table] = await _db.query(
         table,
@@ -914,6 +1077,7 @@ class GardenStore {
         'settings',
         'events',
         'sync_state',
+        'deletions',
       ]) {
         await txn.delete(table, where: 'account = ?', whereArgs: [account]);
       }
@@ -928,6 +1092,17 @@ class GardenStore {
     'events',
     'settings',
   ];
+
+  static bool _validDeletionTimestamp(Object? value) {
+    if (value is! String ||
+        !RegExp(r'^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d{1,6})?Z$')
+            .hasMatch(value)) {
+      return false;
+    }
+    final parsed = DateTime.tryParse(value);
+    return parsed != null &&
+        parsed.toIso8601String().substring(0, 19) == value.substring(0, 19);
+  }
 
   static Map<String, Object?> _wireRow(String table, Map<String, Object?> raw) {
     final row = Map<String, Object?>.from(raw)..remove('account');
@@ -1033,6 +1208,19 @@ class GardenStore {
             .map((row) => _wireRow(table, row))
             .toList();
       }
+      final deletions = await txn.query(
+        'deletions',
+        where: 'account = ?',
+        whereArgs: [account],
+      );
+      payload['deletions'] = deletions
+          .where(
+            (row) =>
+                known['deletions:${row['id']}'] !=
+                _fingerprint('deletions', row),
+          )
+          .map((row) => _wireRow('deletions', row))
+          .toList();
       requireSyncSession(account, generation);
       return payload;
     });
@@ -1047,7 +1235,7 @@ class GardenStore {
     final session = generation ?? _syncGeneration;
     await _db.transaction((txn) async {
       requireSyncSession(owner, session);
-      for (final table in syncTables) {
+      for (final table in [...syncTables, 'deletions']) {
         for (final raw in submitted[table] as List? ?? []) {
           final row = Map<String, Object?>.from(raw as Map);
           final current = await txn.query(
@@ -1100,6 +1288,73 @@ class GardenStore {
     };
     await _db.transaction((txn) async {
       requireSyncSession(owner, session);
+      final removals = data['deletions'] ?? [];
+      if (removals is! List || removals.length > 1000) {
+        throw const FormatException('Invalid deletion response.');
+      }
+      for (final raw in removals) {
+        if (raw is! Map ||
+            !['habits', 'voice'].contains(raw['type']) ||
+            raw.keys.toSet().difference({
+              'id',
+              'type',
+              'recordId',
+              'ts',
+            }).isNotEmpty ||
+            !RegExp(
+              r'^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}$',
+            ).hasMatch('${raw['id']}') ||
+            !RegExp(
+              r'^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}$',
+            ).hasMatch('${raw['recordId']}') ||
+            !_validDeletionTimestamp(raw['ts'])) {
+          throw const FormatException('Invalid record deletion metadata.');
+        }
+        final row = <String, Object?>{
+          ...Map<String, Object?>.from(raw),
+          'account': owner,
+        };
+        final previous = await txn.query(
+          'deletions',
+          where: 'account = ? AND type = ? AND recordId = ?',
+          whereArgs: [owner, row['type'], row['recordId']],
+        );
+        final reused = await txn.query(
+          'deletions',
+          where: 'account = ? AND id = ?',
+          whereArgs: [owner, row['id']],
+        );
+        if (reused.isNotEmpty &&
+            (reused.single['type'] != row['type'] ||
+                reused.single['recordId'] != row['recordId'] ||
+                reused.single['ts'] != row['ts'])) {
+          throw const FormatException(
+            'Deletion request ID changed its target.',
+          );
+        }
+        if (previous.isNotEmpty && previous.single['id'] != row['id']) {
+          await txn.delete(
+            'sync_state',
+            where: 'account = ? AND tableName = ? AND recordId = ?',
+            whereArgs: [owner, 'deletions', previous.single['id']],
+          );
+        }
+        await txn.insert(
+          'deletions',
+          row,
+          conflictAlgorithm: ConflictAlgorithm.replace,
+        );
+        await _rememberSync(txn, owner, 'deletions', row);
+      }
+      await _purgeDeleted(txn, owner);
+      final deleted = await txn.query(
+        'deletions',
+        where: 'account = ?',
+        whereArgs: [owner],
+      );
+      final tombstones = {
+        for (final row in deleted) '${row['type']}:${row['recordId']}',
+      };
       for (final entry in columns.entries) {
         final rows = data[entry.key];
         if (rows is! List) {
@@ -1108,6 +1363,10 @@ class GardenStore {
         for (final raw in rows) {
           if (raw is! Map || entry.value.any((key) => !raw.containsKey(key))) {
             throw const FormatException('Incomplete sync record.');
+          }
+          if (tombstones.contains('${entry.key}:${raw['id']}') ||
+              tombstones.contains('habits:${raw['habitId']}')) {
+            continue;
           }
           final row = <String, Object?>{'account': owner};
           for (final key in entry.value) {
