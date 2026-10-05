@@ -15,7 +15,9 @@ preserves its encrypted file. Production branding deployment `37265236789`,
 actual served text/three exact asset hashes/render, dual public downloads/hashes,
 normal ARM64 preview.3->4 upgrade/title/icon/sign-in/native metadata/protocol/
 repeat-launch and unchanged namespace are verified. No customer store was read.
-Final preview.4 website-link deployment follows publication; acceptance and
+Final preview.4 website-link deployment `37266324082` passed with actual dual
+links/downloads/changelog HTTP200, schema2/OFF/unexpired configuration and nine
+protected routes401 readback. Acceptance and
 Google verified/published OAuth branding remain genuine gates.
 
 | Iteration | Job | Current evidence / remaining gate |
@@ -32,7 +34,7 @@ Google verified/published OAuth branding remain genuine gates.
 | 9 | Invite | Authenticated opaque invitations, server-owned attribution, first-positive-practice mutual cosmetic saga and owner-only receipts implemented/tested. Native copy/email/QR/Windows Share UI, opt-in recipe card, accept/decline, cached retry IDs and export integrated. Per-user protocol and private IPC/inbox preserve intent across install/sign-in; web handoff/storage is explicit. Live customer reward and OS-share observations remain pending. |
 | 10 | Reflection | Weekly deterministic Doctor works independently of fortnight naturalness sliders; cooldown checked before collecting scores. Real SQLite graduation/spacing tests pass. Not a validated SRBAI instrument. Native learning interaction still pending. |
 | 11 | Reconnect | Three/seven-day rule, max two/absence, activity reset and scheduler shared quiet-hour/day caps implemented; rules tested. Windows delivery and closed-app behavior not observed. |
-| 12 | Website/update | Final preview.3-link deployment37231886402 from `ba0af16` passed. Actual live dual links/consent/changelog/bundle HTTP200, all nine method-correct protected endpoints401 and isolated Edge checkbox/click/clear observed. Public installer hashes/local2->3 upgrade pass. Manual trusted updates, never auto-execute; silent QA is not SmartScreen proof. |
+| 12 | Website/update | Final preview.4-link deployment37266324082 from `2dd1250` passed. Actual live dual links/downloads/changelog HTTP200, schema2/OFF/unexpired config and all nine method-correct protected endpoints401. Isolated Edge branding/favicon/operator render observed; earlier consent checkbox/click/clear proofs retained. Public installer hashes/local3->4 upgrade pass. Manual trusted updates, never auto-execute; silent QA is not SmartScreen proof. |
 | 13 | Rating/privacy | Positive-moment prompts wait for celebration and persist a 120-day cadence even when dismissed; rating text optional. Export/account isolation/cleanup tested. Cloud deletion tombstone/races tested against backend fixtures, not live Cosmos user deletion. |
 | 14 | Experiment | Strict schema2/checksum, monotonic version, account cache, seven-day expiry and explicit control-mode warnings tested; compiled API origin, device timing toggle and actual-callback-only exposure. Bounded copy experiment remains OFF until genuine reviewed cohort/guardrail evidence, not fabricated data. |
 
