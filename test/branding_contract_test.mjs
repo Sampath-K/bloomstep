@@ -47,11 +47,16 @@ test('site, operator popup and download labels are product-branded', () => {
   assert.match(read('site/operator-callback.html'), /Completing Bloomstep operator sign-in/);
 });
 
-test('public release links verified preview6 recovery artifacts without implying installed acceptance', () => {
+test('public release links verified preview7 support artifacts without implying installed acceptance', () => {
   const site = read('site/index.html');
   for (const arch of ['arm64', 'x64']) {
-    assert.ok(site.includes(`releases/download/v0.1.0-preview.6/Bloomstep-0.1.0-preview.6-windows-${arch}-setup.exe`));
+    assert.ok(site.includes(`releases/download/v0.1.0-preview.7/Bloomstep-0.1.0-preview.7-windows-${arch}-setup.exe`));
   }
+  assert.ok(site.includes('releases/tag/v0.1.0-preview.7'));
+  assert.ok(site.includes('4cc35ee84676da9c0004e8e4fe7a60fac032d901a8e68ee32e1ea7ee561de0c2'));
+  assert.ok(site.includes('aff0cfd988c075165261358f92fbb8a48396f60ba1b52f811ccebf5ef5b350b4'));
+  assert.match(site, /0\.1\.0-preview\.7 - private support receipts/);
+  assert.match(site, /No customer upgrade, authenticated operator acceptance or live private-record acceptance is claimed/);
   assert.match(site, /0\.1\.0-preview\.6 - safe schema recovery/);
   assert.match(site, /future schema versions unchanged/i);
   assert.match(site, /installed preview\.5 remains preserved/);
