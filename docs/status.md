@@ -4,6 +4,19 @@
 cloud deployment and native background behavior require integration evidence.
 This ledger is updated with verified outcomes, not inferred from source code.
 
+**Latest genuine integration observation:** After the branding upgrade, the
+normal installed app restored an available session and opened its garden.
+Fresh startup displayed "Saved on this device and synced", not "Sync needs
+attention". That outcome is set only after the actual sync request returns
+HTTP200 and completes the account-scoped merge, not from a cached last-sync
+setting. This establishes one real restored-session/API readback, not a freshly
+observed provider exchange, two-account isolation or full private-loop
+acceptance. Verification inspected only fixed public status/action labels;
+no account text, credential store, token, payload or garden screenshot was
+recorded. Controlled test writes await confirmation of the approved test
+identity/content; operator roles, real account deletion and OS changes still
+require their separate authorization.
+
 Product-owned branding shipped in PR4 merge `5b675a5` and unsigned
 `v0.1.0-preview.4`. Exact source PR/push, merged-main and versioned release
 `37265253407` API/ARM64/x64 pass, including142 Flutter tests per architecture and
