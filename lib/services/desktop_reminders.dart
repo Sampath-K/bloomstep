@@ -140,6 +140,7 @@ class DesktopReminders with TrayListener, WindowListener {
   bool enabled = false;
   bool ticking = false;
   Future<void> _actions = Future.value();
+  final Set<String> _withdrawnRecipes = {};
   RemoteConfig config = RemoteConfig.defaults;
   static const reconnectId = 1;
   static const _uuid = Uuid();
@@ -229,6 +230,8 @@ class DesktopReminders with TrayListener, WindowListener {
     }
     await _save('reminders', 'true');
     enabled = true;
+    _withdrawnRecipes.clear();
+    await _removeDeletedRecipes();
     if (_native) {
       await _menu();
       timer = Timer.periodic(const Duration(seconds: 30), (_) {
@@ -617,6 +620,11 @@ class DesktopReminders with TrayListener, WindowListener {
       await gateway.cancel(request.id);
       throw StateError('Garden changed during reminder request.');
     }
+    if (habitId != '_reconnect' &&
+        !(await store.habits()).any((habit) => habit.id == habitId)) {
+      await gateway.cancel(request.id);
+      return;
+    }
     await _track(
       'notif_sent',
       properties: {
@@ -632,6 +640,20 @@ class DesktopReminders with TrayListener, WindowListener {
     await _save('ignored:$habitId', '0');
     if (enabled && _sameAccount) {
       await gateway.cancel(notificationId(store.account, habitId));
+    }
+  }
+
+  Future<void> removeDeletedRecipes() => _enqueue(_removeDeletedRecipes);
+
+  Future<void> _removeDeletedRecipes() async {
+    if (!enabled) return;
+    _requireAccount();
+    for (final id in await store.deletedHabitIds()) {
+      _requireAccount();
+      if (_withdrawnRecipes.contains(id)) continue;
+      await gateway.cancel(notificationId(store.account, id));
+      _requireAccount();
+      _withdrawnRecipes.add(id);
     }
   }
 

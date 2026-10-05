@@ -19,9 +19,11 @@ events/owned uninstall. Use this installed candidate, not earlier previews.
 **Current identity status:** October 5 acceptance exposed genuine Google/MSA
 callback mismatches. Both exact canonical-host registrations are now corrected,
 and fresh isolated expected-client/callback verification reaches both credential
-forms without mismatch. Close failed tabs and start sign-in again from the
-installed app, not the old expired state. Neither successful provider exchange
-nor authenticated garden acceptance is claimed. Authorized hosted Bloomstep
+forms without mismatch. The user subsequently confirmed genuine sign-in
+(provider unspecified), and normal installed preview.4's fresh authenticated
+sync/account-scoped export are now observed. Preserve that available session;
+do not force another login or infer which provider exchanged its code. Full
+authenticated garden acceptance is not yet complete. Authorized hosted Bloomstep
 branding is live; Google published/verified consent branding is a separate gate.
 See `deployment.md` for branding and upstream-versus-native callback boundaries.
 
@@ -31,9 +33,19 @@ schema/account/fresh-sync validation, including live server invitation export.
 No fixture record was created. The candidate lacks precise per-habit/feedback
 deletion and sync tombstones, so creating records cannot yet satisfy the promised
 fixture-only cleanup without whole-account/local wipes. Further mutation checks
-need an explicitly approved cleanup design, disposable test-account strategy or
-honest retained-fixture exception. Existing content, roles, OS settings and
+now use the user's explicitly approved owner-only habit/feedback deletion
+design, which is being implemented with per-account minimal tombstones,
+dependent-content purge, cross-device stale suppression, retries and migration
+contracts. It must be deployed/released and observed on the normal candidate
+before writing real acceptance fixtures. Existing content, roles, OS settings and
 account deletion remain protected; check-in Undo is not record deletion.
+
+Implementation-owned completion: exact API/ARM64/x64 green new PR, API-first
+deployment, verified unsigned dual candidate and stable signed-session upgrade;
+only labeled own habit/check-in/edit/undo/reflection/feedback/rating fixtures,
+actual exports/API relational readback, then owner-delete only those exact
+records and verify remote markers/no private fixture residuals. Source/mocks
+do not count as live customer deletion or a second identity/OS/Admin approval.
 
 1. In installed preview.4, use the trusted provider browser for approved genuine
    customer identities, credentials/MFA/consent; explicitly select the customer

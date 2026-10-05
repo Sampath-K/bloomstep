@@ -20,6 +20,80 @@ Do not use a third party's trademark in the product name or marketing headline.
 No copied book exercises or validated questionnaire wording without verified
 licensing. Self-reflection wording must not be described as clinically validated.
 
+## Planned enhancement workstream: confident habit building
+
+**Planned, not implemented and not part of the current owner-record-deletion
+acceptance job.** Sequencing/product review is required before building this
+experience. Success means useful habit-building skills and explicitly reported
+confidence, not lesson completion, attendance, streaks or time in the app.
+
+1. **Original reusable library:** author anchor moments focused on completed
+   events/trailing edges, context-suitable tiny actions and optional celebration
+   samples. For example, an original proposed completed-event anchor is
+   "After I return my lunch container to the cupboard"; a matching tiny action
+   is "I set one item ready for tomorrow"; celebration may be an optional
+   quiet acknowledgment. Preserve freeform recipes and explain why specific
+   completed events are easier to locate than vague times or ongoing activities.
+   No copied book/course catalog, questionnaire, wording or illustration.
+2. **Frictionless creation:** optional filter/prefill choices, clear editable
+   previews, one small decision at a time, keyboard/screen-reader paths, and no
+   forced starter or celebration performance. Original samples must receive
+   contextual/safety/content review; no clinical promise or shame.
+3. **Positive microanimations:** immediate action feedback and accessible
+   recipe/growth/celebration transitions, without adding network work or waiting
+   for animation to commit data. Reduced motion replaces movement with quiet
+   static feedback; semantic success is independently announced. Default
+   silent, no developer sounds; any future sound is explicitly user-controlled.
+   No loss-aversion effects, manipulative attendance prompts or perf regression.
+4. **Curated learning/bookmarks:** original short summaries plus author/date,
+   canonical link, study type, evidence strength and limitations. Distinguish
+   method claims from peer-reviewed evidence; causal/freshness claims need
+   verified sources and review dates. No hosted AI, paid feed or scraped
+   copyrighted article text. A "recent" label requires an actual verified
+   publication date, not a generated summary.
+5. **Adaptive optional education:** self-select "New to habits", "Tried habits
+   before" or "Fine-tuning", with Skip/change-anytime and a manual/freeform
+   route. Offer at most one optional contextual15-30-second concept/example/
+   tiny application when useful, never a lesson on every launch or check-in.
+   Beginner skills: identify completed-event anchor, size one action and select
+   an optional celebration. Experienced skills: diagnose friction and adjust
+   anchor/action/context. Advanced skills: compare timing/context and plan a
+   small generalization experiment, while explaining evidence limitations.
+   Progression uses demonstrated recipe skills plus optional explicit confidence
+   feedback, not check-in counts or opaque personality/health inference.
+   Remediation offers an explained smaller step or alternative example; inactivity
+   is neutral, with no reset, shame or assumed loss of skill.
+
+**Source-of-truth and integration:** Proposed reviewed content is a versioned
+local app/source catalog (stable IDs, schema/content version, source citations,
+review timestamp and suitability tags), not an isolated script. Recipe-library
+entries link to learning concepts and optional bookmarks. Private account-scoped
+learning preferences/progress must integrate the existing SQLite/sync/export/
+owner-delete contracts, with explicit opt-in where appropriate; no inferred
+health/personality data. An offline cache names its version/review age and
+remains usable without claiming freshness. Remote updates require validated
+schema/integrity and compatibility, preserving the freeform/offline path.
+Dashboard learning events are limited reviewed enums, independently consented;
+no recipe/bookmark text, confidence narrative or unconsented skill inference.
+
+**Acceptance before shipment:** content originality/licensing/attribution and
+name/trademark marketing review; stable catalog linkage/version/cache tests;
+editable freeform/Skip/change-level journeys; no forced lesson or notification;
+demonstrated-skill/confidence progression and neutral inactivity tests;
+account/isolation/export/delete/offline/conflict tests for optional learning;
+keyboard/screen reader/reduced-motion/silent behavior; measured action-feedback
+latency and resource limits at least as good as existing product contracts;
+telemetry consent/allowlist/revocation tests. Separately verify learning usefulness
+without inventing outcome/clinical claims or a cohort.
+
+Conceptual source pointers for later curation, not endorsements or proof of
+every proposed feature: [Fogg Behavior Model](https://behaviormodel.org/) and
+[Tiny Habits](https://tinyhabits.com/) describe the author's methods;
+[Lally et al., 2010](https://doi.org/10.1002/ejsp.674) is an observational habit
+formation study; [Gardner et al., 2012](https://doi.org/10.1186/1479-5868-9-102)
+addresses habit measurement. Review exact source/licensing/evidence before
+publishing any lesson, instrument or "recent research" claim.
+
 ## Platforms and budget
 
 Flutter Win32 first: unsigned per-user installer from the small website and

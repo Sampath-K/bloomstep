@@ -183,15 +183,74 @@ export function createHandlers({ container, authenticate, authenticateAggregate 
   }
   /** @param {string} userId */
   async function readGarden(userId) {
+    await assertActive(userId, false);
     const { resources } = await container().items.query({
       query: `SELECT TOP ${limits.gardenRecords + 1} c.type, c.record FROM c WHERE c.userId = @u AND c.type IN ("habits","checkins","reflections","voice","settings")`,
       parameters: [{ name: '@u', value: userId }],
     }, { partitionKey: userId }).fetchAll();
+    const gate = await assertActive(userId, false);
+    if (gate.pendingRecordCleanup?.length) throw new ServiceError(409, 'Record deletion cleanup is in progress; retry sync.');
+    const deletions = Object.values(gate.deletedRecords ?? {});
     if (resources.length > limits.gardenRecords) throw new ServiceError(429, 'Legacy garden exceeds preview cap; operator review required.');
     /** @type {Record<string, any[]>} */
     const data = { habits: [], checkins: [], reflections: [], voice: [], settings: [] };
-    for (const row of resources) data[row.type].push(row.record);
+    for (const row of resources) {
+      if (!recordDeleted(gate, row.type, row.record)) data[row.type].push(row.record);
+    }
+    data.deletions = deletions;
     return data;
+  }
+  /** @param {any} gate @param {string} type @param {any} record */
+  function recordDeleted(gate, type, record) {
+    const ledger = gate.deletedRecords ?? {};
+    return !!ledger[`${type}:${record?.id}`] ||
+      !!ledger[`habits:${record?.habitId ?? record?.properties?.habitId}`] ||
+      type === 'audit' && !!ledger[`voice:${record?.targetId}`];
+  }
+  /** @param {string} userId @param {any} deletion */
+  async function removeRecord(userId, deletion) {
+    let gate = await assertActive(userId, false);
+    const key = `${deletion.type}:${deletion.recordId}`;
+    const ledger = gate.deletedRecords ?? {};
+    const reused = Object.values(ledger).find((/** @type {any} */ row) => row.id === deletion.id);
+    if (reused && (reused.type !== deletion.type || reused.recordId !== deletion.recordId || reused.ts !== deletion.ts)) {
+      throw new ServiceError(409, 'Deletion request ID was already used for another record.');
+    }
+    if (ledger[key] && !(gate.pendingRecordCleanup ?? []).includes(key)) return;
+    if (!ledger[key]) {
+      if (Object.keys(ledger).length >= 1000) throw new ServiceError(429, 'Record deletion safety ledger is full; account export/deletion remains available.');
+      await batch([{ operationType: 'Replace', id: 'account', ifMatch: gate._etag,
+        resourceBody: { ...gateBody(gate), deletedRecords: { ...ledger, [key]: deletion },
+          pendingRecordCleanup: [...(gate.pendingRecordCleanup ?? []), key] } }], userId);
+    }
+    await invalidateSnapshots();
+    // Permanent minimal ID-only suppression is committed first. Every writer
+    // also CASes this gate, so offline edits cannot race past a deletion.
+    const finished = async () => {
+      const current = await assertActive(userId, false);
+      if (!(current.pendingRecordCleanup ?? []).includes(key)) return;
+      await batch([{ operationType: 'Replace', id: 'account', ifMatch: current._etag,
+        resourceBody: { ...gateBody(current), pendingRecordCleanup: current.pendingRecordCleanup.filter((/** @type {string} */ value) => value !== key) } }], userId);
+    };
+    for (let page = 0; page < 100; page++) {
+      const { resources } = await container().items.query({
+        query: 'SELECT TOP 100 * FROM c WHERE c.userId = @u AND c.type != "account" AND ((c.type = @targetType AND c.record.id = @target) OR (@targetType = "habits" AND (c.record.habitId = @target OR c.record.properties.habitId = @target)) OR (@targetType = "voice" AND c.type = "audit" AND c.targetId = @target))',
+        parameters: [{ name: '@u', value: userId }, { name: '@target', value: deletion.recordId }, { name: '@targetType', value: deletion.type }],
+      }, { partitionKey: userId }).fetchAll();
+      if (!resources.length) { await finished(); return; }
+      for (let start = 0; start < resources.length; start += 90) {
+        gate = await assertActive(userId, false);
+        const targets = resources.slice(start, start + 90).filter(row => recordDeleted(gate, row.type,
+          row.type === 'audit' ? row : row.record));
+        if (!targets.length) continue;
+        await batch([
+          { operationType: 'Replace', id: 'account', ifMatch: gate._etag, resourceBody: gateBody(gate) },
+          ...targets.map(row => /** @type {import('@azure/cosmos').OperationInput} */ ({ operationType: 'Delete', id: row.id })),
+        ], userId);
+      }
+      if (resources.length < 100) { await finished(); return; }
+    }
+    throw new ServiceError(429, 'Record cleanup scan cap reached; deletion remains suppressed. Retry cleanup.');
   }
   /** @param {string} userId @param {string} type @param {any} gate @param {Record<string, any[]>} existing */
   async function nextGate(userId, type, gate, existing) {
@@ -219,15 +278,25 @@ export function createHandlers({ container, authenticate, authenticateAggregate 
   /** @param {import('@azure/functions').HttpRequest} request */
   async function sync(request) {
     const { userId } = await gardenActor(request);
-    apiEnabled();
-    if (request.method !== 'GET') await operationalEnabled();
     const parsed = request.method === 'GET' ? null : syncSchema.safeParse(await body(request));
     if (parsed && !parsed.success) throw new ServiceError(400, 'Sync payload failed validation.');
+    const deletionOnly = parsed?.success && parsed.data.deletions.length > 0 &&
+      !Object.entries(parsed.data).some(([key, rows]) => key !== 'deletions' && rows.length);
+    if (!deletionOnly) apiEnabled();
+    if (parsed?.success && parsed.data.deletions.length) {
+      const actor = await gardenActor(request);
+      if (!actor.scopes?.includes('Garden.ReadWrite')) throw new ServiceError(403, 'Customer Garden.ReadWrite scope required for record deletion.');
+    }
+    if (request.method !== 'GET' && !deletionOnly) await operationalEnabled();
     if (parsed?.success && (parsed.data.events.length || parsed.data.voice.length)) engagementEnabled();
     if (parsed?.success && parsed.data.events.some(event =>
       Date.parse(event.ts) + rawTtl * 1000 <= clock().getTime() || Date.parse(event.ts) > clock().getTime() + 300000)) throw new ServiceError(400, 'Telemetry timestamp is outside the retention window.');
     await reserve();
     await rateLimit(userId);
+    const pendingGate = await assertActive(userId, false);
+    for (const key of pendingGate.pendingRecordCleanup ?? []) {
+      await removeRecord(userId, pendingGate.deletedRecords[key]);
+    }
     if (request.method === 'GET') {
       const data = await readGarden(userId);
       await assertActive(userId, false);
@@ -235,12 +304,15 @@ export function createHandlers({ container, authenticate, authenticateAggregate 
     }
     if (!parsed?.success) throw new ServiceError(400, 'Sync payload failed validation.');
     const incoming = parsed.data;
+    for (const deletion of incoming.deletions) await removeRecord(userId, deletion);
     const existing = await readGarden(userId);
+    const deletedGate = await assertActive(userId, false);
     const owned = new Set([...incoming.habits.map(h => h.id), ...existing.habits.map(h => h.id)]);
     for (const row of [...incoming.checkins, ...incoming.reflections]) {
-      if (!owned.has(row.habitId)) throw new ServiceError(400, 'Unknown habit reference.');
+      if (!owned.has(row.habitId) && !recordDeleted(deletedGate, 'checkins', row)) throw new ServiceError(400, 'Unknown habit reference.');
     }
     for (const [type, records] of Object.entries(incoming)) {
+      if (type === 'deletions') continue;
       for (const original of records) {
         /** @type {any} */
         let record = { ...original };
@@ -259,6 +331,7 @@ export function createHandlers({ container, authenticate, authenticateAggregate 
         if (type === 'voice') Object.assign(record, { status: 'received', replies: '[]' });
         if (type === 'reflections') record.items = JSON.stringify(record.items);
         const gate = await assertActive(userId, false);
+        if (recordDeleted(gate, type, record)) continue;
         const updated = resource ? gateBody(gate) : await nextGate(userId, type, gate, existing);
         const ttl = type === 'events' ? Math.max(1, Math.ceil((Date.parse(record.ts) + rawTtl * 1000 - clock().getTime()) / 1000)) : -1;
         /** @type {Record<string, string | boolean>} */
@@ -279,8 +352,9 @@ export function createHandlers({ container, authenticate, authenticateAggregate 
       }
     }
     const garden = await readGarden(userId);
-    await invitations.observePractice(userId, garden.checkins);
-    if (!['true', '1'].includes((environment().BLOOMSTEP_ENGAGEMENT_DISABLED ?? '').toLowerCase()) &&
+    if (!deletionOnly) await invitations.observePractice(userId, garden.checkins);
+    if (!deletionOnly &&
+        !['true', '1'].includes((environment().BLOOMSTEP_ENGAGEMENT_DISABLED ?? '').toLowerCase()) &&
         !['true', '1'].includes((environment().BLOOMSTEP_INVITATIONS_DISABLED ?? '').toLowerCase())) {
       await invitations.resume(userId);
     }
@@ -367,11 +441,11 @@ export function createHandlers({ container, authenticate, authenticateAggregate 
     }).fetchAll();
     if (resources.length > limits.metricRecords) throw new ServiceError(429, 'Metrics scan cap exceeded; no partial counts returned.');
     const { resources: accounts } = await container().items.query({
-      query: `SELECT TOP ${limits.accounts + 1} c.userId, c.deleted FROM c WHERE c.type = "account"`,
+      query: `SELECT TOP ${limits.accounts + 1} c.userId, c.deleted, c.deletedRecords FROM c WHERE c.type = "account"`,
     }).fetchAll();
     if (accounts.length > limits.accounts) throw new ServiceError(429, 'Legacy account volume exceeds metrics cap.');
-    const active = new Set(accounts.filter(row => !row.deleted).map(row => row.userId));
-    return resources.filter(row => active.has(row.userId));
+    const active = new Map(accounts.filter(row => !row.deleted).map(row => [row.userId, row]));
+    return resources.filter(row => active.has(row.userId) && !recordDeleted(active.get(row.userId), 'events', row.record));
   }
   /** @param {string} startDay @param {string} endDay */
   async function persistedSeries(startDay, endDay) {
@@ -431,7 +505,10 @@ export function createHandlers({ container, authenticate, authenticateAggregate 
       /** @type {any[]} */
       const feedback = [];
       for (const row of page) {
-        try { await assertActive(row.userId, false); feedback.push({ userId: row.userId, record: row.record }); }
+        try {
+          const gate = await assertActive(row.userId, false);
+          if (!recordDeleted(gate, 'voice', row.record)) feedback.push({ userId: row.userId, record: row.record });
+        }
         catch (error) { if (!(error instanceof ServiceError) || error.status !== 410) throw error; }
       }
       const last = page.at(-1);
@@ -443,6 +520,7 @@ export function createHandlers({ container, authenticate, authenticateAggregate 
     if (!parsed.success) throw new ServiceError(400, 'Invalid status or reply.');
     await reserve(0, 0, 'feedback_reply');
     const gate = await assertActive(userId, false);
+    if (gate.deletedRecords?.[`voice:${parsed.data.id}`]) throw new ServiceError(410, 'Feedback was removed by its owner.');
     const id = `voice:${parsed.data.id}`;
     const { resource } = await container().item(id, userId).read();
     if (!resource) throw new ServiceError(404, 'Feedback not found.');

@@ -458,3 +458,20 @@ successful aggregate snapshots and audit records without leaking tokens.
 Verify the real resource worker is rejected on garden/team endpoints and lacks
 other grants; exercise the worker kill switch/budgets. Automatic runs remain
 unclaimed until default-branch merge and a scheduled run is actually observed.
+## Owner-record deletion rollout (approved, live verification pending)
+
+Deploy the new backward-compatible sync deletion contract before installing the
+new native candidate. SQLite migrates existing v4 gardens to v5 in the same
+stable support/credential namespace; no account/session migration, issuer,
+callback, provider registration, Admin role or OS permission change is involved.
+Retain the normal signed-in account and existing content during upgrade.
+
+Existing clients may upload empty/default deletion arrays and ignore the extra
+response field. The service nevertheless suppresses their stale deleted IDs.
+New clients send owner-scoped UUID markers before surviving records and apply
+remote suppression before merge. Interrupted active-content cleanup must finish
+before success/readback acknowledges the marker; pending cleanup resumes on
+sync, with explicit conflict/quota/storage errors instead of a success fallback.
+See `backend-contracts.md` for permanent ID-only retention, preview bounds and
+processor/export-copy boundaries. Normal unsigned distribution remains labeled
+as an engineering candidate, not full-MVP acceptance or a crash/cohort result.

@@ -43,6 +43,18 @@ class SyncService {
       }
       final token = await identity.accessToken();
       store.requireSyncSession(account, generation);
+      final pendingDeletions =
+          (await store.syncPayload())['deletions'] as List? ?? [];
+      for (var start = 0; start < pendingDeletions.length; start += 100) {
+        final chunk = <String, Object?>{
+          for (final t in GardenStore.syncTables) t: [],
+        };
+        chunk['deletions'] = pendingDeletions.sublist(
+          start,
+          (start + 100).clamp(0, pendingDeletions.length),
+        );
+        await _request(token, chunk, account, generation);
+      }
       final payload = await store.syncPayload();
       const tables = GardenStore.syncTables;
       for (final table in tables) {
@@ -107,11 +119,24 @@ class SyncService {
         'Sync failed (HTTP ${response.statusCode}).${_apiError(response)} Local changes remain on this device.',
       );
     }
-    await store.mergeSync(
-      (jsonDecode(response.body) as Map).cast<String, dynamic>(),
-      account: account,
-      generation: generation,
-    );
+    final received = (jsonDecode(response.body) as Map).cast<String, dynamic>();
+    if ((body?['deletions'] as List? ?? []).isNotEmpty) {
+      final acknowledgments = received['deletions'];
+      if (acknowledgments is! List ||
+          (body!['deletions'] as List).any(
+            (raw) => !acknowledgments.any(
+              (row) =>
+                  row is Map &&
+                  row['type'] == (raw as Map)['type'] &&
+                  row['recordId'] == raw['recordId'],
+            ),
+          )) {
+        throw StateError(
+          'The service did not confirm record deletion. Local removal remains queued; retry safely.',
+        );
+      }
+    }
+    await store.mergeSync(received, account: account, generation: generation);
     if (body != null) {
       await store.acknowledgeSync(
         body,

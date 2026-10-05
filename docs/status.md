@@ -14,7 +14,7 @@ observed provider exchange, two-account isolation or full private-loop
 acceptance. Verification inspected only fixed public status/action labels;
 no account text, credential store, token, payload or garden screenshot was
 recorded. Reversible test approval was subsequently received; fixture writes
-remain blocked by the cleanup gap below. Operator roles, real account deletion and OS changes still
+are not yet run while the approved cleanup increment below is being implemented. Operator roles, real account deletion and OS changes still
 require their separate authorization.
 
 **Authorized read-only acceptance:** After explicit signed-account reversible
@@ -27,9 +27,23 @@ Mutation testing exposed a cleanup gap before creating records: this candidate
 has no individual habit/feedback removal or sync deletion tombstones. Only
 whole-local-garden/account wipes exist, and check-in Undo preserves append-only
 history. Those are not reversible fixture cleanup. Controlled habit/feedback
-writes remain gated on an explicitly approved cleanup design or separately
-authorized disposable-account/retained-fixture strategy; neither new deletion
-semantics, residual records nor account deletion is silently authorized.
+writes remained gated before the user explicitly selected **owner-only
+individual habit/feedback deletion with cross-device handling**. That feature
+is now approved and in progress, not shipped in installed preview.4. No
+fixture has been created, and no customer-existing content/session, Admin,
+account deletion, identity switching, OS permission or invite sending is
+authorized by this feature approval.
+
+| Workstream | Owner / next action | Definition of done / current evidence |
+| --- | --- | --- |
+| Owner-record deletion | Implementation session: new PR/exact dual CI, API-first deployment, candidate release and real fixture checks | Local156 Flutter tests/analyzer and99 API tests/type-check pass, plus unchanged site/packaging/operator contracts. Includes actual v4->5 migration fixtures, dual-device canonical ID convergence, delete/edit/child/reply/read races, exact10000-row cleanup-cap retry,1000-marker caps, private dependencies/events/audits, cancellation and notification withdrawal. Source/mocks only: no live customer deletion acceptance yet. |
+| Reversible signed-account acceptance | Implementation session: create only explicitly labeled own fixtures after deployed cleanup is available, then remove them | Normal app sync/check-in/edit/undo/reflection/feedback/rating/export, relational/API round-trip/readback and only own fixture cleanup; preserve existing customer content. Genuine sync/schema/account-consistent export already observed. |
+| Skill/confidence learning enhancements | Product/content review, then separately sequenced implementation | Planned only in product-spec addendum; original versioned catalog/citations, optional short self-selected education, privacy/accessibility/performance acceptance. No new feature readiness claim. |
+
+Latest developer-owned workflow recheck: scheduled spending guard37271400930
+(October 5) completed successfully. This is workflow history, not a new billing
+or cost-zero proof. Aggregate history still shows only manual37222477262;
+no scheduled aggregate tick is observed.
 
 Product-owned branding shipped in PR4 merge `5b675a5` and unsigned
 `v0.1.0-preview.4`. Exact source PR/push, merged-main and versioned release

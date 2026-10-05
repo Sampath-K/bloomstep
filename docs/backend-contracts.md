@@ -885,3 +885,55 @@ from active accounts. No cross-partition instantaneous read snapshot is claimed.
   diagnostic capture remain evidence gates. Native serialization/instrumentation
   is coordinated separately; actual JWT/Cosmos/client round trips remain
   integration tests, not fabricated users or inferred production dashboards.
+## Owner-scoped individual deletion (approved increment, verification pending)
+
+`sync` additionally accepts optional `deletions` (default empty for existing
+clients), at most100 per request. Each strict row is `{id,type,recordId,ts}`:
+stable UUID request ID, `habits` or `voice`, UUID target and UTC timestamp.
+No account key or text is accepted. Identity is derived exclusively from the
+verified issuer/subject with customer Garden.ReadWrite scope; no Admin needed.
+Target IDs from another account cannot access/delete that account's partition.
+
+SQLite v5 adds account-scoped minimal deletion markers without changing existing
+records/session paths. Confirmed local removal atomically purges the selected
+habit plus check-ins/reflections/linked pending events, or the selected private
+feedback/rating plus its replies; no other recipe/account is wiped. Markers
+and unsynced deletes survive restart. Deletions upload before surviving records.
+Local and remote merge suppress stale deleted IDs regardless of edit timestamp,
+so an old offline device cannot resurrect a removed parent/dependent/thread.
+
+Server authority is an account-gate deletion ledger. The marker and gate revision
+commit atomically; every record/reply writer CASes that same gate. Content
+cleanup runs in bounded paginated batches, resuming from marker metadata on
+retry/reconnect if interrupted. GET/reply/team pagination never expose suppressed
+content; readback cannot acknowledge unfinished cleanup. Retry request ID reuse
+with changed target/timestamp is a409; repeated same deletion is idempotent.
+Snapshot generations are invalidated, deleted linked raw events excluded, and
+reply audits for deleted feedback removed without auditing any body/reply text.
+
+Minimal type/UUID/request UUID/time markers persist for the account lifetime
+(`ttl=-1`), because no maximum offline-device age/rejoin guarantee is enforced.
+Expiring a marker would permit resurrection. At most1000 markers per account;
+no silent pruning, and exhaustion returns an explicit error. Preview lifetime
+write/record budgets remain conservative and are not reset by deleting content.
+Whole-account deletion separately removes markers/content under its existing
+explicit confirmation. Export includes ID-only markers so deletion state is
+transparent; it does not contain deleted private text. This is suppression
+metadata, not archival of removed records.
+
+Deploy the backward-compatible API before the new client; an old client
+ignores the additional response field but its stale writes are server-suppressed.
+Only the new client applies remote markers to local records. A client cannot
+claim remote deletion merely from local disappearance: pending requests/errors
+remain retryable and sync success requires HTTP200 after server cleanup.
+Deletion-only sync remains available under API/engagement/operational pause;
+mixed normal writes still obey those controls.
+
+The device withdraws only the removed recipe's toast when reminders were already
+enabled; deletion never enables notifications or changes OS permission. A toast
+request that overlaps deletion is withdrawn, and a stale action cannot recreate
+a check-in. ID-only42-day reminder/cap history is retained so deletion cannot
+reset daily notification budgets. Earlier user-exported files or downloaded
+copies are outside this active-store removal; processor backup retention remains
+a separate disclosed operational/privacy obligation, not an instantaneous purge
+claim.
