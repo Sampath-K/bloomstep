@@ -16,7 +16,7 @@ const request = (method, data, query = {}, params = {}) => ({
   text: async () => JSON.stringify(data),
 });
 
-function harness({ roles = ['Bloomstep.Admin'], scopes = ['Garden.ReadWrite'], actorUserId, disabled = false, apiDisabled = false, aggregatesDisabled = false, invitationsDisabled = false, limits = {}, beforeBatch, failAudit = false, beforeQuery } = {}) {
+function harness({ roles = ['Bloomstep.Admin'], scopes = ['Garden.ReadWrite'], actorUserId, disabled = false, apiDisabled = false, aggregatesDisabled = false, invitationsDisabled = false, limits = {}, beforeBatch, failAudit = false, beforeQuery, clock = () => new Date(now) } = {}) {
   const documents = new Map();
   const writes = [];
   let revision = 0;
@@ -76,7 +76,12 @@ function harness({ roles = ['Bloomstep.Admin'], scopes = ['Garden.ReadWrite'], a
           rows.sort((a, b) => a.userId.localeCompare(b.userId) || a.id.localeCompare(b.id));
           if (parameters['@after']) rows = rows.filter(row => `${row.userId}:${row.id}` > parameters['@after']);
           const top = Number(/TOP (\d+)/.exec(spec.query)?.[1] ?? rows.length);
-          return { resources: structuredClone(rows.slice(0, top)) };
+          const result = rows.slice(0, top);
+          return { resources: structuredClone(spec.query.includes('AS kind') ? result.map(row => ({
+            userId: row.userId, id: row.id, kind: row.record.kind, rating: row.record.rating,
+            hasResponses: typeof row.record.replies === 'string' ? row.record.replies !== '[]' : null,
+            ...(row.support === undefined ? {} : { support: row.support }),
+          })) : result) };
         },
       }),
     },
@@ -84,23 +89,211 @@ function harness({ roles = ['Bloomstep.Admin'], scopes = ['Garden.ReadWrite'], a
   const handlers = createHandlers({
     container: () => store,
     authenticate: async () => ({ userId: actorUserId ?? (roles.length ? teamId : userId), roles, scopes }),
-    clock: () => new Date(now), environment: () => ({
+    clock, environment: () => ({
       BLOOMSTEP_ENGAGEMENT_DISABLED: String(disabled), BLOOMSTEP_API_DISABLED: String(apiDisabled), BLOOMSTEP_AGGREGATES_DISABLED: String(aggregatesDisabled),
       BLOOMSTEP_INVITATIONS_DISABLED: String(invitationsDisabled),
     }),
     limits: { ...previewLimits, ...limits },
   });
-  return { ...handlers, put, read, documents, writes, store };
+  return { ...handlers, put, read, documents, writes, store, clock };
 }
 
 const friendId = 'c'.repeat(64);
 const friendHandlers = (h, id = friendId, roles = [], scopes = ['Garden.ReadWrite']) => createHandlers({
   container: () => h.store, authenticate: async () => ({ userId: id, roles, scopes }),
-  clock: () => new Date(now),
+  clock: h.clock,
 });
 const recipe = () => ({ id: randomUUID(), aspiration: 'Private aspiration', anchor: 'Private anchor',
   behavior: 'Private behavior', celebration: 'Private celebration', species: 'Fern', stage: 0, status: 'active', updated: now });
 const practice = (habitId, result = 'did') => ({ id: randomUUID(), habitId, day: '2026-09-01', result, reason: null, ts: now });
+
+test('server receipt is atomic, immutable and separate from client voice shape and time', async () => {
+  let instant = now;
+  const h = harness({ roles: [], clock: () => new Date(instant) });
+  const note = { ...voice(), kind: 'Rating', rating: 2, ts: '2026-08-20T12:00:00.000Z' };
+  const result = (await h.sync(request('POST', payload({ voice: [note] })))).jsonBody;
+  const support = { schemaVersion: 1, receivedAt: now, firstRespondedAt: null };
+  assert.deepEqual(h.read(`voice:${note.id}`, userId).support, support);
+  assert.equal(Object.hasOwn(result.voice[0], 'support'), false);
+  assert.equal(result.voice[0].ts, note.ts);
+  assert.deepEqual(result.voiceReceipts, [{ id: note.id, ...support }]);
+  instant = '2026-09-03T12:00:00.000Z';
+  await h.sync(request('POST', payload({ voice: [note] })));
+  assert.deepEqual(h.read(`voice:${note.id}`, userId).support, support);
+  await assert.rejects(h.sync(request('POST', payload({ voice: [{ ...note, support }] }))), error => error.status === 400);
+  assert.deepEqual((await friendHandlers(h).sync(request('GET'))).jsonBody.voiceReceipts, []);
+});
+
+test('first actual response uses server CAS time and survives subsequent and idempotent replies', async () => {
+  let instant = now;
+  const h = harness({ roles: [], clock: () => new Date(instant) });
+  const note = voice();
+  await h.sync(request('POST', payload({ voice: [note] })));
+  const admin = friendHandlers(h, teamId, ['Bloomstep.Admin']);
+  const first = { id: note.id, requestId: randomUUID(), status: 'under review', reply: 'Synthetic first actual response' };
+  instant = '2026-09-01T14:00:00.000Z';
+  await admin.admin(request('POST', first, {}, { userId }));
+  const expected = { schemaVersion: 1, receivedAt: now, firstRespondedAt: instant };
+  assert.deepEqual(h.read(`voice:${note.id}`, userId).support, expected);
+  instant = '2026-09-02T18:00:00.000Z';
+  await admin.admin(request('POST', first, {}, { userId }));
+  assert.equal(JSON.parse(h.read(`voice:${note.id}`, userId).record.replies).length, 1);
+  await admin.admin(request('POST', { ...first, requestId: randomUUID(), reply: 'Synthetic later response' }, {}, { userId }));
+  assert.deepEqual(h.read(`voice:${note.id}`, userId).support, expected);
+  assert.equal(JSON.parse(h.read(`voice:${note.id}`, userId).record.replies).length, 2);
+  await assert.rejects(admin.admin(request('POST', { ...first, reply: 'Changed retry' }, {}, { userId })), error => error.status === 409);
+  assert.deepEqual((await h.sync(request('GET'))).jsonBody.voiceReceipts, [{ id: note.id, ...expected }]);
+});
+
+test('legacy receipt provenance is never synthesized from now, client time or reply prefixes', async () => {
+  const h = harness({ roles: [] });
+  await h.sync(request('GET'));
+  for (const replies of [[], [`${now}: Historical response without receipt provenance`]]) {
+    const note = voice();
+    h.put({ id: `voice:${note.id}`, userId, type: 'voice', record: { ...note, status: 'received', replies: JSON.stringify(replies) }, ttl: -1 });
+    await friendHandlers(h, teamId, ['Bloomstep.Admin']).admin(request('POST',
+      { id: note.id, status: 'received', reply: 'Synthetic new response' }, {}, { userId }));
+    assert.equal(h.read(`voice:${note.id}`, userId).support, undefined);
+    const exported = (await h.sync(request('GET'))).jsonBody.voiceReceipts.find(row => row.id === note.id);
+    assert.deepEqual(exported, { id: note.id, schemaVersion: 1, receivedAt: null, firstRespondedAt: null, reason: 'legacy_receipt_unavailable' });
+  }
+});
+
+test('compatible older reply writer cannot turn a missing first-response timestamp into now or pending success', async () => {
+  const h = harness({ roles: [] }), note = voice();
+  await h.sync(request('POST', payload({ voice: [note] })));
+  const created = h.read(`voice:${note.id}`, userId);
+  h.put({ ...created, record: { ...created.record, replies: JSON.stringify([`${now}: Older writer response`]) } });
+  await friendHandlers(h, teamId, ['Bloomstep.Admin']).admin(request('POST',
+    { id: note.id, status: 'received', reply: 'Synthetic later response, not first' }, {}, { userId }));
+  assert.equal(h.read(`voice:${note.id}`, userId).support.firstRespondedAt, null);
+  assert.deepEqual((await h.sync(request('GET'))).jsonBody.voiceReceipts, [
+    { id: note.id, schemaVersion: 1, receivedAt: now, firstRespondedAt: null, reason: 'first_response_unavailable' },
+  ]);
+});
+
+test('malformed provenance and server clock regression fail without a reply or timestamp repair', async () => {
+  let instant = now;
+  const h = harness({ roles: [], clock: () => new Date(instant) });
+  const note = voice();
+  await h.sync(request('POST', payload({ voice: [note] })));
+  const admin = friendHandlers(h, teamId, ['Bloomstep.Admin']);
+  const reply = { id: note.id, requestId: randomUUID(), status: 'received', reply: 'Synthetic clock check' };
+  instant = '2026-09-01T11:59:59.000Z';
+  await assert.rejects(admin.admin(request('POST', reply, {}, { userId })), error => error.status === 503);
+  assert.equal(h.read(`voice:${note.id}`, userId).record.replies, '[]');
+  instant = now;
+  const current = h.read(`voice:${note.id}`, userId);
+  h.put({ ...current, support: { ...current.support, receivedAt: 'not-server-time' } });
+  await assert.rejects(admin.admin(request('POST', reply, {}, { userId })), error => error.status === 409);
+  assert.equal(h.read(`voice:${note.id}`, userId).record.replies, '[]');
+});
+
+test('known first response requires an actual stored reply on owner readback; malformed projection stays unavailable', async () => {
+  const h = harness({ roles: [] }), note = voice();
+  await h.sync(request('POST', payload({ voice: [note] })));
+  const original = h.read(`voice:${note.id}`, userId);
+  h.put({ ...original, support: { ...original.support, firstRespondedAt: now } });
+  await assert.rejects(h.sync(request('GET')), error => error.status === 409);
+  h.put({ ...original, record: { ...original.record, replies: null } });
+  await assert.rejects(h.sync(request('GET')), error => error.status === 409);
+  const metrics = (await friendHandlers(h, teamId, ['Bloomstep.Admin']).metrics(request('GET', null, { days: '1' }))).jsonBody;
+  assert.equal(metrics.supportMetrics.firstResponses.reason, 'invalid_receipts');
+  assert.equal(metrics.supportMetrics.firstResponses.medianHours, null);
+});
+
+test('receipt metadata is removed and not exported after owner deletion or account deletion', async () => {
+  for (const accountDelete of [false, true]) {
+    const h = harness({ roles: [] }), note = voice();
+    await h.sync(request('POST', payload({ voice: [note] })));
+    assert.ok(h.read(`voice:${note.id}`, userId).support);
+    if (accountDelete) {
+      const erase = request('DELETE');
+      erase.headers.set('x-confirm-delete', 'delete-my-garden');
+      await h.deleteAccount(erase);
+      await assert.rejects(h.sync(request('GET')), error => error.status === 410);
+    } else {
+      await h.sync(request('POST', payload({ deletions: [{ id: randomUUID(), type: 'voice', recordId: note.id, ts: now }] })));
+      assert.deepEqual((await h.sync(request('GET'))).jsonBody.voiceReceipts, []);
+    }
+    assert.equal(h.read(`voice:${note.id}`, userId), undefined);
+  }
+});
+
+test('private support metrics use bounded server-only metadata, share raw scan cap and filter deleted owners/records', async () => {
+  const h = harness({ limits: { metricRecords: 2 } });
+  const queryLog = [];
+  const originalQuery = h.store.items.query;
+  h.store.items.query = (spec, options) => { queryLog.push(spec.query); return originalQuery(spec, options); };
+  h.put({ id: 'account', userId, type: 'account', deleted: false, ttl: -1 });
+  const note = voice();
+  h.put({ id: `voice:${note.id}`, userId, type: 'voice',
+    record: { ...note, status: 'received', replies: '[]' },
+    support: { schemaVersion: 1, receivedAt: '2026-08-29T12:00:00.000Z', firstRespondedAt: null }, ttl: -1 });
+  const response = (await h.metrics(request('GET', null, { days: '7' }))).jsonBody;
+  assert.equal(response.supportMetrics.source, 'server_voice_receipts');
+  assert.equal(response.supportMetrics.lowRatings48h.complianceFraction, null);
+  assert.equal(JSON.stringify(response).includes(note.body), false);
+  assert.equal(JSON.stringify(response.supportMetrics).includes(userId), false);
+  const projection = queryLog.find(sql => sql.includes('AS kind'));
+  assert.ok(projection);
+  assert.doesNotMatch(projection, /c\.record\.body|c\.record\.replies\s*,|SELECT.*\*/);
+  assert.match(projection, /IIF\(IS_STRING\(c\.record\.replies\), c\.record\.replies != "\[\]", null\) AS hasResponses/);
+  for (let i = 0; i < 2; i++) {
+    const event = { id: randomUUID(), name: 'session_started', ts: '2026-08-30T12:00:00.000Z' };
+    h.put({ id: `events:${event.id}`, userId, type: 'events', record: event, ttl: 3600 });
+  }
+  await assert.rejects(h.metrics(request('GET', null, { days: '7' })), error => error.status === 429);
+  const normal = harness();
+  normal.put({ id: 'account', userId, type: 'account', deleted: true, ttl: -1 });
+  normal.put({ id: `voice:${note.id}`, userId, type: 'voice', record: note, support: { invalid: true }, ttl: -1 });
+  assert.equal((await normal.metrics(request('GET'))).jsonBody.supportMetrics.lowRatings48h.reason, 'cohort_below_50');
+  const removed = harness();
+  removed.put({ id: 'account', userId, type: 'account', deleted: false,
+    deletedRecords: { [`voice:${note.id}`]: { id: randomUUID(), type: 'voice', recordId: note.id, ts: now } }, ttl: -1 });
+  removed.put({ id: `voice:${note.id}`, userId, type: 'voice', record: note, support: { invalid: true }, ttl: -1 });
+  assert.equal((await removed.metrics(request('GET'))).jsonBody.supportMetrics.lowRatings48h.reason, 'cohort_below_50');
+});
+
+test('combined metrics use one final account/deletion snapshot after both raw scans', async () => {
+  const owners = Array.from({ length: 50 }, (_, index) => (index + 1).toString(16).padStart(64, '0'));
+  let accountQueries = 0;
+  const h = harness({ beforeQuery: (spec, { put, read }) => {
+    if (spec.query.includes('c.type = "account"')) accountQueries++;
+    if (spec.query.includes('AS kind')) {
+      for (const owner of owners) put({ ...read('account', owner), deleted: true });
+    }
+  } });
+  for (const owner of owners) {
+    h.put({ id: 'account', userId: owner, type: 'account', deleted: false, deletedRecords: {} });
+    const event = { id: randomUUID(), name: 'signin_succeeded', ts: now };
+    h.put({ id: `events:${event.id}`, userId: owner, type: 'events', record: event });
+  }
+  const result = (await h.metrics(request('GET', null, { days: '1' }))).jsonBody;
+  assert.equal(result.categories.activationRetention.signins, null);
+  assert.equal(result.supportMetrics.firstResponses.records, null);
+  assert.equal(accountQueries, 1);
+});
+
+test('receipt creation and first response cannot escape failed or concurrent account/voice CAS', async () => {
+  let reject = true;
+  const note = voice();
+  const h = harness({ roles: [], beforeBatch: async (operations, partition, { put, read }) => {
+    if (reject && operations.some(op => op.resourceBody?.type === 'voice')) {
+      reject = false;
+      put({ ...read('account', partition), revision: randomUUID() });
+    }
+  } });
+  await assert.rejects(h.sync(request('POST', payload({ voice: [note] }))), error => error.status === 409);
+  assert.equal(h.read(`voice:${note.id}`, userId), undefined);
+  await h.sync(request('POST', payload({ voice: [note] })));
+  reject = true;
+  await assert.rejects(friendHandlers(h, teamId, ['Bloomstep.Admin']).admin(request('POST',
+    { id: note.id, requestId: randomUUID(), status: 'received', reply: 'Synthetic race' }, {}, { userId })), error => error.status === 409);
+  assert.equal(h.read(`voice:${note.id}`, userId).support.firstRespondedAt, null);
+  assert.equal(h.read(`voice:${note.id}`, userId).record.replies, '[]');
+  assert.equal([...h.documents.values()].filter(row => row.type === 'audit' && row.action === 'feedback_reply').length, 0);
+});
 
 test('garden read rechecks deletion ledger after rows are fetched', async () => {
   const habit = recipe();
@@ -1003,7 +1196,11 @@ test('customer feedback sync → private team reply → customer sync preserves 
   assert.deepEqual(JSON.parse(retried.jsonBody.voice[0].replies), [`${now}: Reason supplied privately`]);
   assert.equal('replyRequests' in retried.jsonBody.voice[0], false);
   const garden = (await customer.sync(request('GET'))).jsonBody;
-  assert.deepEqual(Object.keys(garden), ['habits', 'checkins', 'reflections', 'voice', 'settings', 'deletions']);
+  assert.deepEqual(Object.keys(garden), ['habits', 'checkins', 'reflections', 'voice', 'settings', 'voiceReceipts', 'deletions']);
+  assert.equal('support' in garden.voice[0], false);
+  assert.deepEqual(garden.voiceReceipts, [{
+    id: record.id, schemaVersion: 1, receivedAt: now, firstRespondedAt: now,
+  }]);
 });
 
 test('recipe/settings ties, attained stage and immutable events survive backend retries', async () => {

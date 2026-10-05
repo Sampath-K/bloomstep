@@ -1156,19 +1156,43 @@ class _GardenScreenState extends State<GardenScreen> {
                     title: const Text('Export my data (JSON)'),
                     leading: const Icon(Icons.download),
                     onTap: () => _act(() async {
+                      final owner = widget.store.account;
+                      final generation = widget.store.syncGeneration;
                       final target = await getSaveLocation(
                         suggestedName: 'bloomstep-export.json',
                       );
                       if (target == null) return;
-                      final data = await widget.store.export();
-                      if (invitations != null) {
-                        try {
-                          data['serverInvitations'] =
-                              (await invitations!.refreshStatus(export: true))
-                                  .json;
-                        } catch (_) {
-                          data['invitationExportWarning'] = 'Offline or unavailable: includes local receipts only, not a current server export.';
-                        }
+                      widget.store.requireSyncSession(owner, generation);
+                      Map<String, Object?> data;
+                      final warnings = <String>[];
+                      if (widget.identity != null) {
+                        final prepared =
+                            await SyncService(
+                              widget.identity!,
+                              widget.store,
+                            ).prepareOwnerExport(
+                              invitationExport: invitations == null
+                                  ? null
+                                  : () async =>
+                                        (await invitations!.refreshStatus(
+                                          export: true,
+                                        )).json,
+                            );
+                        data = prepared.data;
+                        warnings.addAll(prepared.warnings);
+                      } else {
+                        data = await widget.store.export();
+                        data['supportReceiptExportWarning'] = 'No authenticated service session: server support receipts were not exported.';
+                        warnings.add(
+                          'No authenticated server support receipts.',
+                        );
+                      }
+                      widget.store.requireSyncSession(owner, generation);
+                      if (widget.identity != null &&
+                          widget.identity!.account != owner) {
+                        throw StateError(
+                          'Account changed; export cancelled before saving. Sign in to the garden owner and try again.',
+                        );
                       }
                       final bytes = utf8.encode(
                         const JsonEncoder.withIndent('  ').convert(data),
@@ -1178,6 +1202,15 @@ class _GardenScreenState extends State<GardenScreen> {
                         mimeType: 'application/json',
                         name: 'bloomstep-export.json',
                       ).saveTo(target.path);
+                      if (mounted && warnings.isNotEmpty) {
+                        ScaffoldMessenger.of(this.context).showSnackBar(
+                          SnackBar(
+                            content: Text(
+                              'Local export saved. ${warnings.join(' ')} See the JSON export warnings; this is not a complete server export.',
+                            ),
+                          ),
+                        );
+                      }
                     }),
                   ),
                   ListTile(

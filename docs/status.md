@@ -4,6 +4,30 @@
 cloud deployment and native background behavior require integration evidence.
 This ledger is updated with verified outcomes, not inferred from source code.
 
+**Current developer increment: private support receipts/response measurement.**
+New-record atomic server receipt/first actual operator reply metadata, legacy/
+older-writer unknowns, bounded private48h measurement and typed separate console
+panel are implemented in source. Native read-only owner JSON sidecar export and
+visible incomplete-component warnings are wired without SQLite migration,
+uploads or implicit merges. All132 API,169 Flutter and33 website/source contract
+tests pass; API type-check and Flutter analyzer pass. Local Flutter tests use
+the supported no-assets/serial mode because of the existing OneDrive asset/
+compiler-cache boundary; no OS permission was changed. This is source evidence,
+not actual service-role or customer GUI acceptance.
+Current source is ready for coherent publication;
+publication, exact dual native CI/future candidate and separately coordinated
+customer upgrade/API/export readback remain required. Business-day calendar,
+full native crash census and original full-coverage goals remain incomplete.
+
+**Website/guarded diagnostic publication is complete:** PR9/main `cb83657`,
+PR CI37322996096, main CI37324820288 and deployment37324819165 all SUCCESS;
+independent served dualpreview.6 links/assets/config.json/OFF/nine401 readbacks
+agree. Optional synthetic input dispatch37320187531 genuinely failed because
+the host could not obtain ordinary foreground; no further same-host retry or
+native interaction success is inferred. Installed customer preview.5 was not
+upgraded. Former exact process closed with exit0, cause unknown; no current
+owner, crash-free result or surprise relaunch is assumed.
+
 ## Finite launch backlog
 
 **Nine open launch-readiness task packages, plus one separate elapsed-user
@@ -14,7 +38,7 @@ library/education/animation enhancements are frozen outside launch scope.
 
 | # | Package / owner | Next action and definition of done | Dependency / class |
 | --- | --- | --- | --- |
-| 1 | Real single-account private loop — implementation session | Actual coordinated preview.5 NEW private export/schema/per-row ownership/server-invitation readback and fresh HTTP200 merge PASS. First text setter stopped before Plant; canceled, fixtures0, app handed back. Finish bounded synthetic CI tooling, then separately coordinated preserved-session preview.6 upgrade and labeled own check-in/edit/undo/reflection/feedback/rating/owner-delete/API readbacks with only exact owned fixture cleanup. | Preview.5 remains installed; no foreground reservation. Text/foreground tooling failures are not product defects or customer write-loop acceptance. |
+| 1 | Real single-account private loop — implementation session | Actual coordinated preview.5 NEW private export/schema/per-row ownership/server-invitation readback and fresh HTTP200 merge PASS. First text setter stopped before Plant; canceled, fixtures0, app handed back. Guarded CI harness shipped; host foreground was genuinely unavailable. Next interaction needs an ordinary user foreground click/new slot or approved interactive host, then separately coordinated preserved-session compatible upgrade and labeled own check-in/edit/undo/reflection/feedback/rating/owner-delete/API readbacks with only exact owned fixture cleanup. | Preview.5 remains installed; former owner closed/cause unknown, no foreground reservation. Text/foreground tooling failures are not product defects or customer write-loop acceptance. |
 | 2 | Target-aligned telemetry and goal/actual UI — implementation session | Version1 original launch85%/day0/D7>=3/D30>=4 dates/30-60-90 graduation/D90 contracts shipped through PR7/mainb890250/deploy37298456876 with served bundle readback. Finish missing notification cohort-start/invite delivery/support receipt/SLA/native collection contracts; no private population fetched. | 8 projections implemented,5 original goals explicitly unobservable rather than proxies. Engineering; genuine results separately await cohorts and calendar/controller decisions. |
 | 3 | Session/native health coverage — implementation session, privacy/controller review | Headless ARM64 native fixture proved normal0, real exception hook signal and deliberate exit with identical0xc0000005 code but no signal. No customer process/GUI/data touched or dump requested. Implement bounded category-only hook plus independent lifecycle/recovery/consent/offline handling; prove fast-fail/kill/uncertain coverage and original99.5% canary interpretation. | Feasibility evidence is partial: exit-code classification alone disproved. Controller/coverage decisions, source/release and controlled/live observation remain; no crash-free claim. |
 | 4 | Genuine identity/device/offline/recovery/isolation — implementation session, customer approves identities/destruction | Real approved second-account/device state, foreign-account denial, offline/restart/reconnect/idempotency/conflict/revocation/recovery and separately approved disposable-account deletion, with actual API readback/cleanup. Preserve current session; no forced sign-out/new identity/account erasure from launch urgency. | 1 and explicit additional identity/offline/destructive test decisions. Mixed acceptance. |

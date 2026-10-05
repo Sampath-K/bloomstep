@@ -156,6 +156,64 @@ export function goalPanels(data) {
     rows }];
 }
 
+export function supportPanels(data) {
+  const metrics = data?.supportMetrics;
+  const first = metrics?.firstResponses;
+  const low = metrics?.lowRatings48h;
+  const calendar = metrics?.businessDays;
+  const coverage = metrics?.coverage;
+  const reasons = [null, 'cohort_below_50', 'contributors_below_50', 'invalid_receipts',
+    'conflicting_receipts', 'server_clock_unavailable', 'first_response_unavailable'];
+  const count = value => value === null || Number.isInteger(value) && value >= 50 && value <= 10000;
+  const duration = value => value === null || typeof value === 'number' && Number.isFinite(value) && value >= 0;
+  if (metrics?.schemaVersion !== 1 || metrics.source !== 'server_voice_receipts' ||
+      metrics.minimumCohort !== 50 || typeof metrics.definition !== 'string' ||
+      ![metrics.startDay, metrics.endDay].every(day => typeof day === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(day)) ||
+      typeof metrics.observedAt !== 'string' || !Number.isFinite(Date.parse(metrics.observedAt)) ||
+      !first || !low || !calendar || !coverage ||
+      !reasons.includes(first.reason) || !reasons.includes(low.reason) ||
+      ![first.records, first.contributingAccounts, low.contributingAccounts, low.matureRecords,
+        low.within48, low.respondedLate, low.overdueUnanswered, low.immatureRecords, coverage.legacyRecords].every(count) ||
+      ![first.medianHours, first.maximumHours].every(duration) ||
+      (first.reason === null
+        ? [first.records, first.contributingAccounts, first.medianHours, first.maximumHours].some(value => value === null) ||
+          first.records < first.contributingAccounts || first.maximumHours < first.medianHours
+        : [first.records, first.contributingAccounts, first.medianHours, first.maximumHours].some(value => value !== null)) ||
+      low.thresholdHours !== 48 ||
+      (low.reason === null
+        ? typeof low.complianceFraction !== 'number' || !Number.isFinite(low.complianceFraction) ||
+          low.complianceFraction < 0 || low.complianceFraction > 1 ||
+          [low.matureRecords, low.within48, low.contributingAccounts].some(value => value === null) ||
+          low.matureRecords < low.contributingAccounts || low.within48 > low.matureRecords ||
+          low.complianceFraction !== low.within48 / low.matureRecords
+        : low.complianceFraction !== null) ||
+      calendar.target !== 2 || calendar.value !== null || calendar.reason !== 'calendar_not_configured' ||
+      !['contributors_below_50', 'legacy_receipt_unavailable'].includes(coverage.legacyReason) ||
+      coverage.legacyReason === 'contributors_below_50' && coverage.legacyRecords !== null) {
+    throw new Error('Invalid server support measurement; no inferred timing or compliance rendered.');
+  }
+  const unavailable = reason => `Unavailable (${reason}); no pass/fail claim`;
+  const elapsed = value => first.reason ? unavailable(first.reason) : `${formatMetric(value)} hours (descriptive only)`;
+  return [{
+    title: 'Private support — server receipt / first actual operator reply',
+    definition: `${metrics.startDay} through ${metrics.endDay}, receipt UTC dates; observed at ${metrics.observedAt}. ${metrics.definition} Counts/subsets require50 distinct contributing owners. This is separate from opt-in product goals and persisted worker snapshots.`,
+    rows: [
+      { label: 'Median answered elapsed time', value: elapsed(first.medianHours) },
+      { label: 'Maximum answered elapsed time', value: elapsed(first.maximumHours) },
+      { label: 'Answered records / contributing accounts', value: `${formatMetric(first.records)} / ${formatMetric(first.contributingAccounts)}` },
+      { label: 'Observed mature low-rating response fraction within48h',
+        value: `48-hour threshold; ${low.reason ? unavailable(low.reason) : `${formatMetric(low.complianceFraction * 100)}% observed; no numeric compliance target specified`}; ${formatMetric(low.within48)} timely / ${formatMetric(low.matureRecords)} mature records` },
+      { label: 'Mature low-rating contributing accounts', value: formatMetric(low.contributingAccounts) },
+      { label: 'Mature responses later than48h', value: formatMetric(low.respondedLate) },
+      { label: 'Overdue unanswered low ratings (included in mature denominator)', value: formatMetric(low.overdueUnanswered) },
+      { label: 'Immature low ratings (deadline still open; not failing outcomes)', value: formatMetric(low.immatureRecords) },
+      { label: 'Business-day response goal', value: `<=2 business days; ${unavailable(calendar.reason)}. Timezone/holiday calendar is not configured; elapsed hours do not substitute.` },
+      { label: 'Excluded legacy records (all retained scanned feedback; receipt window unknown)',
+        value: `${formatMetric(coverage.legacyRecords)} (${coverage.legacyReason}); no client-time/reply-prefix backfill` },
+    ],
+  }];
+}
+
 export function snapshotPanels(data) {
   const series = data?.dailySnapshots;
   if (series?.source !== 'persisted_daily_worker' || !Array.isArray(series.days) ||
@@ -332,6 +390,7 @@ function initialize() {
       const data = await request(`/api/team/metrics?days=${days}`);
       const cards = [
         ...goalPanels(data),
+        ...supportPanels(data),
         ...snapshotPanels(data),
         ...dashboardPanels(data).map(panel => ({ ...panel, title: `On-demand window — ${panel.title}` })),
         ...metricPanels(data).map(panel => ({ ...panel, title: `Raw compatibility window — ${panel.title}` })),
@@ -357,7 +416,7 @@ function initialize() {
       element('measurement').append(grid, limits);
       element('daily-counts').textContent = JSON.stringify({ persistedDailyWorker: data.dailySnapshots.days,
         rawCompatibilityDailyCounts: data.daily }, null, 2);
-      status.textContent = `Persisted worker history covers ${data.dailySnapshots.startDay} through ${data.dailySnapshots.endDay}; its latest completed-day panels require an available stored snapshot. Separately labelled on-demand dashboards cover ${data.dashboards.startDay} through ${data.dashboards.endDay}; raw compatibility counts include today. No daily unique-user/retention/median rollup is inferred. Cohorts below ${data.minimumCohort} are suppressed, not zero. Experiment remains off; crash-free rate is unavailable. Worker deployment and token execution need independent live verification.`;
+      status.textContent = `Persisted worker history covers ${data.dailySnapshots.startDay} through ${data.dailySnapshots.endDay}; its latest completed-day panels require an available stored snapshot. Separately labelled on-demand dashboards cover ${data.dashboards.startDay} through ${data.dashboards.endDay}; raw compatibility counts include today. Private support uses server receipt/first committed operator reply facts, not product-event consent, customer-read proof or an all-feedback census. Business-day calendar remains unavailable. No daily unique-user/retention/median rollup is inferred. Cohorts below ${data.minimumCohort} are suppressed, not zero. Experiment remains off; crash-free rate is unavailable. Worker deployment and token execution need independent live verification.`;
     } catch (error) { status.textContent = error.message; }
   });
 

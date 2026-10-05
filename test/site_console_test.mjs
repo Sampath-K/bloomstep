@@ -1,9 +1,59 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
-import { approvedConnection, formatMetric, replyAttempt, metricPanels, tokenHeaders, dashboardPanels, snapshotPanels, goalPanels } from '../site/console.mjs';
+import { approvedConnection, formatMetric, replyAttempt, metricPanels, tokenHeaders, dashboardPanels, snapshotPanels, goalPanels, supportPanels } from '../site/console.mjs';
 import { dashboardSummaries } from '../api/src/dashboards.mjs';
 import { goalMetrics } from '../api/src/goals.mjs';
+import { supportMetrics } from '../api/src/support.mjs';
+
+test('support panel labels server facts and unanswered denominators without a fake SLA pass', () => {
+  const data = { supportMetrics: supportMetrics([], '2026-08-31', '2026-08-31', '2026-09-03T00:00:00.000Z') };
+  const panels = supportPanels(data);
+  assert.equal(panels.length, 1);
+  assert.match(panels[0].definition, /not product-event analytics/);
+  assert.match(panels[0].definition, /not an all-feedback census/);
+  assert.match(panels[0].rows.find(row => row.label.includes('Business-day')).value, /2.*Unavailable.*calendar_not_configured/);
+  assert.match(panels[0].rows.find(row => row.label.includes('Observed mature')).value, /48.*Unavailable.*cohort_below_50/);
+  assert.match(panels[0].rows.find(row => row.label.includes('Median')).value, /Unavailable.*cohort_below_50/);
+  assert.equal(panels[0].rows.some(row => /target met|100%|passed/i.test(row.value)), false);
+  assert.throws(() => supportPanels({}));
+  for (const corrupt of [
+    value => value.schemaVersion = 2,
+    value => value.source = 'client_reply_prefixes',
+    value => value.firstResponses.medianHours = 0,
+    value => value.lowRatings48h.thresholdHours = 24,
+    value => value.lowRatings48h.complianceFraction = 1.1,
+    value => value.businessDays.value = 0,
+    value => value.coverage.legacyRecords = 1,
+    value => value.lowRatings48h.overdueUnanswered = -1,
+    value => value.firstResponses.reason = 'unknown_default',
+  ]) {
+    const broken = structuredClone(data);
+    corrupt(broken.supportMetrics);
+    assert.throws(() => supportPanels(broken));
+  }
+  const source = readFileSync(new URL('../site/console.mjs', import.meta.url), 'utf8');
+  assert.match(source, /\.\.\.supportPanels\(data\)/);
+});
+
+test('support panel renders actual mature denominators and suppressed subsets without replacing the original goals', () => {
+  const rows = Array.from({ length: 100 }, (_, index) => ({
+    userId: (index + 1).toString(16).padStart(64, '0'),
+    id: `voice:00000000-0000-4000-8000-${(index + 1).toString(16).padStart(12, '0')}`,
+    kind: 'Rating', rating: 2, hasResponses: index < 50,
+    support: { schemaVersion: 1, receivedAt: '2026-08-31T12:00:00.000Z',
+      firstRespondedAt: index < 50 ? '2026-09-02T12:00:00.000Z' : null },
+  }));
+  const data = { supportMetrics: supportMetrics(rows, '2026-08-31', '2026-08-31', '2026-09-03T00:00:00.000Z') };
+  const panel = supportPanels(data)[0];
+  assert.match(panel.rows.find(row => row.label.includes('Observed mature')).value, /50% observed.*no numeric compliance target.*50 timely \/ 100 mature/);
+  assert.equal(panel.rows.find(row => row.label.includes('Overdue unanswered')).value, '50');
+  assert.equal(panel.rows.find(row => row.label.includes('Immature')).value, 'Unavailable / suppressed');
+  assert.match(panel.rows.find(row => row.label.includes('Median')).value, /48 hours.*descriptive only/);
+  assert.equal(panel.rows.some(row => /target met|passed/i.test(row.value)), false);
+  data.supportMetrics.lowRatings48h.complianceFraction = 1;
+  assert.throws(() => supportPanels(data));
+});
 
 test('goal UI distinguishes target, unavailable actual, denominator, window and coverage without proxy success', () => {
   const data = { goalMetrics: goalMetrics([], '2026-08-31', '2026-08-31', '2026-09-01') };
