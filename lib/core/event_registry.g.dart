@@ -2,7 +2,7 @@
 import 'dart:convert';
 
 const eventRegistryVersion = 1;
-const eventNames = <String>{'analytics_consent','landing_view','invite_link_open','download_click','store_page_view','installer_started','install_completed','first_launch','signin_view','signin_provider_selected','signin_succeeded','signin_failed','aspiration_selected','recipe_created','celebration_practiced','first_checkin','checkin','comeback','recipe_doctor_applied','automaticity_score','reflection','weekly_reflection','habit_graduated','share_initiated','invite_accepted','buddy_added','paywall_view','trial_start','purchase','feedback_submitted','rating_prompted','rating_prompt_shown','rated','review_responded','reminder_sent','notif_sent','notif_delivered','notif_opened','notif_actioned','notif_dismissed','notif_disabled','session_started','crash','app_hang','cold_start','sync_error','auth_error','experiment_exposure'};
+const eventNames = <String>{'analytics_consent','landing_view','invite_link_open','download_click','store_page_view','installer_started','install_completed','first_launch','signin_view','signin_provider_selected','signin_succeeded','signin_failed','aspiration_selected','recipe_created','celebration_practiced','first_checkin','checkin','comeback','recipe_doctor_applied','automaticity_score','reflection','weekly_reflection','habit_graduated','share_initiated','invite_accepted','buddy_added','paywall_view','trial_start','purchase','feedback_submitted','rating_prompted','rating_prompt_shown','rated','review_responded','reminder_sent','notif_sent','notif_delivered','notif_opened','notif_actioned','notif_dismissed','notif_disabled','reminder_preference_started','reminder_preference_disabled','reminder_preference_followup','session_started','crash','app_hang','cold_start','sync_error','auth_error','experiment_exposure'};
 final Map<String, dynamic> eventRegistry = jsonDecode(r'''{
   "analytics_consent": {
     "properties": {
@@ -1063,6 +1063,102 @@ final Map<String, dynamic> eventRegistry = jsonDecode(r'''{
     "observable": true,
     "legacy": false
   },
+  "reminder_preference_started": {
+    "properties": {
+      "disclosureVersion": {
+        "type": "integer",
+        "min": 1,
+        "max": 1
+      },
+      "cohortId": {
+        "type": "uuid"
+      },
+      "consentEpoch": {
+        "type": "uuid"
+      },
+      "platform": {
+        "enum": [
+          "windows"
+        ]
+      },
+      "localDay": {
+        "type": "date"
+      }
+    },
+    "observable": true,
+    "legacy": false,
+    "required": [
+      "disclosureVersion",
+      "cohortId",
+      "consentEpoch",
+      "platform",
+      "localDay"
+    ]
+  },
+  "reminder_preference_disabled": {
+    "properties": {
+      "disclosureVersion": {
+        "type": "integer",
+        "min": 1,
+        "max": 1
+      },
+      "cohortId": {
+        "type": "uuid"
+      },
+      "consentEpoch": {
+        "type": "uuid"
+      },
+      "platform": {
+        "enum": [
+          "windows"
+        ]
+      },
+      "localDay": {
+        "type": "date"
+      }
+    },
+    "observable": true,
+    "legacy": false,
+    "required": [
+      "disclosureVersion",
+      "cohortId",
+      "consentEpoch",
+      "platform",
+      "localDay"
+    ]
+  },
+  "reminder_preference_followup": {
+    "properties": {
+      "disclosureVersion": {
+        "type": "integer",
+        "min": 1,
+        "max": 1
+      },
+      "cohortId": {
+        "type": "uuid"
+      },
+      "consentEpoch": {
+        "type": "uuid"
+      },
+      "platform": {
+        "enum": [
+          "windows"
+        ]
+      },
+      "localDay": {
+        "type": "date"
+      }
+    },
+    "observable": true,
+    "legacy": false,
+    "required": [
+      "disclosureVersion",
+      "cohortId",
+      "consentEpoch",
+      "platform",
+      "localDay"
+    ]
+  },
   "session_started": {
     "properties": {
       "sessionId": {
@@ -1253,6 +1349,8 @@ bool isValidEventProperties(String name, Map<String, Object?> properties) {
   final entry = eventRegistry[name];
   if (entry == null) return false;
   final rules = entry['properties'] as Map<String, dynamic>;
+  final required = entry['required'] as List? ?? [];
+  if (required.any((key) => !properties.containsKey(key))) return false;
   for (final property in properties.entries) {
     final rule = rules[property.key];
     final value = property.value;

@@ -73,7 +73,9 @@ void main() {
         await store.submitVoice('Idea', 'Synthetic keep');
         await store.submitVoice('Bug', 'Synthetic remove');
       });
-      final removed = (await tester.runAsync(store.voice))!.first['id'];
+      final before = (await tester.runAsync(store.voice))!;
+      final removed = before.first['id'];
+      final preserved = before.last;
       await tester.pumpWidget(MaterialApp(home: GardenScreen(store: store)));
       await _settle(tester);
       await tester.tap(find.byTooltip('Help us grow'));
@@ -90,10 +92,9 @@ void main() {
       await tester.pumpAndSettle();
       await tester.tap(find.text('Delete feedback'));
       await _settle(tester);
-      expect(
-        (await tester.runAsync(store.voice))!.single['body'],
-        'Synthetic keep',
-      );
+      final remaining = (await tester.runAsync(store.voice))!.single;
+      expect(remaining['id'], preserved['id']);
+      expect(remaining['body'], preserved['body']);
       expect(
         ((await tester.runAsync(store.export))!['deletions'] as List)
             .single['recordId'],

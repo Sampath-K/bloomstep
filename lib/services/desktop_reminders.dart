@@ -189,18 +189,21 @@ class DesktopReminders with TrayListener, WindowListener {
         appPath: Platform.resolvedExecutable,
       );
     }
-    if (await store.setting('reminders') == 'true') await enable();
+    if (await store.setting('reminders') == 'true') {
+      await enable(explicitChoice: false);
+    }
   }
 
-  Future<void> enable() async {
+  Future<void> enable({bool explicitChoice = true}) async {
     if (enabled) return;
     if (_native && !Platform.isWindows) {
       throw UnsupportedError(
         'This preview supports reminders on Windows only.',
       );
     }
-    _account = store.account;
-    _generation = store.syncGeneration;
+    final account = store.account, generation = store.syncGeneration;
+    _account = account;
+    _generation = generation;
     await gateway.initialize((payload) async {
       try {
         await handleAction(payload);
@@ -225,10 +228,14 @@ class DesktopReminders with TrayListener, WindowListener {
       windowManager.addListener(this);
       await windowManager.setPreventClose(true);
     }
-    if (!_sameAccount) {
-      throw StateError('Garden changed while enabling reminders.');
-    }
-    await _save('reminders', 'true');
+    store.requireSyncSession(account, generation);
+    _requireAccount();
+    await store.saveReminderPreference(
+      true,
+      explicitChoice: explicitChoice,
+      now: clock(),
+    );
+    store.requireSyncSession(account, generation);
     enabled = true;
     _withdrawnRecipes.clear();
     await _removeDeletedRecipes();
@@ -242,8 +249,12 @@ class DesktopReminders with TrayListener, WindowListener {
     }
   }
 
-  Future<void> disable() async {
-    await _stop(showWindow: true, saveOptOut: true);
+  Future<void> disable({bool explicitChoice = true}) async {
+    await _stop(
+      showWindow: true,
+      saveOptOut: true,
+      explicitChoice: explicitChoice,
+    );
   }
 
   Future<void> dispose() async {
@@ -253,6 +264,7 @@ class DesktopReminders with TrayListener, WindowListener {
   Future<void> _stop({
     required bool showWindow,
     required bool saveOptOut,
+    bool explicitChoice = false,
   }) async {
     timer?.cancel();
     final wasEnabled = enabled;
@@ -260,25 +272,40 @@ class DesktopReminders with TrayListener, WindowListener {
     while (ticking) {
       await Future<void>.delayed(const Duration(milliseconds: 10));
     }
-    if (saveOptOut && _sameAccount) {
-      await _save('reminders', 'false');
-      await _track(
-        'notif_disabled',
-        properties: {
-          'platform': GardenStore.telemetryPlatform,
-          'localDay': localDate(clock().toLocal()),
-        },
-      );
-    }
-    if (wasEnabled) {
-      // Preserve access to the app before destroying its only hidden-window tray.
-      if (showWindow) await gateway.showAndFocus();
-      await gateway.cancelAll();
-      if (_native) {
-        trayManager.removeListener(this);
-        windowManager.removeListener(this);
+    try {
+      if (saveOptOut && _sameAccount) {
+        await store.saveReminderPreference(
+          false,
+          explicitChoice: explicitChoice,
+          now: clock(),
+        );
+        if (explicitChoice && wasEnabled) {
+          await _track(
+            'notif_disabled',
+            properties: {
+              'platform': GardenStore.telemetryPlatform,
+              'localDay': localDate(clock().toLocal()),
+            },
+          );
+        }
       }
-      await gateway.shutdown();
+    } finally {
+      if (wasEnabled) {
+        try {
+          // Preserve access before destroying the hidden-window tray.
+          if (showWindow) await gateway.showAndFocus();
+        } finally {
+          try {
+            await gateway.cancelAll();
+          } finally {
+            if (_native) {
+              trayManager.removeListener(this);
+              windowManager.removeListener(this);
+            }
+            await gateway.shutdown();
+          }
+        }
+      }
     }
   }
 
@@ -433,6 +460,8 @@ class DesktopReminders with TrayListener, WindowListener {
     var refresh = false;
     try {
       final date = (now ?? clock()).toLocal();
+      _requireAccount();
+      await store.observeReminderPreferenceFollowup(now: date);
       if (config.expiresAt != null &&
           !date.toUtc().isBefore(config.expiresAt!)) {
         config = RemoteConfig.defaults;

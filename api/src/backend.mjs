@@ -4,6 +4,7 @@ import { aggregateEvents, previewLimits, feedbackQuerySchema, metricsQuerySchema
 import { dashboardSummaries, addDays } from './dashboards.mjs';
 import { goalMetrics } from './goals.mjs';
 import { supportReceiptSchema, supportMetrics } from './support.mjs';
+import { reminderPreferenceCohorts } from './reminder-cohorts.mjs';
 import { registryVersion } from './event_registry.g.mjs';
 import { dailySnapshotRecordSchema, snapshotMetadataSchema } from './snapshot-contracts.mjs';
 import { createInvitations } from './invitations.mjs';
@@ -640,6 +641,7 @@ export function createHandlers({ container, authenticate, authenticateAggregate 
       dashboards: dashboardSummaries(resources, addDays(startDay, -1), addDays(endDay, -1), clock().toISOString().slice(0, 10)),
       goalMetrics: goalMetrics(resources, addDays(startDay, -1), addDays(endDay, -1), clock().toISOString().slice(0, 10)),
       supportMetrics: supportMetrics(supportRows, addDays(startDay, -1), addDays(endDay, -1), clock().toISOString()),
+      reminderPreferenceCohorts: reminderPreferenceCohorts(resources.map(row => ({ userId: row.userId, record: row.record })), addDays(startDay, -1), addDays(endDay, -1), clock().toISOString()),
       dailySnapshots: await persistedSeries(addDays(startDay, -1), addDays(endDay, -1)) } };
   }
   /** @param {import('@azure/functions').HttpRequest} request */

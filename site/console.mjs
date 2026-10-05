@@ -1,5 +1,6 @@
 import { loadOperatorAuth, operatorRequest } from './operator-auth.mjs';
 import { initializeMeasurement } from './measurement.mjs';
+import { reminderPreferencePanels } from './reminder-panels.mjs';
 const groups = [
   ['activationRetention', 'Activation / returning activity', [
     ['signins', 'Sign-ins'], ['recipesCreated', 'Recipes created'],
@@ -391,6 +392,7 @@ function initialize() {
       const cards = [
         ...goalPanels(data),
         ...supportPanels(data),
+        ...reminderPreferencePanels(data),
         ...snapshotPanels(data),
         ...dashboardPanels(data).map(panel => ({ ...panel, title: `On-demand window — ${panel.title}` })),
         ...metricPanels(data).map(panel => ({ ...panel, title: `Raw compatibility window — ${panel.title}` })),

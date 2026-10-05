@@ -347,6 +347,52 @@ test('combined metrics use one final account/deletion snapshot after both raw sc
   assert.equal(accountQueries, 1);
 });
 
+test('private reminder cohorts read fresh-version fields through normal immutable sync without opting other devices in', async () => {
+  const h = harness({ roles: [] });
+  const properties = { disclosureVersion: 1, consentEpoch: randomUUID(), cohortId: randomUUID(),
+    platform: 'windows', localDay: '2026-08-01' };
+  const start = { id: randomUUID(), name: 'reminder_preference_started', ts: '2026-08-01T12:00:00.000Z', properties };
+  await h.sync(request('POST', payload({ events: [start] })));
+  assert.deepEqual((await h.sync(request('GET'))).jsonBody.settings, []);
+  assert.deepEqual((await friendHandlers(h).sync(request('GET'))).jsonBody.settings, []);
+  await assert.rejects(h.sync(request('POST', payload({ events: [{ ...start, id: randomUUID(),
+    properties: { ...properties, disclosureVersion: 0 } }] }))), error => error.status === 400);
+  await h.sync(request('POST', payload({ events: [{ ...start, properties: { ...properties, cohortId: randomUUID() } }] })));
+  assert.equal(h.read(`events:${start.id}`, userId).record.properties.cohortId, properties.cohortId);
+  const result = (await friendHandlers(h, teamId, ['Bloomstep.Admin']).metrics(request('GET', null, { days: '1' }))).jsonBody;
+  assert.equal(result.reminderPreferenceCohorts.source, 'observed_app_reminder_preference');
+  assert.equal(result.reminderPreferenceCohorts.originalGoalReason, 'not_observable');
+  assert.equal(result.goalMetrics.goals.find(goal => goal.id === 'notification_disable_30').reason, 'not_observable');
+  await assert.rejects(h.metrics(request('GET')), error => error.status === 403);
+});
+
+test('new preference cohort uses final account deletion filtering, not retained deleted-owner observations', async () => {
+  const h = harness();
+  const owners = Array.from({ length: 50 }, (_, index) => (index + 1).toString(16).padStart(64, '0'));
+  for (const owner of owners) {
+    h.put({ id: 'account', userId: owner, type: 'account', deleted: false, deletedRecords: {}, ttl: -1 });
+    const properties = { disclosureVersion: 1, consentEpoch: randomUUID(), cohortId: randomUUID(),
+      platform: 'windows', localDay: '2026-08-01' };
+    for (const [name, ts, localDay] of [
+      ['reminder_preference_started', '2026-08-01T12:00:00.000Z', '2026-08-01'],
+      ['reminder_preference_disabled', '2026-08-05T12:00:00.000Z', '2026-08-05'],
+    ]) {
+      const id = randomUUID();
+      h.put({ id: `events:${id}`, userId: owner, type: 'events', ttl: 86400,
+        record: { id, name, ts, properties: { ...properties, localDay } } });
+    }
+  }
+  const before = (await h.metrics(request('GET', null, { days: '1' }))).jsonBody.reminderPreferenceCohorts;
+  assert.equal(before.matureAccounts, 50);
+  assert.equal(before.disabledAccounts, 50);
+  assert.equal(before.observedDisableFraction, null);
+  h.put({ ...h.read('account', owners[0]), deleted: true });
+  const after = (await h.metrics(request('GET', null, { days: '1' }))).jsonBody.reminderPreferenceCohorts;
+  assert.equal(after.matureAccounts, null);
+  assert.equal(after.disabledAccounts, null);
+  assert.equal(after.reason, 'cohort_below_50');
+});
+
 test('receipt creation and first response cannot escape failed or concurrent account/voice CAS', async () => {
   let reject = true;
   const note = voice();
