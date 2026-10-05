@@ -15,6 +15,10 @@ on:
         description: 'Run only the read-only free-tier and spending-limit audit'
         type: boolean
         default: false
+      verify_native_input:
+        description: 'After the existing ARM64 synthetic build, verify owned native focus/input (not customer acceptance)'
+        type: boolean
+        default: false
 
 jobs:
   spend-proof:
@@ -46,7 +50,7 @@ jobs:
       - run: npm run check
       - run: npm test
       - run: node ../tool/generate_event_registry.mjs --check
-      - run: node --test ../test/site_console_test.mjs ../test/measurement_packaging_test.mjs ../test/identity_callbacks_test.mjs ../test/branding_contract_test.mjs
+      - run: node --test ../test/site_console_test.mjs ../test/measurement_packaging_test.mjs ../test/identity_callbacks_test.mjs ../test/branding_contract_test.mjs ../test/synthetic_native_contract_test.mjs
       - name: Verify bundled operator authentication
         working-directory: .
         run: |
@@ -224,6 +228,19 @@ jobs:
         with:
           name: bloomstep-synthetic-preview-arm64-NOT-FOR-RELEASE
           path: build/windows/arm64/runner/Profile/
+      - name: Verify synthetic native input
+        timeout-minutes: 3
+        if: matrix.arch == 'arm64' && github.event_name == 'workflow_dispatch' && inputs.verify_native_input
+        shell: pwsh
+        run: |
+          & .\tool\verify_synthetic_input.ps1 -Executable (Join-Path $env:GITHUB_WORKSPACE 'build\windows\arm64\runner\Profile\bloomstep.exe') -Output (Join-Path $env:RUNNER_TEMP 'synthetic-native-input.json')
+      - name: Preserve synthetic input outcome, including host failures
+        if: always() && matrix.arch == 'arm64' && github.event_name == 'workflow_dispatch' && inputs.verify_native_input
+        uses: actions/upload-artifact@v4
+        with:
+          name: bloomstep-synthetic-input-arm64-NOT-CUSTOMER-ACCEPTANCE
+          path: ${{ runner.temp }}/synthetic-native-input.json
+          if-no-files-found: warn
   release:
     if: startsWith(github.ref, 'refs/tags/v')
     needs: [api, test-and-build-windows]
