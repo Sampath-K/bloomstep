@@ -96,6 +96,28 @@ publishing any lesson, instrument or "recent research" claim.
 
 ## Platforms and budget
 
+### Launch scope versus later enhancement scope
+
+Launch readiness is tracked as nine finite packages in `docs/status.md`:
+actual owner-only private-loop cleanup; original target-aligned metric/goal
+contracts; session/native health coverage; approved multi-identity/device/
+offline/recovery/erasure acceptance; selected-operator/team/referral acceptance;
+authorized Windows surfaces; worker freshness/cron; production auth/legal/
+controller/budget/unsigned trust; and exact release/deploy/rollback/security/
+requirements/customer-UX sign-off. Package owners, next actions, dependencies
+and definitions of done are authoritative there. Instrumentation/formula gaps
+are engineering work, not only population blockers.
+
+A separate elapsed-user evidence workstream retains genuine D7/D30/D90
+hypotheses, original crash-free quality criterion and reviewed experiment
+activation. No fabricated cohort, waived requirement or guaranteed90-day
+launch wait; distinguish later hypothesis maturity from true launch safety/
+quality gates and require explicit canary/production interpretation where
+unresolved. New library/curated education/adaptive lessons/microanimations
+remain planned outside this launch critical path. Permission for code completion
+does not grant Admin, OS changes, real account erasure, another identity,
+invitation sending or paid infrastructure.
+
 Flutter Win32 first: unsigned per-user installer from the small website and
 GitHub Releases, ARM64 and x64. Microsoft Store packaging later; iOS/iPadOS,
 Android and macOS native builds later. No large new toolchains or paid purchases.

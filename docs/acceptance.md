@@ -1,5 +1,25 @@
 # One consolidated candidate acceptance
 
+**Current candidate is unsigned preview.5**, source `e844fea`. Owner-scoped
+habit/feedback deletion source, exact API/ARM64/x64 PR/main/tag CI, API deployment,
+dual public download hashes and normal ARM644->5 upgrade/version/protocol/stable
+namespace pass. Normal5 restored an available genuine session with fresh
+HTTP200/account merge. This is not full private-loop or launch acceptance.
+
+**Export automation failure/recovery:** the owned normal5 export action opened
+the real native Save As dialog, but the test's UIA filename/Save locator failed.
+The user observed a blocked modal. Exact installed owner, common dialog title/
+class and native Cancel control ID/name/parent/PID were then proved; cancellation
+destroyed that dialog and the app remained responsive. No file was saved,
+overwritten or deleted; no fixture was written. This test is FAILED/BLOCKED,
+not success. Foreground probes are paused for customer self-use; diagnose the
+native locator using isolated synthetic fixtures and coordinate an explicit
+interactive slot before resuming. No repeated commandeering of the customer
+window. Machine/API/readback/cleanup ownership stays with implementation.
+
+The following preview.4 evidence remains historical; it does not substitute
+for the failed preview.5 export/fixture acceptance or the finite launch backlog.
+
 Preview.4 (`v0.1.0-preview.4`, release source `5b675a5`) is an unsigned Windows engineering candidate, **not a customer-accepted
 MVP**. Developer-owned source, native build, distribution, actual local upgrade,
 protocol lifecycle and main-branch operational proofs are recorded in
@@ -12,7 +32,8 @@ normal/repeat launch and app-only branded sign-in capture are verified.
 Actual isolated Windows v4 DPAPI synthetic upgrade readback preserves the same
 encrypted file; no real customer credential store was inspected. Both versioned native jobs passed actual interactive
 unchecked checkbox/explicit synthetic selection/installation+installed-entry
-events/owned uninstall. Use this installed candidate, not earlier previews.
+events/owned uninstall. That preservation evidence applies to preview.4. Use current preview.5 for
+customer self-use, with the paused test and remaining gates above explicit.
 
 ## Compact final acceptance sequence
 
