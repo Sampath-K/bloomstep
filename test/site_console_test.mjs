@@ -1,8 +1,26 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
-import { approvedConnection, formatMetric, replyAttempt, metricPanels, tokenHeaders, dashboardPanels, snapshotPanels } from '../site/console.mjs';
+import { approvedConnection, formatMetric, replyAttempt, metricPanels, tokenHeaders, dashboardPanels, snapshotPanels, goalPanels } from '../site/console.mjs';
 import { dashboardSummaries } from '../api/src/dashboards.mjs';
+import { goalMetrics } from '../api/src/goals.mjs';
+
+test('goal UI distinguishes target, unavailable actual, denominator, window and coverage without proxy success', () => {
+  const data = { goalMetrics: goalMetrics([], '2026-08-31', '2026-08-31', '2026-09-01') };
+  const panels = goalPanels(data);
+  assert.equal(panels.length, 1);
+  assert.match(panels[0].definition, /opt-in/);
+  assert.match(panels[0].definition, /2026-08-31/);
+  assert.match(panels[0].rows.find(row => row.label.startsWith('D7')).value, /40%.*Unavailable.*cohort_below_50/);
+  assert.match(panels[0].rows.find(row => row.label.startsWith('Crash-free')).value, /99.5%.*not_observable/);
+  assert.match(panels[0].rows.find(row => row.label.includes('at30')).value, /Tracking only/);
+  assert.throws(() => goalPanels({}));
+  data.goalMetrics.goals[0].value = 2;
+  assert.throws(() => goalPanels(data));
+  data.goalMetrics.goals[0].value = null;
+  data.goalMetrics.schemaVersion = 99;
+  assert.throws(() => goalPanels(data));
+});
 
 test('production SWA deployment follows main and serializes the one shared environment', () => {
   const workflow = readFileSync(new URL('../.github/workflows/azure.yml', import.meta.url), 'utf8');
@@ -40,6 +58,19 @@ test('typed dashboards surface unavailable cohorts and completed-day definitions
   assert.throws(() => dashboardPanels({}));
   data.dashboards.funnel.sameDayActivation.rate = 2;
   assert.throws(() => dashboardPanels(data));
+});
+
+test('worker schedule card shows delayed generation separately from missing/stale snapshots', () => {
+  const data = { dailySnapshots: { source: 'persisted_daily_worker', definition: 'No fallback.',
+    startDay: '2026-08-31', endDay: '2026-08-31',
+    schedule: { cron: '20 2 * * *', latestDueAt: '2026-09-01T02:20:00.000Z', latestTickDue: true,
+      backfillMaxDays: 30, definition: 'Generation time is not a scheduled invocation.' },
+    days: [{ day: '2026-08-31', status: 'unavailable', reason: 'stale_generation', record: null,
+      scheduledAt: '2026-09-01T02:20:00.000Z', generationOffsetSeconds: null }] } };
+  const panels = snapshotPanels(data);
+  assert.match(panels[0].rows[0].value, /Due.*02:20/);
+  assert.match(panels[0].rows[1].value, /stale_generation.*no raw-data fallback/);
+  assert.match(panels[0].definition, /30 completed UTC days/);
 });
 
 test('operator never sends bearer tokens to a different origin', () => {

@@ -118,6 +118,44 @@ export function dashboardPanels(data) {
   ];
 }
 
+export function goalPanels(data) {
+  const metrics = data?.goalMetrics;
+  if (metrics?.schemaVersion !== 1 || metrics.source !== 'on_demand_target_aligned' ||
+      metrics.minimumCohort !== 50 || !Array.isArray(metrics.goals) || metrics.goals.length !== 13 ||
+      typeof metrics.coverage !== 'string' ||
+      ![metrics.startDay, metrics.endDay, metrics.observedThrough].every(day => typeof day === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(day))) {
+    throw new Error('Incomplete target-aligned metric response.');
+  }
+  const seen = new Set();
+  const rows = metrics.goals.map(goal => {
+    if (typeof goal.id !== 'string' || seen.has(goal.id) || typeof goal.label !== 'string' || typeof goal.definition !== 'string' ||
+        !['fraction', 'per_user', 'hours', 'business_days'].includes(goal.unit) ||
+        !['at_least', 'at_most', 'track'].includes(goal.comparison) ||
+        ![null, 'not_observable', 'cohort_below_50', 'contributors_below_50'].includes(goal.reason) ||
+        (goal.value === null) !== (goal.reason !== null) ||
+        (goal.target === null) !== (goal.comparison === 'track') ||
+        [goal.target, goal.value].some(value => value !== null &&
+          (typeof value !== 'number' || !Number.isFinite(value) || value < 0 || goal.unit === 'fraction' && value > 1)) ||
+        [goal.numerator, goal.denominator].some(value => value !== null && (!Number.isInteger(value) || value < 50)) ||
+        goal.value !== null && (goal.numerator === null || goal.denominator === null)) {
+      throw new Error('Invalid target-aligned metric; no substitute value rendered.');
+    }
+    seen.add(goal.id);
+    const display = value => value === null ? 'Unavailable' : goal.unit === 'fraction' ? `${formatMetric(value * 100)}%` :
+      `${formatMetric(value)} ${goal.unit.replaceAll('_', ' ')}`;
+    const target = goal.target === null ? 'Tracking only; no numeric target specified' :
+      `Goal ${goal.comparison === 'at_least' ? '>=' : '<='}${display(goal.target)}`;
+    const evidence = goal.reason ? `Unavailable (${goal.reason}); no pass/fail claim` :
+      `Observed ${display(goal.value)}; ${goal.comparison === 'track' ? 'tracking only' :
+        (goal.comparison === 'at_least' ? goal.value >= goal.target : goal.value <= goal.target) ?
+          'observed target met, not population proof' : 'observed target not met'}`;
+    return { label: goal.label, value: `${target}; actual ${evidence}; numerator ${formatMetric(goal.numerator)} / denominator ${formatMetric(goal.denominator)}. ${goal.definition}` };
+  });
+  return [{ title: 'Original goals / observed actuals (version1, on demand)',
+    definition: `${metrics.startDay} through ${metrics.endDay}; completed UTC dates before ${metrics.observedThrough}. ${metrics.coverage} Frequency/graduation horizons must end in this selected window; immature cohorts are excluded, never failing outcomes. These are not persisted daily-worker snapshots.`,
+    rows }];
+}
+
 export function snapshotPanels(data) {
   const series = data?.dailySnapshots;
   if (series?.source !== 'persisted_daily_worker' || !Array.isArray(series.days) ||
@@ -132,8 +170,23 @@ export function snapshotPanels(data) {
       if (day.status !== 'available' || !day.record || day.registryVersion !== 1 || typeof day.generatedAt !== 'string') {
         throw new Error('Invalid persisted daily worker record.');
       }
-      return { label: day.day, value: `Generated ${day.generatedAt}; registry v${day.registryVersion}; independent daily cohorts (null remains suppressed/unavailable)` };
+      if (day.generationOffsetSeconds !== undefined &&
+          (typeof day.generationOffsetSeconds !== 'number' || !Number.isFinite(day.generationOffsetSeconds))) {
+        throw new Error('Invalid snapshot generation delay.');
+      }
+      const timing = day.generationOffsetSeconds === undefined ? '' :
+        `; generation offset ${day.generationOffsetSeconds} seconds from ${day.scheduledAt} (not proof of scheduled execution)`;
+      return { label: day.day, value: `Generated ${day.generatedAt}; registry v${day.registryVersion}${timing}; independent daily cohorts (null remains suppressed/unavailable)` };
     }) };
+  if (series.schedule !== undefined) {
+    const schedule = series.schedule;
+    if (schedule.cron !== '20 2 * * *' || schedule.backfillMaxDays !== 30 ||
+        typeof schedule.latestDueAt !== 'string' || typeof schedule.latestTickDue !== 'boolean' ||
+        typeof schedule.definition !== 'string') throw new Error('Invalid worker schedule contract.');
+    history.definition += ` ${schedule.definition} Backfill is explicit and limited to30 completed UTC days.`;
+    history.rows.unshift({ label: 'Latest completed-day schedule (UTC)',
+      value: `Due ${schedule.latestDueAt}; ${schedule.latestTickDue ? 'due time passed' : 'awaiting declared due time'}; no punctuality or fresh-snapshot success inferred` });
+  }
   const latest = series.days.find(day => day.day === series.endDay);
   if (!latest || latest.status !== 'available') {
     history.rows.push({ label: 'Latest completed UTC day', value: 'Unavailable; no older-day or on-demand substitute' });
@@ -278,6 +331,7 @@ function initialize() {
       if (!Number.isInteger(days) || days < 1 || days > 30) throw new Error('Choose 1-30 UTC days.');
       const data = await request(`/api/team/metrics?days=${days}`);
       const cards = [
+        ...goalPanels(data),
         ...snapshotPanels(data),
         ...dashboardPanels(data).map(panel => ({ ...panel, title: `On-demand window — ${panel.title}` })),
         ...metricPanels(data).map(panel => ({ ...panel, title: `Raw compatibility window — ${panel.title}` })),
