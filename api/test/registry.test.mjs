@@ -2,6 +2,9 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { randomUUID } from 'node:crypto';
 import { execFileSync } from 'node:child_process';
+import { mkdtempSync, readFileSync, rmSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join, sep } from 'node:path';
 import { eventSchema } from '../src/contracts.mjs';
 import { registryVersion, eventRegistry } from '../src/event_registry.g.mjs';
 import { dashboardSummaries } from '../src/dashboards.mjs';
@@ -13,6 +16,20 @@ test('generated registry is versioned, reproducible and self-contained', () => {
   assert.equal(registryVersion, 1);
   assert.ok(eventRegistry.first_launch);
   execFileSync(process.execPath, ['tool/generate_event_registry.mjs', '--check'], { cwd: new URL('../../', import.meta.url) });
+});
+test('generated registry checks out as LF even with Windows autocrlf enabled', () => {
+  const dir = mkdtempSync(join(tmpdir(), 'bloomstep-registry-checkout-'));
+  try {
+    const files = ['api/src/event_registry.g.mjs', 'api/src/event_registry.g.d.mts', 'lib/core/event_registry.g.dart'];
+    execFileSync('git', ['-c', 'core.autocrlf=true', 'checkout-index', `--prefix=${dir}${sep}`, '--', ...files],
+      { cwd: new URL('../../', import.meta.url) });
+    for (const file of files) {
+      const bytes = readFileSync(join(dir, ...file.split('/')), 'utf8');
+      assert.equal(bytes.includes('\r'), false, `Generated ${file} must remain LF in a fresh Windows checkout.`);
+    }
+  } finally {
+    rmSync(dir, { recursive: true });
+  }
 });
 test('strict event-specific properties reject private and misplaced fields', () => {
   const valid = [

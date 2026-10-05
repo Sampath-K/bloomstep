@@ -501,3 +501,9 @@ Malformed history fails visibly and rolls back the migration rather than
 silently replacing it. Synthetic tests prove these boundaries; exact native
 CI/release and any preserved-session upgrade remain separate pending evidence.
 Do not claim the already installed preview.5 contains this later fix.
+
+Generated event registry files are repository-pinned to LF in `.gitattributes`.
+The API suite checks an actual isolated `core.autocrlf=true` Git checkout of
+all three generated files, not just the author's local settings. This prevents
+Windows CRLF conversion from causing a false generator-drift failure without
+weakening exact generated-content checks or changing global Git preferences.
