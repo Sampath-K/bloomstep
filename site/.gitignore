@@ -8,6 +8,8 @@ assets/*
 !assets/habit-tiny.svg
 !assets/habit-celebrate.svg
 !assets/download-flow.svg
+!assets/sample-garden.png
+!assets/sample-garden-provenance.json
 !assets/edge-downloads.png
 !assets/chrome-downloads.png
 !assets/download-capture-provenance.json

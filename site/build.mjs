@@ -8,7 +8,8 @@ if(values.some(Boolean) && !values.every(Boolean)) throw Error('All public conso
 await mkdir(new URL('./assets/',import.meta.url),{recursive:true});
 const index=await readFile(new URL('./index.html',import.meta.url),'utf8');
 for (const asset of ['habit-anchor.svg','habit-tiny.svg','habit-celebrate.svg',
-  'download-flow.svg','edge-downloads.png','chrome-downloads.png','download-capture-provenance.json']) {
+  'download-flow.svg','edge-downloads.png','chrome-downloads.png','download-capture-provenance.json',
+  'sample-garden.png','sample-garden-provenance.json']) {
   const bytes = await readFile(new URL(`./assets/${asset}`, import.meta.url));
   if (!bytes.length) throw Error(`Required onboarding asset is empty: ${asset}`);
 }

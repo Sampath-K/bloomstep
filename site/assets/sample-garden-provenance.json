@@ -1,0 +1,15 @@
+{
+  "schemaVersion": 1,
+  "file": "sample-garden.png",
+  "screenshotSha256": "9c4a8a4d91b141059522f915839f5369477758835bb8a4472271032aa0f76a1c",
+  "viewport": "1280x850 window; 1266x813 captured app surface",
+  "captureSource": "tool/preview.dart",
+  "sourceRevision": "121a8f6747e0ff2a11fa3e9026838c3d1a7d2f0d",
+  "workflowRun": 37450083076,
+  "workflowArtifact": "bloomstep-synthetic-preview-arm64-NOT-FOR-RELEASE",
+  "architecture": "windows-arm64",
+  "syntheticContent": true,
+  "customerData": false,
+  "accountOrCloud": false,
+  "releaseBuild": false
+}

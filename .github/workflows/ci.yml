@@ -19,8 +19,34 @@ on:
         description: 'After the existing ARM64 synthetic build, verify owned native focus/input (not customer acceptance)'
         type: boolean
         default: false
+      verify_edge_warning:
+        description: 'Run only the one bounded preview.8 Edge warning observation'
+        type: boolean
+        default: false
 
 jobs:
+  edge-download-observation:
+    if: (github.event_name == 'pull_request' && github.event.action == 'opened') || (github.event_name == 'workflow_dispatch' && inputs.verify_edge_warning && !inputs.verify_aggregates && !inputs.verify_spend_guard)
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - run: npm ci --prefix site --ignore-scripts
+      - name: Observe the exact public preview installer with Edge protections unchanged
+        shell: pwsh
+        run: |
+          $env:BLOOMSTEP_EDGE_EVIDENCE_DIR = Join-Path $env:RUNNER_TEMP 'bloomstep-edge-warning'
+          $env:BLOOMSTEP_EDGE_PROFILE_DIR = Join-Path $env:RUNNER_TEMP 'bloomstep-edge-warning-profile'
+          node tool/capture_edge_warning.mjs
+      - name: Preserve sanitized Edge observation
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: edge-download-warning-observation
+          path: ${{ runner.temp }}/bloomstep-edge-warning/
+          if-no-files-found: warn
   spend-proof:
     if: github.event_name == 'workflow_dispatch' && inputs.verify_spend_guard
     permissions:
@@ -34,7 +60,7 @@ jobs:
       id-token: write
     uses: ./.github/workflows/aggregates.yml
   api:
-    if: github.event_name != 'workflow_dispatch' || (!inputs.verify_aggregates && !inputs.verify_spend_guard)
+    if: github.event_name != 'workflow_dispatch' || (!inputs.verify_aggregates && !inputs.verify_spend_guard && !inputs.verify_edge_warning)
     runs-on: ubuntu-latest
     defaults:
       run:
@@ -58,7 +84,7 @@ jobs:
           node --test site/test/*.test.mjs
           npm --prefix site run build
   test-and-build-windows:
-    if: github.event_name != 'workflow_dispatch' || (!inputs.verify_aggregates && !inputs.verify_spend_guard)
+    if: github.event_name != 'workflow_dispatch' || (!inputs.verify_aggregates && !inputs.verify_spend_guard && !inputs.verify_edge_warning)
     strategy:
       fail-fast: false
       matrix:
