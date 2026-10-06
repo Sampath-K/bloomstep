@@ -68,6 +68,9 @@ void main() {
                       .writeAsString(jsonEncode(completedEvidence));
                 }
                 await tester.binding.setSurfaceSize(null);
+                expect(cleanupVerified, isTrue);
+                expect(apiProcessStopped, isTrue);
+                expect(profileClosed, isTrue);
               }
             }
           }
@@ -246,9 +249,22 @@ void main() {
         find.widgetWithText(TextFormField, 'I will...'),
         'take one easy breath',
       );
+      await tester.pumpAndSettle();
+      expect(
+        tester.widget<CheckboxListTile>(find.byType(CheckboxListTile)).value,
+        isFalse,
+      );
       await tester.ensureVisible(find.text('I practiced my celebration'));
       await tester.tap(find.text('I practiced my celebration'));
       await tester.pumpAndSettle();
+      expect(
+        tester
+            .widget<FilledButton>(
+              find.widgetWithText(FilledButton, 'Save recipe'),
+            )
+            .enabled,
+        isTrue,
+      );
       await tester.tap(find.text('Save recipe'));
       await _waitFor(
         tester,
@@ -257,6 +273,15 @@ void main() {
             (await activeStore!.habits()).single.behavior ==
             'take one easy breath',
       );
+      await syncService().sync();
+      final editedReadback = await readRemoteGarden(
+        'synthetic-a-edit-readback.sqlite',
+      );
+      expect(
+        (editedReadback['habits'] as List).single,
+        containsPair('behavior', 'take one easy breath'),
+      );
+      expect((await activeStore!.syncPayload())['habits'], isEmpty);
 
       for (var day = 1; day <= 17; day++) {
         await _advanceClock(tester);
@@ -331,6 +356,18 @@ void main() {
       await tester.tap(find.text('Done').last);
       await tester.pumpAndSettle();
       await syncService().sync();
+      final feedbackReadback = await readRemoteGarden(
+        'synthetic-a-feedback-readback.sqlite',
+      );
+      expect(
+        (feedbackReadback['voice'] as List).single,
+        containsPair('body', 'Synthetic API acceptance feedback'),
+      );
+      expect(
+        (feedbackReadback['voice'] as List).single,
+        containsPair('id', (await activeStore!.voice()).single['id']),
+      );
+      expect((await activeStore!.syncPayload())['voice'], isEmpty);
 
       await tester.tap(find.byTooltip('Settings and privacy'));
       await tester.pumpAndSettle();
@@ -399,6 +436,8 @@ void main() {
         expect((await deletionReadback.syncPayload())['deletions'], isEmpty);
         final tombstones =
             (await deletionReadback.export())['deletions'] as List;
+        expect((await deletionReadback.export())['checkins'], isEmpty);
+        expect((await deletionReadback.export())['reflections'], isEmpty);
         expect(
           tombstones.any(
             (row) =>
@@ -542,6 +581,11 @@ void main() {
         'ownerPartitionHashes': [firstAccount, secondAccount],
         'createdRecipeIds': [firstRecipe.id, secondHabitId],
         'createdFeedbackIds': [firstVoice['id']],
+        'recipeReadbackVerified': true,
+        'editedRecipeReadbackVerified': true,
+        'checkinReadbackVerified': true,
+        'feedbackReadbackVerified': true,
+        'acknowledgedOutboxEmptyVerified': true,
         'deletionReadbackVerified': true,
         'restartReadbackVerified': true,
         'uiJourney': [
@@ -600,6 +644,7 @@ Future<void> _plant(
     find.widgetWithText(TextFormField, 'I will...'),
     behavior,
   );
+  await tester.pumpAndSettle();
   await tester.ensureVisible(find.text('I practiced my celebration'));
   await tester.tap(find.text('I practiced my celebration'));
   await tester.pumpAndSettle();

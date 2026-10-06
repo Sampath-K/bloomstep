@@ -5,10 +5,36 @@ claim. Microsoft/Google federation, provider consent, MFA, customer accounts,
 production Cosmos, Windows notifications/share UI, and population measurements
 are not exercised by it.
 
+## Engineering acceptance policy
+
+The approved engineering MVP gate is unattended for non-provider application
+journeys. A test-only synthetic username and ephemeral secret substitute solely
+for provider authentication. Tests must exercise the normal garden UI and store,
+session ownership checks, HTTP business handlers, owner isolation and durable
+disposable persistence. Production releases exclude the test login/server and
+reject synthetic credentials. No manual customer recipe action is required for
+this engineering gate, and customer data must remain untouched.
+
+Required evidence covers create/edit, Did-it/Did-more/rest/undo,
+reflection/graduation, feedback, sync/export, deletion/no resurrection,
+restart/recovery, isolation, exact cleanup and targeted failure/regression cases.
+Where native automation is unsupported, layered unit/integration/operation-log
+checks are accepted only with explicit limits and deferred real-user validation.
+Google/MSA federation and human accessibility assessment are deferred, not passed.
+Notification schedule/submission/cancellation logs prove those operations, not
+toast display, delivery, Focus or shell behavior. Actual display remains deferred
+telemetry/manual validation.
+
+Real retention/growth/crash-free cohorts are postlaunch evidence, not synthetic
+achievements. Public launch privacy/legal/controller/contact/billing/trust facts
+remain separate unresolved gates. This policy preserves production security and
+the no-customer-changes, no-OS-changes and $0 constraints.
+
 **Verification state:** API/authentication tests and Flutter static analysis
 pass locally. The full Windows widget/API journey is pending hosted x64 and
-ARM64 CI; this OneDrive worktree cannot execute Flutter tests because its
-generated Windows symlink/reparse-point directories are not writable. Do not
+ARM64 CI; local widget/store tests work after dependency resolution, but native
+Windows plugin generation reports missing symlink support on this host. No
+Developer Mode or other OS setting is changed. Do not
 count the journey as green until both hosted receipts report `success` and
 `cleanupVerified: true`.
 
@@ -95,6 +121,30 @@ synthetic profile into analytics. Habit/feedback fixtures use the existing
 default-off telemetry consent behavior; synthetic records and receipts are not
 population inputs.
 
+## Required coverage and auth-observability audit
+
+| Engineering requirement | Bounded evidence surface | Limit |
+|---|---|---|
+| Habit create/edit, Did-more/rest/Did-it/undo, reflection/graduation | Windows journey through `GardenScreen` and `GardenStore` | Injected clock, synthetic records; no population timing/automaticity claim. |
+| Sync/export and durable upload | Fresh same-owner GET readbacks for recipe/check-in plus app JSON export | Real API business handlers and file-backed adapter, not Azure Cosmos. |
+| Delete/no resurrection, restart and isolation | Exact-ID tombstones, fresh owner readbacks, profile reopen and second synthetic owner | No whole-customer-account deletion or second physical device. |
+| Exact cleanup | Journey teardown closes owned stores/session/API process and deletes its new temp root; CI preserves flags | Passing UI alone is insufficient; both architecture receipts must confirm cleanup. |
+| Failure/recovery guards | `sync_outbox_test.dart`, `sync_test.dart`, `test_auth_contract_test.dart`, `test_auth_release_contract_test.dart`, `api/test/local_api_e2e.test.mjs` | Partial failures, durable retry, concurrent edit/account guards, wrong/missing/expired/scope/role auth and production-mode rejection are isolated fixtures. |
+| Notification operations | `reminder_scheduler_test.dart` and reminder preference/pause suites | Fake gateway request/cancel logs and durable scheduling/caps; no delivered toast or shell assessment. |
+| Auth success and diagnostic consent | `session_events_test.dart`, `session_diagnostics_test.dart` | Existing account consent only; not a complete provider funnel. |
+
+The current production path emits `session_started` and fresh verified
+`signin_succeeded` through `SessionEvents` only under existing analytics consent.
+Restored sessions do not manufacture fresh sign-in successes. Optional installer
+`signin_view` observation has its own consent boundary. `SessionDiagnostics`
+records consented, capped error-kind/source/session metadata without exception
+text or stacks; it is not a provider-stage collector. Sign-in/restore failures
+are surfaced to the user in `bloomstep_app.dart`, but there is **no complete
+sanitized consent-respecting provider attempt/stage/failure telemetry funnel**
+implemented here. That approved observability work remains unimplemented, not
+passed by synthetic sign-in or inferred from session presence. This recovery
+adds no collector, identifiers, provider error text or credentials.
+
 ## Manual paths and unattended alternatives
 
 | Surface | Unattended strategy | Explicit residual |
@@ -135,8 +185,8 @@ The automation receipt is engineering evidence, not a security certification.
 Acquisition/cohort evidence is not a synthetic release prerequisite. Under the
 approved product contract, reviewed genuine cohort and guardrail evidence gates
 **experiment activation/publication**, not the ability to publish an engineering
-preview. The experiment remains OFF and the full MVP remains incomplete until
-its real review/activation/result loop is completed.
+preview. The experiment remains OFF; its real review/activation/result loop is
+a separately deferred population gate, not a synthetic engineering achievement.
 
 ## Running
 
@@ -152,3 +202,6 @@ alone does not await filesystem I/O. Undo after a rest checks that today's
 entry becomes absent, not the already-zero positive practice count. Graduated
 recipes no longer show Did-it controls; weekly reflection checks its persisted
 cadence and its own UI instead.
+Editing also settles the field-change frame before clicking celebration:
+otherwise the old checked checkbox can send an unchecked value and leave Save
+disabled. `recipe_builder_test.dart` reproduces and guards that harness sequence.
