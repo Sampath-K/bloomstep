@@ -50,7 +50,7 @@ jobs:
       - run: npm run check
       - run: npm test
       - run: node ../tool/generate_event_registry.mjs --check
-      - run: node --test ../test/site_console_test.mjs ../test/measurement_packaging_test.mjs ../test/identity_callbacks_test.mjs ../test/branding_contract_test.mjs ../test/synthetic_native_contract_test.mjs
+      - run: node --test ../test/site_console_test.mjs ../test/measurement_packaging_test.mjs ../test/installer_onboarding_test.mjs ../test/identity_callbacks_test.mjs ../test/branding_contract_test.mjs ../test/synthetic_native_contract_test.mjs
       - name: Verify bundled operator authentication
         working-directory: .
         run: |
@@ -83,8 +83,12 @@ jobs:
           $output = Join-Path $env:RUNNER_TEMP 'bloomstep-installer-compile-output'
           New-Item -ItemType Directory -Path $fixture, $output -Force | Out-Null
           [IO.File]::WriteAllText((Join-Path $fixture 'syntax-probe.txt'), 'Compile-only fixture; never installed or distributed.')
-          & "${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe" /Qp /DAppArch=${{ matrix.arch }} /DAppVersion=0.0.0-contract "/DSourceDir=$fixture" "/O$output" packaging\bloomstep.iss
+          & "${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe" /Qp /DAppArch=${{ matrix.arch }} /DAppVersion=0.0.0-contract "/DSourceDir=$fixture" "/DOnboardingPreprocessOutput=$output\production-preprocessed.iss" "/O$output" packaging\bloomstep.iss
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          $compiledSource = Get-Content "$output\production-preprocessed.iss" -Raw
+          if ($compiledSource -match 'Installation is prohibited|8E9B101B-CB3D-4C0F-B733-FC1DFFB75129|function PrepareToInstall') {
+            throw 'Production compile contains capture-only fixture guard or identity.'
+          }
       - uses: subosito/flutter-action@v2
         if: matrix.arch == 'x64'
         with:

@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 240 128" width="240" height="128">
+  <title>A familiar mug and one new seed</title>
+  <rect x="8" y="8" width="224" height="112" rx="20" fill="#f7f4ef"/>
+  <path d="M24 99h192" stroke="#66564a" stroke-width="4" stroke-linecap="round"/>
+  <path d="M117 47h15c27 0 27 36 0 36h-15" fill="none" stroke="#66564a" stroke-width="7"/>
+  <path d="M53 39h68v44q0 14-14 14H67q-14 0-14-14z" fill="#b11f4b"/>
+  <path d="M76 27q-10-7 0-14M97 27q-10-7 0-14" fill="none" stroke="#66564a" stroke-width="3" stroke-linecap="round"/>
+  <ellipse cx="181" cy="92" rx="9" ry="6" transform="rotate(-25 181 92)" fill="#66564a"/>
+</svg>

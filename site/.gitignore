@@ -4,4 +4,11 @@ assets/*
 !assets/bloomstep-wordmark.png
 !assets/bloomstep-favicon.png
 !assets/bloomstep-social.png
+!assets/habit-anchor.svg
+!assets/habit-tiny.svg
+!assets/habit-celebrate.svg
+!assets/download-flow.svg
+!assets/edge-downloads.png
+!assets/chrome-downloads.png
+!assets/download-capture-provenance.json
 operator-config.json
