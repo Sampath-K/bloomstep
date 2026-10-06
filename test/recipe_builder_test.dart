@@ -1,9 +1,58 @@
 import 'package:bloomstep/core/models.dart';
+import 'package:bloomstep/core/garden_store.dart';
 import 'package:bloomstep/features/garden/recipe_builder.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
+  test('same-day synthetic edit stays newer than monotonic undo', () async {
+    var now = DateTime(2026, 10, 4, 12);
+    final store = await GardenStore.open(
+      ':memory:',
+      'synthetic-owner',
+      clock: () => now,
+    );
+    addTearDown(store.close);
+    final habit = await store.plant(
+      aspiration: 'Calm',
+      anchor: 'morning drink',
+      behavior: 'relax my shoulders',
+      celebration: 'smile',
+      species: 'Cosmos',
+    );
+    await store.checkIn(habit.id, CheckInResult.didMore);
+    await store.undo(habit.id);
+    final uploaded = (await store.syncPayload())['habits'] as List;
+    final undoUpdated = DateTime.parse(
+      (uploaded.single as Map)['updated'] as String,
+    );
+    expect(undoUpdated.isAfter(now.toUtc()), isTrue);
+    final day = localDate(now);
+    now = now.add(const Duration(seconds: 1));
+    await store.edit(
+      (await store.habits()).single,
+      anchor: habit.anchor,
+      behavior: 'take one easy breath',
+      celebration: habit.celebration,
+    );
+    final edited = (await store.syncPayload())['habits'] as List;
+    expect(
+      DateTime.parse((edited.single as Map)['updated'] as String)
+          .isAfter(undoUpdated),
+      isTrue,
+    );
+    expect(localDate(now), day);
+    await store.mergeSync({
+      'habits': uploaded,
+      'checkins': [],
+      'reflections': [],
+      'voice': [],
+    });
+    expect((await store.habits()).single.behavior, 'take one easy breath');
+    expect((await store.habits()).single.today, isNull);
+    expect((await store.syncPayload())['habits'], hasLength(1));
+  });
+
   testWidgets('edited recipe can re-practice celebration and save its draft', (
     tester,
   ) async {
