@@ -13,10 +13,15 @@ const _testBuild = bool.fromEnvironment('BLOOMSTEP_TEST_BUILD');
 const _testIssuer = 'https://bloomstep.test';
 const _testAudience = 'bloomstep-test-api';
 
+List<int> _decodeTestSecret(String secret) => List.generate(
+  secret.length ~/ 2,
+  (index) => int.parse(secret.substring(index * 2, index * 2 + 2), radix: 16),
+);
+
 class SyntheticTestSession extends IdentityService {
   SyntheticTestSession(String username, String secret)
     : _username = username,
-      _secretBytes = utf8.encode(secret),
+      _secretBytes = _decodeTestSecret(secret),
       _expiresAt = DateTime.now().toUtc().add(const Duration(hours: 1)) {
     account = sha256.convert(utf8.encode('$_testIssuer|$username')).toString();
   }
@@ -92,7 +97,7 @@ class TestOnlyAuthGate {
   static bool get enabled => _testBuild;
 
   static bool validTestSecret(String? secret) =>
-      secret != null && RegExp(r'^[A-Za-z0-9_-]{32,128}$').hasMatch(secret);
+      secret != null && RegExp(r'^[A-Fa-f0-9]{64}$').hasMatch(secret);
 
   static bool _constantTimeEquals(String expected, String actual) {
     final left = expected.codeUnits;

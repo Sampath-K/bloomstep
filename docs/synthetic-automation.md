@@ -26,8 +26,9 @@ count the journey as green until both hosted receipts report `success` and
   minimal OS variables needed to start Node. It does not inherit
   repository/provider credentials or production endpoints.
 - The test app requires the compile-time `BLOOMSTEP_TEST_BUILD` flag, a valid
-  per-run key, a `synthetic-*` username, and a newly created disposable temp
-  directory. It creates no local profile for a missing/wrong key or a real
+  per-run 32-byte hexadecimal key, a `synthetic-*` username, and a newly
+  created disposable temp directory. It creates no local profile for a
+  missing/wrong key or a real
   account-shaped username. Its short-lived HS256 token grants only
   `Garden.ReadWrite`; neither the test API nor the production authenticator
   accepts caller-supplied roles.

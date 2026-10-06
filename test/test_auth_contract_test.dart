@@ -10,6 +10,14 @@ import '../integration_test/support/test_only_app.dart';
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
+  test('test auth accepts only 256-bit hexadecimal keys', () {
+    final key = List.filled(64, 'a').join();
+    expect(TestOnlyAuthGate.validTestSecret(key), isTrue);
+    expect(TestOnlyAuthGate.validTestSecret(key.substring(1)), isFalse);
+    expect(TestOnlyAuthGate.validTestSecret('${key.substring(1)}g'), isFalse);
+    expect(TestOnlyAuthGate.validTestSecret(null), isFalse);
+  });
+
   testWidgets('test auth fails closed for a missing key and email-like names', (
     tester,
   ) async {
