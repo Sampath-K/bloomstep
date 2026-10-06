@@ -145,3 +145,10 @@ Use the ordinary test-only define for widget/unit tests; never add a test key to
 executed by the supported Windows CI matrix, which creates and injects its
 own per-job key. The production release command remains a separate step and
 does not receive the test define or key.
+
+The desktop journey waits for durable model transitions and the garden's
+enabled Plant control after SQLite work and UI reload complete. Frame settling
+alone does not await filesystem I/O. Undo after a rest checks that today's
+entry becomes absent, not the already-zero positive practice count. Graduated
+recipes no longer show Did-it controls; weekly reflection checks its persisted
+cadence and its own UI instead.

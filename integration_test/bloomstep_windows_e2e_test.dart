@@ -216,10 +216,16 @@ void main() {
 
       await tester.ensureVisible(find.text('Not today'));
       await tester.tap(find.text('Not today'));
-      await tester.pumpAndSettle();
+      await _waitFor(tester, find.text('Rest days belong in a garden.'));
       expect(find.text('Rest days belong in a garden.'), findsOneWidget);
       await tester.tap(find.text('No reason needed'));
-      await tester.pumpAndSettle();
+      await _waitFor(
+        tester,
+        find.text('Undo today'),
+        ready: () async =>
+            (await activeStore!.habits()).single.today ==
+            CheckInResult.notToday,
+      );
       expect(
         (await activeStore!.habits()).single.today,
         CheckInResult.notToday,
@@ -229,8 +235,7 @@ void main() {
       await _waitFor(
         tester,
         find.text('Did it'),
-        ready: () async =>
-            (await activeStore!.habits()).single.practiceCount == 0,
+        ready: () async => (await activeStore!.habits()).single.today == null,
       );
 
       await tester.ensureVisible(find.byTooltip('Edit recipe'));
@@ -294,14 +299,13 @@ void main() {
         find.text('Weekly reflection / Recipe Doctor'),
       );
       await tester.tap(find.text('Weekly reflection / Recipe Doctor'));
-      await tester.pumpAndSettle();
+      await _waitFor(tester, find.text('A minute for your recipe'));
       expect(find.text('A minute for your recipe'), findsOneWidget);
       await tester.tap(find.text('Keep my recipe'));
-      await tester.pumpAndSettle();
       await _waitFor(
         tester,
-        find.text('Did it'),
-        ready: () async => (await activeStore!.syncPayload())['events'] != null,
+        find.text('Weekly reflection / Recipe Doctor'),
+        ready: () async => await activeStore!.setting('weeklyLast') != null,
       );
       await syncService().sync();
 
@@ -312,7 +316,13 @@ void main() {
         'Synthetic API acceptance feedback',
       );
       await tester.tap(find.text('Save feedback'));
-      await tester.pumpAndSettle();
+      await _waitFor(
+        tester,
+        find.text('My feedback'),
+        ready: () async => (await activeStore!.voice()).any(
+          (row) => row['body'] == 'Synthetic API acceptance feedback',
+        ),
+      );
       expect(find.text('My feedback'), findsOneWidget);
       expect(
         (await activeStore!.voice()).single['body'],
@@ -352,7 +362,11 @@ void main() {
       await tester.pumpAndSettle();
       expect(find.text('Delete this feedback?'), findsOneWidget);
       await tester.tap(find.text('Delete feedback'));
-      await tester.pumpAndSettle();
+      await _waitFor(
+        tester,
+        find.text('My feedback'),
+        ready: () async => (await activeStore!.voice()).isEmpty,
+      );
       expect(await activeStore!.voice(), isEmpty);
       await syncService().sync();
 
@@ -361,7 +375,11 @@ void main() {
       await tester.pumpAndSettle();
       expect(find.text('Delete this recipe?'), findsOneWidget);
       await tester.tap(find.text('Delete recipe'));
-      await tester.pumpAndSettle();
+      await _waitFor(
+        tester,
+        find.text('Plant a habit'),
+        ready: () async => (await activeStore!.habits()).isEmpty,
+      );
       expect(await activeStore!.habits(), isEmpty);
       await syncService().sync();
 
@@ -454,7 +472,11 @@ void main() {
       await tester.tap(find.byTooltip('Delete this recipe'));
       await tester.pumpAndSettle();
       await tester.tap(find.text('Delete recipe'));
-      await tester.pumpAndSettle();
+      await _waitFor(
+        tester,
+        find.text('Plant a habit'),
+        ready: () async => (await activeStore!.habits()).isEmpty,
+      );
       expect(await activeStore!.habits(), isEmpty);
       await syncService().sync();
       final secondReadback = await GardenStore.open(
@@ -600,12 +622,12 @@ Future<void> _naturalnessReflection(WidgetTester tester) async {
   );
   await tester.ensureVisible(find.text('Save reflection'));
   await tester.tap(find.text('Save reflection'));
-  await tester.pumpAndSettle();
+  await _waitFor(tester, find.text('Check naturalness'));
 }
 
 Future<void> _advanceClock(WidgetTester tester) async {
   await tester.tap(find.byKey(const Key('test-advance-clock')));
-  await tester.pumpAndSettle();
+  await _waitFor(tester, find.text('Did it'));
 }
 
 Future<void> _dismissCelebration(WidgetTester tester) async {
@@ -620,15 +642,26 @@ Future<void> _waitFor(
   Duration duration = const Duration(seconds: 10),
 }) async {
   final timer = Stopwatch()..start();
+  var modelReady = false;
+  var gardenIdle = false;
   while (timer.elapsed < duration) {
     await tester.runAsync(
       () => Future<void>.delayed(const Duration(milliseconds: 50)),
     );
     await tester.pump(const Duration(milliseconds: 50));
-    if (finder.evaluate().isNotEmpty &&
-        (ready == null || await tester.runAsync(ready) == true)) {
-      return;
+    modelReady = ready == null || await tester.runAsync(ready) == true;
+    if (finder.evaluate().isNotEmpty && modelReady) {
+      // SQLite may finish before _load has rebuilt and re-enabled UI actions.
+      final plantButtons = tester.widgetList<FilledButton>(
+        find.widgetWithText(FilledButton, 'Plant a habit', skipOffstage: false),
+      );
+      gardenIdle = plantButtons.every((button) => button.enabled);
+      if (gardenIdle) return;
     }
   }
-  fail('The desktop UI did not reach the expected state.');
+  fail(
+    'The desktop UI did not reach $finder '
+    '(matches: ${finder.evaluate().length}, '
+    'modelReady: $modelReady, gardenIdle: $gardenIdle).',
+  );
 }
