@@ -54,6 +54,13 @@ export const eventSchema = z.object({
   if (event.properties && !propertySchemas[event.name].safeParse(event.properties).success) {
     context.addIssue({ code: 'custom', message: 'Invalid event-specific properties.', path: ['properties'] });
   }
+  if (event.name === 'auth_observation' && event.properties) {
+    const p = event.properties;
+    if ((p.outcome === 'failed') !== (p.authErrorKind !== 'none') ||
+        p.outcome === 'started' && p.elapsedMs !== 0) {
+      context.addIssue({ code: 'custom', message: 'Inconsistent authentication observation.', path: ['properties'] });
+    }
+  }
   if (event.properties?.measurementSource !== undefined) {
     const website = event.properties.measurementSource === 'website_receipt';
     const allowed = website ? ['landing_view', 'invite_link_open', 'download_click']

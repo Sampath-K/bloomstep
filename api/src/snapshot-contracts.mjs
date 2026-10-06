@@ -19,6 +19,17 @@ const stages = ['landing_view', 'download_click', 'install_completed', 'first_la
 const dashboards = z.strictObject({
   registryVersion: z.literal(registryVersion), minimumCohort: z.literal(50),
   startDay: day, endDay: day, observedThrough: day,
+  // Optional solely for already persisted pre-instrumentation snapshots.
+  authentication: z.strictObject({
+    stages: z.strictObject(Object.fromEntries(['session_entry', 'api_token'].map(stage => [
+      stage, z.strictObject({ observedUsers: count, succeededUsers: count, failedUsers: count,
+        failureKinds: z.strictObject(Object.fromEntries(
+          ['timeout', 'network', 'validation', 'unavailable', 'unknown'].map(kind => [kind, count]))),
+      }),
+    ]))),
+    allUserSigninSuccessRate: z.null(), preAuthFailures: z.null(), providerBreakdown: z.null(),
+    definition: z.literal(definition.authentication.definition),
+  }).optional(),
   funnel: z.strictObject({
     stages: z.strictObject(Object.fromEntries(stages.map(name => [name, z.strictObject({ users: count, suppressed: z.boolean() })]))),
     visitToDownload: rate, downloadToLaunch: rate, launchToSignin: rate, sameDayActivation: rate,
@@ -57,7 +68,9 @@ export const dailySnapshotRecordSchema = z.strictObject({
   startDay: day, endDay: day, minimumCohort: z.literal(50),
   daily: z.array(z.strictObject({
     day, suppressed: z.boolean(), users: count,
-    counts: z.strictObject(Object.fromEntries(Object.keys(eventRegistry).map(name => [name, count]))).nullable(),
+    counts: z.strictObject(Object.fromEntries(Object.keys(eventRegistry).map(name => [
+      name, name === 'auth_observation' ? count.optional() : count,
+    ]))).nullable(),
   })).length(1),
   categories: z.strictObject({
     activationRetention: z.strictObject({ signins: count, recipesCreated: count, checkins: count, graduations: count, returningCheckinUsers: count }),

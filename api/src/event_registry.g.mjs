@@ -1313,6 +1313,62 @@ export const eventRegistry = {
     "observable": true,
     "legacy": false
   },
+  "auth_observation": {
+    "properties": {
+      "attemptId": {
+        "type": "uuid"
+      },
+      "authStage": {
+        "enum": [
+          "session_entry",
+          "api_token"
+        ]
+      },
+      "outcome": {
+        "enum": [
+          "started",
+          "succeeded",
+          "failed"
+        ]
+      },
+      "authErrorKind": {
+        "enum": [
+          "none",
+          "timeout",
+          "network",
+          "validation",
+          "unavailable",
+          "unknown"
+        ]
+      },
+      "authSource": {
+        "enum": [
+          "external_unattributed"
+        ]
+      },
+      "elapsedMs": {
+        "type": "integer",
+        "min": 0,
+        "max": 180000
+      },
+      "platform": {
+        "enum": [
+          "windows"
+        ]
+      }
+    },
+    "observable": true,
+    "legacy": false,
+    "required": [
+      "attemptId",
+      "authStage",
+      "outcome",
+      "authErrorKind",
+      "authSource",
+      "elapsedMs",
+      "platform"
+    ]
+  },
   "experiment_exposure": {
     "properties": {
       "experiment": {
@@ -4092,6 +4148,95 @@ export const eventJsonSchema = {
                 "validation",
                 "unavailable",
                 "unknown"
+              ]
+            }
+          }
+        }
+      }
+    },
+    {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "name",
+        "ts",
+        "properties"
+      ],
+      "properties": {
+        "id": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "name": {
+          "const": "auth_observation"
+        },
+        "ts": {
+          "type": "string",
+          "format": "date-time",
+          "pattern": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}(?:\\.\\d{1,6})?Z$"
+        },
+        "schemaVersion": {
+          "const": 1
+        },
+        "properties": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "attemptId",
+            "authStage",
+            "outcome",
+            "authErrorKind",
+            "authSource",
+            "elapsedMs",
+            "platform"
+          ],
+          "properties": {
+            "attemptId": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "authStage": {
+              "type": "string",
+              "enum": [
+                "session_entry",
+                "api_token"
+              ]
+            },
+            "outcome": {
+              "type": "string",
+              "enum": [
+                "started",
+                "succeeded",
+                "failed"
+              ]
+            },
+            "authErrorKind": {
+              "type": "string",
+              "enum": [
+                "none",
+                "timeout",
+                "network",
+                "validation",
+                "unavailable",
+                "unknown"
+              ]
+            },
+            "authSource": {
+              "type": "string",
+              "enum": [
+                "external_unattributed"
+              ]
+            },
+            "elapsedMs": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 180000
+            },
+            "platform": {
+              "type": "string",
+              "enum": [
+                "windows"
               ]
             }
           }

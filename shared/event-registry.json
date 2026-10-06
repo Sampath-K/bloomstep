@@ -24,7 +24,13 @@
     "measurementSource": {"enum":["website_receipt","installer_receipt"]},
     "disclosureVersion": {"type":"integer","min":1,"max":1},
     "cohortId": {"type":"uuid"},
-    "consentEpoch": {"type":"uuid"}
+    "consentEpoch": {"type":"uuid"},
+    "attemptId": {"type":"uuid"},
+    "authStage": {"enum":["session_entry","api_token"]},
+    "outcome": {"enum":["started","succeeded","failed"]},
+    "authErrorKind": {"enum":["none","timeout","network","validation","unavailable","unknown"]},
+    "authSource": {"enum":["external_unattributed"]},
+    "elapsedMs": {"type":"integer","min":0,"max":180000}
   },
   "events": {
     "analytics_consent": {"properties":["platform"]},
@@ -77,6 +83,7 @@
     "cold_start": {"properties":["sessionId","platform","latencyMs"]},
     "sync_error": {"properties":["platform","errorKind"]},
     "auth_error": {"properties":["platform","errorKind"]},
+    "auth_observation": {"properties":["attemptId","authStage","outcome","authErrorKind","authSource","elapsedMs","platform"],"required":["attemptId","authStage","outcome","authErrorKind","authSource","elapsedMs","platform"],"fixed":{"platform":"windows"}},
     "experiment_exposure": {"properties":["experiment","variant","platform"],"observable":false}
   }
 }

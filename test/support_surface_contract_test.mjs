@@ -36,7 +36,9 @@ test('support export does not migrate SQLite or introduce a separate unpurged co
 });
 
 test('public trust notice discloses service support facts separately from optional analytics without filling historical gaps', () => {
-  const site = readFileSync(new URL('../site/index.html', import.meta.url), 'utf8');
+  const home = readFileSync(new URL('../site/index.html', import.meta.url), 'utf8');
+  assert.match(home, /href="\/releases\/"/);
+  const site = readFileSync(new URL('../site/releases/index.html', import.meta.url), 'utf8');
   assert.match(site, /server receipt and first committed team-reply times/);
   assert.match(site, /Service-operational support records are separate from optional product-event analytics/);
   assert.match(site, /Historical missing times are not backfilled/);

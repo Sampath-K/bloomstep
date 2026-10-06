@@ -1059,7 +1059,7 @@ class _GardenScreenState extends State<GardenScreen> {
                   SwitchListTile(
                     title: const Text('Share product event counts'),
                     subtitle: const Text(
-                      'Off by default. Counts and up to 10 observed Dart/Flutter errors per session; category only, no message/stack, habit text, email or feedback. Native/process deaths are not captured; no crash-free claim.',
+                      'Off by default. Counts, up to 10 observed Dart/Flutter errors and 10 account-session/token attempts per session; fixed stage/outcome/category and elapsed time only. No message/stack, credentials, habit text, email or feedback. Pre-sign-in failures and provider choice are not captured. Native/process deaths are not captured; no crash-free claim. Turning off clears local queued events; previously synced events follow account deletion and retention rules.',
                     ),
                     value: analytics,
                     onChanged: (v) async {
