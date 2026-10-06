@@ -13,6 +13,15 @@ import 'package:bloomstep/services/sync_service.dart';
 import 'support/local_test_api.dart';
 import 'support/test_only_app.dart';
 
+DateTime syntheticJourneyStart(DateTime runStartedAt) {
+  final utc = runStartedAt.toUtc();
+  return DateTime.utc(
+    utc.year,
+    utc.month,
+    utc.day,
+  ).subtract(const Duration(days: 31));
+}
+
 void main() {
   IntegrationTestWidgetsFlutterBinding.ensureInitialized();
 
@@ -22,13 +31,7 @@ void main() {
       final secret = Platform.environment['BLOOMSTEP_TEST_AUTH_SECRET'];
       expect(TestOnlyAuthGate.validTestSecret(secret), isTrue);
       final runRoot = await Directory.systemTemp.createTemp('bloomstep-it-');
-      final today = DateTime.now();
-      var testNow = DateTime(
-        today.year,
-        today.month,
-        today.day,
-        12,
-      ).subtract(const Duration(days: 31));
+      var testNow = syntheticJourneyStart(DateTime.now());
       DateTime testClock() => testNow;
       final evidencePath = Platform.environment['BLOOMSTEP_TEST_EVIDENCE_PATH'];
       Map<String, Object?>? completedEvidence;
@@ -68,6 +71,9 @@ void main() {
                       .writeAsString(jsonEncode(completedEvidence));
                 }
                 await tester.binding.setSurfaceSize(null);
+                expect(cleanupVerified, isTrue);
+                expect(apiProcessStopped, isTrue);
+                expect(profileClosed, isTrue);
               }
             }
           }
@@ -131,6 +137,24 @@ void main() {
         activeStore!,
         testApiOrigin: testApi.origin,
       );
+      Future<Map<String, Object?>> readRemoteGarden(String filename) async {
+        final readback = await GardenStore.open(
+          p.join(runRoot.path, filename),
+          activeStore!.account,
+        );
+        try {
+          await SyncService(
+            activeSession!,
+            readback,
+            testApiOrigin: testApi.origin,
+          ).sync();
+          expect((await readback.syncPayload()).values, everyElement(isEmpty));
+          return await readback.export();
+        } finally {
+          await readback.close();
+        }
+      }
+
       expect(
         () => SyncService(
           activeSession!,
@@ -150,7 +174,19 @@ void main() {
       final firstRecipe = recipes.single;
       expect(firstRecipe.behavior, contains('relax my shoulders'));
       await syncService().sync();
-      expect((await activeStore!.syncPayload())['habits'], hasLength(1));
+      expect((await activeStore!.habits()).single.id, firstRecipe.id);
+      expect((await activeStore!.syncPayload())['habits'], isEmpty);
+      final plantedReadback = await readRemoteGarden(
+        'synthetic-a-plant-readback.sqlite',
+      );
+      expect(
+        (plantedReadback['habits'] as List).single,
+        containsPair('id', firstRecipe.id),
+      );
+      expect(
+        (plantedReadback['habits'] as List).single,
+        containsPair('behavior', firstRecipe.behavior),
+      );
 
       await tester.ensureVisible(find.text('Did more'));
       await tester.tap(find.text('Did more'));
@@ -158,17 +194,21 @@ void main() {
         tester,
         find.text('Undo today'),
         ready: () async =>
-            (await activeStore!.syncPayload())['checkins'] != null,
+            (await activeStore!.habits()).single.today == CheckInResult.didMore,
       );
       await syncService().sync();
-      final didMoreCheckins =
-          (await activeStore!.syncPayload())['checkins'] as List;
+      final didMoreCheckins = (await activeStore!.export())['checkins'] as List;
       expect(
         didMoreCheckins.any(
           (checkin) => (checkin as Map)['result'] == 'didMore',
         ),
         isTrue,
       );
+      expect((await activeStore!.syncPayload())['checkins'], isEmpty);
+      final practiceReadback = await readRemoteGarden(
+        'synthetic-a-practice-readback.sqlite',
+      );
+      expect(practiceReadback['checkins'], didMoreCheckins);
       await _dismissCelebration(tester);
       await tester.ensureVisible(find.text('Undo today'));
       await tester.tap(find.text('Undo today'));
@@ -182,10 +222,16 @@ void main() {
 
       await tester.ensureVisible(find.text('Not today'));
       await tester.tap(find.text('Not today'));
-      await tester.pumpAndSettle();
+      await _waitFor(tester, find.text('Rest days belong in a garden.'));
       expect(find.text('Rest days belong in a garden.'), findsOneWidget);
       await tester.tap(find.text('No reason needed'));
-      await tester.pumpAndSettle();
+      await _waitFor(
+        tester,
+        find.text('Undo today'),
+        ready: () async =>
+            (await activeStore!.habits()).single.today ==
+            CheckInResult.notToday,
+      );
       expect(
         (await activeStore!.habits()).single.today,
         CheckInResult.notToday,
@@ -195,10 +241,11 @@ void main() {
       await _waitFor(
         tester,
         find.text('Did it'),
-        ready: () async =>
-            (await activeStore!.habits()).single.practiceCount == 0,
+        ready: () async => (await activeStore!.habits()).single.today == null,
       );
 
+      // Undo makes timestamps monotonic even when the synthetic clock is frozen.
+      testNow = testNow.add(const Duration(seconds: 1));
       await tester.ensureVisible(find.byTooltip('Edit recipe'));
       await tester.tap(find.byTooltip('Edit recipe'));
       await tester.pumpAndSettle();
@@ -207,9 +254,22 @@ void main() {
         find.widgetWithText(TextFormField, 'I will...'),
         'take one easy breath',
       );
+      await tester.pumpAndSettle();
+      expect(
+        tester.widget<CheckboxListTile>(find.byType(CheckboxListTile)).value,
+        isFalse,
+      );
       await tester.ensureVisible(find.text('I practiced my celebration'));
       await tester.tap(find.text('I practiced my celebration'));
       await tester.pumpAndSettle();
+      expect(
+        tester
+            .widget<FilledButton>(
+              find.widgetWithText(FilledButton, 'Save recipe'),
+            )
+            .enabled,
+        isTrue,
+      );
       await tester.tap(find.text('Save recipe'));
       await _waitFor(
         tester,
@@ -218,6 +278,15 @@ void main() {
             (await activeStore!.habits()).single.behavior ==
             'take one easy breath',
       );
+      await syncService().sync();
+      final editedReadback = await readRemoteGarden(
+        'synthetic-a-edit-readback.sqlite',
+      );
+      expect(
+        (editedReadback['habits'] as List).single,
+        containsPair('behavior', 'take one easy breath'),
+      );
+      expect((await activeStore!.syncPayload())['habits'], isEmpty);
 
       for (var day = 1; day <= 17; day++) {
         await _advanceClock(tester);
@@ -232,8 +301,9 @@ void main() {
         await _dismissCelebration(tester);
       }
       await tester.ensureVisible(find.text('Check naturalness'));
-      await _naturalnessReflection(tester);
+      await _naturalnessReflection(tester, activeStore!);
       expect((await activeStore!.habits()).single.status, 'active');
+      expect(find.textContaining('Naturalness available '), findsOneWidget);
 
       for (var day = 18; day <= 31; day++) {
         await _advanceClock(tester);
@@ -248,10 +318,10 @@ void main() {
         await _dismissCelebration(tester);
       }
       await tester.ensureVisible(find.text('Check naturalness'));
-      await _naturalnessReflection(tester);
+      await _naturalnessReflection(tester, activeStore!);
       await _waitFor(
         tester,
-        find.text('Check naturalness'),
+        find.text('Weekly reflection / Recipe Doctor'),
         ready: () async =>
             (await activeStore!.habits()).single.status == 'graduated',
       );
@@ -260,14 +330,13 @@ void main() {
         find.text('Weekly reflection / Recipe Doctor'),
       );
       await tester.tap(find.text('Weekly reflection / Recipe Doctor'));
-      await tester.pumpAndSettle();
+      await _waitFor(tester, find.text('A minute for your recipe'));
       expect(find.text('A minute for your recipe'), findsOneWidget);
       await tester.tap(find.text('Keep my recipe'));
-      await tester.pumpAndSettle();
       await _waitFor(
         tester,
-        find.text('Did it'),
-        ready: () async => (await activeStore!.syncPayload())['events'] != null,
+        find.text('Weekly reflection / Recipe Doctor'),
+        ready: () async => await activeStore!.setting('weeklyLast') != null,
       );
       await syncService().sync();
 
@@ -278,7 +347,13 @@ void main() {
         'Synthetic API acceptance feedback',
       );
       await tester.tap(find.text('Save feedback'));
-      await tester.pumpAndSettle();
+      await _waitFor(
+        tester,
+        find.text('My feedback'),
+        ready: () async => (await activeStore!.voice()).any(
+          (row) => row['body'] == 'Synthetic API acceptance feedback',
+        ),
+      );
       expect(find.text('My feedback'), findsOneWidget);
       expect(
         (await activeStore!.voice()).single['body'],
@@ -287,9 +362,21 @@ void main() {
       await tester.tap(find.text('Done').last);
       await tester.pumpAndSettle();
       await syncService().sync();
+      final feedbackReadback = await readRemoteGarden(
+        'synthetic-a-feedback-readback.sqlite',
+      );
+      expect(
+        (feedbackReadback['voice'] as List).single,
+        containsPair('body', 'Synthetic API acceptance feedback'),
+      );
+      expect(
+        (feedbackReadback['voice'] as List).single,
+        containsPair('id', (await activeStore!.voice()).single['id']),
+      );
+      expect((await activeStore!.syncPayload())['voice'], isEmpty);
 
       await tester.tap(find.byTooltip('Settings and privacy'));
-      await tester.pumpAndSettle();
+      await _waitFor(tester, find.text('Export my data (JSON)'));
       await tester.ensureVisible(find.text('Export my data (JSON)'));
       await tester.tap(find.text('Export my data (JSON)'));
       await _waitFor(
@@ -312,13 +399,19 @@ void main() {
       await tester.tap(find.byTooltip('Help us grow'));
       await tester.pumpAndSettle();
       await tester.tap(find.text('Cancel'));
-      await tester.pumpAndSettle();
+      await _waitFor(tester, find.text('My feedback'));
       expect(find.text('My feedback'), findsOneWidget);
       await tester.tap(find.byTooltip('Delete this feedback'));
       await tester.pumpAndSettle();
       expect(find.text('Delete this feedback?'), findsOneWidget);
       await tester.tap(find.text('Delete feedback'));
-      await tester.pumpAndSettle();
+      await _waitFor(
+        tester,
+        find.text('Plant a habit'),
+        ready: () async =>
+            (await activeStore!.voice()).isEmpty &&
+            find.text('My feedback').evaluate().isEmpty,
+      );
       expect(await activeStore!.voice(), isEmpty);
       await syncService().sync();
 
@@ -327,7 +420,11 @@ void main() {
       await tester.pumpAndSettle();
       expect(find.text('Delete this recipe?'), findsOneWidget);
       await tester.tap(find.text('Delete recipe'));
-      await tester.pumpAndSettle();
+      await _waitFor(
+        tester,
+        find.text('Plant a habit'),
+        ready: () async => (await activeStore!.habits()).isEmpty,
+      );
       expect(await activeStore!.habits(), isEmpty);
       await syncService().sync();
 
@@ -343,8 +440,12 @@ void main() {
         ).sync();
         expect(await deletionReadback.habits(), isEmpty);
         expect(await deletionReadback.voice(), isEmpty);
+        expect((await activeStore!.syncPayload())['deletions'], isEmpty);
+        expect((await deletionReadback.syncPayload())['deletions'], isEmpty);
         final tombstones =
-            (await deletionReadback.syncPayload())['deletions'] as List;
+            (await deletionReadback.export())['deletions'] as List;
+        expect((await deletionReadback.export())['checkins'], isEmpty);
+        expect((await deletionReadback.export())['reflections'], isEmpty);
         expect(
           tombstones.any(
             (row) =>
@@ -385,9 +486,10 @@ void main() {
         expect(await reopened.habits(), isEmpty);
         expect(await reopened.voice(), isEmpty);
         expect(
-          ((await reopened.syncPayload())['deletions'] as List).length,
+          ((await reopened.export())['deletions'] as List).length,
           greaterThanOrEqualTo(2),
         );
+        expect((await reopened.syncPayload())['deletions'], isEmpty);
       } finally {
         await reopened.close();
       }
@@ -417,7 +519,11 @@ void main() {
       await tester.tap(find.byTooltip('Delete this recipe'));
       await tester.pumpAndSettle();
       await tester.tap(find.text('Delete recipe'));
-      await tester.pumpAndSettle();
+      await _waitFor(
+        tester,
+        find.text('Plant a habit'),
+        ready: () async => (await activeStore!.habits()).isEmpty,
+      );
       expect(await activeStore!.habits(), isEmpty);
       await syncService().sync();
       final secondReadback = await GardenStore.open(
@@ -432,13 +538,15 @@ void main() {
         ).sync();
         expect(await secondReadback.habits(), isEmpty);
         expect(
-          ((await secondReadback.syncPayload())['deletions'] as List).any(
+          ((await secondReadback.export())['deletions'] as List).any(
             (row) =>
                 (row as Map)['recordId'] == secondHabitId &&
                 row['type'] == 'habits',
           ),
           isTrue,
         );
+        expect((await activeStore!.syncPayload())['deletions'], isEmpty);
+        expect((await secondReadback.syncPayload())['deletions'], isEmpty);
       } finally {
         await secondReadback.close();
       }
@@ -481,6 +589,11 @@ void main() {
         'ownerPartitionHashes': [firstAccount, secondAccount],
         'createdRecipeIds': [firstRecipe.id, secondHabitId],
         'createdFeedbackIds': [firstVoice['id']],
+        'recipeReadbackVerified': true,
+        'editedRecipeReadbackVerified': true,
+        'checkinReadbackVerified': true,
+        'feedbackReadbackVerified': true,
+        'acknowledgedOutboxEmptyVerified': true,
         'deletionReadbackVerified': true,
         'restartReadbackVerified': true,
         'uiJourney': [
@@ -539,13 +652,18 @@ Future<void> _plant(
     find.widgetWithText(TextFormField, 'I will...'),
     behavior,
   );
+  await tester.pumpAndSettle();
   await tester.ensureVisible(find.text('I practiced my celebration'));
   await tester.tap(find.text('I practiced my celebration'));
   await tester.pumpAndSettle();
   await tester.tap(find.text('Plant this seed'));
 }
 
-Future<void> _naturalnessReflection(WidgetTester tester) async {
+Future<void> _naturalnessReflection(
+  WidgetTester tester,
+  GardenStore store,
+) async {
+  final previous = ((await store.export())['reflections'] as List).length;
   await tester.tap(find.text('Check naturalness'));
   await tester.pumpAndSettle();
   expect(find.text('How natural does this feel?'), findsOneWidget);
@@ -561,12 +679,17 @@ Future<void> _naturalnessReflection(WidgetTester tester) async {
   );
   await tester.ensureVisible(find.text('Save reflection'));
   await tester.tap(find.text('Save reflection'));
-  await tester.pumpAndSettle();
+  await _waitFor(
+    tester,
+    find.text('Weekly reflection / Recipe Doctor'),
+    ready: () async =>
+        ((await store.export())['reflections'] as List).length == previous + 1,
+  );
 }
 
 Future<void> _advanceClock(WidgetTester tester) async {
   await tester.tap(find.byKey(const Key('test-advance-clock')));
-  await tester.pumpAndSettle();
+  await _waitFor(tester, find.text('Did it'));
 }
 
 Future<void> _dismissCelebration(WidgetTester tester) async {
@@ -581,15 +704,37 @@ Future<void> _waitFor(
   Duration duration = const Duration(seconds: 10),
 }) async {
   final timer = Stopwatch()..start();
+  var modelReady = false;
+  var gardenIdle = false;
+  var actionReady = false;
   while (timer.elapsed < duration) {
     await tester.runAsync(
       () => Future<void>.delayed(const Duration(milliseconds: 50)),
     );
     await tester.pump(const Duration(milliseconds: 50));
-    if (finder.evaluate().isNotEmpty &&
-        (ready == null || await tester.runAsync(ready) == true)) {
-      return;
+    modelReady = ready == null || await tester.runAsync(ready) == true;
+    if (finder.evaluate().isNotEmpty && modelReady) {
+      // SQLite may finish before _load has rebuilt and re-enabled UI actions.
+      final plantButtons = tester.widgetList<FilledButton>(
+        find.widgetWithText(FilledButton, 'Plant a habit', skipOffstage: false),
+      );
+      gardenIdle = plantButtons.every((button) => button.enabled);
+      final actions = tester.widgetList<ButtonStyleButton>(
+        find.ancestor(
+          of: finder,
+          matching: find.byWidgetPredicate(
+            (widget) => widget is ButtonStyleButton,
+          ),
+        ),
+      );
+      actionReady = actions.every((button) => button.enabled);
+      if (gardenIdle && actionReady) return;
     }
   }
-  fail('The desktop UI did not reach the expected state.');
+  fail(
+    'The desktop UI did not reach $finder '
+    '(matches: ${finder.evaluate().length}, '
+    'modelReady: $modelReady, gardenIdle: $gardenIdle, '
+    'actionReady: $actionReady).',
+  );
 }

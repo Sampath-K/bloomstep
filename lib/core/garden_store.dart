@@ -1448,6 +1448,10 @@ class GardenStore {
 
   static String _fingerprint(String table, Map<String, Object?> raw) {
     final row = _wireRow(table, raw);
+    if (table == 'reflections') {
+      // JSON whole scores and SQLite REAL values must share a fingerprint.
+      row['score'] = (row['score'] as num).toDouble();
+    }
     final keys = row.keys.toList()..sort();
     return sha256
         .convert(

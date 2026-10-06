@@ -11,6 +11,17 @@ measured.
 
 ## Iteration exit conditions
 
+**Gate distinction:** The table below retains historical real-user/public-launch
+acceptance requirements; these are not mandatory manual actions for the revised
+unattended non-provider engineering MVP gate. That gate uses isolated UI/API,
+durable persistence, regression and exact-cleanup evidence as defined in
+`synthetic-automation.md`. Provider federation, human accessibility, actual toast
+display/shell behavior and real population results remain explicitly deferred,
+not silently passed. Controller/legal/contact/billing/trust facts remain separate
+unresolved public-launch gates. The engineering journey is not green until exact
+x64 and ARM64 receipts prove all required stages and cleanup; auth stage/failure
+observability gaps are documented separately rather than inferred from sign-in.
+
 | # | Original job | Status | Evidence already observed | Still required for green |
 |---|---|---|---|---|
 | 0 | Build, run and ship the Windows app | **GREEN (engineering)** | Preview.8 is published from main `d3b6adf315bc68520494f6c3d017c68411ac1150`; API, x64 and ARM64 CI, installer lifecycle, public installers and hashes passed. The verified ARM64 preview.8 installer upgraded the existing install and the app launched normally. | None for iteration 0's engineering definition. This does not make the product MVP complete. |
