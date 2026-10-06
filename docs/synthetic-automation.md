@@ -205,3 +205,8 @@ cadence and its own UI instead.
 Editing also settles the field-change frame before clicking celebration:
 otherwise the old checked checkbox can send an unchecked value and leave Save
 disabled. `recipe_builder_test.dart` reproduces and guards that harness sequence.
+Before editing, the synthetic clock advances one second without changing the
+local practice day. Check-in/undo writes have monotonic microsecond timestamps
+even under a frozen clock; resetting an edit to the old frozen time would
+correctly lose to the server's newer recipe version. Conflict behavior is not
+relaxed to accommodate a backwards test clock.

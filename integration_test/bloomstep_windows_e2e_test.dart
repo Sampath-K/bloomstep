@@ -241,6 +241,8 @@ void main() {
         ready: () async => (await activeStore!.habits()).single.today == null,
       );
 
+      // Undo makes timestamps monotonic even when the synthetic clock is frozen.
+      testNow = testNow.add(const Duration(seconds: 1));
       await tester.ensureVisible(find.byTooltip('Edit recipe'));
       await tester.tap(find.byTooltip('Edit recipe'));
       await tester.pumpAndSettle();
