@@ -74,12 +74,15 @@ test('Edge observation is exact-asset, policy-gated, non-executing and one-shot'
   assert.match(script, /zone === 3/);
   assert.match(script, /policyPageReadStatus/);
   assert.match(script, /edge:\/\/settings\/privacy\/security/);
+  assert.match(script, /Protect from harmful sites and downloads/);
+  assert.match(script, /microsoftEdgePoliciesAbsent/);
   assert.match(script, /BLOOMSTEP_EDGE_PREFLIGHT_ONLY/);
-  assert.match(script, /share detected scam sites/i);
   assert.match(script, /if \(evidence\.warningCategory === 'unknown-reputation'\)/);
   assert.match(script, /No Keep or other download action was selected/);
   assert.doesNotMatch(script, /--disable-features|--no-sandbox|SmartScreenEnabled\s*[:=]\s*false|Run anyway/i);
-  assert.match(workflow, /github\.event_name == 'pull_request' && \(github\.event\.action == 'opened' \|\| github\.event\.action == 'synchronize'\)/);
+  assert.match(workflow, /github\.event_name == 'pull_request' && github\.event\.action == 'opened'/);
+  assert.match(workflow, /github\.event_name == 'workflow_dispatch' && inputs\.verify_edge_warning/);
+  assert.match(workflow, /!inputs\.verify_edge_warning/);
   assert.match(workflow, /name: edge-download-warning-observation/);
 });
 

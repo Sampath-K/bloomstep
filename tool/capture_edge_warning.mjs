@@ -133,6 +133,12 @@ try {
     /\bSource\b/i.test(policyText) &&
     /\bApplies To\b/i.test(policyText) &&
     /\bStatus\b/i.test(policyText) ? 'complete' : 'unavailable';
+  const microsoftEdgePolicySection = policyText.match(
+    /\bMicrosoft Edge Policies\b([\s\S]*?)(?=\bPolicy Precedence\b|\bExtension Install Policies\b|$)/i,
+  )?.[1] ?? '';
+  evidence.effectivePolicies.microsoftEdgePoliciesAbsent =
+    evidence.effectivePolicies.policyPageReadStatus === 'complete' &&
+    /\bNo policies set\b/i.test(microsoftEdgePolicySection);
   for (const name of [
     'SmartScreenEnabled',
     'SmartScreenPuaEnabled',
@@ -155,17 +161,21 @@ try {
     ({ nodes } = await accessibility.send('Accessibility.getFullAXTree'));
     smartScreenSwitch = nodes.find(node =>
       node.role?.value === 'switch' &&
-      /Microsoft Defender SmartScreen/i.test(node.name?.value ?? '') &&
-      !/share detected scam sites|sharing with/i.test(node.name?.value ?? ''),
+      /^Protect from harmful sites and downloads$/i.test(node.name?.value?.trim() ?? ''),
     );
     if (smartScreenSwitch) break;
   }
   const checkedProperty = smartScreenSwitch?.properties?.find(property => property.name === 'checked');
   const smartScreenChecked = checkedProperty?.value?.value;
+  const disabledProperty = smartScreenSwitch?.properties?.find(property => property.name === 'disabled');
+  const smartScreenDisabled = disabledProperty?.value?.value;
   evidence.settings.smartScreenSwitchFound = Boolean(smartScreenSwitch);
   evidence.settings.smartScreenEnabled =
     smartScreenChecked === true || smartScreenChecked === 'true' ? true :
       smartScreenChecked === false || smartScreenChecked === 'false' ? false : null;
+  evidence.settings.smartScreenSwitchLabel = smartScreenSwitch?.name?.value ?? null;
+  evidence.settings.smartScreenSwitchDisabled =
+    smartScreenDisabled === true || smartScreenDisabled === 'true';
   const enforcedSetting = evidence.effectivePolicies.SmartScreenEnabled?.value;
   evidence.settings.smartScreenEnforcementSource = smartScreenSwitch
     ? 'accessibility-switch'

@@ -19,10 +19,14 @@ on:
         description: 'After the existing ARM64 synthetic build, verify owned native focus/input (not customer acceptance)'
         type: boolean
         default: false
+      verify_edge_warning:
+        description: 'Run only the one bounded preview.8 Edge warning observation'
+        type: boolean
+        default: false
 
 jobs:
   edge-download-observation:
-    if: github.event_name == 'pull_request' && (github.event.action == 'opened' || github.event.action == 'synchronize')
+    if: (github.event_name == 'pull_request' && github.event.action == 'opened') || (github.event_name == 'workflow_dispatch' && inputs.verify_edge_warning && !inputs.verify_aggregates && !inputs.verify_spend_guard)
     runs-on: windows-latest
     steps:
       - uses: actions/checkout@v4
@@ -56,7 +60,7 @@ jobs:
       id-token: write
     uses: ./.github/workflows/aggregates.yml
   api:
-    if: github.event_name != 'workflow_dispatch' || (!inputs.verify_aggregates && !inputs.verify_spend_guard)
+    if: github.event_name != 'workflow_dispatch' || (!inputs.verify_aggregates && !inputs.verify_spend_guard && !inputs.verify_edge_warning)
     runs-on: ubuntu-latest
     defaults:
       run:
@@ -80,7 +84,7 @@ jobs:
           node --test site/test/*.test.mjs
           npm --prefix site run build
   test-and-build-windows:
-    if: github.event_name != 'workflow_dispatch' || (!inputs.verify_aggregates && !inputs.verify_spend_guard)
+    if: github.event_name != 'workflow_dispatch' || (!inputs.verify_aggregates && !inputs.verify_spend_guard && !inputs.verify_edge_warning)
     strategy:
       fail-fast: false
       matrix:
