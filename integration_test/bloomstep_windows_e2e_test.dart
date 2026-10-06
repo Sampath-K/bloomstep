@@ -13,6 +13,15 @@ import 'package:bloomstep/services/sync_service.dart';
 import 'support/local_test_api.dart';
 import 'support/test_only_app.dart';
 
+DateTime syntheticJourneyStart(DateTime runStartedAt) {
+  final utc = runStartedAt.toUtc();
+  return DateTime.utc(
+    utc.year,
+    utc.month,
+    utc.day,
+  ).subtract(const Duration(days: 31));
+}
+
 void main() {
   IntegrationTestWidgetsFlutterBinding.ensureInitialized();
 
@@ -22,8 +31,7 @@ void main() {
       final secret = Platform.environment['BLOOMSTEP_TEST_AUTH_SECRET'];
       expect(TestOnlyAuthGate.validTestSecret(secret), isTrue);
       final runRoot = await Directory.systemTemp.createTemp('bloomstep-it-');
-      final today = DateTime.now();
-      var testNow = today.subtract(const Duration(days: 31));
+      var testNow = syntheticJourneyStart(DateTime.now());
       DateTime testClock() => testNow;
       final evidencePath = Platform.environment['BLOOMSTEP_TEST_EVIDENCE_PATH'];
       Map<String, Object?>? completedEvidence;
