@@ -2,7 +2,7 @@
 import 'dart:convert';
 
 const eventRegistryVersion = 1;
-const eventNames = <String>{'analytics_consent','landing_view','invite_link_open','download_click','store_page_view','installer_started','install_completed','first_launch','signin_view','signin_provider_selected','signin_succeeded','signin_failed','aspiration_selected','recipe_created','celebration_practiced','first_checkin','checkin','comeback','recipe_doctor_applied','automaticity_score','reflection','weekly_reflection','habit_graduated','share_initiated','invite_accepted','buddy_added','paywall_view','trial_start','purchase','feedback_submitted','rating_prompted','rating_prompt_shown','rated','review_responded','reminder_sent','notif_sent','notif_delivered','notif_opened','notif_actioned','notif_dismissed','notif_disabled','reminder_preference_started','reminder_preference_disabled','reminder_preference_followup','session_started','crash','app_hang','cold_start','sync_error','auth_error','experiment_exposure'};
+const eventNames = <String>{'analytics_consent','landing_view','invite_link_open','download_click','store_page_view','installer_started','install_completed','first_launch','signin_view','signin_provider_selected','signin_succeeded','signin_failed','aspiration_selected','recipe_created','celebration_practiced','first_checkin','checkin','comeback','recipe_doctor_applied','automaticity_score','reflection','weekly_reflection','habit_graduated','share_initiated','invite_accepted','buddy_added','paywall_view','trial_start','purchase','feedback_submitted','rating_prompted','rating_prompt_shown','rated','review_responded','reminder_sent','notif_sent','notif_delivered','notif_opened','notif_actioned','notif_dismissed','notif_disabled','reminder_preference_started','reminder_preference_disabled','reminder_preference_followup','session_started','crash','app_hang','cold_start','sync_error','auth_error','auth_observation','experiment_exposure'};
 final Map<String, dynamic> eventRegistry = jsonDecode(r'''{
   "analytics_consent": {
     "properties": {
@@ -1315,6 +1315,62 @@ final Map<String, dynamic> eventRegistry = jsonDecode(r'''{
     },
     "observable": true,
     "legacy": false
+  },
+  "auth_observation": {
+    "properties": {
+      "attemptId": {
+        "type": "uuid"
+      },
+      "authStage": {
+        "enum": [
+          "session_entry",
+          "api_token"
+        ]
+      },
+      "outcome": {
+        "enum": [
+          "started",
+          "succeeded",
+          "failed"
+        ]
+      },
+      "authErrorKind": {
+        "enum": [
+          "none",
+          "timeout",
+          "network",
+          "validation",
+          "unavailable",
+          "unknown"
+        ]
+      },
+      "authSource": {
+        "enum": [
+          "external_unattributed"
+        ]
+      },
+      "elapsedMs": {
+        "type": "integer",
+        "min": 0,
+        "max": 180000
+      },
+      "platform": {
+        "enum": [
+          "windows"
+        ]
+      }
+    },
+    "observable": true,
+    "legacy": false,
+    "required": [
+      "attemptId",
+      "authStage",
+      "outcome",
+      "authErrorKind",
+      "authSource",
+      "elapsedMs",
+      "platform"
+    ]
   },
   "experiment_exposure": {
     "properties": {

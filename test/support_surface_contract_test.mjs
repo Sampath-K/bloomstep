@@ -8,12 +8,13 @@ test('native export source wires tested owner preparation, cancellation, save gu
   const end = source.indexOf("title: const Text('Check for updates')", start);
   assert.ok(start >= 0 && end > start);
   const exportSource = source.slice(start, end);
-  assert.match(exportSource, /if \(target == null\) return;/);
+  assert.match(exportSource, /if \(targetPath == null\) return;/);
   assert.match(exportSource, /prepareOwnerExport\(/);
   assert.match(exportSource, /refreshStatus\(\s*export: true,\s*\)/);
   assert.match(exportSource, /data = prepared\.data;/);
   assert.match(exportSource, /warnings\.addAll\(prepared\.warnings\)/);
-  const save = exportSource.indexOf('.saveTo(target.path)');
+  const save = exportSource.indexOf('.saveTo(targetPath)');
+  assert.ok(save >= 0);
   const ownerGuard = exportSource.lastIndexOf('requireSyncSession(owner, generation)');
   assert.ok(ownerGuard > exportSource.indexOf('prepareOwnerExport(') && ownerGuard < save);
   assert.ok(exportSource.indexOf('widget.identity!.account != owner') < save);
@@ -36,7 +37,9 @@ test('support export does not migrate SQLite or introduce a separate unpurged co
 });
 
 test('public trust notice discloses service support facts separately from optional analytics without filling historical gaps', () => {
-  const site = readFileSync(new URL('../site/index.html', import.meta.url), 'utf8');
+  const home = readFileSync(new URL('../site/index.html', import.meta.url), 'utf8');
+  assert.match(home, /href="\/releases\/"/);
+  const site = readFileSync(new URL('../site/releases/index.html', import.meta.url), 'utf8');
   assert.match(site, /server receipt and first committed team-reply times/);
   assert.match(site, /Service-operational support records are separate from optional product-event analytics/);
   assert.match(site, /Historical missing times are not backfilled/);

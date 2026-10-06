@@ -59,7 +59,7 @@ test('browser credentials use memory cache only, no manual bearer field/CDN fall
   assert.match(authSource,/cacheLocation:BrowserCacheLocation.MemoryStorage/);
   assert.match(authSource,/temporaryCacheLocation:BrowserCacheLocation.SessionStorage/);
   assert.doesNotMatch(authSource,/localStorage|clientSecret|clipboard/);
-  const html=readFileSync(new URL('../index.html',import.meta.url),'utf8');
+  const html=readFileSync(new URL('../console.html',import.meta.url),'utf8');
   assert.doesNotMatch(html,/id="token"|src="https:/);
   assert.match(html,/assets\/console.js/);
 });

@@ -1,0 +1,169 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="Bloomstep Windows release history, SHA-256 checksums and current unsigned download details.">
+  <title>Bloomstep Windows releases and checksums</title>
+  <link rel="canonical" href="https://brave-plant-02c10e800.5.azurestaticapps.net/releases/">
+  <meta property="og:title" content="Bloomstep Windows releases and checksums">
+  <meta property="og:description" content="Release history and SHA-256 checksums for Bloomstep Windows downloads.">
+  <meta property="og:type" content="website">
+  <meta property="og:url" content="https://brave-plant-02c10e800.5.azurestaticapps.net/releases/">
+  <meta property="og:image" content="https://brave-plant-02c10e800.5.azurestaticapps.net/assets/bloomstep-social.png">
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="Bloomstep Windows releases and checksums">
+  <meta name="twitter:description" content="Release history and SHA-256 checksums for Bloomstep Windows downloads.">
+  <meta name="twitter:image" content="https://brave-plant-02c10e800.5.azurestaticapps.net/assets/bloomstep-social.png">
+  <link rel="icon" type="image/png" href="/assets/bloomstep-icon.png">
+  <script>
+    (() => {
+      const param = new URLSearchParams(window.location.search).get("scoutTheme");
+      const theme = param || (window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light");
+      document.documentElement.setAttribute("data-theme", theme);
+    })();
+  </script>
+  <style>
+    :root {
+      color-scheme: light;
+      --cp-bg: #f7f4ef;
+      --cp-bg-elevated: #fcfbf8;
+      --cp-surface: #ffffff;
+      --cp-surface-soft: #f5f5f5;
+      --cp-border: #dedede;
+      --cp-border-strong: #919191;
+      --cp-text: #242424;
+      --cp-text-muted: #5c5c5c;
+      --cp-text-soft: #6f6f6f;
+      --cp-accent: #b11f4b;
+      --cp-accent-hover: #9a1a41;
+      --cp-accent-soft: rgba(177, 31, 75, 0.08);
+      --cp-accent-fg: #ffffff;
+      --cp-success: #16a34a;
+      --cp-danger: #dc2626;
+      --cp-warning: #f59e0b;
+      --cp-link: #0078d4;
+      --cp-shadow: 0 18px 48px rgba(0, 0, 0, 0.12);
+      --cp-overlay: rgba(255, 255, 255, 0.8);
+      --cp-panel: rgba(255, 255, 255, 0.86);
+      --cp-panel-strong: rgba(255, 255, 255, 0.96);
+      --cp-sheen: rgba(255, 255, 255, 0.55);
+      --cp-highlight: rgba(177, 31, 75, 0.12);
+    }
+    html[data-theme="dark"] {
+      color-scheme: dark;
+      --cp-bg: #3d3b3a;
+      --cp-bg-elevated: #343231;
+      --cp-surface: #292929;
+      --cp-surface-soft: #2e2e2e;
+      --cp-border: #474747;
+      --cp-border-strong: #5f5f5f;
+      --cp-text: #dedede;
+      --cp-text-muted: #919191;
+      --cp-text-soft: #b0b0b0;
+      --cp-accent: #fd8ea1;
+      --cp-accent-hover: #fb7b91;
+      --cp-accent-soft: rgba(253, 142, 161, 0.14);
+      --cp-accent-fg: #1a1a1a;
+      --cp-success: #4ade80;
+      --cp-danger: #f87171;
+      --cp-warning: #fbbf24;
+      --cp-link: #4da6ff;
+      --cp-shadow: 0 18px 48px rgba(0, 0, 0, 0.32);
+      --cp-overlay: rgba(41, 41, 41, 0.88);
+      --cp-panel: rgba(41, 41, 41, 0.72);
+      --cp-panel-strong: rgba(41, 41, 41, 0.96);
+      --cp-sheen: rgba(255, 255, 255, 0.04);
+      --cp-highlight: rgba(253, 142, 161, 0.12);
+    }
+    * { box-sizing: border-box; }
+    body { margin: 0; background: var(--cp-bg); color: var(--cp-text); font: 18px/1.65 "Segoe UI", Aptos, Calibri, -apple-system, BlinkMacSystemFont, sans-serif; }
+    main, header, footer { max-width: 1040px; margin: auto; padding: 32px; }
+    header { display: flex; justify-content: space-between; gap: 24px; flex-wrap: wrap; }
+    nav { display: flex; gap: 24px; flex-wrap: wrap; }
+    a { color: var(--cp-accent); text-underline-offset: 4px; }
+    h1 { font-size: clamp(40px, 7vw, 72px); line-height: 1.08; max-width: 760px; font-weight: 600; letter-spacing: -2px; margin: 24px 0; }
+    h2 { line-height: 1.2; }
+    .eyebrow { text-transform: uppercase; letter-spacing: 3px; color: var(--cp-accent); font-size: 14px; font-weight: 700; }
+    .lead { font-size: 24px; max-width: 720px; color: var(--cp-text-muted); }
+    .button, button { display: inline-block; background: var(--cp-accent); color: var(--cp-accent-fg); padding: 12px 24px; border-radius: .625rem; text-decoration: none; border: none; font: inherit; cursor: pointer; min-height: 48px; }
+    .button:hover, button:hover { background: var(--cp-accent-hover); }
+    a:focus-visible, button:focus-visible, input:focus-visible, textarea:focus-visible { outline: 3px solid var(--cp-link); outline-offset: 4px; }
+    section { margin: 48px 0; scroll-margin-top: 24px; }
+    .notice { padding: 20px 24px; border-left: 4px solid var(--cp-accent); background: var(--cp-accent-soft); border-radius: .625rem; }
+    .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 20px; }
+    article { padding: 24px; border: 1px solid var(--cp-border); border-radius: 16px; background: var(--cp-surface); }
+    .small { color: var(--cp-text-muted); font-size: 16px; }
+    .garden { height: 180px; display: flex; align-items: flex-end; justify-content: space-around; margin: 24px 0; border-bottom: 12px solid var(--cp-border); }
+    .plant { width: 64px; height: var(--height); border-radius: 48% 48% 10px 10px; background: var(--cp-success); position: relative; }
+    .plant::before, .plant::after { content: ""; position: absolute; width: 40px; height: 24px; border-radius: 70% 0; background: var(--cp-success); top: 30%; }
+    .plant::before { right: 90%; transform: rotate(20deg); }
+    .plant::after { left: 90%; transform: rotate(-20deg); }
+    .flower { width: 64px; height: 64px; border-radius: 50%; background: var(--cp-accent); position: absolute; top: -24px; }
+    label { display: block; margin: 16px 0; }
+    input, textarea, select { display: block; padding: 12px; width: 100%; font: inherit; border: 1px solid var(--cp-border-strong); border-radius: .625rem; color: var(--cp-text); background: var(--cp-surface); }
+    pre { white-space: pre-wrap; overflow-wrap: anywhere; font: 14px/1.6 Consolas, "Courier New", Courier, monospace; }
+    code { overflow-wrap: anywhere; }
+    [hidden] { display: none !important; }
+  </style>
+</head>
+<body>
+  <header><a href="/">Bloomstep</a><nav aria-label="Main"><a href="#download">Checksums</a><a href="#changes">Release history</a><a href="/#privacy">Privacy</a></nav></header>
+  <main>
+    <section>
+      <div class="eyebrow">One tiny step</div>
+      <h1>Windows releases<br>and checksums.</h1>
+      <p class="lead">Attach one tiny behavior to a routine you already have. Celebrate it. Watch your plant grow, without streak pressure or punishment.</p>
+      <div id="invitation" class="notice" hidden></div>
+      <div class="garden" role="img" aria-label="Three healthy plants at different growth stages. Plants never lose their growth.">
+        <div class="plant" style="--height: 44px"></div><div class="plant" style="--height: 100px"></div><div class="plant" style="--height: 136px"><span class="flower"></span></div>
+      </div>
+      <p class="notice"><strong>Engineering preview, not the full MVP.</strong> Native Windows builds and the free-tier website/API are live under integration verification. Real sign-in is required; Google and Microsoft personal-account availability depends on the configured broker flow. No pretend login, no anonymous production garden.</p>
+    </section>
+    <section id="grow">
+      <h2>Small by design. Gentle by default.</h2>
+      <div class="grid">
+        <article><h3>Find your anchor</h3><p>After I pour my coffee, I will take one slow breath. Start with a step that takes less than 30 seconds.</p></article>
+        <article><h3>Let it feel good</h3><p>A smile, a phrase, a small gesture. Practice your personal celebration when you plant your seed.</p></article>
+        <article><h3>Grow without guilt</h3><p>Did it, did more, or not today. Plants never wilt. Reflection helps you adapt, and automatic habits graduate to your Grove.</p></article>
+      </div>
+      <p class="small">Original content inspired by the behavior design research of Dr. BJ Fogg. Not affiliated with or endorsed by his organization. Health recipes are not medical advice. Designed for ages 16+.</p>
+    </section>
+    <section id="download">
+      <h2>Windows first. A real desktop app.</h2>
+      <p>Choose ARM64 for a Windows ARM device, or x64 for Intel/AMD Windows. The app installs for your user account and does not require administrator rights.</p>
+      <p><a class="button" data-measure-download href="https://github.com/Sampath-K/bloomstep/releases/download/v0.1.0-preview.8/Bloomstep-0.1.0-preview.8-windows-arm64-setup.exe">Download Bloomstep ARM64 preview.8</a>
+      <a class="button" data-measure-download href="https://github.com/Sampath-K/bloomstep/releases/download/v0.1.0-preview.8/Bloomstep-0.1.0-preview.8-windows-x64-setup.exe">Download Bloomstep x64 preview.8</a></p>
+      <p><a href="https://github.com/Sampath-K/bloomstep/releases/tag/v0.1.0-preview.8">Release notes &amp; SHA-256 checksums</a></p>
+      <p class="small"><code>ARM64 SHA-256: 2d87612664f91a099ca9201983259d728a6c768bba482c6e663d72c91358a562</code><br><code>x64 SHA-256: ecd122fd8cc222fc197157595960210ed413e1aa4824c25b24bf3793649e2ae3</code></p>
+      <p class="small">Unsigned preview: Windows SmartScreen may warn about an unknown publisher. Download only from the linked GitHub repository and compare the SHA-256 checksum. Do not bypass security policy on a managed device. Microsoft Store signing does not sign this web download. Store, Android and iOS distribution are deferred.</p>
+      <p class="small">An update check opens the release page; automatic installation and staged rollout are not yet enabled.</p>
+    </section>
+    <section id="trust">
+      <h2>Your habits are private.</h2>
+      <div class="grid">
+        <article><h3>What stays on your device</h3><p>SQLite stores recipes, check-in edits, reflection scores, feedback and settings. Authentication credentials use Windows secure storage, never the database. Your Windows account's filesystem protections apply; SQLite itself is not encrypted.</p></article>
+        <article><h3>What sync sends</h3><p>When signed in and connected, recipes, check-ins, reflections, feedback and safe account preferences sync to your private account partition. Analytics consent, reminder enablement and startup stay device-local. Feedback and ratings are private, not published to an ideas board. The service records server receipt and first committed team-reply times alongside new private feedback. Historical missing times are not backfilled. Service-operational support records are separate from optional product-event analytics and are removed with their feedback records. The identity broker stores the basic identity attributes needed for Microsoft, Google or email sign-in.</p></article>
+        <article><h3>What we never do</h3><p>No ads, no AI, no selling habit data. Optional event counts are off by default and contain no habit or feedback text. Invitation links contain no personal garden data.</p></article>
+      </div>
+      <p>Export your records as JSON from Settings. Preview.5 adds confirmed owner-only deletion for an individual recipe and its check-ins/reflections/linked events, or private feedback/rating and its replies. Offline requests queue until sync; other devices apply deletion when they reconnect. Permanent minimal ID-only record markers prevent stale copies from returning and appear in exports; preview limits do not silently prune them. Whole-account cloud deletion separately keeps its minimal account marker. Earlier exported copies and processor backup retention are separate, not an instantaneous purge promise. Identity provider accounts are managed by their providers, not by Bloomstep.</p>
+      <p>Raw opt-in app event retention is 13 months. Optional app diagnostics record at most 10 observed Dart/Flutter errors per session: fixed category/source only, never messages, stack traces or habit/account text. They may be nonfatal; native/process deaths are not captured, so no crash-free rate is inferred. The customer homepage explains the separate anonymous daily website counts and voluntary in-memory receipt export. No receipt is saved to browser storage by the customer page. Microsoft Azure hosts this website, the identity broker and the private account database; GitHub hosts source, build artifacts and downloads. Those providers can retain standard access/security logs. There are no third-party product analytics or AI processors. A full controller/contact and data-processing notice remains a public-MVP launch gate.</p>
+      <p>This preview adds a separate, unchecked reminder-preference observation choice (disclosure version 1), requiring product-event consent too. Existing analytics consent never grants this choice. After an explicit post-consent app reminder enable, it records random episode/consent IDs, fixed Windows platform and dates, an explicit app disable or a same-episode preference followup after 30 days. It does not observe Windows permission or delivery, private habit text, location or lifetime notification history. Missing followup remains unknown. Revoking either choice clears added local state and queued events; already-synced facts follow the retention and account-deletion rules above. This narrower sample never substitutes for the original full notification-quality goal.</p>
+      <p>Cloud engineering-preview storage and request quotas are finite. A quota or service pause is shown explicitly; your local garden remains available. These volume controls are not a guarantee that Azure free allowances can never be exceeded. No paid tier is selected.</p>
+      <p>Bloomstep uses Microsoft Entra External ID for secure browser sign-in. The Microsoft service domain is <code>ciamlogin.com</code>; Google may show “continue to ciamlogin.com” while provider branding is unverified. That label is not a request to share your password with Bloomstep. Complete credentials only on your chosen provider's genuine page; Bloomstep never collects your password.</p>
+      <p>Use the private in-app feedback channel for sensitive support once it is connected. Do not place private habits, credentials or account exports in public GitHub issues. Public source and non-sensitive bug reports: <a href="https://github.com/Sampath-K/bloomstep">Bloomstep repository</a>.</p>
+    </section>
+    <section id="changes">
+      <h2>Growing in public</h2>
+      <article><h3>0.1.0-preview.8 - fresh-consent app reminder observations</h3><p>A separate, unchecked version-1 choice records only explicit post-consent Windows app reminder-preference episodes. The original OS notification disable goal remains unavailable; missing followup is unknown, not a successful non-disable outcome. Revoke and deletion paths, strict event schemas, a private separately labeled panel and small-cohort suppression are included.</p><p>The merged source passed API, Flutter x64 and ARM64 tests/builds plus synthetic installer lifecycle proofs. Public ARM64 and x64 installers and their SHA-256 manifests are verified. This unsigned engineering preview does not establish real-user consent, OS permission/delivery, private cohort acceptance or the full MVP; existing launch gates remain and the experiment stays OFF.</p></article>
+      <article><h3>0.1.0-preview.7 - private support receipts</h3><p>New private feedback records receive server-owned receipt times, and the first committed team reply is captured once. The separate private support panel reports bounded operational aggregates without feedback text; mature unanswered records use a 48-hour window, while immature and historical unknowns remain distinct. The owner-only export includes guarded local support metadata sidecars and warns on partial results; it does not upload, merge or acknowledge support data.</p><p>Exact source is merged and the API is deployed. API checks, x64 and ARM64 builds, installer lifecycle proofs and public SHA-256 downloads pass; the release is an unsigned engineering preview, not the full MVP. No customer upgrade, authenticated operator acceptance or live private-record acceptance is claimed. Existing launch gates remain; experiment stays OFF.</p></article>
+      <article><h3>0.1.0-preview.6 - safe schema recovery</h3><p>Future schema versions unchanged: unsupported newer databases are rejected explicitly, never silently relabeled or wiped. Compatible legacy version-label recovery validates the existing deletion ledger and reapplies only the current account's deletion markers transactionally. Malformed ledgers fail visibly without replacing customer content. Windows data and secure-session namespaces are unchanged.</p><p>Exact source/main/tag API and true ARM64/x64 build, installer lifecycle and public checksum proofs pass. The installed preview.5 remains preserved; no customer preview.6 upgrade is claimed or forced. In a separately approved preview.5 slot, a new private export and fresh authenticated sync passed. Recipe text automation stopped before writing any fixture, and the app was handed back. Live fixture acceptance remains pending. Native input tooling is separately synthetic, not customer acceptance; native-health collection remains disabled pending an independent consent decision. Still an unsigned engineering preview, not the full MVP; original coverage and launch gates remain incomplete, and experiment stays OFF.</p></article>
+      <article><h3>0.1.0-preview.5 - owner-scoped record deletion</h3><p>Individual recipe and private feedback/rating removal now uses account-scoped stable deletion IDs, dependent-content cleanup, retryable partial failures and stale-device suppression. Existing v4 gardens migrate to v5 in the same Windows support/secure-session namespace. Confirm/cancel controls and targeted reminder withdrawal preserve unrelated content, notification consent and daily caps.</p><p>Exact source/main/tag API and both native builds/installers pass, both public unsigned checksums are verified, and the normal ARM64 preview.4 to preview.5 upgrade plus restored-session authenticated sync are observed. The earlier native export locator failure was safely canceled, repaired in isolation and superseded by an actual new private export readback. Fixture creation stopped at a text-entry tooling failure, not a proved product defect. Live fixture acceptance remains pending. Source tests are not full launch acceptance, original KPI/native crash coverage still needs work, and experiment stays OFF. <a href="https://github.com/Sampath-K/bloomstep/blob/main/docs/status.md">Finite launch backlog and actual evidence</a>.</p></article>
+      <article><h3>0.1.0-preview.4 - Bloomstep identity and Windows branding</h3><p>Bloomstep window title, original flower icon, product metadata, sign-in explanation, callback text and invitation email subject now replace product-owned defaults. The hosted sign-in page uses the Bloomstep wordmark and product text. Existing gardens, Windows v4 secure sessions and the single-instance namespace keep their stable storage paths across the branding upgrade.</p><p>Both public unsigned installers and their checksums are verified, and the actual normal ARM64 preview.3 to preview.4 upgrade and branded sign-in surface are observed. Google/Microsoft callback registrations are corrected, but genuine customer sign-in and authenticated integration acceptance are still required. Google controls its verified/published OAuth consent identity; the truthful Microsoft <code>ciamlogin.com</code> service domain remains. No paid domain or email relay was added. Still an engineering preview, not the full MVP; experiment OFF.</p></article>
+      <article><h3>0.1.0-preview.3 - consent-scoped observations</h3><p>Optional browser/installer observations stay local unless you explicitly link a receipt under independent signed-account product-event consent. Original times and IDs, seven-day receipt expiry, strict privacy/source validation and repeat-safe import. Interactive installer consent is unchecked; silent/default-off upgrades collect nothing and cannot inherit prior observation ownership. Dart/Flutter diagnostics are category-only and bounded: no messages/stacks, native-death census or crash-free claim.</p><p>Both architectures passed actual installer checkbox, installation/installed-entry observations and owned uninstall proof; public hashes verified. Still an engineering candidate, not the complete customer-accepted MVP. The experiment remains OFF pending genuine reviewed cohort and guardrails. No feedback item or population outcome is invented.</p></article>
+      <article><h3>0.1.0 engineering preview</h3><p>Five starter recipes, a celebration-first builder, a SQLite daily check-in event log, undo/edit, five growth stages, three plant species, reflection and deterministic Recipe Doctor. Export, private feedback, rating, invitation link/QR and reminder controls are in development.</p><p>No completed feedback items are claimed yet. <a href="https://github.com/Sampath-K/bloomstep/blob/main/docs/status.md">Detailed requirements and verification status</a>.</p></article>
+    </section>
+  </main>
+  <footer class="small">Bloomstep contributors. Grow tiny behaviors into something natural.</footer>
+</body>
+</html>

@@ -1,0 +1,27 @@
+name: Website live readback
+on:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  verify:
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    environment: bloomstep-operations
+    timeout-minutes: 10
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - uses: actions/checkout@v4
+      - name: Read back customer pages, current installers and isolated aggregate proof
+        env:
+          WORKER_TENANT_ID: ${{ vars.WORKER_TENANT_ID }}
+          WORKER_CLIENT_ID: ${{ vars.WORKER_CLIENT_ID }}
+          API_ORIGIN: ${{ vars.API_ORIGIN }}
+        run: python3 tool/verify_website_live.py --output website-live-evidence.json
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: website-live-evidence
+          path: website-live-evidence.json

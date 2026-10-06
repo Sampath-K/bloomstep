@@ -30,13 +30,16 @@ achievements. Public launch privacy/legal/controller/contact/billing/trust facts
 remain separate unresolved gates. This policy preserves production security and
 the no-customer-changes, no-OS-changes and $0 constraints.
 
-**Verification state:** API/authentication tests and Flutter static analysis
-pass locally. The full Windows widget/API journey is pending hosted x64 and
-ARM64 CI; local widget/store tests work after dependency resolution, but native
-Windows plugin generation reports missing symlink support on this host. No
-Developer Mode or other OS setting is changed. Do not
-count the journey as green until both hosted receipts report `success` and
-`cleanupVerified: true`.
+**Verified recovery:** source `8c8ddd4500f3e18ef147e436f56ae115d3dcdcc4`
+passed full push CI `37435485684` and PR CI `37435491595`, including actual
+x64/ARM64 UI/API journeys, production-mode test-auth rejection, separate release
+builds and installer checks. Both receipts report `success`, all required
+readback flags, stopped API/closed profile and `cleanupVerified: true`, with
+`secretPersisted: false`. PR17 merged into the original feature at `49e64c9`.
+Integration with latest main `4513438` must retain those gates on the combined
+PR15 head; prior source success is not automatically combined-head success.
+Local widget/store tests work after dependency resolution, but native plugin
+generation reports missing symlink support here. No OS setting was changed.
 
 ## Isolation and release boundary
 
@@ -151,8 +154,12 @@ The current production path emits `session_started` and fresh verified
 Restored sessions do not manufacture fresh sign-in successes. Optional installer
 `signin_view` observation has its own consent boundary. `SessionDiagnostics`
 records consented, capped error-kind/source/session metadata without exception
-text or stacks; it is not a provider-stage collector. Sign-in/restore failures
-are surfaced to the user in `bloomstep_app.dart`, but there is **no complete
+text or stacks; it is not a provider-stage collector. Latest main `4513438`
+adds guarded, account-consented session-entry/API-token observations through
+`AuthObservations` after verified account storage opens; see
+`auth-observability.md`. Existing consent/account/generation checks and safe
+closed error categories are preserved during recovery integration.
+Sign-in/restore failures are surfaced to the user, but there is **no complete
 sanitized consent-respecting provider attempt/stage/failure telemetry funnel**
 implemented here. That approved observability work remains unimplemented, not
 passed by synthetic sign-in or inferred from session presence. This recovery

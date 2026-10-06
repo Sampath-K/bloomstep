@@ -1,6 +1,6 @@
 import { loadOperatorAuth, operatorRequest } from './operator-auth.mjs';
-import { initializeMeasurement } from './measurement.mjs';
 import { reminderPreferencePanels } from './reminder-panels.mjs';
+import { websitePanels } from './website-panels.mjs';
 const groups = [
   ['activationRetention', 'Activation / returning activity', [
     ['signins', 'Sign-ins'], ['recipesCreated', 'Recipes created'],
@@ -84,6 +84,27 @@ export function dashboardPanels(data) {
   const retention = dashboards.retention;
   const outcomes = dashboards.outcomes;
   const reminders = dashboards.reminderHealth;
+  const auth = dashboards.authentication;
+  const authRows = auth === undefined
+    ? [{ label: 'Coverage', value: 'Unavailable: snapshot predates authentication instrumentation' }]
+    : ['session_entry', 'api_token'].flatMap(stage => {
+      if (!auth.stages?.[stage] || auth.allUserSigninSuccessRate !== null ||
+          auth.preAuthFailures !== null || auth.providerBreakdown !== null) {
+        throw new Error('Invalid authentication coverage claims.');
+      }
+      const fields = {
+        ...Object.fromEntries(['observedUsers', 'succeededUsers', 'failedUsers']
+          .map(field => [field, auth.stages[stage][field]])),
+        ...Object.fromEntries(['timeout', 'network', 'validation', 'unavailable', 'unknown']
+          .map(kind => [`${kind} failure users`, auth.stages[stage].failureKinds?.[kind]])),
+      };
+      return Object.entries(fields).map(([field, value]) => {
+        if (value !== null && (!Number.isInteger(value) || value < 50)) {
+          throw new Error('Invalid authentication cohort.');
+        }
+        return metric(`${stage.replaceAll('_', ' ')} ${field.replace('Users', ' users')}`, value);
+      });
+    });
   return [
     panel('Ordered opt-in funnel', funnel, [
       ...Object.entries(funnel.stages).map(([name, stage]) => metric(name.replaceAll('_', ' '), stage.users)),
@@ -116,6 +137,10 @@ export function dashboardPanels(data) {
       rate('Observed delivery to action', reminders.actionRate),
       rate('Sent users disabling reminders', reminders.disableRate),
     ]),
+    panel('Partial account-consented authentication observations',
+      auth ?? { definition: 'Historical snapshot has no authentication observations; pre-auth failures and provider/global conversion are unknown.' },
+      [...authRows, { label: 'Pre-auth failures / global conversion / provider attribution',
+        value: 'UNKNOWN / NOT covered; never zero or a full sign-in funnel' }]),
   ];
 }
 
@@ -282,8 +307,6 @@ function initialize() {
     return null;
   });
   element('origin').value = location.origin;
-  initializeInvitationLanding();
-  initializeMeasurement();
 
   async function request(path, body) {
     if(!auth) throw new Error('Sign in to the operator console first.');
@@ -422,11 +445,31 @@ function initialize() {
     } catch (error) { status.textContent = error.message; }
   });
 
+  element('website-metrics').addEventListener('click', async () => {
+    const output = element('website-funnel'), webStatus = element('website-admin-status');
+    output.replaceChildren(); webStatus.textContent = 'Loading separate website aggregates...';
+    try {
+      const data = await request(`/api/team/website?days=${element('website-days').value}`);
+      for (const panel of websitePanels(data)) {
+        const card = document.createElement('article'), title = document.createElement('h3');
+        title.textContent = panel.title;
+        const description = document.createElement('p'); description.textContent = panel.definition;
+        card.append(title, description);
+        for (const row of panel.rows) {
+          const line = document.createElement('p'); line.textContent = `${row.label}: ${row.value}`; card.append(line);
+        }
+        output.append(card);
+      }
+      webStatus.textContent = 'Anonymous counts and voluntary linked cohorts are separate; unknowns are not zero. Store is reserved.';
+    } catch (error) { webStatus.textContent = error.message; }
+  });
+
   function clear() {
     for (const controller of pending) controller.abort();
     ++sessionGeneration;
     const cleared = auth?.clear();
     panel.replaceChildren(); element('measurement').replaceChildren();
+    element('website-funnel').replaceChildren(); element('website-admin-status').textContent = '';
     element('daily-counts').textContent = ''; status.textContent = '';
     cursor = null; cursorSeen.clear(); next.disabled = true;
     return cleared;
@@ -436,4 +479,3 @@ function initialize() {
 }
 
 if (typeof document !== 'undefined') initialize();
-import { initializeInvitationLanding } from './invitation-landing.mjs';

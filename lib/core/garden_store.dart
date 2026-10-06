@@ -21,6 +21,8 @@ class GardenStore {
   String get account => _account;
   int _syncGeneration = 0;
   int get syncGeneration => _syncGeneration;
+  int _analyticsGeneration = 0;
+  int get analyticsGeneration => _analyticsGeneration;
   static const _uuid = Uuid();
 
   static Future<GardenStore> open(
@@ -852,6 +854,7 @@ class GardenStore {
   }
 
   Future<void> setSetting(String key, String value) async {
+    if (key == 'analytics') _analyticsGeneration++;
     final account = _account;
     await _db.transaction((txn) async {
       final previous = key == 'analytics'
@@ -1154,12 +1157,45 @@ class GardenStore {
         'Reminder observations require an atomic explicit preference transition or persisted followup.',
       );
     }
+    if (name == 'auth_observation') {
+      throw StateError(
+        'Authentication observations require a guarded account-consent scope.',
+      );
+    }
+
     final copy = properties == null
         ? null
         : Map<String, Object?>.from(properties);
     final account = _account;
     await _db.transaction((txn) async {
       await _trackWith(txn, account, name, properties: copy);
+    });
+  }
+
+  Future<bool> trackAuthObservation(
+    Map<String, Object?> properties, {
+    required String owner,
+    required int generation,
+    required int consentGeneration,
+  }) async {
+    _validateEventProperties('auth_observation', properties);
+    bool current() =>
+        owner == _account &&
+        generation == _syncGeneration &&
+        consentGeneration == _analyticsGeneration;
+    return _db.transaction((txn) async {
+      if (!current() ||
+          await _valueWith(txn, owner, 'analytics') != 'true' ||
+          !current()) {
+        return false;
+      }
+      await _trackWith(txn, owner, 'auth_observation', properties: properties);
+      if (!current()) {
+        throw StateError(
+          'Authentication observation scope changed during save.',
+        );
+      }
+      return true;
     });
   }
 
@@ -1440,6 +1476,13 @@ class GardenStore {
   ) {
     if (!registry.isValidEventProperties(name, properties ?? const {})) {
       throw ArgumentError('Unregistered telemetry event or invalid metadata.');
+    }
+    if (name == 'auth_observation' &&
+        ((properties?['outcome'] == 'failed') !=
+                (properties?['authErrorKind'] != 'none') ||
+            properties?['outcome'] == 'started' &&
+                properties?['elapsedMs'] != 0)) {
+      throw ArgumentError('Inconsistent authentication observation.');
     }
   }
 

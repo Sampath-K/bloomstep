@@ -1,5 +1,6 @@
 import { eventSchema } from './contracts.mjs';
 import { registryVersion } from './event_registry.g.mjs';
+import { authObservationSummary } from './auth-observations.mjs';
 
 /** @param {string} day @param {number} offset */
 export function addDays(day, offset) {
@@ -121,6 +122,7 @@ export function dashboardSummaries(rows, startDay, endDay, observedThrough) {
   // Absence of a crash event does not prove complete diagnostic capture.
   return {
     registryVersion, minimumCohort, startDay, endDay, observedThrough,
+    authentication: authObservationSummary(rows, startDay, endDay),
     funnel: { stages: Object.fromEntries(stages.map(name => [name, { users: count(users([name])), suppressed: users([name]).size < minimumCohort }])),
       visitToDownload: transition('landing_view','download_click'), downloadToLaunch: transition('download_click','first_launch'),
       launchToSignin: transition('first_launch','signin_succeeded'), sameDayActivation: rate(users(['signin_succeeded']), activated), breakdowns,

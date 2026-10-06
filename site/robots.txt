@@ -1,0 +1,7 @@
+User-agent: *
+Allow: /
+Disallow: /console.html
+Disallow: /operator-callback.html
+Disallow: /api/
+
+Sitemap: https://brave-plant-02c10e800.5.azurestaticapps.net/sitemap.xml

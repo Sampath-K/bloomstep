@@ -22,6 +22,32 @@ unresolved public-launch gates. The engineering journey is not green until exact
 x64 and ARM64 receipts prove all required stages and cleanup; auth stage/failure
 observability gaps are documented separately rather than inferred from sign-in.
 
+### Layered engineering recovery evidence
+
+Exact recovery source `8c8ddd4500f3e18ef147e436f56ae115d3dcdcc4` passed full
+push `37435485684` and PR `37435491595` CI. Both x64/ARM64 receipts prove the
+listed real widget/API business-handler stages, owner-scoped durable file-adapter
+readbacks, empty acknowledged outboxes and stopped API/closed profile/deleted
+test root; no secret was persisted. The normal production entrypoint and
+production-mode synthetic-credential rejection remain separate CI gates.
+PR17 merged at `49e64c9`; combined PR15/latest-main `4513438` verification must
+pass independently before any integration/release claim.
+
+| Required path | Executable evidence | Boundary |
+|---|---|---|
+| Create/edit/practice/reflection/graduation/feedback/export | Both exact-source Windows journeys, 31 distinct practice dates, two naturalness windows, fresh GET readbacks and app JSON export | Synthetic UTC clock/owners and file-backed Cosmos-compatible adapter; not provider/Cosmos/population evidence. |
+| API outage and recovery | `sync_outbox_test.dart`: "partial first sync resumes and steady sync only downloads", bounded API-error and partial deletion-batch tests; local sync/outbox/recipe suite 24 passed | Injected HTTP503/errors, actual SQLite reopen/retry. Restart alone is not offline proof; no physical network disconnect or second device is claimed. |
+| Conflict/idempotency/concurrent change | `sync_test.dart` equal-time/stale-edit union and numeric/legacy fingerprint tests; outbox exact-snapshot edit/undo and account-generation guards; API microsecond-tie and immutable retry checks | Different content stays pending; integer/whole-double equality is canonical only for reflection fingerprints. |
+| Whole-account erasure safety | `garden_store_test.dart`: "export and deletion cover all private local records"; outbox mocked204/header/signout flow; `engagement.test.mjs`: receipt/account erasure and reciprocal referral cleanup | Layered local/client/handler evidence; no customer account was erased. External account-erasure acceptance remains deferred. |
+| Referral business safety | `engagement.test.mjs`: interrupted acceptance, partial mutual-grant saga, stored-positive-practice eligibility, undo/rest/future-day denial and deletion cleanup; existing invitation client/widget suites | No human recipient, external communication, physical OS Share or genuine referral outcome. |
+| Native/external limits | Reminder scheduler request/cancel/cap/persistence tests; exact production release/installer jobs passed | Scheduling/submission/cancellation logs do not prove toast display, Focus/shell behavior or human accessibility. |
+| Auth observability | Latest-main `4513438` account-consented observer guards, source/tests and `auth-observability.md` | Fresh pre-auth/provider/signup funnel remains explicitly unknown, not passed; combined-head tests must preserve guards. |
+
+Seven selected deletion/referral/retry/conflict backend cases also passed locally,
+alongside 14 closed-contract/local-server cases. Public privacy/legal/controller/
+contact/billing/trust facts and real cohorts remain separate unresolved/deferred
+gates. This matrix does not equate layered fixtures with public-launch readiness.
+
 | # | Original job | Status | Evidence already observed | Still required for green |
 |---|---|---|---|---|
 | 0 | Build, run and ship the Windows app | **GREEN (engineering)** | Preview.8 is published from main `d3b6adf315bc68520494f6c3d017c68411ac1150`; API, x64 and ARM64 CI, installer lifecycle, public installers and hashes passed. The verified ARM64 preview.8 installer upgraded the existing install and the app launched normally. | None for iteration 0's engineering definition. This does not make the product MVP complete. |

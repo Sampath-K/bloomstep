@@ -8,7 +8,10 @@ import 'package:openid_client/openid_client.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:uuid/uuid.dart';
 
+import 'auth_observations.dart';
+
 class IdentityService {
+  AuthObservations? observations;
   static const issuerUrl = String.fromEnvironment('OIDC_ISSUER');
   static const clientId = String.fromEnvironment('OIDC_CLIENT_ID');
   static const apiScope = String.fromEnvironment('OIDC_API_SCOPE');
@@ -144,13 +147,43 @@ class IdentityService {
   }
 
   Future<void> signIn() async {
+    try {
+      await _signIn();
+    } on AuthFailure {
+      rethrow;
+    } on TimeoutException {
+      throw const AuthFailure(
+        'timeout',
+        'Sign-in timed out. Return to Bloomstep and try again. '
+            'This does not establish cancellation.',
+      );
+    } on SocketException {
+      throw const AuthFailure(
+        'network',
+        'Sign-in could not reach the identity service. Check your connection and try again.',
+      );
+    } catch (_) {
+      throw const AuthFailure(
+        'unknown',
+        'The identity response could not be completed or saved. '
+            'Try sign-in again; if it persists, check the configured identity flow.',
+      );
+    }
+  }
+
+  Future<void> _signIn() async {
     if (!configured) {
-      throw StateError(
+      throw const AuthFailure(
+        'unavailable',
         'Identity is not provisioned. No anonymous or simulated sign-in is available.',
       );
     }
-    final issuer = await Issuer.discover(Uri.parse(issuerUrl))
-        .timeout(const Duration(seconds: 30));
+    final issuer = await guardAuthStep(
+      AuthStep.discovery,
+      () =>
+          Issuer.discover(Uri.parse(issuerUrl))
+              .timeout(const Duration(seconds: 30)),
+    );
     final nonce = const Uuid().v4();
     final flow = Flow.authorizationCodeWithPKCE(
       Client(issuer, clientId),
@@ -168,7 +201,9 @@ class IdentityService {
       if (request.uri.path != '/callback' ||
           parameters['state'] != flow.state) {
         request.response.statusCode = HttpStatus.badRequest;
-        request.response.write('Bloomstep sign-in response is invalid. Return to Bloomstep and start sign-in again.');
+        request.response.write(
+          'Bloomstep sign-in response is invalid. Return to Bloomstep and start sign-in again.',
+        );
       } else {
         request.response.write(
           'Return to Bloomstep. You may close this browser tab.',
@@ -178,23 +213,39 @@ class IdentityService {
       await request.response.close();
     });
     try {
-      if (!await launchUrl(
-        flow.authenticationUri,
-        mode: LaunchMode.externalApplication,
+      if (!await guardAuthStep(
+        AuthStep.browser,
+        () => launchUrl(
+          flow.authenticationUri,
+          mode: LaunchMode.externalApplication,
+        ),
       )) {
-        throw StateError('The system browser could not be opened.');
+        throw const AuthFailure(
+          'unavailable',
+          'The system browser could not be opened. Check your default browser and try again.',
+        );
       }
-      final parameters = await response.future.timeout(
-        const Duration(minutes: 3),
+      final parameters = await guardAuthStep(
+        AuthStep.callback,
+        () => response.future.timeout(const Duration(minutes: 3)),
       );
-      final credential = await flow.callback(parameters);
-      final violations = await credential.validateToken().toList();
+      final credential = await guardAuthStep(
+        AuthStep.exchange,
+        () => flow.callback(parameters).timeout(const Duration(seconds: 30)),
+      );
+      final violations = await guardAuthStep(
+        AuthStep.validation,
+        () => credential.validateToken().toList().timeout(
+          const Duration(seconds: 30),
+        ),
+      );
       final claims = credential.idToken.claims.toJson();
       if (violations.isNotEmpty ||
           claims['nonce'] != nonce ||
           claims['sub'] is! String ||
           (claims['sub'] as String).isEmpty) {
-        throw StateError(
+        throw const AuthFailure(
+          'validation',
           'Identity token validation failed. Sign-in was not saved.',
         );
       }
@@ -202,7 +253,10 @@ class IdentityService {
       account = sha256
           .convert(utf8.encode('${claims['iss']}|${claims['sub']}'))
           .toString();
-      await _save(DateTime.now().toUtc().toIso8601String());
+      await guardAuthStep(
+        AuthStep.save,
+        () => _save(DateTime.now().toUtc().toIso8601String()),
+      );
     } finally {
       await subscription.cancel();
       await server.close(force: true);
@@ -231,30 +285,44 @@ class IdentityService {
     _validatedAt = DateTime.parse(validatedAt).toUtc();
   });
 
-  Future<String> accessToken() async {
+  Future<String> accessToken() {
+    final observer = observations;
+    return observer != null && observer.store.account == account
+        ? observer.run(AuthStage.apiToken, _accessToken)
+        : _accessToken();
+  }
+
+  Future<String> _accessToken() async {
     if (!hasValidSession) {
-      throw StateError(
+      throw const AuthFailure(
+        'unavailable',
         'Your offline session has ended. Sign in again before syncing.',
       );
     }
-    final token = await _credential!.getTokenResponse().timeout(
-      const Duration(seconds: 30),
+    final token = await guardAuthStep(
+      AuthStep.apiToken,
+      () =>
+          _credential!.getTokenResponse().timeout(const Duration(seconds: 30)),
     );
     if (!hasValidSession) {
-      throw StateError(
+      throw const AuthFailure(
+        'unavailable',
         'Your offline session ended during token refresh. Sign in again.',
       );
     }
     if (token.accessToken == null) {
-      throw StateError(
+      throw const AuthFailure(
+        'validation',
         'The identity provider did not issue an API access token.',
       );
     }
     // Preserve the offline-session deadline; a refresh is not fresh user authentication.
-    final saved = await _storage.read(key: 'bloomstep-session');
-    if (saved != null) {
-      await _save((jsonDecode(saved) as Map)['validatedAt'] as String);
-    }
+    await guardAuthStep(AuthStep.save, () async {
+      final saved = await _storage.read(key: 'bloomstep-session');
+      if (saved != null) {
+        await _save((jsonDecode(saved) as Map)['validatedAt'] as String);
+      }
+    });
     return token.accessToken!;
   }
 

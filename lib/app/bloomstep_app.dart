@@ -7,6 +7,7 @@ import '../features/garden/garden_screen.dart';
 import '../services/identity.dart';
 import '../services/invitation_intent.dart';
 import '../services/session_diagnostics.dart';
+import '../services/auth_observations.dart';
 import '../services/installer_measurement.dart';
 import 'theme.dart';
 import 'session_boundary.dart';
@@ -105,9 +106,22 @@ class _SignInScreenState extends State<SignInScreen> {
         debugPrint(message);
       },
     );
+    final observations = AuthObservations(
+      store,
+      onWriteError: (message) {
+        if (mounted) {
+          ScaffoldMessenger.of(context)
+              .showSnackBar(SnackBar(content: Text(message)));
+        }
+        debugPrint(message);
+      },
+    );
+    identity.observations = observations;
     try {
-      await diagnostics.start(authenticatedNow: authenticatedNow);
-      diagnostics.attach();
+      await observations.run(AuthStage.sessionEntry, () async {
+        await diagnostics.start(authenticatedNow: authenticatedNow);
+        diagnostics.attach();
+      });
       if (!mounted) return;
       await Navigator.of(context).push(
         MaterialPageRoute<void>(
@@ -127,6 +141,10 @@ class _SignInScreenState extends State<SignInScreen> {
         ),
       );
     } finally {
+      observations.close();
+      if (identical(identity.observations, observations)) {
+        identity.observations = null;
+      }
       await diagnostics.close();
       await store.close();
     }
@@ -156,7 +174,13 @@ class _SignInScreenState extends State<SignInScreen> {
       await identity.signIn();
       await _enter(authenticatedNow: true);
     } catch (e) {
-      if (mounted) setState(() => error = 'Bloomstep sign-in did not complete: $e');
+      if (mounted) {
+        final message = e is AuthFailure
+            ? e.message
+            : 'Your garden could not be opened. Your saved garden was not deleted. '
+                  'Check local storage access and try again.';
+        setState(() => error = 'Bloomstep sign-in did not complete: $message');
+      }
     } finally {
       if (mounted) setState(() => busy = false);
     }

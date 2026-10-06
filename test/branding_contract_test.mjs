@@ -42,13 +42,14 @@ test('site, operator popup and download labels are product-branded', () => {
   const site = read('site/index.html');
   assert.match(site, /Download Bloomstep ARM64/);
   assert.match(site, /Download Bloomstep x64/);
-  assert.match(site, /Sign in to Bloomstep operator console/);
+  assert.doesNotMatch(site, /Sign in to Bloomstep operator console/);
+  assert.match(read('site/console.html'), /Sign in to Bloomstep operator console/);
   assert.match(site, /rel="icon"/);
   assert.match(read('site/operator-callback.html'), /Completing Bloomstep operator sign-in/);
 });
 
 test('public release links verified preview8 reminder artifacts without implying customer acceptance', () => {
-  const site = read('site/index.html');
+  const site = read('site/releases/index.html');
   for (const arch of ['arm64', 'x64']) {
     assert.ok(site.includes(`releases/download/v0.1.0-preview.8/Bloomstep-0.1.0-preview.8-windows-${arch}-setup.exe`));
   }
