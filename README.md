@@ -25,6 +25,10 @@ and [deployment prerequisites](docs/deployment.md). The current
 remaining acceptance gates. Windows reminders and cloud round trips must be
 observed before claiming they work.
 
+[Authentication observability](docs/auth-observability.md) documents the bounded,
+account-consented session/token stages and explicitly unknown pre-auth/provider
+coverage; it is not a complete sign-in funnel.
+
 The small static website lives in `site`; authenticated Functions live in `api`.
 CI tests and packages per-user unsigned Windows ARM64 and x64 preview installers
 using Inno Setup. Tag releases are explicitly prereleases with checksums.

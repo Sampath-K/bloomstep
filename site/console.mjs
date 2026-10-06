@@ -84,6 +84,27 @@ export function dashboardPanels(data) {
   const retention = dashboards.retention;
   const outcomes = dashboards.outcomes;
   const reminders = dashboards.reminderHealth;
+  const auth = dashboards.authentication;
+  const authRows = auth === undefined
+    ? [{ label: 'Coverage', value: 'Unavailable: snapshot predates authentication instrumentation' }]
+    : ['session_entry', 'api_token'].flatMap(stage => {
+      if (!auth.stages?.[stage] || auth.allUserSigninSuccessRate !== null ||
+          auth.preAuthFailures !== null || auth.providerBreakdown !== null) {
+        throw new Error('Invalid authentication coverage claims.');
+      }
+      const fields = {
+        ...Object.fromEntries(['observedUsers', 'succeededUsers', 'failedUsers']
+          .map(field => [field, auth.stages[stage][field]])),
+        ...Object.fromEntries(['timeout', 'network', 'validation', 'unavailable', 'unknown']
+          .map(kind => [`${kind} failure users`, auth.stages[stage].failureKinds?.[kind]])),
+      };
+      return Object.entries(fields).map(([field, value]) => {
+        if (value !== null && (!Number.isInteger(value) || value < 50)) {
+          throw new Error('Invalid authentication cohort.');
+        }
+        return metric(`${stage.replaceAll('_', ' ')} ${field.replace('Users', ' users')}`, value);
+      });
+    });
   return [
     panel('Ordered opt-in funnel', funnel, [
       ...Object.entries(funnel.stages).map(([name, stage]) => metric(name.replaceAll('_', ' '), stage.users)),
@@ -116,6 +137,10 @@ export function dashboardPanels(data) {
       rate('Observed delivery to action', reminders.actionRate),
       rate('Sent users disabling reminders', reminders.disableRate),
     ]),
+    panel('Partial account-consented authentication observations',
+      auth ?? { definition: 'Historical snapshot has no authentication observations; pre-auth failures and provider/global conversion are unknown.' },
+      [...authRows, { label: 'Pre-auth failures / global conversion / provider attribution',
+        value: 'UNKNOWN / NOT covered; never zero or a full sign-in funnel' }]),
   ];
 }
 

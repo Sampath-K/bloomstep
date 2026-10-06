@@ -6,6 +6,18 @@ import { dashboardSummaries } from '../api/src/dashboards.mjs';
 import { goalMetrics } from '../api/src/goals.mjs';
 import { supportMetrics } from '../api/src/support.mjs';
 
+test('authentication panel discloses unknown coverage and rejects misleading counts', () => {
+  const data = { dashboards: dashboardSummaries([], '2026-09-01', '2026-09-01', '2026-09-02') };
+  const panel = dashboardPanels(data).at(-1);
+  assert.match(panel.title, /Partial account-consented/);
+  assert.match(panel.definition, /pre-auth/);
+  assert.match(panel.rows.at(-1).value, /UNKNOWN \/ NOT covered/);
+  data.dashboards.authentication.stages.api_token.failedUsers = 1;
+  assert.throws(() => dashboardPanels(data));
+  delete data.dashboards.authentication;
+  assert.match(dashboardPanels(data).at(-1).rows[0].value, /predates/);
+});
+
 test('support panel labels server facts and unanswered denominators without a fake SLA pass', () => {
   const data = { supportMetrics: supportMetrics([], '2026-08-31', '2026-08-31', '2026-09-03T00:00:00.000Z') };
   const panels = supportPanels(data);
@@ -87,7 +99,7 @@ test('operator renders persisted latest-day panels and unavailable history separ
     days: [{ day: '2026-08-30', status: 'unavailable', reason: 'not_generated', record: null },
       { day: '2026-08-31', status: 'available', generatedAt: '2026-09-01T12:00:00.000Z', registryVersion: 1, record }] };
   const panels = snapshotPanels({ dailySnapshots: series });
-  assert.equal(panels.length, 5);
+  assert.equal(panels.length, 6);
   assert.match(panels[0].title, /Persisted daily worker/);
   assert.match(panels[0].rows[0].value, /Unavailable.*not_generated/);
   assert.match(panels[0].rows[1].value, /2026-09-01T12:00/);
@@ -100,7 +112,7 @@ test('operator renders persisted latest-day panels and unavailable history separ
 test('typed dashboards surface unavailable cohorts and completed-day definitions', () => {
   const data = { dashboards: dashboardSummaries([], '2026-09-01', '2026-09-01', '2026-09-02') };
   const panels = dashboardPanels(data);
-  assert.equal(panels.length, 4);
+  assert.equal(panels.length, 5);
   assert.equal(panels[0].rows.some(row => row.value === 'Unavailable / suppressed'), true);
   assert.equal(panels[1].rows[0].value, 'No observed eligible cohorts');
   assert.match(panels[2].definition, /UTC/);
