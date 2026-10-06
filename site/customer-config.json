@@ -1,0 +1,16 @@
+{
+  "origin": "https://brave-plant-02c10e800.5.azurestaticapps.net",
+  "googleVerification": "",
+  "bingVerification": "",
+  "release": {
+    "tag": "v0.1.0-preview.8",
+    "arm64": {
+      "url": "https://github.com/Sampath-K/bloomstep/releases/download/v0.1.0-preview.8/Bloomstep-0.1.0-preview.8-windows-arm64-setup.exe",
+      "sha256": "2d87612664f91a099ca9201983259d728a6c768bba482c6e663d72c91358a562"
+    },
+    "x64": {
+      "url": "https://github.com/Sampath-K/bloomstep/releases/download/v0.1.0-preview.8/Bloomstep-0.1.0-preview.8-windows-x64-setup.exe",
+      "sha256": "ecd122fd8cc222fc197157595960210ed413e1aa4824c25b24bf3793649e2ae3"
+    }
+  }
+}

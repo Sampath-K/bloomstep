@@ -1,6 +1,6 @@
 import { loadOperatorAuth, operatorRequest } from './operator-auth.mjs';
-import { initializeMeasurement } from './measurement.mjs';
 import { reminderPreferencePanels } from './reminder-panels.mjs';
+import { websitePanels } from './website-panels.mjs';
 const groups = [
   ['activationRetention', 'Activation / returning activity', [
     ['signins', 'Sign-ins'], ['recipesCreated', 'Recipes created'],
@@ -282,8 +282,6 @@ function initialize() {
     return null;
   });
   element('origin').value = location.origin;
-  initializeInvitationLanding();
-  initializeMeasurement();
 
   async function request(path, body) {
     if(!auth) throw new Error('Sign in to the operator console first.');
@@ -422,11 +420,31 @@ function initialize() {
     } catch (error) { status.textContent = error.message; }
   });
 
+  element('website-metrics').addEventListener('click', async () => {
+    const output = element('website-funnel'), webStatus = element('website-admin-status');
+    output.replaceChildren(); webStatus.textContent = 'Loading separate website aggregates...';
+    try {
+      const data = await request(`/api/team/website?days=${element('website-days').value}`);
+      for (const panel of websitePanels(data)) {
+        const card = document.createElement('article'), title = document.createElement('h3');
+        title.textContent = panel.title;
+        const description = document.createElement('p'); description.textContent = panel.definition;
+        card.append(title, description);
+        for (const row of panel.rows) {
+          const line = document.createElement('p'); line.textContent = `${row.label}: ${row.value}`; card.append(line);
+        }
+        output.append(card);
+      }
+      webStatus.textContent = 'Anonymous counts and voluntary linked cohorts are separate; unknowns are not zero. Store is reserved.';
+    } catch (error) { webStatus.textContent = error.message; }
+  });
+
   function clear() {
     for (const controller of pending) controller.abort();
     ++sessionGeneration;
     const cleared = auth?.clear();
     panel.replaceChildren(); element('measurement').replaceChildren();
+    element('website-funnel').replaceChildren(); element('website-admin-status').textContent = '';
     element('daily-counts').textContent = ''; status.textContent = '';
     cursor = null; cursorSeen.clear(); next.disabled = true;
     return cleared;
@@ -436,4 +454,3 @@ function initialize() {
 }
 
 if (typeof document !== 'undefined') initialize();
-import { initializeInvitationLanding } from './invitation-landing.mjs';

@@ -1,0 +1,48 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="robots" content="noindex,nofollow">
+  <meta name="description" content="Private Bloomstep operator console. Authorized operators only.">
+  <title>Bloomstep private operator console</title>
+  <link rel="icon" type="image/png" href="/assets/bloomstep-icon.png">
+  <link rel="stylesheet" href="/assets/theme.css">
+  <script>
+    (() => {
+      const param = new URLSearchParams(window.location.search).get("scoutTheme");
+      const theme =
+        param || (window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light");
+      document.documentElement.setAttribute("data-theme", theme);
+    })();
+  </script>
+</head>
+<body>
+  <header><a href="/">Bloomstep</a></header>
+  <main>
+    <h1>Private operator console</h1>
+    <p>For authorized operators only. Server-assigned Bloomstep.Admin is required. No private data is fetched before a request. Tokens stay in page memory; temporary sign-in state uses session storage.</p>
+    <form id="admin">
+      <label>This deployed HTTPS API origin<input id="origin" type="url" required readonly></label>
+      <button id="signin-console" type="button">Sign in to Bloomstep operator console</button>
+      <button type="submit">Load private feedback</button>
+      <button id="next-feedback" type="button" disabled>Next private feedback page</button>
+      <label>UTC measurement days<input id="metric-days" type="number" min="1" max="30" value="7"></label>
+      <button id="metrics" type="button">Load private preview measurements</button>
+      <button id="clear-console" type="button">Sign out and clear private data</button>
+    </form>
+    <p id="admin-status" role="status"></p>
+    <section aria-labelledby="web-title">
+      <h2 id="web-title">Website funnel</h2>
+      <label>Website window (UTC days, includes today)<select id="website-days"><option value="1">1 day</option><option value="7" selected>7 days</option><option value="30">30 days</option></select></label>
+      <button id="website-metrics" type="button">Load website funnel</button>
+      <p id="website-admin-status" role="status"></p>
+      <div id="website-funnel"></div>
+    </section>
+    <div id="feedback"></div>
+    <div id="measurement"></div>
+    <details><summary>UTC daily counts and suppression</summary><pre id="daily-counts"></pre></details>
+  </main>
+  <script type="module" src="/assets/console.js"></script>
+</body>
+</html>
