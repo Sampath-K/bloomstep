@@ -28,6 +28,8 @@ import 'package:launch_at_startup/launch_at_startup.dart';
 import 'plant_art.dart';
 import 'recipe_builder.dart';
 
+const _testBuild = bool.fromEnvironment('BLOOMSTEP_TEST_BUILD');
+
 class GardenScreen extends StatefulWidget {
   const GardenScreen({
     super.key,
@@ -40,6 +42,8 @@ class GardenScreen extends StatefulWidget {
     this.invitationService,
     this.diagnostics,
     this.installerMeasurement,
+    this.testExportPathSelector,
+    this.clock,
   });
   final GardenStore store;
   final IdentityService? identity;
@@ -50,11 +54,14 @@ class GardenScreen extends StatefulWidget {
   final InvitationService? invitationService;
   final SessionDiagnostics? diagnostics;
   final InstallerMeasurement? installerMeasurement;
+  final Future<String?> Function()? testExportPathSelector;
+  final DateTime Function()? clock;
   @override
   State<GardenScreen> createState() => _GardenScreenState();
 }
 
 class _GardenScreenState extends State<GardenScreen> {
+  DateTime _now() => widget.clock?.call() ?? DateTime.now();
   List<Habit> habits = [];
   bool loading = true;
   bool working = false;
@@ -80,6 +87,12 @@ class _GardenScreenState extends State<GardenScreen> {
   @override
   void initState() {
     super.initState();
+    if (!_testBuild &&
+        (widget.clock != null || widget.testExportPathSelector != null)) {
+      throw StateError(
+        'Test-only garden adapters are unavailable in release builds.',
+      );
+    }
     invitations =
         widget.invitationService ??
         (widget.identity == null
@@ -127,7 +140,7 @@ class _GardenScreenState extends State<GardenScreen> {
       );
       if (!mounted || closing) return;
       widget.store.requireSyncSession(account, generation);
-      final now = DateTime.now();
+      final now = _now();
       final returning =
           last != null &&
           now.toUtc().difference(last) >= const Duration(days: 3);
@@ -183,7 +196,7 @@ class _GardenScreenState extends State<GardenScreen> {
       configExpiryTimer?.cancel();
       final expires = result.config.expiresAt;
       if (expires != null) {
-        final remaining = expires.difference(DateTime.now().toUtc());
+        final remaining = expires.difference(_now().toUtc());
         configExpiryTimer = Timer(
           remaining.isNegative ? Duration.zero : remaining,
           () {
@@ -370,7 +383,7 @@ class _GardenScreenState extends State<GardenScreen> {
     }
     var saved = false;
     await _act(() async {
-      await widget.store.checkIn(habit.id, result, reason: reason);
+      await widget.store.checkIn(habit.id, result, reason: reason, now: _now());
       saved = true;
     });
     await reminders?.practiced(habit.id);
@@ -401,7 +414,7 @@ class _GardenScreenState extends State<GardenScreen> {
         await widget.store.track(
           'rating_prompt_shown',
           properties: {
-            'localDay': localDate(DateTime.now()),
+            'localDay': localDate(_now()),
             'platform': GardenStore.telemetryPlatform,
           },
         );
@@ -432,7 +445,7 @@ class _GardenScreenState extends State<GardenScreen> {
             'celebration_practiced',
             properties: {
               'habitId': habit.id,
-              'localDay': localDate(DateTime.now()),
+              'localDay': localDate(_now()),
               'platform': GardenStore.telemetryPlatform,
             },
           );
@@ -446,7 +459,7 @@ class _GardenScreenState extends State<GardenScreen> {
   Future<void> _reflection(Habit habit) async {
     final available = await widget.store.naturalnessAvailableAt(habit.id);
     if (!mounted) return;
-    if (available != null && DateTime.now().toUtc().isBefore(available)) {
+    if (available != null && _now().toUtc().isBefore(available)) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(
@@ -593,7 +606,7 @@ class _GardenScreenState extends State<GardenScreen> {
         'recipe_doctor_applied',
         properties: {
           'habitId': habit.id,
-          'localDay': localDate(DateTime.now()),
+          'localDay': localDate(_now()),
           'platform': GardenStore.telemetryPlatform,
         },
       );
@@ -1176,10 +1189,12 @@ class _GardenScreenState extends State<GardenScreen> {
                     onTap: () => _act(() async {
                       final owner = widget.store.account;
                       final generation = widget.store.syncGeneration;
-                      final target = await getSaveLocation(
-                        suggestedName: 'bloomstep-export.json',
-                      );
-                      if (target == null) return;
+                      final targetPath = widget.testExportPathSelector == null
+                          ? (await getSaveLocation(
+                              suggestedName: 'bloomstep-export.json',
+                            ))?.path
+                          : await widget.testExportPathSelector!();
+                      if (targetPath == null) return;
                       widget.store.requireSyncSession(owner, generation);
                       Map<String, Object?> data;
                       final warnings = <String>[];
@@ -1219,7 +1234,7 @@ class _GardenScreenState extends State<GardenScreen> {
                         bytes,
                         mimeType: 'application/json',
                         name: 'bloomstep-export.json',
-                      ).saveTo(target.path);
+                      ).saveTo(targetPath);
                       if (mounted && warnings.isNotEmpty) {
                         ScaffoldMessenger.of(this.context).showSnackBar(
                           SnackBar(
@@ -1906,15 +1921,14 @@ class _GardenScreenState extends State<GardenScreen> {
                                             working ||
                                                 (naturalnessDates[habit.id]
                                                         ?.isAfter(
-                                                          DateTime.now()
-                                                              .toUtc(),
+                                                          _now().toUtc(),
                                                         ) ??
                                                     false)
                                             ? null
                                             : () => _reflection(habit),
                                         child: Text(
                                           naturalnessDates[habit.id]?.isAfter(
-                                                    DateTime.now().toUtc(),
+                                                    _now().toUtc(),
                                                   ) ??
                                                   false
                                               ? 'Naturalness available ${localDate(naturalnessDates[habit.id]!.toLocal())}'

@@ -25,6 +25,19 @@ rotation, export/revoke/acknowledgment races, final deleted-owner filtering and
 low-count subtraction protection. The released build also passed Windows x64
 and ARM64 analyzer, test, build and synthetic installer lifecycle jobs.
 
+**Current implementation increment: isolated synthetic acceptance automation
+(hosted CI pending).** Production RS256/JWKS auth and the signed-in release
+path remain separate; a compile-time test app accepts only a per-job ephemeral
+key and synthetic identities against a loopback-only API/disposable store.
+Production-mode gate tests reject the test sign-in and test-only clock/API
+overrides. The local API typecheck and all 154 API tests pass, and Flutter
+analysis is clean. This OneDrive worktree cannot execute Flutter tests because
+its generated Windows symlink/reparse-point directories are not writable, so
+the x64/ARM64 UI/API journeys and production-mode gate receipts remain pending
+hosted CI. They do not replace provider/MFA, Cosmos, notification, accessibility,
+real-account, operator, or cohort acceptance. See
+`docs/synthetic-automation.md` for exact test coverage, residuals and owners.
+
 **Support source publication:** corrected PR10 merged `cf5a322`; exact
 PR37335150702, main37338563004 and API/site deployment37338562518 succeeded.
 Preview.7 artifacts were subsequently published and their website links were

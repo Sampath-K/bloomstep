@@ -5,12 +5,37 @@ import 'package:http/http.dart' as http;
 import '../core/garden_store.dart';
 import 'identity.dart';
 
+const _testBuild = bool.fromEnvironment('BLOOMSTEP_TEST_BUILD');
+
 class SyncService {
-  SyncService(this.identity, this.store, {this.client});
+  SyncService(this.identity, this.store, {this.client, Uri? testApiOrigin})
+    : _apiOrigin = _resolveApiOrigin(testApiOrigin);
   final IdentityService identity;
   final GardenStore store;
   final http.Client? client;
+  final Uri _apiOrigin;
   bool _running = false;
+
+  static Uri _resolveApiOrigin(Uri? testApiOrigin) {
+    if (testApiOrigin == null) return Uri.parse(IdentityService.apiOrigin);
+    if (!_testBuild) {
+      throw StateError('Test API overrides are unavailable in release builds.');
+    }
+    if (testApiOrigin.scheme != 'http' ||
+        testApiOrigin.host != '127.0.0.1' ||
+        testApiOrigin.port == 0 ||
+        testApiOrigin.userInfo.isNotEmpty ||
+        testApiOrigin.query.isNotEmpty ||
+        testApiOrigin.fragment.isNotEmpty ||
+        (testApiOrigin.path.isNotEmpty && testApiOrigin.path != '/')) {
+      throw ArgumentError.value(
+        testApiOrigin,
+        'testApiOrigin',
+        'The isolated test API must use an uncredentialed loopback HTTP origin.',
+      );
+    }
+    return testApiOrigin;
+  }
 
   static String _apiError(http.Response response) {
     if (response.body.length > 16384) return '';
@@ -128,7 +153,7 @@ class SyncService {
     int generation,
   ) async {
     store.requireSyncSession(account, generation);
-    final url = Uri.parse('${IdentityService.apiOrigin}/api/sync');
+    final url = _apiOrigin.resolve('/api/sync');
     final headers = {
       'X-Bloomstep-Authorization': 'Bearer $token',
       'Content-Type': 'application/json',

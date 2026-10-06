@@ -8,7 +8,7 @@ Bloomstep is a Flutter app: Windows first (direct download, then Microsoft Store
 
 ```powershell
 flutter pub get
-flutter test
+flutter test --dart-define=BLOOMSTEP_TEST_BUILD=true
 flutter run -d windows
 flutter build windows --release
 ```
@@ -22,8 +22,13 @@ identity/cloud services are provisioned and verified; there is no fake login.
 See [product contract](docs/product-spec.md), [iteration/edge ledger](docs/status.md)
 and [deployment prerequisites](docs/deployment.md). The current
 [MVP exit matrix](docs/mvp-exit-matrix.md) records observed evidence and exact
-remaining acceptance gates. Windows reminders and cloud round trips must be
-observed before claiming they work.
+remaining acceptance gates. Unattended non-provider engineering checks are
+separate from deferred provider, actual Windows delivery and public-launch
+acceptance; adapter acknowledgments are not delivery evidence.
+
+The [synthetic acceptance harness](docs/synthetic-automation.md) is test-only;
+it is not a production sign-in path or proof of provider, Cosmos, notification,
+accessibility or population acceptance.
 
 [Authentication observability](docs/auth-observability.md) documents the bounded,
 account-consented session/token stages and explicitly unknown pre-auth/provider

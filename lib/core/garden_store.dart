@@ -11,9 +11,12 @@ import 'event_registry.g.dart' as registry;
 import 'measurement_receipt.dart';
 import 'reminder_preference_episode.dart';
 
+const _testBuild = bool.fromEnvironment('BLOOMSTEP_TEST_BUILD');
+
 class GardenStore {
-  GardenStore._(this._db, this._account);
+  GardenStore._(this._db, this._account, this._clock);
   final Database _db;
+  final DateTime Function() _clock;
   String _account;
   String get account => _account;
   int _syncGeneration = 0;
@@ -22,7 +25,16 @@ class GardenStore {
   int get analyticsGeneration => _analyticsGeneration;
   static const _uuid = Uuid();
 
-  static Future<GardenStore> open(String path, String account) async {
+  static Future<GardenStore> open(
+    String path,
+    String account, {
+    DateTime Function()? clock,
+  }) async {
+    if (clock != null && !_testBuild) {
+      throw StateError(
+        'Synthetic clock injection is available only in test builds.',
+      );
+    }
     sqfliteFfiInit();
     final db = await databaseFactoryFfi.openDatabase(
       path,
@@ -75,7 +87,7 @@ class GardenStore {
         },
       ),
     );
-    return GardenStore._(db, account);
+    return GardenStore._(db, account, clock ?? DateTime.now);
   }
 
   static Future<void> _createSyncState(DatabaseExecutor db) => db.execute(
@@ -157,7 +169,7 @@ class GardenStore {
         'account': owner,
         'type': type,
         'recordId': recordId,
-        'ts': DateTime.now().toUtc().toIso8601String(),
+        'ts': _clock().toUtc().toIso8601String(),
       });
       await _purgeDeleted(txn, owner);
       requireSyncSession(owner, generation);
@@ -277,7 +289,7 @@ class GardenStore {
     final properties = <String, Object?>{
       'habitId': id,
       'templateCategory': ?templateCategory,
-      'localDay': localDate(DateTime.now()),
+      'localDay': localDate(_clock()),
       'platform': telemetryPlatform,
     };
     _validateEventProperties('recipe_created', properties);
@@ -289,7 +301,7 @@ class GardenStore {
       'behavior': behavior.trim(),
       'celebration': celebration.trim(),
       'species': species,
-      'updated': DateTime.now().toUtc().toIso8601String(),
+      'updated': _clock().toUtc().toIso8601String(),
     });
     await recordInteraction();
     await track('recipe_created', properties: properties);
@@ -298,7 +310,7 @@ class GardenStore {
         'celebration_practiced',
         properties: {
           'habitId': id,
-          'localDay': localDate(DateTime.now()),
+          'localDay': localDate(_clock()),
           'platform': telemetryPlatform,
         },
       );
@@ -338,7 +350,7 @@ class GardenStore {
         'anchor': anchor.trim(),
         'behavior': behavior.trim(),
         'celebration': celebration.trim(),
-        'updated': DateTime.now().toUtc().toIso8601String(),
+        'updated': _clock().toUtc().toIso8601String(),
       },
       where: 'id = ? AND account = ?',
       whereArgs: [habit.id, _account],
@@ -368,10 +380,10 @@ class GardenStore {
     CheckInResult result, {
     String? reason,
     DateTime? now,
-  }) => _append(habitId, result.name, reason, now ?? DateTime.now());
+  }) => _append(habitId, result.name, reason, now ?? _clock());
 
   Future<void> undo(String habitId, {DateTime? now}) =>
-      _append(habitId, null, null, now ?? DateTime.now());
+      _append(habitId, null, null, now ?? _clock());
 
   Future<void> _append(
     String habitId,
@@ -483,7 +495,7 @@ class GardenStore {
     bool practiced = false,
     bool positiveReturn = false,
   }) async {
-    final date = now ?? DateTime.now();
+    final date = now ?? _clock();
     final account = _account;
     await _db.transaction((txn) async {
       final rows = await txn.query(
@@ -540,7 +552,7 @@ class GardenStore {
   }
 
   Future<List<Habit>> habits({DateTime? now}) async {
-    final date = now ?? DateTime.now();
+    final date = now ?? _clock();
     final cutoff = localDate(
       DateTime(
         date.year,
@@ -594,7 +606,7 @@ class GardenStore {
     if (items.length != 4 || items.any((v) => v < 1 || v > 7)) {
       throw ArgumentError('Four scores from 1 to 7 are required.');
     }
-    final date = now ?? DateTime.now();
+    final date = now ?? _clock();
     final owner = _account;
     final generation = _syncGeneration;
     await _db.transaction((txn) async {
@@ -718,13 +730,12 @@ class GardenStore {
   Future<bool> weeklyReflectionDue({DateTime? now}) async {
     final last = DateTime.tryParse(await setting('weeklyLast') ?? '');
     return last == null ||
-        (now ?? DateTime.now()).toUtc().difference(last) >=
-            const Duration(days: 7);
+        (now ?? _clock()).toUtc().difference(last) >= const Duration(days: 7);
   }
 
   Future<String> weeklyRecommendation(String habitId, {DateTime? now}) async {
     await _owned(habitId, _db);
-    final date = now ?? DateTime.now();
+    final date = now ?? _clock();
     final end = localDate(date);
     final start = localDate(
       DateTime(
@@ -759,15 +770,12 @@ class GardenStore {
 
   Future<void> completeWeeklyReflection(String habitId, {DateTime? now}) async {
     await _owned(habitId, _db);
-    await setSetting(
-      'weeklyLast',
-      (now ?? DateTime.now()).toUtc().toIso8601String(),
-    );
+    await setSetting('weeklyLast', (now ?? _clock()).toUtc().toIso8601String());
     await track(
       'weekly_reflection',
       properties: {
         'habitId': habitId,
-        'localDay': localDate(now ?? DateTime.now()),
+        'localDay': localDate(now ?? _clock()),
         'platform': telemetryPlatform,
       },
     );
@@ -780,7 +788,7 @@ class GardenStore {
     bool positiveMoment = true,
   }) async {
     if (!positiveMoment) return false;
-    final date = (now ?? DateTime.now()).toUtc();
+    final date = (now ?? _clock()).toUtc();
     final account = _account;
     return _db.transaction((txn) async {
       final settings = await txn.query(
@@ -860,7 +868,7 @@ class GardenStore {
         'account': account,
         'key': key,
         'value': value,
-        'updated': DateTime.now().toUtc().toIso8601String(),
+        'updated': _clock().toUtc().toIso8601String(),
       }, conflictAlgorithm: ConflictAlgorithm.replace);
       if (key == 'analytics' && value != 'true') {
         await _purgeReminderObservation(txn, account);
@@ -966,7 +974,7 @@ class GardenStore {
             'value': jsonEncode(
               ReminderObservationConsent.explicitChoice(_uuid.v4()).toJson(),
             ),
-            'updated': DateTime.now().toUtc().toIso8601String(),
+            'updated': _clock().toUtc().toIso8601String(),
           }, conflictAlgorithm: ConflictAlgorithm.replace);
         }
       } else {
@@ -1008,7 +1016,7 @@ class GardenStore {
     return episode;
   }
 
-  static Future<void> _trackEpisodeWith(
+  Future<void> _trackEpisodeWith(
     DatabaseExecutor txn,
     String owner,
     String name,
@@ -1034,7 +1042,7 @@ class GardenStore {
     DateTime? now,
   }) async {
     final owner = _account, generation = _syncGeneration;
-    final at = (now ?? DateTime.now()).toUtc();
+    final at = (now ?? _clock()).toUtc();
     await _db.transaction((txn) async {
       requireSyncSession(owner, generation);
       final previous = await _valueWith(txn, owner, 'reminders') == 'true';
@@ -1089,7 +1097,7 @@ class GardenStore {
 
   Future<void> observeReminderPreferenceFollowup({DateTime? now}) async {
     final owner = _account, generation = _syncGeneration;
-    final at = (now ?? DateTime.now()).toUtc();
+    final at = (now ?? _clock()).toUtc();
     await _db.transaction((txn) async {
       requireSyncSession(owner, generation);
       final consent = await _reminderConsentWith(txn, owner);
@@ -1123,7 +1131,7 @@ class GardenStore {
         'account': account,
         'key': 'invitationState',
         'value': value,
-        'updated': DateTime.now().toUtc().toIso8601String(),
+        'updated': _clock().toUtc().toIso8601String(),
       }, conflictAlgorithm: ConflictAlgorithm.replace);
       if (acceptedChannel != null) {
         await _trackWith(
@@ -1199,7 +1207,7 @@ class GardenStore {
     final generation = _syncGeneration;
     return _db.transaction((txn) async {
       requireSyncSession(account, generation);
-      receipt.requireCurrent((now ?? DateTime.now()).toUtc());
+      receipt.requireCurrent((now ?? _clock()).toUtc());
       final consent = await txn.query(
         'settings',
         where: 'account = ? AND key = ?',
@@ -1247,7 +1255,7 @@ class GardenStore {
     });
   }
 
-  static Future<void> _trackWith(
+  Future<void> _trackWith(
     DatabaseExecutor txn,
     String account,
     String name, {
@@ -1283,7 +1291,7 @@ class GardenStore {
       'id': _uuid.v4(),
       'account': account,
       'name': name,
-      'ts': (at ?? DateTime.now()).toUtc().toIso8601String(),
+      'ts': (at ?? _clock()).toUtc().toIso8601String(),
       'properties': properties == null ? null : jsonEncode(properties),
     });
   }
@@ -1314,7 +1322,7 @@ class GardenStore {
       'rating': rating,
       'status': 'queued',
       'replies': '[]',
-      'ts': DateTime.now().toUtc().toIso8601String(),
+      'ts': _clock().toUtc().toIso8601String(),
     });
     await track(
       'feedback_submitted',
@@ -1329,7 +1337,7 @@ class GardenStore {
         'rated',
         properties: {
           'rating': rating,
-          'localDay': localDate(DateTime.now()),
+          'localDay': localDate(_clock()),
           'platform': telemetryPlatform,
         },
       );
@@ -1483,6 +1491,10 @@ class GardenStore {
 
   static String _fingerprint(String table, Map<String, Object?> raw) {
     final row = _wireRow(table, raw);
+    if (table == 'reflections') {
+      // JSON whole scores and SQLite REAL values must share a fingerprint.
+      row['score'] = (row['score'] as num).toDouble();
+    }
     final keys = row.keys.toList()..sort();
     return sha256
         .convert(

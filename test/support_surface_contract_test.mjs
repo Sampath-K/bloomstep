@@ -8,12 +8,13 @@ test('native export source wires tested owner preparation, cancellation, save gu
   const end = source.indexOf("title: const Text('Check for updates')", start);
   assert.ok(start >= 0 && end > start);
   const exportSource = source.slice(start, end);
-  assert.match(exportSource, /if \(target == null\) return;/);
+  assert.match(exportSource, /if \(targetPath == null\) return;/);
   assert.match(exportSource, /prepareOwnerExport\(/);
   assert.match(exportSource, /refreshStatus\(\s*export: true,\s*\)/);
   assert.match(exportSource, /data = prepared\.data;/);
   assert.match(exportSource, /warnings\.addAll\(prepared\.warnings\)/);
-  const save = exportSource.indexOf('.saveTo(target.path)');
+  const save = exportSource.indexOf('.saveTo(targetPath)');
+  assert.ok(save >= 0);
   const ownerGuard = exportSource.lastIndexOf('requireSyncSession(owner, generation)');
   assert.ok(ownerGuard > exportSource.indexOf('prepareOwnerExport(') && ownerGuard < save);
   assert.ok(exportSource.indexOf('widget.identity!.account != owner') < save);
