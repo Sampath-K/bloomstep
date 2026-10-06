@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 100" width="640" height="100">
+  <title>Illustrative flow: find, verify, then decide</title>
+  <g fill="#f7f4ef" stroke="#66564a" stroke-width="3">
+    <rect x="10" y="10" width="160" height="80" rx="16"/>
+    <rect x="240" y="10" width="160" height="80" rx="16"/>
+    <rect x="470" y="10" width="160" height="80" rx="16"/>
+  </g>
+  <g fill="none" stroke="#66564a" stroke-width="4" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M78 27h20l10 10v36H78zM98 27v12h10"/>
+    <circle cx="316" cy="45" r="16"/><path d="M327 57l16 16M308 45l6 6 10-13"/>
+    <path d="M529 31v40M529 40h33l-8-8M529 61h33l-8 8M187 50h35l-8-8m8 8-8 8M417 50h35l-8-8m8 8-8 8"/>
+  </g>
+</svg>

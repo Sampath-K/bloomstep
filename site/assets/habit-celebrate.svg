@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 240 128" width="240" height="128">
+  <title>A flower and a small moment of celebration</title>
+  <rect x="8" y="8" width="224" height="112" rx="20" fill="#f7f4ef"/>
+  <path d="M120 102V53" stroke="#386a47" stroke-width="6"/>
+  <path d="M120 92q-25-1-27-20 23 0 27 20" fill="#386a47"/>
+  <g fill="#b11f4b">
+    <ellipse cx="120" cy="34" rx="11" ry="16"/>
+    <ellipse cx="104" cy="48" rx="16" ry="11"/>
+    <ellipse cx="136" cy="48" rx="16" ry="11"/>
+    <ellipse cx="120" cy="62" rx="11" ry="16"/>
+  </g>
+  <circle cx="120" cy="48" r="9" fill="#f7f4ef"/>
+  <path d="M62 38v12m-6-6h12M179 62v12m-6-6h12M175 25l5 5" stroke="#66564a" stroke-width="3" stroke-linecap="round"/>
+  <path d="M49 104h142" stroke="#66564a" stroke-width="4" stroke-linecap="round"/>
+</svg>

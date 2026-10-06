@@ -1,0 +1,26 @@
+{
+  "schemaVersion": 1,
+  "sampleName": "bloomstep-download-help-sample.txt",
+  "captures": [
+    {
+      "browser": "edge",
+      "version": "154.0.4258.37",
+      "product": "Microsoft Edge",
+      "engineVersion": "Edg/154.0.4258.37",
+      "nativeUrl": "edge://downloads/",
+      "capturedAt": "2026-10-06T09:31:12.905Z",
+      "viewport": "1000x640",
+      "context": "Clean isolated Windows profile, benign loopback text sample only; not an installer or security-warning validation."
+    },
+    {
+      "browser": "chrome",
+      "version": "154.0.8037.98",
+      "product": "Google Chrome",
+      "engineVersion": "Chrome/154.0.8037.98",
+      "nativeUrl": "chrome://downloads/",
+      "capturedAt": "2026-10-06T09:31:20.471Z",
+      "viewport": "1000x640",
+      "context": "Clean isolated Windows profile, benign loopback text sample only; not an installer or security-warning validation."
+    }
+  ]
+}

@@ -59,7 +59,7 @@
       --cp-border: #474747;
       --cp-border-strong: #5f5f5f;
       --cp-text: #dedede;
-      --cp-text-muted: #919191;
+      --cp-text-muted: #bcbcbc;
       --cp-text-soft: #b0b0b0;
       --cp-accent: #fd8ea1;
       --cp-accent-hover: #fb7b91;
@@ -105,6 +105,17 @@
     pre { white-space: pre-wrap; overflow-wrap: anywhere; font: 14px/1.6 Consolas, "Courier New", Courier, monospace; }
     code { overflow-wrap: anywhere; }
     [hidden] { display: none !important; }
+    @media (max-width: 760px) {
+      main, header, footer { padding: 20px; }
+      .grid { grid-template-columns: 1fr; }
+      .button { margin-bottom: 12px; }
+      .garden { padding-inline: 24px; }
+    }
+    @media (forced-colors: active) {
+      article, .notice { border: 1px solid CanvasText; }
+      .button { border: 1px solid ButtonText; }
+      .garden { display: none; }
+    }
   </style>
 </head>
 <body>
@@ -119,6 +130,7 @@
         <div class="plant" style="--height: 44px"></div><div class="plant" style="--height: 100px"></div><div class="plant" style="--height: 136px"><span class="flower"></span></div>
       </div>
       <p class="notice"><strong>Engineering preview, not the full MVP.</strong> Native Windows builds and the free-tier website/API are live under integration verification. Real sign-in is required; Google and Microsoft personal-account availability depends on the configured broker flow. No pretend login, no anonymous production garden.</p>
+      <p class="notice">Limited preview — Bloomstep is an early, unsigned Windows app for trying tiny, routine-linked habits, check-ins, and a personal growing garden. Sign-in is required; some features and sign-in options are still being refined. This is not the complete verified MVP, and it is not medical advice. There is no Microsoft Store version yet. If you use the app, private feedback is available in-app after sign-in.</p>
     </section>
     <section id="grow">
       <h2>Small by design. Gentle by default.</h2>
@@ -127,7 +139,7 @@
         <article><h3>Let it feel good</h3><p>A smile, a phrase, a small gesture. Practice your personal celebration when you plant your seed.</p></article>
         <article><h3>Grow without guilt</h3><p>Did it, did more, or not today. Plants never wilt. Reflection helps you adapt, and automatic habits graduate to your Grove.</p></article>
       </div>
-      <p class="small">Original content inspired by the behavior design research of Dr. BJ Fogg. Not affiliated with or endorsed by his organization. Health recipes are not medical advice. Designed for ages 16+.</p>
+      <p class="small">Bloomstep is an independent app inspired by the Tiny Habits method; it is not affiliated with or endorsed by BJ Fogg or Tiny Habits. These are original examples, not book excerpts. Optional learning: <a href="https://tinyhabits.com">official Tiny Habits website</a> and <a href="https://tinyhabits.com/book/">official book information</a>. Health recipes are not medical advice. Designed for ages 16+.</p>
     </section>
     <section id="download">
       <h2>Windows first. A real desktop app.</h2>
@@ -137,6 +149,7 @@
       <p><a href="https://github.com/Sampath-K/bloomstep/releases/tag/v0.1.0-preview.8">Release notes &amp; SHA-256 checksums</a></p>
       <p class="small"><code>ARM64 SHA-256: 2d87612664f91a099ca9201983259d728a6c768bba482c6e663d72c91358a562</code><br><code>x64 SHA-256: ecd122fd8cc222fc197157595960210ed413e1aa4824c25b24bf3793649e2ae3</code></p>
       <p class="small">Unsigned preview: Windows SmartScreen may warn about an unknown publisher. Download only from the linked GitHub repository and compare the SHA-256 checksum. Do not bypass security policy on a managed device. Microsoft Store signing does not sign this web download. Store, Android and iOS distribution are deferred.</p>
+      <p class="small">A matching checksum confirms file consistency, not safety or a digital signature. If verification fails or a malware or policy block appears, stop. <a href="/#download-help">Browser-specific download help</a> explains Edge and Chrome navigation without turning off protection. <a href="/#download">What to expect in the installer and SmartScreen</a>.</p>
       <p class="small">An update check opens the release page; automatic installation and staged rollout are not yet enabled.</p>
     </section>
     <section id="trust">

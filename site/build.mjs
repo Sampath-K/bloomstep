@@ -7,6 +7,11 @@ const values=['CONSOLE_CLIENT_ID','OIDC_ISSUER','OIDC_API_SCOPE','API_ORIGIN'].m
 if(values.some(Boolean) && !values.every(Boolean)) throw Error('All public console deployment identifiers are required together.');
 await mkdir(new URL('./assets/',import.meta.url),{recursive:true});
 const index=await readFile(new URL('./index.html',import.meta.url),'utf8');
+for (const asset of ['habit-anchor.svg','habit-tiny.svg','habit-celebrate.svg',
+  'download-flow.svg','edge-downloads.png','chrome-downloads.png','download-capture-provenance.json']) {
+  const bytes = await readFile(new URL(`./assets/${asset}`, import.meta.url));
+  if (!bytes.length) throw Error(`Required onboarding asset is empty: ${asset}`);
+}
 const theme=/<style>([\s\S]*?)<\/style>/.exec(index)?.[1];
 if(!theme) throw Error('Existing site theme is required for callback.');
 await writeFile(new URL('./assets/theme.css',import.meta.url),theme);
@@ -28,7 +33,11 @@ for (const page of ['index.html','releases/index.html']) {
   html = html.replaceAll('https://brave-plant-02c10e800.5.azurestaticapps.net',customer.origin);
   for (const arch of ['arm64','x64']) {
     html = html.replace(new RegExp(`https://github\\.com/Sampath-K/bloomstep/releases/download/[^"\\s]+-windows-${arch}-setup\\.exe`,'g'),customer.release[arch].url);
+    html = html.replace(new RegExp(`Bloomstep-[0-9A-Za-z.-]+-windows-${arch}-setup\\.exe(?=</code>)`, 'g'),
+      `Bloomstep-${customer.release.tag.slice(1)}-windows-${arch}-setup.exe`);
   }
+  html = html.replace(/(<span id="download-version">)[^<]+(<\/span>)/,
+    `$1${customer.release.tag.slice(1)}$2`);
   if(page === 'releases/index.html') {
     html = html.replace(/ARM64 SHA-256: [a-f0-9]{64}/,`ARM64 SHA-256: ${customer.release.arm64.sha256}`)
       .replace(/x64 SHA-256: [a-f0-9]{64}/,`x64 SHA-256: ${customer.release.x64.sha256}`);

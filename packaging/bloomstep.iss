@@ -9,7 +9,12 @@
 #endif
 
 [Setup]
+#ifdef OnboardingFixture
+AppId={{8E9B101B-CB3D-4C0F-B733-FC1DFFB75129}
+UsePreviousAppDir=no
+#else
 AppId={{99BE7E95-0565-4C72-A4DD-46D1D5B6C679}
+#endif
 AppName=Bloomstep
 AppVersion={#AppVersion}
 AppPublisher=Bloomstep contributors
@@ -22,6 +27,8 @@ OutputBaseFilename=Bloomstep-{#AppVersion}-windows-{#AppArch}-setup
 Compression=lzma2
 SolidCompression=yes
 WizardStyle=modern
+WizardImageFile=assets\wizard-garden.bmp
+WizardSmallImageFile=assets\wizard-seed.bmp
 UninstallDisplayIcon={app}\bloomstep.exe
 CloseApplications=yes
 RestartApplications=no
@@ -32,6 +39,11 @@ ArchitecturesInstallIn64BitMode=arm64
 ArchitecturesAllowed=x64compatible
 ArchitecturesInstallIn64BitMode=x64compatible
 #endif
+
+[Messages]
+ReadyLabel1=Ready to install this unsigned Bloomstep preview.
+FinishedHeadingLabel=Bloomstep is installed
+FinishedLabel=Bloomstep is ready for sign-in. Try one safe, tiny action after a familiar routine, then celebrate in your own way. Your plant keeps its growth even on a "not today" day.%n%nThis is a limited unsigned preview, not the complete verified MVP or medical advice. Opening the app below is optional.
 
 [Files]
 Source: "{#SourceDir}\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs createallsubdirs
@@ -44,7 +56,7 @@ Name: "{group}\Bloomstep"; Filename: "{app}\bloomstep.exe"
 Name: "{group}\Uninstall Bloomstep"; Filename: "{uninstallexe}"
 
 [Run]
-Filename: "{app}\bloomstep.exe"; Description: "Open Bloomstep (sign-in-gated preview)"; Flags: nowait postinstall skipifsilent
+Filename: "{app}\bloomstep.exe"; Description: "Open Bloomstep (sign-in-gated preview)"; Flags: nowait postinstall skipifsilent unchecked
 
 [UninstallDelete]
 Type: files; Name: "{userstartup}\Bloomstep.lnk"
@@ -58,6 +70,13 @@ Root: HKCU; Subkey: "Software\Classes\bloomstep\DefaultIcon"; ValueType: string;
 Root: HKCU; Subkey: "Software\Classes\bloomstep\shell\open\command"; ValueType: string; ValueData: """{app}\bloomstep.exe"" ""%1"""
 
 [Code]
+#ifdef OnboardingFixture
+function PrepareToInstall(var NeedsRestart: Boolean): String;
+begin
+  Result := 'Compile-only onboarding fixture. Installation is prohibited; cancel this wizard.';
+end;
+#endif
+
 type
   TMeasurementGuid = record
     D1: LongWord;
@@ -132,10 +151,32 @@ begin
   MsgBox('Optional local measurement failed. Installation is independent and will continue. No data was sent. Clear the local installer receipt in Bloomstep before linking it if an incomplete receipt remains.', mbError, MB_OK);
 end;
 
+function UpdateReadyMemo(Space, NewLine, MemoUserInfoInfo, MemoDirInfo,
+  MemoTypeInfo, MemoComponentsInfo, MemoGroupInfo, MemoTasksInfo: String): String;
+var
+  ReadyMemoNote: String;
+begin
+  ReadyMemoNote := 'A familiar routine, one tiny action, a personal celebration.' + NewLine +
+    'For example: after setting down my mug, I do one gentle shoulder roll and smile.' + NewLine +
+    'In Bloomstep, pair the routine and action in a recipe; check in without streak pressure.' + NewLine + NewLine +
+    'Bloomstep is an independent app inspired by the Tiny Habits method; not affiliated with or endorsed by BJ Fogg or Tiny Habits.' + NewLine +
+    'Optional learning (not required): https://tinyhabits.com and https://tinyhabits.com/book/' + NewLine + NewLine +
+    'Limited unsigned preview. Sign-in required; features and sign-in options are still being refined. Not the complete verified MVP or medical advice. No Microsoft Store version yet.' + NewLine + NewLine;
+  Result := MemoUserInfoInfo;
+  if MemoDirInfo <> '' then Result := Result + MemoDirInfo;
+  if MemoTypeInfo <> '' then Result := Result + NewLine + NewLine + MemoTypeInfo;
+  if MemoComponentsInfo <> '' then Result := Result + NewLine + NewLine + MemoComponentsInfo;
+  if MemoGroupInfo <> '' then Result := Result + NewLine + NewLine + MemoGroupInfo;
+  if MemoTasksInfo <> '' then Result := Result + NewLine + NewLine + MemoTasksInfo;
+  Result := Result + NewLine + NewLine + ReadyMemoNote;
+end;
+
 procedure InitializeWizard();
 var
   Disclosure: TNewStaticText;
 begin
+  WizardForm.ReadyMemo.WordWrap := True;
+  WizardForm.ReadyMemo.ScrollBars := ssVertical;
   MeasurementPage := CreateCustomPage(wpSelectDir,
     'Optional local installation observations',
     'Off by default. Nothing is sent by this installer.');
@@ -144,11 +185,11 @@ begin
   Disclosure.AutoSize := False;
   Disclosure.WordWrap := True;
   Disclosure.Width := MeasurementPage.SurfaceWidth;
-  Disclosure.Height := ScaleY(150);
   Disclosure.Caption := 'If selected, this device saves fixed event names, random IDs and UTC times for the installation phase, completion and first app launch/sign-in view. No email, habit text, paths, URLs or invitation codes. The receipt expires after seven days and is removed on next access. Linking to a signed-in account requires separate in-app product-event consent and explicit confirmation. Selecting this replaces a prior installer receipt; silent installers never collect observations.';
+  Disclosure.AdjustHeight();
   MeasurementCheckBox := TNewCheckBox.Create(MeasurementPage);
   MeasurementCheckBox.Parent := MeasurementPage.Surface;
-  MeasurementCheckBox.Top := ScaleY(160);
+  MeasurementCheckBox.Top := Disclosure.Top + Disclosure.Height + ScaleY(12);
   MeasurementCheckBox.Width := MeasurementPage.SurfaceWidth;
   MeasurementCheckBox.Height := ScaleY(32);
   MeasurementCheckBox.Caption := 'Save optional local observations (unchecked by default)';
@@ -208,3 +249,7 @@ begin
         RegDeleteKeyIncludingSubkeys(HKCU, 'Software\Classes\bloomstep');
   end;
 end;
+
+#ifdef OnboardingPreprocessOutput
+#expr SaveToFile(OnboardingPreprocessOutput)
+#endif

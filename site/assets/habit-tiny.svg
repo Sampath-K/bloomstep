@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 240 128" width="240" height="128">
+  <title>One small sprout is enough</title>
+  <rect x="8" y="8" width="224" height="112" rx="20" fill="#f7f4ef"/>
+  <path d="M49 101h142" stroke="#66564a" stroke-width="4" stroke-linecap="round"/>
+  <path d="M120 97V61" stroke="#386a47" stroke-width="6" stroke-linecap="round"/>
+  <path d="M120 76q-37 1-39-29 33-1 39 29M120 63q5-28 36-26-1 28-36 26" fill="#386a47"/>
+  <ellipse cx="120" cy="102" rx="15" ry="4" fill="#66564a"/>
+</svg>
