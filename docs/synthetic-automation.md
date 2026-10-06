@@ -215,3 +215,8 @@ available date during its cooldown. The journey waits for a newly persisted
 reflection and the stable weekly control, asserts the cooldown label, and
 advances through the actual second-reflection window; it does not require the
 old Check-naturalness label to remain or bypass the cooldown.
+Remaining dialog/profile transitions use their actual completion states:
+feedback deletion closes the My-feedback dialog, Settings and feedback reads
+await SQLite before presenting dialogs, and profile close must re-enable the
+Continue button before relogin. The wait checks both garden-idle and the named
+button's enabled state, plus the relevant durable predicate.

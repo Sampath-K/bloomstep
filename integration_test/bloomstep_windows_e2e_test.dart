@@ -373,7 +373,7 @@ void main() {
       expect((await activeStore!.syncPayload())['voice'], isEmpty);
 
       await tester.tap(find.byTooltip('Settings and privacy'));
-      await tester.pumpAndSettle();
+      await _waitFor(tester, find.text('Export my data (JSON)'));
       await tester.ensureVisible(find.text('Export my data (JSON)'));
       await tester.tap(find.text('Export my data (JSON)'));
       await _waitFor(
@@ -396,7 +396,7 @@ void main() {
       await tester.tap(find.byTooltip('Help us grow'));
       await tester.pumpAndSettle();
       await tester.tap(find.text('Cancel'));
-      await tester.pumpAndSettle();
+      await _waitFor(tester, find.text('My feedback'));
       expect(find.text('My feedback'), findsOneWidget);
       await tester.tap(find.byTooltip('Delete this feedback'));
       await tester.pumpAndSettle();
@@ -404,8 +404,10 @@ void main() {
       await tester.tap(find.text('Delete feedback'));
       await _waitFor(
         tester,
-        find.text('My feedback'),
-        ready: () async => (await activeStore!.voice()).isEmpty,
+        find.text('Plant a habit'),
+        ready: () async =>
+            (await activeStore!.voice()).isEmpty &&
+            find.text('My feedback').evaluate().isEmpty,
       );
       expect(await activeStore!.voice(), isEmpty);
       await syncService().sync();
@@ -701,6 +703,7 @@ Future<void> _waitFor(
   final timer = Stopwatch()..start();
   var modelReady = false;
   var gardenIdle = false;
+  var actionReady = false;
   while (timer.elapsed < duration) {
     await tester.runAsync(
       () => Future<void>.delayed(const Duration(milliseconds: 50)),
@@ -713,12 +716,22 @@ Future<void> _waitFor(
         find.widgetWithText(FilledButton, 'Plant a habit', skipOffstage: false),
       );
       gardenIdle = plantButtons.every((button) => button.enabled);
-      if (gardenIdle) return;
+      final actions = tester.widgetList<ButtonStyleButton>(
+        find.ancestor(
+          of: finder,
+          matching: find.byWidgetPredicate(
+            (widget) => widget is ButtonStyleButton,
+          ),
+        ),
+      );
+      actionReady = actions.every((button) => button.enabled);
+      if (gardenIdle && actionReady) return;
     }
   }
   fail(
     'The desktop UI did not reach $finder '
     '(matches: ${finder.evaluate().length}, '
-    'modelReady: $modelReady, gardenIdle: $gardenIdle).',
+    'modelReady: $modelReady, gardenIdle: $gardenIdle, '
+    'actionReady: $actionReady).',
   );
 }
