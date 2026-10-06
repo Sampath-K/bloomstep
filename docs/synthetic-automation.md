@@ -220,3 +220,6 @@ feedback deletion closes the My-feedback dialog, Settings and feedback reads
 await SQLite before presenting dialogs, and profile close must re-enable the
 Continue button before relogin. The wait checks both garden-idle and the named
 button's enabled state, plus the relevant durable predicate.
+The synthetic window starts 31 days before the actual run timestamp, not at
+today's noon. Its final day therefore stays inside the unchanged backend
+five-minute future timestamp limit even when CI runs before noon.

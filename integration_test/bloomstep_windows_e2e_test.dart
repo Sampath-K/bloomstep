@@ -23,12 +23,7 @@ void main() {
       expect(TestOnlyAuthGate.validTestSecret(secret), isTrue);
       final runRoot = await Directory.systemTemp.createTemp('bloomstep-it-');
       final today = DateTime.now();
-      var testNow = DateTime(
-        today.year,
-        today.month,
-        today.day,
-        12,
-      ).subtract(const Duration(days: 31));
+      var testNow = today.subtract(const Duration(days: 31));
       DateTime testClock() => testNow;
       final evidencePath = Platform.environment['BLOOMSTEP_TEST_EVIDENCE_PATH'];
       Map<String, Object?>? completedEvidence;
