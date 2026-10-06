@@ -95,6 +95,8 @@
     .small { font-size: 16px; color: var(--cp-text-soft); }
     .hero { display: grid; grid-template-columns: 1.25fr 1fr; gap: 40px; align-items: center; margin-top: 48px; }
     .hero img { width: 100%; height: auto; border-radius: 16px; }
+    .product-shot img { border: 1px solid var(--cp-border); box-shadow: var(--cp-shadow); }
+    .product-shot figcaption { margin-top: 12px; }
     .teaching-art { width: 100%; height: 128px; object-fit: contain; }
     .flow-art { max-width: 100%; width: 640px; height: auto; }
     .browser-capture { max-width: 100%; width: 800px; height: auto; border: 1px solid var(--cp-border-strong); }
@@ -109,6 +111,9 @@
     summary { cursor: pointer; font-weight: 600; min-height: 40px; }
     .download { background: var(--cp-surface); border: 1px solid var(--cp-border); border-radius: 16px; padding: 32px; }
     .choices { display: flex; flex-wrap: wrap; gap: 24px; }
+    .download .choices .button { background: var(--cp-accent); }
+    #download-footer-cta { padding: 32px; text-align: center; background: var(--cp-surface); border: 1px solid var(--cp-border); border-radius: 16px; }
+    #download-footer-cta p { margin-left: auto; margin-right: auto; }
     .notice { border-left: 4px solid var(--cp-accent); padding: 16px 24px; background: var(--cp-accent-soft); border-radius: .625rem; }
     .skip { position: absolute; top: -120px; left: 16px; background: var(--cp-surface); padding: 12px; }
     .skip:focus { top: 16px; }
@@ -149,14 +154,16 @@
     <section class="hero" aria-labelledby="intro">
       <div>
         <p class="eyebrow">Gentle habit building for Windows</p>
-        <h1 id="intro">A little is enough.<br>Grow from there.</h1>
-        <p class="lead">Make room for one tiny action in a routine you already have. Celebrate the moment, and let your garden grow with you.</p>
-        <p><a class="button" id="primary-cta" href="#download">Download for Windows</a></p>
-        <p class="small">Unsigned limited preview. No streak pressure. No plants that wilt.</p>
+        <h1 id="intro">Make a tiny habit part of your day.</h1>
+        <p class="lead">Choose a routine, pair it with one small action, and celebrate your moment. Bloomstep keeps track and grows a personal garden along the way—without streak pressure.</p>
+        <p><a class="button" id="primary-cta" href="#download">Get Bloomstep for Windows</a></p>
+        <p class="small">Free Windows download · Limited preview · Sign-in required</p>
       </div>
-      <img src="/assets/bloomstep-social.png" width="1200" height="630" alt="Three original illustrated plants, from a small sprout to a flowering plant, represent gentle progress in Bloomstep.">
+      <figure class="product-shot">
+        <img src="/assets/sample-garden.png" width="1266" height="813" alt="Bloomstep desktop app showing three growing plants and their habit check-in actions in an isolated synthetic sample garden.">
+        <figcaption class="small">Isolated synthetic sample garden; example app content, not customer data.</figcaption>
+      </figure>
     </section>
-    <p class="notice">Limited preview — Bloomstep is an early, unsigned Windows app for trying tiny, routine-linked habits, check-ins, and a personal growing garden. Sign-in is required; some features and sign-in options are still being refined. This is not the complete verified MVP, and it is not medical advice. There is no Microsoft Store version yet. If you use the app, private feedback is available in-app after sign-in.</p>
     <div id="invitation" class="notice" hidden></div>
     <section id="how" aria-labelledby="how-title">
       <p class="eyebrow">A small rhythm you can repeat</p>
@@ -179,26 +186,22 @@
     <section id="download" class="download" aria-labelledby="download-title">
       <h2 id="download-title">Bring a tiny garden to your Windows day.</h2>
       <p id="architecture-guidance">For most Intel or AMD PCs, choose x64. For a Windows on ARM PC, choose ARM64. Check Settings → System → About → System type if you are unsure.</p>
+      <p class="small"><a href="#windows-install-help">Windows installation help before opening the installer</a></p>
       <p class="choices">
-        <a data-download="x64" href="https://github.com/Sampath-K/bloomstep/releases/download/v0.1.0-preview.8/Bloomstep-0.1.0-preview.8-windows-x64-setup.exe">Download Bloomstep x64</a>
-        <a data-download="arm64" href="https://github.com/Sampath-K/bloomstep/releases/download/v0.1.0-preview.8/Bloomstep-0.1.0-preview.8-windows-arm64-setup.exe">Download Bloomstep ARM64</a>
+        <a class="button" data-download="x64" href="https://github.com/Sampath-K/bloomstep/releases/download/v0.1.0-preview.8/Bloomstep-0.1.0-preview.8-windows-x64-setup.exe">Download Bloomstep x64</a>
+        <a class="button" data-download="arm64" href="https://github.com/Sampath-K/bloomstep/releases/download/v0.1.0-preview.8/Bloomstep-0.1.0-preview.8-windows-arm64-setup.exe">Download Bloomstep ARM64</a>
       </p>
-      <p class="small">This is an early version; some features are still being refined. A sign-in is required to use the app. Downloads are hosted on Bloomstep's GitHub release page.</p>
-      <p class="small">Current release: <span id="download-version">0.1.0-preview.8</span>. The real installer filenames are <code>Bloomstep-0.1.0-preview.8-windows-x64-setup.exe</code> and <code>Bloomstep-0.1.0-preview.8-windows-arm64-setup.exe</code>. The example text files in the screenshots below are not these installers.</p>
-      <details><summary>What to expect when installing</summary>
-        <p>The current download is not digitally signed. Windows may show “Windows protected your PC” for this unsigned app. Before opening it, check the source, architecture and SHA-256 against the <a href="/releases/">releases page</a>. A matching checksum confirms file consistency; it does not prove the file is safe or digitally signed. If verification fails, stop.</p>
-        <p>Only if this is the unsigned-app reputation prompt, the source and hash match, your device policy permits it and you accept the risk, <strong>More info → Run anyway</strong> may be available. Otherwise, cancel. A malware or policy block is not this prompt: stop and seek your device administrator's guidance. Never override your workplace's security rules, turn off protection, or run as administrator to get past a warning.</p>
-        <p>The installer is for your Windows account and does not need administrator rights. You can check the download's checksum on the <a href="/releases/">releases page</a> before installing. A Microsoft Store version is not available yet.</p>
-        <p>Choose the install folder, leave optional local observations off unless you want them, then review before installing. The Ready page offers a short tiny-action example; it requires no answer. Opening Bloomstep after setup is optional, and using it requires sign-in.</p>
-      </details>
-      <div id="download-help">
+      <p class="small">The current Windows download is free. A sign-in is required to use the app. Downloads are hosted on Bloomstep's GitHub release page.</p>
+      <p class="small">Current release: <span id="download-version">0.1.0-preview.8</span>. Check the exact filenames and SHA-256 values on the <a href="/releases/">releases page</a> before opening a file.</p>
+      <details id="download-help">
+        <summary>Need help downloading?</summary>
         <h3>Finding a download in your browser</h3>
-        <p>Browser wording and controls vary by version and managed policy. These instructions describe navigation, not a warning we observed on your device. Downloads can be blocked before Windows sees the file; do not treat a browser block as permission to bypass protection.</p>
+        <p>Browser wording and controls vary by version and managed policy. These steps describe where to find a download; they do not claim a warning was observed on your device. A browser block is a reason to stop, not permission to bypass protection.</p>
         <figure>
           <img class="flow-art" src="/assets/download-flow.svg" width="640" height="100" alt="Download help sequence: find the file, verify its source and checksum, then decide whether to open it or stop.">
           <figcaption class="small">Illustrative download flow, not a browser screenshot. Find the file → verify source and checksum → open only if you accept the risk, or stop.</figcaption>
         </figure>
-        <details><summary>Microsoft Edge on Windows</summary><p>Press <kbd>Ctrl+J</kbd> to open Downloads, or use Settings and more (…) → Downloads. Locate the Bloomstep setup filename. A download flyout may also appear near the toolbar. If Edge flags or blocks the file, read the warning; do not use a “Keep” option simply because this page names the app. Cancel if the source, checksum or policy cannot be confirmed.</p>
+        <details><summary>Microsoft Edge on Windows</summary><p>Press <kbd>Ctrl+J</kbd> to open Downloads, or use Settings and more (…) → Downloads. Locate the Bloomstep setup filename. A download flyout may also appear near the toolbar. If Edge flags or blocks a file, read the exact message; a reputation prompt and a malware or organization-policy block are different. Do not use a “Keep” option simply because this page names the app. Cancel if the source, checksum or policy cannot be confirmed.</p>
           <figure><img class="browser-capture" src="/assets/edge-downloads.png" width="1000" height="640" loading="lazy" alt="Actual Microsoft Edge Downloads page from a clean test profile, with only the harmless bloomstep-download-help-sample.txt download."><figcaption class="small"><strong>Example download view; installer/security warnings may differ.</strong> Actual Microsoft Edge 154.0.4258.37 Downloads UI, captured on Windows on 6 October 2026 in an isolated test profile. This is a benign sample text file, not a Bloomstep installer. It shows no observed Bloomstep warning and does not validate a real installer download.</figcaption></figure>
           <p class="small"><a href="https://support.microsoft.com/en-us/edge/how-can-smartscreen-help-protect-me-in-microsoft-edge">Microsoft's explanation of SmartScreen warnings and blocks</a>. Keep protection enabled.</p>
         </details>
@@ -206,9 +209,11 @@
           <figure><img class="browser-capture" src="/assets/chrome-downloads.png" width="1000" height="640" loading="lazy" alt="Actual Google Chrome Download history page from a clean test profile, with only the harmless bloomstep-download-help-sample.txt download."><figcaption class="small"><strong>Example download view; installer/security warnings may differ.</strong> Actual Google Chrome 154.0.8037.98 Download history UI, captured on Windows on 6 October 2026 in an isolated test profile. This is a benign sample text file, not a Bloomstep installer. It shows no observed Bloomstep warning and does not validate a real installer download. The browser's generic managed-by-organization banner is not an instruction to override your device policy.</figcaption></figure>
           <p class="small"><a href="https://support.google.com/chrome/answer/6261569?hl=en">Google's explanation of dangerous-download warnings</a>. Take warnings seriously; do not disable protection.</p>
         </details>
-        <p class="small">For another Windows browser, use its Downloads menu, or <kbd>Ctrl+J</kbd> where supported. Wait for an ordinary completed file, then locate it in its download folder (often your Windows Downloads folder) and verify the version, architecture and checksum before opening. We have not captured Firefox's download UI; no Firefox-specific controls or warning outcomes are asserted here.</p>
-        <p class="small">For an ordinary completed file, use its folder action to locate it before opening. If there is no file, do not rename a partial download or assume a click succeeded. You can cancel and return to the <a href="/releases/">release page</a> later; installation does not depend on website measurement.</p>
-      </div>
+        <details><summary>Firefox on Windows</summary><p>Press <kbd>Ctrl+J</kbd> to open Downloads, or select the downloads arrow in the toolbar. Firefox controls and warning text can vary by version and policy. This Firefox download UI has not been captured. If the browser says a file is dangerous or blocked, stop and do not disable protection.</p>
+          <p class="small"><a href="https://support.mozilla.org/en-US/kb/where-find-and-manage-downloaded-files-firefox">Mozilla's guide to finding and managing downloads</a>.</p>
+        </details>
+        <p class="small">For any browser, wait for a completed file, use its folder action to locate it, then verify the version, architecture and checksum before opening. If verification fails, stop. Do not rename a partial download or assume a click succeeded; you can cancel and return to the <a href="/releases/">release page</a> later.</p>
+      </details>
       <details><summary>Optional receipt for understanding setup (off by default)</summary>
         <p>If you choose, keep a receipt in this page's memory and export it to a file. Nothing is saved in browser storage. Closing or reloading the page removes the in-memory receipt. It contains only random event IDs, fixed page/download event names and UTC dates, not URLs or your habits.</p>
         <label><input id="receipt-consent" type="checkbox"> Keep a receipt for this visit</label>
@@ -225,6 +230,13 @@
       <details><summary>Do I need an account or an internet connection?</summary><p>You need to sign in to get started. Once your garden is available on the device, you can work locally during a connection interruption and sync when connected again. Sign-in options depend on the available providers.</p></details>
       <details><summary>Can I take my habits with me or delete them?</summary><p>Use Settings to export your records as JSON. The app also has deletion controls for habits, private feedback and your cloud account data. Offline deletion requests wait for sync; exported files and provider backups are separate copies.</p></details>
       <details><summary>Is this medical advice?</summary><p>No. Bloomstep is a habit-building tool, not medical care or treatment. Choose actions that are safe for you. It is designed for ages 16 and up.</p></details>
+      <details id="windows-install-help"><summary>Why might Windows ask before opening Bloomstep?</summary>
+        <p>This preview installer is not digitally signed, so Windows may show an unknown-publisher/reputation prompt. A warning alone doesn't establish malware, and we cannot guarantee safety. Not all unknown programs are malicious, as Microsoft explains. Before opening a file, compare its source, architecture, exact filename and SHA-256 with the <a href="/releases/">current releases page</a>. A matching SHA-256 verifies that the bytes match the published checksum; it does not prove the file is safe or digitally signed.</p>
+        <p>An unknown-reputation prompt is different from a warning that identifies a known-malicious or dangerous file, and from a download blocked by your organization or device policy. For those malware or policy blocks, stop; do not try to override them. If an Edge or Windows prompt is unclear, cancel and ask your device administrator.</p>
+        <p>Only for an unknown-reputation prompt, if the exact source, filename and SHA-256 match, your device policy permits the action, and you understand and accept the risk, Windows may offer <strong>More info → Run anyway</strong>. If it does not appear or any check is uncertain, cancel. Cancellation is always an option. Leave SmartScreen, antivirus and Safe Browsing enabled; do not bypass a managed policy or use elevation as a way around a warning. This installer is intended for your Windows account and does not need administrator rights.</p>
+        <p><a href="https://learn.microsoft.com/en-us/deployedge/microsoft-edge-security-smartscreen">Microsoft's SmartScreen information</a> and <a href="https://support.microsoft.com/en-us/edge/how-can-smartscreen-help-protect-me-in-microsoft-edge">Edge warning guidance</a> explain how browser wording and actions can vary.</p>
+      </details>
+      <details><summary>What does “limited preview” mean?</summary><p>Limited preview — Bloomstep is an early, unsigned Windows app for trying tiny, routine-linked habits, check-ins, and a personal growing garden. Sign-in is required; some features and sign-in options are still being refined. This is not the complete verified MVP, and it is not medical advice. There is no Microsoft Store version yet. If you use the app, private feedback is available in-app after sign-in.</p></details>
     </section>
     <section id="privacy" aria-labelledby="privacy-title">
       <h2 id="privacy-title">Your habits are yours.</h2>
@@ -236,6 +248,12 @@
       <p>Daily website counts are kept for at most 90 days, with strict request and volume limits. Azure and GitHub provide hosting and downloads and may retain their own standard access/security logs. App event retention is 13 months when you opt in; export and deletion are available in Settings. No automatic browser-to-account matching is performed.</p>
       <p id="website-status" class="small" role="status">Website measurement is off. Downloads work independently of measurement and service availability.</p>
       <details><summary>Privacy notice details still to be supplied</summary><p>TODO(owner): controller identity and privacy contact. TODO(owner): applicable legal basis and processor/backup retention details. These details must be supplied by the owner before a full public launch; no legal or controller claims are assumed here.</p></details>
+    </section>
+    <section id="download-footer-cta" aria-labelledby="footer-download-title">
+      <p class="eyebrow">A little can be a good start</p>
+      <h2 id="footer-download-title">Ready to try one small step?</h2>
+      <p><a class="button" href="#download">Get the free Windows download</a></p>
+      <p class="small">Limited preview · Sign-in required · No streak pressure</p>
     </section>
   </main>
   <footer class="small"><p>Bloomstep. One tiny action, your own pace.</p><a href="/releases/">Releases &amp; download checksums</a> · <a href="#privacy">Privacy</a></footer>

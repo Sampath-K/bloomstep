@@ -24,6 +24,7 @@ try {
     });
     await page.goto(origin, { waitUntil: 'networkidle0' });
     assert.equal(posts.length, 0, 'New website measurement is default-off');
+    if (output) await page.screenshot({ path: join(output, `customer-default-${width}.png`), fullPage: true });
     if (!await page.$eval('#website-consent', node => node.disabled)) await page.click('#website-consent');
     await page.waitForFunction(() => document.getElementById('website-status').textContent.includes('active'));
     assert.equal(posts[0].event, 'landing_view');
@@ -102,9 +103,14 @@ try {
       if (path === '/') {
         assert.equal(await page.$$eval('#download-help details', details =>
           details.every(detail => !detail.open)), true, 'Browser help starts collapsed');
+        assert.equal(await page.$eval('#download-help', detail => !detail.open), true,
+          'Main browser help starts collapsed');
+        assert.equal(await page.$eval('#windows-install-help', detail => !detail.open), true,
+          'Warning FAQ starts collapsed');
         if (output) await page.screenshot({ path: join(output,
           `onboarding-${scenario.name}-home-default.png`), fullPage: true });
         await page.$eval('#download-help', node => {
+          node.open = true;
           for (const detail of node.querySelectorAll('details')) detail.open = true;
           node.scrollIntoView();
         });

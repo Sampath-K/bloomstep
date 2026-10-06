@@ -38,7 +38,7 @@ test('customer and engineering surfaces are separated with honest SEO', () => {
   const read = file => readFileSync(new URL('../' + file, import.meta.url), 'utf8');
   const home = read('index.html'), releases = read('releases/index.html'), consolePage = read('console.html');
   assert.doesNotMatch(home, /Growing in public|Product team console|SHA-256:|Windows engineering preview/);
-  assert.match(home, /Download for Windows/);
+  assert.match(home, /Get Bloomstep for Windows/);
   assert.match(home, /More info/);
   assert.match(home, /Run anyway/);
   assert.match(releases, /SHA-256/);
