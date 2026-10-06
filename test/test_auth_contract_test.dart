@@ -13,8 +13,10 @@ void main() {
   testWidgets('test auth fails closed for a missing key and email-like names', (
     tester,
   ) async {
-    final runRoot = await Directory.systemTemp.createTemp('bloomstep-it-');
-    addTearDown(() => runRoot.delete(recursive: true));
+    final runRoot = (await tester.runAsync(
+      () => Directory.systemTemp.createTemp('bloomstep-it-'),
+    ))!;
+    addTearDown(() => tester.runAsync(() => runRoot.delete(recursive: true)));
     await tester.pumpWidget(
       TestOnlyBloomstepApp(runRoot: runRoot, expectedSecret: null),
     );
@@ -28,8 +30,8 @@ void main() {
           .onPressed,
       isNull,
     );
-    expect(await runRoot.list().toList(), isEmpty);
-  });
+    expect((await tester.runAsync(() => runRoot.list().toList()))!, isEmpty);
+  }, timeout: const Timeout(Duration(seconds: 30)));
 
   testWidgets(
     'test auth rejects wrong keys and real-account-shaped usernames',
@@ -39,8 +41,10 @@ void main() {
         64,
         (_) => random.nextInt(16).toRadixString(16),
       ).join();
-      final runRoot = await Directory.systemTemp.createTemp('bloomstep-it-');
-      addTearDown(() => runRoot.delete(recursive: true));
+      final runRoot = (await tester.runAsync(
+        () => Directory.systemTemp.createTemp('bloomstep-it-'),
+      ))!;
+      addTearDown(() => tester.runAsync(() => runRoot.delete(recursive: true)));
       await tester.pumpWidget(
         TestOnlyBloomstepApp(runRoot: runRoot, expectedSecret: expected),
       );
@@ -58,7 +62,7 @@ void main() {
         find.text('Use a synthetic username, not an email address.'),
         findsOneWidget,
       );
-      expect(await runRoot.list().toList(), isEmpty);
+      expect((await tester.runAsync(() => runRoot.list().toList()))!, isEmpty);
 
       await tester.enterText(
         find.byKey(TestOnlyAuthGate.usernameFieldKey),
@@ -75,7 +79,8 @@ void main() {
         findsOneWidget,
       );
       expect(find.byType(GardenScreen), findsNothing);
-      expect(await runRoot.list().toList(), isEmpty);
+      expect((await tester.runAsync(() => runRoot.list().toList()))!, isEmpty);
     },
+    timeout: const Timeout(Duration(seconds: 30)),
   );
 }

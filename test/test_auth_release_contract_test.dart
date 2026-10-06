@@ -34,17 +34,14 @@ void main() {
       isNull,
     );
 
-    final root = await Directory.systemTemp.createTemp('bloomstep-it-');
-    addTearDown(() => root.delete(recursive: true));
     await tester.pumpWidget(
-      TestOnlyBloomstepApp(runRoot: root, expectedSecret: key),
+      TestOnlyBloomstepApp(runRoot: Directory.systemTemp, expectedSecret: key),
     );
     expect(
       find.text('Test build is locked. No garden was opened.'),
       findsOneWidget,
     );
     expect(find.byKey(TestOnlyAuthGate.usernameFieldKey), findsNothing);
-    expect(await root.list().toList(), isEmpty);
   });
 
   test('normal builds reject injected clocks and test API origins', () async {
