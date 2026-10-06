@@ -87,6 +87,9 @@ try {
       if ([OnboardingWizard]::ClassName($window) -ne 'TWizardForm') { continue }
       $text = [OnboardingWizard]::Describe($window)
       if (-not $seen.Add($text)) { continue }
+      if ($states.Count -eq 0 -and -not $text.Contains('Welcome to Bloomstep')) {
+        throw 'First observed wizard page was not Welcome.'
+      }
       $checkbox = [OnboardingWizard]::Find($window, 'Save optional local observations (unchecked by default)')
       if ($checkbox -ne [IntPtr]::Zero) {
         if ([OnboardingWizard]::SendMessage($checkbox, 0x00F0, [IntPtr]::Zero, [IntPtr]::Zero).ToInt32() -ne 0) {

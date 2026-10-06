@@ -7,6 +7,14 @@ import { fileURLToPath } from 'node:url';
 const read = path => readFileSync(new URL(`../${path}`, import.meta.url), 'utf8');
 const installer = read('packaging/bloomstep.iss');
 
+test('the first native wizard page is Welcome with original art and short independent-preview teaching', () => {
+  assert.match(installer, /DisableWelcomePage=no/);
+  assert.match(installer, /WelcomeLabel1=Welcome to Bloomstep/);
+  assert.match(installer, /WelcomeLabel2=.*tiny action.*unsigned.*Sign-in/);
+  const capture = read('tool/verify_onboarding_wizard.ps1');
+  assert.match(capture, /First observed wizard page was not Welcome/);
+});
+
 test('installer teaches on existing native steps without extra pages or changing security defaults', () => {
   assert.equal((installer.match(/CreateCustomPage\(/g) ?? []).length, 1);
   assert.match(installer, /ReadyMemoNote[\s\S]*routine[\s\S]*tiny[\s\S]*celebrat/);

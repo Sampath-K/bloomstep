@@ -27,6 +27,7 @@ OutputBaseFilename=Bloomstep-{#AppVersion}-windows-{#AppArch}-setup
 Compression=lzma2
 SolidCompression=yes
 WizardStyle=modern
+DisableWelcomePage=no
 WizardImageFile=assets\wizard-garden.bmp
 WizardSmallImageFile=assets\wizard-seed.bmp
 UninstallDisplayIcon={app}\bloomstep.exe
@@ -41,6 +42,8 @@ ArchitecturesInstallIn64BitMode=x64compatible
 #endif
 
 [Messages]
+WelcomeLabel1=Welcome to Bloomstep
+WelcomeLabel2=Bloomstep pairs a familiar routine with one safe, tiny action. Celebrate in your own way.%n%nLimited unsigned Windows preview, not the complete verified MVP or medical advice. Sign-in is required; some features and sign-in options are still being refined.%n%nAn independent app inspired by the Tiny Habits method, not affiliated with or endorsed by BJ Fogg or Tiny Habits.%n%nNext reviews your install folder and optional local observations. Nothing is sent by this installer.
 ReadyLabel1=Ready to install this unsigned Bloomstep preview.
 FinishedHeadingLabel=Bloomstep is installed
 FinishedLabel=Bloomstep is ready for sign-in. Try one safe, tiny action after a familiar routine, then celebrate in your own way. Your plant keeps its growth even on a "not today" day.%n%nThis is a limited unsigned preview, not the complete verified MVP or medical advice. Opening the app below is optional.

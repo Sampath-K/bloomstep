@@ -100,6 +100,10 @@ try {
         .map(image => ({ complete: image.complete, width: image.naturalWidth })));
       assert.ok(images.every(image => image.complete && image.width > 0), 'Required educational art loaded');
       if (path === '/') {
+        assert.equal(await page.$$eval('#download-help details', details =>
+          details.every(detail => !detail.open)), true, 'Browser help starts collapsed');
+        if (output) await page.screenshot({ path: join(output,
+          `onboarding-${scenario.name}-home-default.png`), fullPage: true });
         await page.$eval('#download-help', node => {
           for (const detail of node.querySelectorAll('details')) detail.open = true;
           node.scrollIntoView();
@@ -116,7 +120,7 @@ try {
         assert.equal(await page.evaluate(() => document.activeElement.matches('a,button,input,summary')), true);
       }
       if (output) await page.screenshot({ path: join(output,
-        `onboarding-${scenario.name}-${path === '/' ? 'home' : 'releases'}.png`), fullPage: true });
+        `onboarding-${scenario.name}-${path === '/' ? 'home-help-expanded' : 'releases'}.png`), fullPage: true });
     }
     await page.close();
   }

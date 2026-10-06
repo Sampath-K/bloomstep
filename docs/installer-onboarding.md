@@ -12,8 +12,9 @@ preview.9 tagging/publication and public recruitment/promotion remain held.
   method, not affiliated with or endorsed by BJ Fogg or Tiny Habits. Link only
   the official learning pages `https://tinyhabits.com` and
   `https://tinyhabits.com/book/`; learning is optional, never an install gate.
-- Reuse native installer steps (directory, existing optional observations,
-  ready, progress, finish). Add no custom educational pages, quizzes, tracking,
+- Restore the standard native Welcome after explicit creator review, then
+  reuse directory, existing optional observations, Start Menu, ready, progress
+  and finish. Add no custom educational pages, quizzes, tracking,
   autoplay or required external navigation. Keep per-user/no-elevation setup,
   silent/default-off receipts, ownership, protocol and sign-in gates unchanged.
 - Use original, deterministic bitmap art in native wizard chrome. Compiler
@@ -56,7 +57,7 @@ eligibility, support SLA or invitations to join a cohort are added.
 | Art unavailable / high contrast | Complete text alternative; no meaning or control expressed by color/art alone |
 | Keyboard, dark/light, 320px, 200% scale | Visible focus, semantic headings/alt, wrapping and no horizontal scroll; system colors in forced-colors |
 | Reduced motion / no interaction | Static original art; no animation, audio, autoplay, quiz or decorative clickable controls |
-| Wizard directory / ready / progress / finish | Native back/cancel/install navigation, concise ready teaching, optional finish launch; no extra educational step |
+| Wizard welcome / directory / ready / progress / finish | Native back/cancel/install navigation, short welcome/ready teaching, optional finish launch; no custom educational step |
 | Wizard observations / silent upgrade | Existing separate unchecked consent and error notification; silent does not collect or inherit ownership |
 | Cancel before install | No installation or receipt side effect from educational content; viewing art never uploads |
 | Fixture compile / visual inspection | Compile real Inno installer with inert fixture payload, inspect UI then cancel before install; no customer install/data/elevation |
@@ -94,7 +95,12 @@ installation paths, and returns a nonempty `PrepareToInstall` error before
 installation. Neither Install nor Finish is clicked during capture. Ordinary
 CI compiles never supply that define and inspect full preprocessed source to
 reject fixture identity/guard leakage. Captures use physical per-monitor DPI
-coordinates; native directory, consent, Start Menu and Ready steps were viewed
+coordinates; native Welcome, directory, consent, Start Menu and Ready steps were viewed
 at the host's 150% scale and canceled. No target directory was created.
 Progress/Finish remain source/compile evidence only: post-install launch is
 explicitly `unchecked`, not visually exercised by installing a fixture.
+
+Browser-specific panels are collapsed native `details` controls in the actual
+default page. Render evidence separates `home-default` from
+`home-help-expanded`; expanded screenshots are intentional inspection states,
+not the default user journey. Both states are checked for narrow-page reflow.

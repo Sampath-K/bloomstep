@@ -51,6 +51,14 @@ test('download help is static, browser-specific, conditional and honest about il
   assert.match(page, /forced-colors: active/);
 });
 
+test('browser screenshots are behind collapsed native disclosure controls by default', () => {
+  const page = read('index.html');
+  for (const browser of ['Microsoft Edge', 'Google Chrome']) {
+    assert.match(page, new RegExp(`<details><summary>${browser} on Windows</summary>`));
+  }
+  assert.doesNotMatch(page, /<details[^>]*\bopen(?:\s|>|=)/);
+});
+
 test('original teaching illustrations have text alternatives, self-contained vectors and no scripts', () => {
   const home = read('index.html');
   for (const name of ['anchor', 'tiny', 'celebrate']) {
