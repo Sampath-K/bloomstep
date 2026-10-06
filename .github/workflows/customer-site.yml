@@ -1,0 +1,38 @@
+name: Customer acquisition site
+on:
+  pull_request:
+  push:
+    branches: [main]
+permissions:
+  contents: read
+jobs:
+  customer-quality:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - run: npm --prefix site ci --ignore-scripts
+      - run: npm --prefix site test && npm --prefix site run build
+      - name: Measure mobile public-page quality
+        run: |
+          python3 -m http.server 8080 --directory site > /tmp/bloomstep-site.log 2>&1 &
+          trap 'kill $!' EXIT
+          PREVIEW_ORIGIN=http://localhost:8080 EVIDENCE_DIR=/tmp/customer-browser node site/verify-browser.mjs
+          for page in home releases; do
+            path="/"
+            if [ "$page" = releases ]; then path="/releases/"; fi
+            site/node_modules/.bin/lighthouse "http://localhost:8080$path" \
+              --chrome-flags="--headless --no-sandbox" --quiet \
+              --only-categories=performance,accessibility,best-practices,seo \
+              --output=json --output-path="/tmp/lighthouse-$page.json"
+            node site/check-lighthouse.mjs "/tmp/lighthouse-$page.json"
+          done
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: customer-lighthouse
+          path: |
+            /tmp/lighthouse-*.json
+            /tmp/customer-browser/

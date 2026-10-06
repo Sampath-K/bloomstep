@@ -29,13 +29,16 @@ jobs:
           OIDC_ISSUER: ${{ vars.OIDC_ISSUER }}
           OIDC_API_SCOPE: ${{ vars.OIDC_API_SCOPE }}
           API_ORIGIN: ${{ vars.API_ORIGIN }}
+          GOOGLE_SITE_VERIFICATION: ${{ vars.GOOGLE_SITE_VERIFICATION }}
+          BING_SITE_VERIFICATION: ${{ vars.BING_SITE_VERIFICATION }}
         run: |
           npm --prefix site ci
           node --test site/test/*.test.mjs test/site_console_test.mjs
           npm --prefix site run build
           mkdir deploy-site
-          cp site/index.html site/config.json site/staticwebapp.config.json site/operator-callback.html site/operator-config.json deploy-site/
+          cp site/index.html site/console.html site/robots.txt site/sitemap.xml site/config.json site/staticwebapp.config.json site/operator-callback.html site/operator-config.json deploy-site/
           cp -R site/assets deploy-site/assets
+          cp -R site/releases deploy-site/releases
       - name: Deploy approved Free SWA
         uses: Azure/static-web-apps-deploy@v1
         with:
@@ -50,7 +53,7 @@ jobs:
         env:
           API_ORIGIN: ${{ vars.API_ORIGIN }}
         run: |
-          for route in sync team/feedback team/metrics invitations invitations/status invitations/redeem internal/aggregates internal/operational-pause team/operational-resume; do
+          for route in sync team/feedback team/metrics team/website invitations invitations/status invitations/redeem internal/aggregates internal/website-proof internal/operational-pause team/operational-resume; do
             method=GET
             case "$route" in
               invitations|invitations/redeem|internal/aggregates|internal/operational-pause|team/operational-resume) method=POST;;

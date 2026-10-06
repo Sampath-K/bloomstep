@@ -6,6 +6,7 @@ import { createHandlers, ServiceError } from './backend.mjs';
 import { requestBearer } from './auth-transport.mjs';
 import { createAggregateAuthenticator } from './aggregate-auth.mjs';
 import { createSpendAuthenticator } from './spend-auth.mjs';
+import { createWebsiteHandlers } from './website-funnel.mjs';
 const { app } = azureFunctions;
 
 const issuer = process.env.OIDC_ISSUER;
@@ -45,6 +46,14 @@ const authenticateSpend = createSpendAuthenticator({
   jwksUri: process.env.SPEND_GUARD_OIDC_JWKS_URI,
 });
 const handlers = createHandlers({ container, authenticate, authenticateAggregate, authenticateSpend });
+const website = createWebsiteHandlers({ container, authenticate, authenticateProof: authenticateAggregate, operationalEnabled: async () => {
+  if (['true','1'].includes((process.env.BLOOMSTEP_API_DISABLED ?? '').toLowerCase()) ||
+      ['true','1'].includes((process.env.BLOOMSTEP_WEBSITE_DISABLED ?? '').toLowerCase())) {
+    throw new ServiceError(503, 'Website observations are paused.');
+  }
+  const gate = (await container().item('budget', '__preview_budget').read()).resource;
+  if (gate?.operationalPause?.paused === true) throw new ServiceError(503, 'Website observations paused for spending review.');
+} });
 /**
  * @param {(request: import('@azure/functions').HttpRequest) => Promise<import('@azure/functions').HttpResponseInit>} handler
  */
@@ -71,3 +80,6 @@ app.http('redeemInvitation', { route: 'invitations/redeem', methods: ['POST'], a
 app.http('invitationStatus', { route: 'invitations/status', methods: ['GET'], authLevel: 'anonymous', handler: guarded(handlers.invitationStatus) });
 app.http('operationalPause', { route: 'internal/operational-pause', methods: ['POST'], authLevel: 'anonymous', handler: guarded(handlers.operationalPause) });
 app.http('operationalResume', { route: 'team/operational-resume', methods: ['POST'], authLevel: 'anonymous', handler: guarded(handlers.operationalResume) });
+app.http('websiteEvents', { route: 'web/events', methods: ['POST'], authLevel: 'anonymous', handler: guarded(website.ingest) });
+app.http('websiteMetrics', { route: 'team/website', methods: ['GET'], authLevel: 'anonymous', handler: guarded(website.metrics) });
+app.http('websiteSyntheticProof', { route: 'internal/website-proof', methods: ['GET'], authLevel: 'anonymous', handler: guarded(website.proof) });

@@ -3,13 +3,26 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta name="description" content="Bloomstep: one tiny step, a garden that grows with you. Windows engineering preview.">
-  <title>Bloomstep - a little is enough</title>
-  <link rel="icon" type="image/png" href="assets/bloomstep-icon.png">
+  <title>Bloomstep - gentle habit building for Windows</title>
+  <meta name="description" content="Build small habits without streak pressure. Bloomstep for Windows pairs everyday routines with tiny actions, personal celebrations and a garden that keeps growing.">
+  <link rel="canonical" href="https://brave-plant-02c10e800.5.azurestaticapps.net/">
+  <meta property="og:title" content="Bloomstep - a little is enough">
+  <meta property="og:description" content="Small habits, gentle progress. Grow a garden one tiny action at a time on Windows.">
+  <meta property="og:type" content="website">
+  <meta property="og:url" content="https://brave-plant-02c10e800.5.azurestaticapps.net/">
+  <meta property="og:image" content="https://brave-plant-02c10e800.5.azurestaticapps.net/assets/bloomstep-social.png">
+  <meta property="og:image:alt" content="Bloomstep: three original illustrated plants growing from a small seed into a flowering garden.">
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="Bloomstep - a little is enough">
+  <meta name="twitter:description" content="Gentle habit building for Windows. Tiny actions, personal celebrations and a growing garden.">
+  <meta name="twitter:image" content="https://brave-plant-02c10e800.5.azurestaticapps.net/assets/bloomstep-social.png">
+  <!-- Search verification is injected from customer-config.json or deployment variables. -->
+  <link rel="icon" type="image/png" href="/assets/bloomstep-icon.png">
   <script>
     (() => {
       const param = new URLSearchParams(window.location.search).get("scoutTheme");
-      const theme = param || (window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light");
+      const theme =
+        param || (window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light");
       document.documentElement.setAttribute("data-theme", theme);
     })();
   </script>
@@ -68,118 +81,126 @@
     }
     * { box-sizing: border-box; }
     body { margin: 0; background: var(--cp-bg); color: var(--cp-text); font: 18px/1.65 "Segoe UI", Aptos, Calibri, -apple-system, BlinkMacSystemFont, sans-serif; }
-    main, header, footer { max-width: 1040px; margin: auto; padding: 32px; }
-    header { display: flex; justify-content: space-between; gap: 24px; flex-wrap: wrap; }
+    header, main, footer { max-width: 1120px; margin: auto; padding: 24px 32px; }
+    header { display: flex; align-items: center; justify-content: space-between; gap: 24px; }
     nav { display: flex; gap: 24px; flex-wrap: wrap; }
-    a { color: var(--cp-link); text-underline-offset: 4px; }
-    h1 { font-size: clamp(40px, 7vw, 72px); line-height: 1.08; max-width: 760px; font-weight: 600; letter-spacing: -2px; margin: 24px 0; }
-    h2 { line-height: 1.2; }
-    .eyebrow { text-transform: uppercase; letter-spacing: 3px; color: var(--cp-accent); font-size: 14px; font-weight: 700; }
-    .lead { font-size: 24px; max-width: 720px; color: var(--cp-text-muted); }
-    .button, button { display: inline-block; background: var(--cp-accent); color: var(--cp-accent-fg); padding: 12px 24px; border-radius: .625rem; text-decoration: none; border: none; font: inherit; cursor: pointer; min-height: 48px; }
+    a { color: var(--cp-accent); text-underline-offset: 4px; }
+    .brand { font-size: 24px; font-weight: 650; text-decoration: none; color: var(--cp-text); }
+    h1 { font-size: clamp(40px, 6.5vw, 72px); line-height: 1.08; letter-spacing: -2px; font-weight: 600; margin: 16px 0 24px; }
+    h2 { font-size: clamp(28px, 4vw, 40px); line-height: 1.2; font-weight: 600; margin-top: 0; }
+    h3 { line-height: 1.3; font-size: 22px; }
+    p { max-width: 76ch; }
+    .eyebrow { color: var(--cp-text); letter-spacing: 2px; text-transform: uppercase; font-size: 14px; font-weight: 700; }
+    .lead { font-size: 23px; color: var(--cp-text-muted); }
+    .small { font-size: 16px; color: var(--cp-text-soft); }
+    .hero { display: grid; grid-template-columns: 1.25fr 1fr; gap: 40px; align-items: center; margin-top: 48px; }
+    .hero img { width: 100%; height: auto; border-radius: 16px; }
+    section { margin: 72px 0; scroll-margin-top: 24px; }
+    .grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 24px; }
+    article { border: 1px solid var(--cp-border); background: var(--cp-surface); border-radius: 16px; padding: 28px; }
+    .button, button { display: inline-block; padding: 12px 24px; border: 0; border-radius: .625rem; background: var(--cp-accent); color: var(--cp-accent-fg); font: inherit; font-weight: 600; text-decoration: none; min-height: 48px; cursor: pointer; }
     .button:hover, button:hover { background: var(--cp-accent-hover); }
-    a:focus-visible, button:focus-visible, input:focus-visible, textarea:focus-visible { outline: 3px solid var(--cp-link); outline-offset: 4px; }
-    section { margin: 48px 0; scroll-margin-top: 24px; }
-    .notice { padding: 20px 24px; border-left: 4px solid var(--cp-accent); background: var(--cp-accent-soft); border-radius: .625rem; }
-    .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 20px; }
-    article { padding: 24px; border: 1px solid var(--cp-border); border-radius: 16px; background: var(--cp-surface); }
-    .small { color: var(--cp-text-muted); font-size: 16px; }
-    .garden { height: 180px; display: flex; align-items: flex-end; justify-content: space-around; margin: 24px 0; border-bottom: 12px solid var(--cp-border); }
-    .plant { width: 64px; height: var(--height); border-radius: 48% 48% 10px 10px; background: var(--cp-success); position: relative; }
-    .plant::before, .plant::after { content: ""; position: absolute; width: 40px; height: 24px; border-radius: 70% 0; background: var(--cp-success); top: 30%; }
-    .plant::before { right: 90%; transform: rotate(20deg); }
-    .plant::after { left: 90%; transform: rotate(-20deg); }
-    .flower { width: 64px; height: 64px; border-radius: 50%; background: var(--cp-accent); position: absolute; top: -24px; }
+    :focus-visible { outline: 3px solid var(--cp-link); outline-offset: 4px; }
+    details { border-bottom: 1px solid var(--cp-border); padding: 16px 0; }
+    summary { cursor: pointer; font-weight: 600; min-height: 40px; }
+    .download { background: var(--cp-surface); border: 1px solid var(--cp-border); border-radius: 16px; padding: 32px; }
+    .choices { display: flex; flex-wrap: wrap; gap: 24px; }
+    .notice { border-left: 4px solid var(--cp-accent); padding: 16px 24px; background: var(--cp-accent-soft); border-radius: .625rem; }
+    .skip { position: absolute; top: -120px; left: 16px; background: var(--cp-surface); padding: 12px; }
+    .skip:focus { top: 16px; }
+    footer { border-top: 1px solid var(--cp-border); padding-bottom: 40px; }
     label { display: block; margin: 16px 0; }
-    input, textarea, select { display: block; padding: 12px; width: 100%; font: inherit; border: 1px solid var(--cp-border-strong); border-radius: .625rem; color: var(--cp-text); background: var(--cp-surface); }
+    input:not([type="checkbox"]), textarea, select { display: block; padding: 12px; width: 100%; font: inherit; border: 1px solid var(--cp-border-strong); border-radius: .625rem; color: var(--cp-text); background: var(--cp-surface); }
     pre { white-space: pre-wrap; overflow-wrap: anywhere; font: 14px/1.6 Consolas, "Courier New", Courier, monospace; }
     [hidden] { display: none !important; }
+    @media (max-width: 760px) {
+      header, main, footer { padding: 20px; }
+      header { align-items: flex-start; flex-direction: column; gap: 16px; }
+      nav { gap: 16px; font-size: 16px; }
+      .hero, .grid { grid-template-columns: 1fr; gap: 24px; }
+      .hero { margin-top: 24px; }
+      .hero img { max-width: 540px; }
+      section { margin: 48px 0; }
+      article, .download { padding: 24px; }
+      h1 { letter-spacing: -1px; }
+    }
   </style>
+  <script type="application/ld+json">
+    {"@context":"https://schema.org","@type":"SoftwareApplication","name":"Bloomstep","applicationCategory":"LifestyleApplication","operatingSystem":"Windows","url":"https://brave-plant-02c10e800.5.azurestaticapps.net/","description":"Gentle habit building with tiny actions, personal celebrations and a growing garden.","image":"https://brave-plant-02c10e800.5.azurestaticapps.net/assets/bloomstep-social.png","offers":{"@type":"Offer","price":"0","priceCurrency":"USD"}}
+  </script>
 </head>
 <body>
-  <header><strong>Bloomstep</strong><nav aria-label="Main"><a href="#grow">How it grows</a><a href="#download">Download</a><a href="#trust">Trust &amp; privacy</a><a href="#changes">Changelog</a></nav></header>
-  <main>
-    <section>
-      <div class="eyebrow">One tiny step</div>
-      <h1>A little is enough.<br>A garden grows from there.</h1>
-      <p class="lead">Attach one tiny behavior to a routine you already have. Celebrate it. Watch your plant grow, without streak pressure or punishment.</p>
-      <div id="invitation" class="notice" hidden></div>
-      <div class="garden" role="img" aria-label="Three healthy plants at different growth stages. Plants never lose their growth.">
-        <div class="plant" style="--height: 44px"></div><div class="plant" style="--height: 100px"></div><div class="plant" style="--height: 136px"><span class="flower"></span></div>
+  <a class="skip" href="#main">Skip to content</a>
+  <header><a class="brand" href="/">Bloomstep</a><nav aria-label="Main"><a href="#how">How it works</a><a href="#faq">Questions</a><a href="#privacy">Privacy</a></nav></header>
+  <main id="main">
+    <section class="hero" aria-labelledby="intro">
+      <div>
+        <p class="eyebrow">Gentle habit building for Windows</p>
+        <h1 id="intro">A little is enough.<br>Grow from there.</h1>
+        <p class="lead">Make room for one tiny action in a routine you already have. Celebrate the moment, and let your garden grow with you.</p>
+        <p><a class="button" id="primary-cta" href="#download">Download for Windows</a></p>
+        <p class="small">Free to download. No streak pressure. No plants that wilt.</p>
       </div>
-      <p class="notice"><strong>Engineering preview, not the full MVP.</strong> Native Windows builds and the free-tier website/API are live under integration verification. Real sign-in is required; Google and Microsoft personal-account availability depends on the configured broker flow. No pretend login, no anonymous production garden.</p>
+      <img src="/assets/bloomstep-social.png" width="1200" height="630" alt="Three original illustrated plants, from a small sprout to a flowering plant, represent gentle progress in Bloomstep.">
     </section>
-    <section id="grow">
-      <h2>Small by design. Gentle by default.</h2>
+    <div id="invitation" class="notice" hidden></div>
+    <section id="how" aria-labelledby="how-title">
+      <p class="eyebrow">A small rhythm you can repeat</p>
+      <h2 id="how-title">Start with your day, not a deadline.</h2>
       <div class="grid">
-        <article><h3>Find your anchor</h3><p>After I pour my coffee, I will take one slow breath. Start with a step that takes less than 30 seconds.</p></article>
-        <article><h3>Let it feel good</h3><p>A smile, a phrase, a small gesture. Practice your personal celebration when you plant your seed.</p></article>
-        <article><h3>Grow without guilt</h3><p>Did it, did more, or not today. Plants never wilt. Reflection helps you adapt, and automatic habits graduate to your Grove.</p></article>
+        <article><h3>1. Choose an anchor</h3><p>Pick something that already happens, like setting down your morning mug. Let that familiar moment be your reminder.</p></article>
+        <article><h3>2. Make the action tiny</h3><p>Try one shoulder roll, one sentence, or putting one thing away. Choose a step small enough for an ordinary, busy day.</p></article>
+        <article><h3>3. Celebrate your moment</h3><p>A quiet smile or a little “there we go” can mark the win. Choose what feels natural to you, not what looks impressive.</p></article>
       </div>
-      <p class="small">Original content inspired by the behavior design research of Dr. BJ Fogg. Not affiliated with or endorsed by his organization. Health recipes are not medical advice. Designed for ages 16+.</p>
     </section>
-    <section id="download">
-      <h2>Windows first. A real desktop app.</h2>
-      <p>Choose ARM64 for a Windows ARM device, or x64 for Intel/AMD Windows. The app installs for your user account and does not require administrator rights.</p>
-      <p><a class="button" data-measure-download href="https://github.com/Sampath-K/bloomstep/releases/download/v0.1.0-preview.8/Bloomstep-0.1.0-preview.8-windows-arm64-setup.exe">Download Bloomstep ARM64 preview.8</a>
-      <a class="button" data-measure-download href="https://github.com/Sampath-K/bloomstep/releases/download/v0.1.0-preview.8/Bloomstep-0.1.0-preview.8-windows-x64-setup.exe">Download Bloomstep x64 preview.8</a></p>
-      <p><a href="https://github.com/Sampath-K/bloomstep/releases/tag/v0.1.0-preview.8">Release notes &amp; SHA-256 checksums</a></p>
-      <p class="small"><code>ARM64 SHA-256: 2d87612664f91a099ca9201983259d728a6c768bba482c6e663d72c91358a562</code><br><code>x64 SHA-256: ecd122fd8cc222fc197157595960210ed413e1aa4824c25b24bf3793649e2ae3</code></p>
-      <p class="small">Unsigned preview: Windows SmartScreen may warn about an unknown publisher. Download only from the linked GitHub repository and compare the SHA-256 checksum. Do not bypass security policy on a managed device. Microsoft Store signing does not sign this web download. Store, Android and iOS distribution are deferred.</p>
-      <p class="small">An update check opens the release page; automatic installation and staged rollout are not yet enabled.</p>
-      <details><summary>Optional local download observations (off by default)</summary>
-        <p>No website analytics are sent automatically. If you opt in, this browser saves a receipt that expires after seven days and is removed on next site access, with at most 32 page/invitation views and download clicks after consent. Clear it below for immediate removal. Only fixed event names, random observation IDs and UTC times: no URL, invitation code, email, habit text, fingerprint or contact information. A click does not prove a successful download or installation.</p>
-        <label><input id="measurement-consent" type="checkbox" style="display:inline-block;width:auto;margin:0 8px 0 0;vertical-align:middle;accent-color:var(--cp-accent)"> Save optional local observations on this browser</label>
-        <p>Export the receipt only if you want to explicitly link it to your signed-in Bloomstep account through preview.3 or newer app Settings. Linking requires separate account analytics consent and sends these historical events to your private account during sync. This is a voluntary, self-selected sample, not automatic web-to-person tracking. Preview.2 predates receipt import; update first.</p>
-        <button id="export-measurement" type="button" disabled>Export local receipt (JSON)</button>
-        <button id="clear-measurement" type="button">Clear receipt / stop local observation</button>
-        <p id="local-measurement-status" role="status">Nothing is observed until you opt in. Download works independently.</p>
+    <section aria-labelledby="benefits-title">
+      <h2 id="benefits-title">Progress that makes space for being human.</h2>
+      <div class="grid">
+        <article><h3>Less pressure</h3><p>“Not today” is a choice, not a failure. Your plant keeps its growth, so you can come back without starting over.</p></article>
+        <article><h3>A visible little win</h3><p>Check in with “did it” or “did more.” Watch a seed become a plant as you make room for your new habit.</p></article>
+        <article><h3>Room to adapt</h3><p>Notice what feels easy, adjust what does not, and move habits that feel natural into your Grove.</p></article>
+      </div>
+    </section>
+    <section id="download" class="download" aria-labelledby="download-title">
+      <h2 id="download-title">Bring a tiny garden to your Windows day.</h2>
+      <p id="architecture-guidance">For most Intel or AMD PCs, choose x64. For a Windows on ARM PC, choose ARM64. Check Settings → System → About → System type if you are unsure.</p>
+      <p class="choices">
+        <a data-download="x64" href="https://github.com/Sampath-K/bloomstep/releases/download/v0.1.0-preview.8/Bloomstep-0.1.0-preview.8-windows-x64-setup.exe">Download Bloomstep x64</a>
+        <a data-download="arm64" href="https://github.com/Sampath-K/bloomstep/releases/download/v0.1.0-preview.8/Bloomstep-0.1.0-preview.8-windows-arm64-setup.exe">Download Bloomstep ARM64</a>
+      </p>
+      <p class="small">This is an early version; some features are still being refined. A sign-in is required to use the app. Downloads are hosted on Bloomstep's GitHub release page.</p>
+      <details><summary>What to expect when installing</summary>
+        <p>The current download is not digitally signed. Windows may show “Windows protected your PC” because it does not recognise the publisher. If you downloaded from the Bloomstep links above and are comfortable continuing, choose <strong>More info → Run anyway</strong>. Otherwise, cancel. Never override your workplace's security rules.</p>
+        <p>The installer is for your Windows account and does not need administrator rights. You can check the download's checksum on the <a href="/releases/">releases page</a> before installing. A Microsoft Store version is not available yet.</p>
+      </details>
+      <details><summary>Optional receipt for understanding setup (off by default)</summary>
+        <p>If you choose, keep a receipt in this page's memory and export it to a file. Nothing is saved in browser storage. Closing or reloading the page removes the in-memory receipt. It contains only random event IDs, fixed page/download event names and UTC dates, not URLs or your habits.</p>
+        <label><input id="receipt-consent" type="checkbox"> Keep a receipt for this visit</label>
+        <p>Linking the exported receipt in app Settings is a separate, voluntary choice requiring app analytics consent. The installer has its own unchecked measurement choice. Without these choices, installation and app activity cannot be connected to this visit.</p>
+        <button id="receipt-export" type="button" disabled>Export receipt</button>
+        <button id="receipt-clear" type="button">Clear receipt</button>
+        <p id="receipt-status" class="small" role="status">Receipt collection is off.</p>
       </details>
     </section>
-    <section id="trust">
-      <h2>Your habits are private.</h2>
-      <div class="grid">
-        <article><h3>What stays on your device</h3><p>SQLite stores recipes, check-in edits, reflection scores, feedback and settings. Authentication credentials use Windows secure storage, never the database. Your Windows account's filesystem protections apply; SQLite itself is not encrypted.</p></article>
-        <article><h3>What sync sends</h3><p>When signed in and connected, recipes, check-ins, reflections, feedback and safe account preferences sync to your private account partition. Analytics consent, reminder enablement and startup stay device-local. Feedback and ratings are private, not published to an ideas board. The service records server receipt and first committed team-reply times alongside new private feedback. Historical missing times are not backfilled. Service-operational support records are separate from optional product-event analytics and are removed with their feedback records. The identity broker stores the basic identity attributes needed for Microsoft, Google or email sign-in.</p></article>
-        <article><h3>What we never do</h3><p>No ads, no AI, no selling habit data. Optional event counts are off by default and contain no habit or feedback text. Invitation links contain no personal garden data.</p></article>
-      </div>
-      <p>Export your records as JSON from Settings. Preview.5 adds confirmed owner-only deletion for an individual recipe and its check-ins/reflections/linked events, or private feedback/rating and its replies. Offline requests queue until sync; other devices apply deletion when they reconnect. Permanent minimal ID-only record markers prevent stale copies from returning and appear in exports; preview limits do not silently prune them. Whole-account cloud deletion separately keeps its minimal account marker. Earlier exported copies and processor backup retention are separate, not an instantaneous purge promise. Identity provider accounts are managed by their providers, not by Bloomstep.</p>
-      <p>Raw opt-in app event retention is 13 months. Optional app diagnostics record at most 10 observed Dart/Flutter errors per session: fixed category/source only, never messages, stack traces or habit/account text. They may be nonfatal; native/process deaths are not captured, so no crash-free rate is inferred. Optional website observations stay in this browser for up to seven days unless you export and explicitly link them in the app; this site has no analytics upload endpoint. Clear browser site storage to remove local receipts; exported copies must be deleted separately. Microsoft Azure hosts this website, the identity broker and the private account database; GitHub hosts source, build artifacts and downloads. Those providers can retain standard access/security logs. There are no third-party product analytics or AI processors. A full controller/contact and data-processing notice remains a public-MVP launch gate.</p>
-      <p>This preview adds a separate, unchecked reminder-preference observation choice (disclosure version 1), requiring product-event consent too. Existing analytics consent never grants this choice. After an explicit post-consent app reminder enable, it records random episode/consent IDs, fixed Windows platform and dates, an explicit app disable or a same-episode preference followup after 30 days. It does not observe Windows permission or delivery, private habit text, location or lifetime notification history. Missing followup remains unknown. Revoking either choice clears added local state and queued events; already-synced facts follow the retention and account-deletion rules above. This narrower sample never substitutes for the original full notification-quality goal.</p>
-      <p>Cloud engineering-preview storage and request quotas are finite. A quota or service pause is shown explicitly; your local garden remains available. These volume controls are not a guarantee that Azure free allowances can never be exceeded. No paid tier is selected.</p>
-      <p>Bloomstep uses Microsoft Entra External ID for secure browser sign-in. The Microsoft service domain is <code>ciamlogin.com</code>; Google may show “continue to ciamlogin.com” while provider branding is unverified. That label is not a request to share your password with Bloomstep. Complete credentials only on your chosen provider's genuine page; Bloomstep never collects your password.</p>
-      <p>Use the private in-app feedback channel for sensitive support once it is connected. Do not place private habits, credentials or account exports in public GitHub issues. Public source and non-sensitive bug reports: <a href="https://github.com/Sampath-K/bloomstep">Bloomstep repository</a>.</p>
+    <section id="faq" aria-labelledby="faq-title">
+      <h2 id="faq-title">A few things you might be wondering.</h2>
+      <details><summary>What if I miss a day?</summary><p>Your plant does not wilt and your progress is not taken away. Come back when you can, or make the action smaller.</p></details>
+      <details><summary>Is Bloomstep free?</summary><p>The current Windows download is free. There is no subscription or payment step in this download.</p></details>
+      <details><summary>Do I need an account or an internet connection?</summary><p>You need to sign in to get started. Once your garden is available on the device, you can work locally during a connection interruption and sync when connected again. Sign-in options depend on the available providers.</p></details>
+      <details><summary>Can I take my habits with me or delete them?</summary><p>Use Settings to export your records as JSON. The app also has deletion controls for habits, private feedback and your cloud account data. Offline deletion requests wait for sync; exported files and provider backups are separate copies.</p></details>
+      <details><summary>Is this medical advice?</summary><p>No. Bloomstep is a habit-building tool, not medical care or treatment. Choose actions that are safe for you. It is designed for ages 16 and up.</p></details>
     </section>
-    <section id="changes">
-      <h2>Growing in public</h2>
-      <article><h3>0.1.0-preview.8 - fresh-consent app reminder observations</h3><p>A separate, unchecked version-1 choice records only explicit post-consent Windows app reminder-preference episodes. The original OS notification disable goal remains unavailable; missing followup is unknown, not a successful non-disable outcome. Revoke and deletion paths, strict event schemas, a private separately labeled panel and small-cohort suppression are included.</p><p>The merged source passed API, Flutter x64 and ARM64 tests/builds plus synthetic installer lifecycle proofs. Public ARM64 and x64 installers and their SHA-256 manifests are verified. This unsigned engineering preview does not establish real-user consent, OS permission/delivery, private cohort acceptance or the full MVP; existing launch gates remain and the experiment stays OFF.</p></article>
-      <article><h3>0.1.0-preview.7 - private support receipts</h3><p>New private feedback records receive server-owned receipt times, and the first committed team reply is captured once. The separate private support panel reports bounded operational aggregates without feedback text; mature unanswered records use a 48-hour window, while immature and historical unknowns remain distinct. The owner-only export includes guarded local support metadata sidecars and warns on partial results; it does not upload, merge or acknowledge support data.</p><p>Exact source is merged and the API is deployed. API checks, x64 and ARM64 builds, installer lifecycle proofs and public SHA-256 downloads pass; the release is an unsigned engineering preview, not the full MVP. No customer upgrade, authenticated operator acceptance or live private-record acceptance is claimed. Existing launch gates remain; experiment stays OFF.</p></article>
-      <article><h3>0.1.0-preview.6 - safe schema recovery</h3><p>Future schema versions unchanged: unsupported newer databases are rejected explicitly, never silently relabeled or wiped. Compatible legacy version-label recovery validates the existing deletion ledger and reapplies only the current account's deletion markers transactionally. Malformed ledgers fail visibly without replacing customer content. Windows data and secure-session namespaces are unchanged.</p><p>Exact source/main/tag API and true ARM64/x64 build, installer lifecycle and public checksum proofs pass. The installed preview.5 remains preserved; no customer preview.6 upgrade is claimed or forced. In a separately approved preview.5 slot, a new private export and fresh authenticated sync passed. Recipe text automation stopped before writing any fixture, and the app was handed back. Live fixture acceptance remains pending. Native input tooling is separately synthetic, not customer acceptance; native-health collection remains disabled pending an independent consent decision. Still an unsigned engineering preview, not the full MVP; original coverage and launch gates remain incomplete, and experiment stays OFF.</p></article>
-      <article><h3>0.1.0-preview.5 - owner-scoped record deletion</h3><p>Individual recipe and private feedback/rating removal now uses account-scoped stable deletion IDs, dependent-content cleanup, retryable partial failures and stale-device suppression. Existing v4 gardens migrate to v5 in the same Windows support/secure-session namespace. Confirm/cancel controls and targeted reminder withdrawal preserve unrelated content, notification consent and daily caps.</p><p>Exact source/main/tag API and both native builds/installers pass, both public unsigned checksums are verified, and the normal ARM64 preview.4 to preview.5 upgrade plus restored-session authenticated sync are observed. The earlier native export locator failure was safely canceled, repaired in isolation and superseded by an actual new private export readback. Fixture creation stopped at a text-entry tooling failure, not a proved product defect. Live fixture acceptance remains pending. Source tests are not full launch acceptance, original KPI/native crash coverage still needs work, and experiment stays OFF. <a href="https://github.com/Sampath-K/bloomstep/blob/main/docs/status.md">Finite launch backlog and actual evidence</a>.</p></article>
-      <article><h3>0.1.0-preview.4 - Bloomstep identity and Windows branding</h3><p>Bloomstep window title, original flower icon, product metadata, sign-in explanation, callback text and invitation email subject now replace product-owned defaults. The hosted sign-in page uses the Bloomstep wordmark and product text. Existing gardens, Windows v4 secure sessions and the single-instance namespace keep their stable storage paths across the branding upgrade.</p><p>Both public unsigned installers and their checksums are verified, and the actual normal ARM64 preview.3 to preview.4 upgrade and branded sign-in surface are observed. Google/Microsoft callback registrations are corrected, but genuine customer sign-in and authenticated integration acceptance are still required. Google controls its verified/published OAuth consent identity; the truthful Microsoft <code>ciamlogin.com</code> service domain remains. No paid domain or email relay was added. Still an engineering preview, not the full MVP; experiment OFF.</p></article>
-      <article><h3>0.1.0-preview.3 - consent-scoped observations</h3><p>Optional browser/installer observations stay local unless you explicitly link a receipt under independent signed-account product-event consent. Original times and IDs, seven-day receipt expiry, strict privacy/source validation and repeat-safe import. Interactive installer consent is unchecked; silent/default-off upgrades collect nothing and cannot inherit prior observation ownership. Dart/Flutter diagnostics are category-only and bounded: no messages/stacks, native-death census or crash-free claim.</p><p>Both architectures passed actual installer checkbox, installation/installed-entry observations and owned uninstall proof; public hashes verified. Still an engineering candidate, not the complete customer-accepted MVP. The experiment remains OFF pending genuine reviewed cohort and guardrails. No feedback item or population outcome is invented.</p></article>
-      <article><h3>0.1.0 engineering preview</h3><p>Five starter recipes, a celebration-first builder, a SQLite daily check-in event log, undo/edit, five growth stages, three plant species, reflection and deterministic Recipe Doctor. Export, private feedback, rating, invitation link/QR and reminder controls are in development.</p><p>No completed feedback items are claimed yet. <a href="https://github.com/Sampath-K/bloomstep/blob/main/docs/status.md">Detailed requirements and verification status</a>.</p></article>
-    </section>
-    <section>
-      <details><summary>Product team console (deployment verification)</summary>
-        <p>For authorized operators only. Sign in through the real customer broker; data access is enforced by the API's explicitly assigned <code>Bloomstep.Admin</code> role, never email or subscription ownership. No private data is fetched until you request it. Tokens stay in page memory; only temporary sign-in state uses session storage. No bearer copying or client secret is required.</p>
-        <form id="admin">
-          <label>This deployed HTTPS API origin<input id="origin" type="url" required readonly></label>
-          <button id="signin-console" type="button">Sign in to Bloomstep operator console</button>
-          <button type="submit">Load private feedback</button>
-          <button id="next-feedback" type="button" disabled>Next private feedback page</button>
-          <label>UTC measurement days<input id="metric-days" type="number" min="1" max="30" value="7"></label>
-          <button id="metrics" type="button">Load private preview measurements</button>
-          <button id="clear-console" type="button">Sign out and clear private data</button>
-        </form>
-        <p id="admin-status" role="status"></p>
-        <div id="feedback"></div>
-        <div id="measurement"></div>
-        <details><summary>UTC daily counts and suppression</summary><pre id="daily-counts"></pre></details>
-      </details>
+    <section id="privacy" aria-labelledby="privacy-title">
+      <h2 id="privacy-title">Your habits are yours.</h2>
+      <p>No ads, no selling habit data, and no third-party product analytics scripts. Your garden is stored on your device and syncs to your private account when connected. Your habit and feedback text are not included in website counts. The local database relies on your Windows account protections; it is not itself encrypted.</p>
+      <p>This page sends small, first-party observations: a page view, the main download-button click, and an architecture download click. Only daily counts are saved, with a category such as search, referral, direct, campaign or unknown. Referrer hostnames are classified in the browser, never sent. Only bounded campaign tags are inspected; their values are not stored.</p>
+      <p>No cookies, browser-storage identifiers, fingerprints, IP addresses or full URLs are collected by this measurement feature. Do Not Track and Global Privacy Control turn off sending. Missing and opted-out visits remain unknown, not zero. Counts do not identify unique people or prove successful downloads. Website counts are separate from optional, default-off in-app measurements.</p>
+      <p>Daily website counts are kept for at most 90 days, with strict request and volume limits. Azure and GitHub provide hosting and downloads and may retain their own standard access/security logs. App event retention is 13 months when you opt in; export and deletion are available in Settings. No automatic browser-to-account matching is performed.</p>
+      <p id="website-status" class="small" role="status">Downloads work independently of optional measurement and service availability.</p>
+      <details><summary>Privacy notice details still to be supplied</summary><p>TODO(owner): controller identity and privacy contact. TODO(owner): applicable legal basis and processor/backup retention details. These details must be supplied by the owner before a full public launch; no legal or controller claims are assumed here.</p></details>
     </section>
   </main>
-  <footer class="small">Bloomstep contributors. Grow tiny behaviors into something natural.</footer>
-  <script type="module" src="assets/console.js"></script>
+  <footer class="small"><p>Bloomstep. One tiny action, your own pace.</p><a href="/releases/">Releases &amp; download checksums</a> · <a href="#privacy">Privacy</a></footer>
+  <script type="module" src="/assets/customer.js"></script>
 </body>
 </html>

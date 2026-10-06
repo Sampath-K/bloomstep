@@ -3,4 +3,5 @@ assets/*
 !assets/bloomstep-icon.png
 !assets/bloomstep-wordmark.png
 !assets/bloomstep-favicon.png
+!assets/bloomstep-social.png
 operator-config.json
