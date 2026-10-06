@@ -83,6 +83,13 @@ methods to exercise the long-window graduation branch quickly. It verifies
 deterministic product behavior; it does not advance a real user's calendar or
 establish an automaticity/population outcome.
 
+Persistence assertions inspect the durable habit/check-in/deletion inventory,
+not `syncPayload()`, which is only the pending upload outbox. Successful sync
+leaves acknowledged outbox entries empty while retaining durable records.
+Fresh same-owner SQLite stores download the planted recipe, Did-more check-in,
+and deletion ledger through the real backend GET path, independently of the
+original profile's local records.
+
 The test login emits no sign-in/acquisition telemetry and does not opt the
 synthetic profile into analytics. Habit/feedback fixtures use the existing
 default-off telemetry consent behavior; synthetic records and receipts are not

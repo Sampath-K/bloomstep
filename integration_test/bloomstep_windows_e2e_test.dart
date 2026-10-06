@@ -131,6 +131,24 @@ void main() {
         activeStore!,
         testApiOrigin: testApi.origin,
       );
+      Future<Map<String, Object?>> readRemoteGarden(String filename) async {
+        final readback = await GardenStore.open(
+          p.join(runRoot.path, filename),
+          activeStore!.account,
+        );
+        try {
+          await SyncService(
+            activeSession!,
+            readback,
+            testApiOrigin: testApi.origin,
+          ).sync();
+          expect((await readback.syncPayload()).values, everyElement(isEmpty));
+          return await readback.export();
+        } finally {
+          await readback.close();
+        }
+      }
+
       expect(
         () => SyncService(
           activeSession!,
@@ -150,7 +168,19 @@ void main() {
       final firstRecipe = recipes.single;
       expect(firstRecipe.behavior, contains('relax my shoulders'));
       await syncService().sync();
-      expect((await activeStore!.syncPayload())['habits'], hasLength(1));
+      expect((await activeStore!.habits()).single.id, firstRecipe.id);
+      expect((await activeStore!.syncPayload())['habits'], isEmpty);
+      final plantedReadback = await readRemoteGarden(
+        'synthetic-a-plant-readback.sqlite',
+      );
+      expect(
+        (plantedReadback['habits'] as List).single,
+        containsPair('id', firstRecipe.id),
+      );
+      expect(
+        (plantedReadback['habits'] as List).single,
+        containsPair('behavior', firstRecipe.behavior),
+      );
 
       await tester.ensureVisible(find.text('Did more'));
       await tester.tap(find.text('Did more'));
@@ -158,17 +188,21 @@ void main() {
         tester,
         find.text('Undo today'),
         ready: () async =>
-            (await activeStore!.syncPayload())['checkins'] != null,
+            (await activeStore!.habits()).single.today == CheckInResult.didMore,
       );
       await syncService().sync();
-      final didMoreCheckins =
-          (await activeStore!.syncPayload())['checkins'] as List;
+      final didMoreCheckins = (await activeStore!.export())['checkins'] as List;
       expect(
         didMoreCheckins.any(
           (checkin) => (checkin as Map)['result'] == 'didMore',
         ),
         isTrue,
       );
+      expect((await activeStore!.syncPayload())['checkins'], isEmpty);
+      final practiceReadback = await readRemoteGarden(
+        'synthetic-a-practice-readback.sqlite',
+      );
+      expect(practiceReadback['checkins'], didMoreCheckins);
       await _dismissCelebration(tester);
       await tester.ensureVisible(find.text('Undo today'));
       await tester.tap(find.text('Undo today'));
@@ -343,8 +377,10 @@ void main() {
         ).sync();
         expect(await deletionReadback.habits(), isEmpty);
         expect(await deletionReadback.voice(), isEmpty);
+        expect((await activeStore!.syncPayload())['deletions'], isEmpty);
+        expect((await deletionReadback.syncPayload())['deletions'], isEmpty);
         final tombstones =
-            (await deletionReadback.syncPayload())['deletions'] as List;
+            (await deletionReadback.export())['deletions'] as List;
         expect(
           tombstones.any(
             (row) =>
@@ -385,9 +421,10 @@ void main() {
         expect(await reopened.habits(), isEmpty);
         expect(await reopened.voice(), isEmpty);
         expect(
-          ((await reopened.syncPayload())['deletions'] as List).length,
+          ((await reopened.export())['deletions'] as List).length,
           greaterThanOrEqualTo(2),
         );
+        expect((await reopened.syncPayload())['deletions'], isEmpty);
       } finally {
         await reopened.close();
       }
@@ -432,13 +469,15 @@ void main() {
         ).sync();
         expect(await secondReadback.habits(), isEmpty);
         expect(
-          ((await secondReadback.syncPayload())['deletions'] as List).any(
+          ((await secondReadback.export())['deletions'] as List).any(
             (row) =>
                 (row as Map)['recordId'] == secondHabitId &&
                 row['type'] == 'habits',
           ),
           isTrue,
         );
+        expect((await activeStore!.syncPayload())['deletions'], isEmpty);
+        expect((await secondReadback.syncPayload())['deletions'], isEmpty);
       } finally {
         await secondReadback.close();
       }
