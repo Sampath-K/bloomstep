@@ -8,7 +8,7 @@ Bloomstep is a Flutter app: Windows first (direct download, then Microsoft Store
 
 ```powershell
 flutter pub get
-flutter test
+flutter test --dart-define=BLOOMSTEP_TEST_BUILD=true
 flutter run -d windows
 flutter build windows --release
 ```
@@ -24,6 +24,10 @@ and [deployment prerequisites](docs/deployment.md). The current
 [MVP exit matrix](docs/mvp-exit-matrix.md) records observed evidence and exact
 remaining acceptance gates. Windows reminders and cloud round trips must be
 observed before claiming they work.
+
+The [synthetic acceptance harness](docs/synthetic-automation.md) is test-only;
+it is not a production sign-in path or proof of provider, Cosmos, notification,
+accessibility or population acceptance.
 
 The small static website lives in `site`; authenticated Functions live in `api`.
 CI tests and packages per-user unsigned Windows ARM64 and x64 preview installers

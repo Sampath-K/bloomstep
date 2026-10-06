@@ -1,9 +1,8 @@
 import azureFunctions from '@azure/functions';
 import { CosmosClient } from '@azure/cosmos';
-import { createRemoteJWKSet, jwtVerify } from 'jose';
-import { accountKey, isAdmin } from './contracts.mjs';
+import { createRemoteJWKSet } from 'jose';
 import { createHandlers, ServiceError } from './backend.mjs';
-import { requestBearer } from './auth-transport.mjs';
+import { createPrimaryAuthenticator } from './primary-auth.mjs';
 import { createAggregateAuthenticator } from './aggregate-auth.mjs';
 import { createSpendAuthenticator } from './spend-auth.mjs';
 const { app } = azureFunctions;
@@ -18,22 +17,12 @@ function container() {
   return configuredContainer;
 }
 const keys = jwks?.startsWith('https://') ? createRemoteJWKSet(new URL(jwks)) : null;
-
-/** @param {import('@azure/functions').HttpRequest} request */
-async function authenticate(request) {
-  if (!issuer || !audience || !keys || !configuredContainer) throw new ServiceError(503, 'Service is not provisioned.');
-  const token = requestBearer(request);
-  try {
-    const { payload } = await jwtVerify(token, keys, { issuer, audience, algorithms: ['RS256'], requiredClaims: ['sub', 'iss', 'exp', 'iat'] });
-    if (!payload.sub || !payload.iss) throw new Error('Missing subject');
-    const scopes = typeof payload.scp === 'string' ? payload.scp.split(' ') : [];
-    if (!scopes.includes('Garden.ReadWrite') && !isAdmin(payload.roles)) throw new ServiceError(403, 'Required API scope is missing.');
-    return { userId: accountKey(payload.iss, payload.sub), roles: payload.roles, scopes };
-  } catch (error) {
-    if (error instanceof ServiceError) throw error;
-    throw new ServiceError(401, 'Identity token could not be validated.');
-  }
-}
+const authenticate = createPrimaryAuthenticator({
+  issuer,
+  audience,
+  keys,
+  databaseConfigured: () => configuredContainer !== null,
+});
 
 const authenticateAggregate = createAggregateAuthenticator({
   issuer: process.env.AGGREGATE_OIDC_ISSUER,

@@ -111,7 +111,73 @@ jobs:
           Add-Content $env:GITHUB_PATH "$sdk\bin"
       - run: flutter pub get
       - run: flutter analyze
-      - run: flutter test --reporter expanded --concurrency 1 --timeout 60s
+      - run: flutter test --reporter expanded --concurrency 1 --timeout 60s --dart-define=BLOOMSTEP_TEST_BUILD=true
+      - name: Verify production-mode test-auth and adapter gates
+        run: flutter test test/test_auth_release_contract_test.dart --reporter expanded --concurrency 1 --timeout 60s
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: api/package-lock.json
+      - name: Install isolated test API dependencies
+        run: npm ci --prefix api --ignore-scripts
+      - name: Run isolated Windows UI and API acceptance
+        id: synthetic-integration
+        timeout-minutes: 20
+        shell: pwsh
+        env:
+          BLOOMSTEP_TEST_EVIDENCE_PATH: ${{ runner.temp }}\bloomstep-synthetic-acceptance-details.json
+        run: |
+          $bytes = New-Object byte[] 32
+          $rng = [Security.Cryptography.RandomNumberGenerator]::Create()
+          try { $rng.GetBytes($bytes) } finally { $rng.Dispose() }
+          $key = [BitConverter]::ToString($bytes).Replace('-', '').ToLowerInvariant()
+          Write-Output "::add-mask::$key"
+          $env:BLOOMSTEP_TEST_AUTH_SECRET = $key
+          $exitCode = 1
+          try {
+            & flutter test integration_test/bloomstep_windows_e2e_test.dart -d windows --dart-define=BLOOMSTEP_TEST_BUILD=true --reporter expanded
+            $exitCode = $LASTEXITCODE
+          } finally {
+            Remove-Item Env:\BLOOMSTEP_TEST_AUTH_SECRET -ErrorAction SilentlyContinue
+            [Array]::Clear($bytes, 0, $bytes.Length)
+            $key = $null
+          }
+          if ($exitCode -ne 0) { exit $exitCode }
+      - name: Write sanitized synthetic acceptance receipt
+        if: always()
+        shell: pwsh
+        env:
+          SYNTHETIC_TEST_OUTCOME: ${{ steps.synthetic-integration.outcome }}
+          SOURCE_REVISION: ${{ github.sha }}
+          NATIVE_ARCH: ${{ matrix.arch }}
+        run: |
+          $report = [ordered]@{
+            schemaVersion = 1
+            sourceRevision = $env:SOURCE_REVISION
+            architecture = $env:NATIVE_ARCH
+            outcome = $env:SYNTHETIC_TEST_OUTCOME
+            test = 'Real Windows Flutter widget journey through a loopback API and production sync/deletion handlers'
+            persistence = 'Disposable file-backed Cosmos-compatible test adapter; not Azure Cosmos'
+            identity = 'Per-job ephemeral key; synthetic-* owners only; Garden.ReadWrite only'
+            excluded = @('Provider federation and MFA', 'Azure Cosmos deployment', 'customer accounts or records', 'Windows notification delivery', 'accessibility evaluation', 'population or cohort outcomes')
+            secretIncluded = $false
+          }
+          $detailsPath = Join-Path $env:RUNNER_TEMP 'bloomstep-synthetic-acceptance-details.json'
+          $report.fixtureEvidence = if (Test-Path -LiteralPath $detailsPath) {
+            Get-Content -LiteralPath $detailsPath -Raw | ConvertFrom-Json
+          } else {
+            $null
+          }
+          $path = Join-Path $env:RUNNER_TEMP 'bloomstep-synthetic-acceptance.json'
+          $report | ConvertTo-Json -Depth 5 | Set-Content -LiteralPath $path -Encoding utf8
+      - name: Preserve sanitized synthetic acceptance receipt
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: bloomstep-synthetic-acceptance-${{ matrix.arch }}-NOT-PRODUCTION
+          path: ${{ runner.temp }}/bloomstep-synthetic-acceptance*.json
+          if-no-files-found: error
       - name: Build real sign-in-gated release
         env:
           OIDC_ISSUER: ${{ vars.OIDC_ISSUER }}

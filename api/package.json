@@ -4,7 +4,7 @@
   "private": true,
   "type": "module",
   "engines": { "node": ">=22" },
-  "scripts": { "test": "node --test", "check": "tsc --noEmit", "registry:check": "node ../tool/generate_event_registry.mjs --check" },
+  "scripts": { "test": "node --test test/*.test.mjs", "check": "tsc --noEmit", "registry:check": "node ../tool/generate_event_registry.mjs --check" },
   "dependencies": {
     "@azure/functions": "^4.9.0",
     "@azure/cosmos": "^4.9.0",
