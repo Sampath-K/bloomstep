@@ -10,6 +10,7 @@ import { pathToFileURL } from 'node:url';
 const root = process.cwd();
 const output = process.env.BLOOMSTEP_EDGE_EVIDENCE_DIR;
 const profile = process.env.BLOOMSTEP_EDGE_PROFILE_DIR;
+const preflightOnly = process.env.BLOOMSTEP_EDGE_PREFLIGHT_ONLY === 'true';
 const config = JSON.parse(await readFile(join(root, 'site', 'customer-config.json'), 'utf8'));
 const { url: assetUrl, sha256: expectedHash } = config.release.x64;
 const assetFile = 'Bloomstep-0.1.0-preview.8-windows-x64-setup.exe';
@@ -72,15 +73,19 @@ const deepText = async () => page.evaluate(() => {
   const visit = root => {
     let result = '';
     for (const node of root.childNodes) {
-      if (node.nodeType === Node.TEXT_NODE) result += `${node.textContent} `;
-      if (node.nodeType === Node.ELEMENT_NODE) {
+      if (node.nodeType === Node.TEXT_NODE &&
+          !node.parentElement?.closest('script,style,template,noscript')) {
+        result += `${node.textContent} `;
+      } else if (node.nodeType === Node.ELEMENT_NODE &&
+          !['SCRIPT', 'STYLE', 'TEMPLATE', 'NOSCRIPT'].includes(node.tagName) &&
+          !node.hidden && node.getAttribute('aria-hidden') !== 'true') {
         result += visit(node);
         if (node.shadowRoot) result += visit(node.shadowRoot);
       }
     }
     return result;
   };
-  return visit(document);
+  return visit(document.body).replace(/\s+/g, ' ').trim();
 });
 const parsePolicy = (text, name) => {
   const match = text.match(new RegExp(
@@ -110,8 +115,24 @@ try {
   });
   page = await browser.newPage();
   await page.goto('edge://policy/', { waitUntil: 'domcontentloaded', timeout: 30000 });
-  await new Promise(resolve => setTimeout(resolve, 900));
-  const policyText = await deepText();
+  let policyText = '';
+  for (let attempt = 0; attempt < 20; attempt++) {
+    await new Promise(resolve => setTimeout(resolve, 500));
+    policyText = await deepText();
+    if (/\bReload Policies\b/i.test(policyText) &&
+        /\bPolicy Name\b/i.test(policyText) &&
+        /\bPolicy Value\b/i.test(policyText) &&
+        /\bSource\b/i.test(policyText) &&
+        /\bApplies To\b/i.test(policyText) &&
+        /\bStatus\b/i.test(policyText)) break;
+  }
+  evidence.effectivePolicies.policyPageReadStatus =
+    /\bReload Policies\b/i.test(policyText) &&
+    /\bPolicy Name\b/i.test(policyText) &&
+    /\bPolicy Value\b/i.test(policyText) &&
+    /\bSource\b/i.test(policyText) &&
+    /\bApplies To\b/i.test(policyText) &&
+    /\bStatus\b/i.test(policyText) ? 'complete' : 'unavailable';
   for (const name of [
     'SmartScreenEnabled',
     'SmartScreenPuaEnabled',
@@ -122,20 +143,34 @@ try {
     /\bExemptSmartScreenDownloadWarnings\b/.test(policyText);
   evidence.effectivePolicies.trustedDownloadDomainsPresent =
     /\bSmartScreenTrustedDownloadDomains\b/.test(policyText);
+  await screenshot('edge-policy-page.png');
 
-  await page.goto('edge://settings/privacy', { waitUntil: 'domcontentloaded', timeout: 30000 });
-  await new Promise(resolve => setTimeout(resolve, 1200));
+  await page.goto('edge://settings/privacy/security', { waitUntil: 'domcontentloaded', timeout: 30000 });
   const accessibility = await page.createCDPSession();
   await accessibility.send('Accessibility.enable');
-  const { nodes } = await accessibility.send('Accessibility.getFullAXTree');
-  const smartScreenSwitch = nodes.find(node =>
-    node.role?.value === 'switch' &&
-    /Microsoft Defender SmartScreen/i.test(node.name?.value ?? ''),
-  );
+  let smartScreenSwitch;
+  let nodes = [];
+  for (let attempt = 0; attempt < 20; attempt++) {
+    await new Promise(resolve => setTimeout(resolve, 500));
+    ({ nodes } = await accessibility.send('Accessibility.getFullAXTree'));
+    smartScreenSwitch = nodes.find(node =>
+      node.role?.value === 'switch' &&
+      /Microsoft Defender SmartScreen/i.test(node.name?.value ?? '') &&
+      !/share detected scam sites|sharing with/i.test(node.name?.value ?? ''),
+    );
+    if (smartScreenSwitch) break;
+  }
   const checkedProperty = smartScreenSwitch?.properties?.find(property => property.name === 'checked');
   const smartScreenChecked = checkedProperty?.value?.value;
   evidence.settings.smartScreenSwitchFound = Boolean(smartScreenSwitch);
-  evidence.settings.smartScreenEnabled = typeof smartScreenChecked === 'boolean' ? smartScreenChecked : null;
+  evidence.settings.smartScreenEnabled =
+    smartScreenChecked === true || smartScreenChecked === 'true' ? true :
+      smartScreenChecked === false || smartScreenChecked === 'false' ? false : null;
+  const enforcedSetting = evidence.effectivePolicies.SmartScreenEnabled?.value;
+  evidence.settings.smartScreenEnforcementSource = smartScreenSwitch
+    ? 'accessibility-switch'
+    : enforcedSetting === 'true' ? 'effective-policy' : 'unconfirmed';
+  await screenshot('edge-protection-settings.png');
 
   const zoneScript = join(root, 'tool', 'map_windows_url_zone.ps1');
   for (const host of [
@@ -151,18 +186,29 @@ try {
     evidence.urlZones[new URL(host).hostname] = Number(value);
   }
 
-  const enabled = evidence.settings.smartScreenEnabled === true &&
+  const smartScreenEnabled = evidence.settings.smartScreenSwitchFound
+    ? evidence.settings.smartScreenEnabled === true
+    : enforcedSetting === 'true';
+  const policyPageReadable = evidence.effectivePolicies.policyPageReadStatus === 'complete';
+  const enabled = smartScreenEnabled && policyPageReadable &&
     evidence.effectivePolicies.SmartScreenEnabled?.value !== 'false' &&
     evidence.effectivePolicies.SmartScreenPuaEnabled?.value !== 'false' &&
     (evidence.effectivePolicies.DownloadRestrictions?.value === '0' ||
       evidence.effectivePolicies.DownloadRestrictions === null);
   const allInternetZone = Object.values(evidence.urlZones).every(zone => zone === 3);
-  const exemptionsAbsent = !evidence.effectivePolicies.downloadExemptionRulesPresent &&
+  const exemptionsAbsent = policyPageReadable &&
+    !evidence.effectivePolicies.downloadExemptionRulesPresent &&
     !evidence.effectivePolicies.trustedDownloadDomainsPresent;
-  if (!enabled || !allInternetZone || !exemptionsAbsent) {
+  if (!enabled || !policyPageReadable || !allInternetZone || !exemptionsAbsent) {
     evidence.warningCategory = 'capture-stopped-before-download';
-    evidence.outcome = 'Effective SmartScreen protection, Internet-zone classification, or download policy could not be confirmed. No installer request was made.';
-    await screenshot('edge-protection-settings.png');
+    evidence.outcome = 'SmartScreen protection, a complete effective-policy read, Internet-zone classification, or absence of download exemptions could not be confirmed. No installer request was made.';
+    await saveEvidence();
+    throw Object.assign(new Error(evidence.outcome), { safeStop: true });
+  }
+
+  if (preflightOnly) {
+    evidence.warningCategory = 'preflight-only';
+    evidence.outcome = 'Read-only preflight confirmed protections, the complete policy table and Internet zones. No installer request was made.';
     await saveEvidence();
     throw Object.assign(new Error(evidence.outcome), { safeStop: true });
   }

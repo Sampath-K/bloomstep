@@ -63,7 +63,7 @@ test('installer-warning imagery is never implied without exact public-asset prov
 test('Edge observation is exact-asset, policy-gated, non-executing and one-shot', () => {
   const script = readRepositoryFile('tool/capture_edge_warning.mjs');
   const workflow = readRepositoryFile('.github/workflows/ci.yml');
-  const safetyGate = script.indexOf('if (!enabled || !allInternetZone || !exemptionsAbsent)');
+  const safetyGate = script.indexOf('if (!enabled || !policyPageReadable || !allInternetZone || !exemptionsAbsent)');
   const download = script.indexOf('await page.goto(assetUrl');
   assert.ok(safetyGate >= 0 && safetyGate < download);
   assert.equal((script.match(/await page\.goto\(assetUrl/g) ?? []).length, 1);
@@ -72,10 +72,14 @@ test('Edge observation is exact-asset, policy-gated, non-executing and one-shot'
   assert.match(script, /installerExecuted: false/);
   assert.match(script, /protectionsChanged: false/);
   assert.match(script, /zone === 3/);
+  assert.match(script, /policyPageReadStatus/);
+  assert.match(script, /edge:\/\/settings\/privacy\/security/);
+  assert.match(script, /BLOOMSTEP_EDGE_PREFLIGHT_ONLY/);
+  assert.match(script, /share detected scam sites/i);
   assert.match(script, /if \(evidence\.warningCategory === 'unknown-reputation'\)/);
   assert.match(script, /No Keep or other download action was selected/);
   assert.doesNotMatch(script, /--disable-features|--no-sandbox|SmartScreenEnabled\s*[:=]\s*false|Run anyway/i);
-  assert.match(workflow, /github\.event_name == 'pull_request' && github\.event\.action == 'opened'/);
+  assert.match(workflow, /github\.event_name == 'pull_request' && \(github\.event\.action == 'opened' \|\| github\.event\.action == 'synchronize'\)/);
   assert.match(workflow, /name: edge-download-warning-observation/);
 });
 
