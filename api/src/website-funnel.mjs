@@ -56,18 +56,22 @@ export function summarizeWebCounts(document, startDay, endDay) {
     return numbers.length ? numbers.reduce((a, b) => a + b, 0) : null;
   };
   const totals = Object.fromEntries(stages.map(stage => [stage, total(key => key.split(':')[0] === stage)]));
+  /** Suppress the whole dimension if a small observed cell could be subtracted from its total.
+   * @param {Record<string,number|null>} values */
+  const suppress = values => Object.values(values).some(value => value !== null && value < 50) ?
+    Object.fromEntries(Object.keys(values).map(key => [key, null])) : values;
   return { schemaVersion: 1, channel: 'web', reservedChannels: ['store'], startDay, endDay,
-    stages: totals,
-    sources: Object.fromEntries(sources.map(source => [source, total(key => key.split(':')[0] === 'landing_view' && key.split(':')[1] === source)])),
-    architectures: Object.fromEntries(architectures.map(arch => [arch, total(key => key.split(':')[0] === 'download_click' && key.split(':')[2] === arch)])),
+    stages: suppress(totals),
+    sources: suppress(Object.fromEntries(sources.map(source => [source, total(key => key.split(':')[0] === 'landing_view' && key.split(':')[1] === source)]))),
+    architectures: suppress(Object.fromEntries(architectures.map(arch => [arch, total(key => key.split(':')[0] === 'download_click' && key.split(':')[2] === arch)]))),
     steps: [['landing_view', 'primary_cta_click'], ['primary_cta_click', 'download_click']].map(([from, to]) => {
       const denominator = totals[from], numerator = totals[to];
-      const publishable = denominator !== null && numerator !== null && denominator >= 50 && numerator >= 50;
+      const publishable = Object.values(totals).every(value => value === null || value >= 50) &&
+        denominator !== null && numerator !== null && denominator >= 50 && numerator >= 50;
       return { from, to, rate: publishable ? numerator / denominator : null, reason: publishable ? null : 'events_below_50' };
     }),
-    daily: daily.map(row => ({ ...row, counts: row.counts === null ? null :
-      Object.fromEntries(Object.entries(row.counts).map(([key, count]) => [key, count >= 50 ? count : null])) })),
-    definition: 'Anonymous UTC daily event counts, not unique visitors. Event conversion — not unique visitors; repeat visits and bots may be counted. Both stages need 50 events; daily cells below 50 are suppressed. Missing/opted-out observations are unknown. Transient deduplication is not exact-once across hosts. Synthetic observations are excluded.' };
+    daily: daily.map(row => ({ day: row.day, counts: null })),
+    definition: 'Anonymous UTC daily event counts, not unique visitors. Event conversion — not unique visitors; repeat visits and bots may be counted. Ratios may exceed 100% and do not imply same-person transitions or successful file transfers. Stages need 50 events; small dimensions are suppressed together and daily drilldown is withheld to avoid subtractable cells. Missing/opted-out observations are unknown. Transient deduplication is not exact-once across hosts. Synthetic observations are excluded.' };
 }
 
 /** @param {{userId:string,record:unknown}[]} rows @param {string} startDay @param {string} endDay */

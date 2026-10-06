@@ -23,6 +23,9 @@ try {
       } else void request.continue();
     });
     await page.goto(origin, { waitUntil: 'networkidle0' });
+    assert.equal(posts.length, 0, 'New website measurement is default-off');
+    if (!await page.$eval('#website-consent', node => node.disabled)) await page.click('#website-consent');
+    await page.waitForFunction(() => document.getElementById('website-status').textContent.includes('active'));
     assert.equal(posts[0].event, 'landing_view');
     assert.equal(posts[0].channel, 'web');
     assert.equal(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), true);
@@ -45,6 +48,7 @@ try {
     }, signal);
     page.on('request', request => { if (request.url().endsWith('/api/web/events')) requests++; });
     await page.goto(origin, { waitUntil: 'networkidle0' });
+    await page.click('#website-consent');
     await page.click('#primary-cta');
     assert.equal(requests, 0);
     assert.match(await page.$eval('#website-status', node => node.textContent), /Privacy signal honoured/);
@@ -57,6 +61,7 @@ try {
     else void request.continue();
   });
   await offline.goto(origin, { waitUntil: 'networkidle0' });
+  await offline.click('#website-consent');
   const links = await offline.$$eval('[data-download]', links => links.map(link => link.href));
   assert.equal(links.length, 2);
   assert.ok(links.every(link => link.startsWith('https://github.com/Sampath-K/bloomstep/releases/download/')));

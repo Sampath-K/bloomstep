@@ -10,6 +10,10 @@ links and work without JavaScript, analytics, authentication, or the API.
 - First-party, anonymous website observations: `landing_view`,
   `primary_cta_click`, `download_click` with `channel: web` (`store` is reserved,
   not accepted yet), source category and download architecture.
+- Website collection is unchecked/default-off. Only explicit per-visit consent
+  starts a consented landing observation; it is not retroactive. Consent stays
+  in page memory and resets on reload. Revocation stops uploads; earlier
+  anonymous aggregate counts cannot be individually located.
 - Source uses only the referrer hostname: known search hosts, other external
   hosts (referral), same-origin (unknown), absent referrer (direct/unknown in
   practice). Allow-listed bounded UTM presence selects campaign; values are
@@ -24,7 +28,9 @@ links and work without JavaScript, analytics, authentication, or the API.
   conversion is available only with at least 50 events in both stages in the
   window. Label it "event conversion — not unique visitors; repeat visits and
   bots may be counted". Never describe it as user conversion. Low-count daily
-  cells are not returned. Missing dates/opt-outs are unknown, never inferred zeros.
+  cells and subtractable small breakdowns are not returned. Ratios can exceed
+  100%; never clamp. Clicks do not prove successful downloads, nor same-person
+  transitions. Missing dates/opt-outs are unknown, never inferred zeros.
 - Existing voluntary website/installer receipts may be exported in memory and
   explicitly linked in app Settings under separate default-off app consent.
   Existing authenticated ordered receipt cohorts are shown separately, never

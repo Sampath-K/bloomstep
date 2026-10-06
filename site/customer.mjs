@@ -41,6 +41,7 @@ export function createWebObserver({ send, dnt, gpc, source = 'unknown', uuid = (
 
 function initializeCustomer() {
   const status = document.getElementById('website-status');
+  const consent = document.getElementById('website-consent');
   const blocked = () => navigator.doNotTrack === '1' || window.doNotTrack === '1' || navigator.globalPrivacyControl === true;
   const observer = createWebObserver({
     source: classifySource(document.referrer, location.search, location.origin),
@@ -57,11 +58,17 @@ function initializeCustomer() {
   });
   const record = (event, arch) => {
     if (blocked()) { status.textContent = 'Privacy signal honoured: no website observations are sent.'; return; }
+    if (!consent.checked) return;
     void observer.record(event, arch).then(accepted => {
       if (!accepted) status.textContent = 'Website measurement is unavailable or this observation was already counted. Downloads still work.';
     });
   };
-  record('landing_view');
+  if (blocked()) { consent.disabled = true; status.textContent = 'Privacy signal honoured: no website observations are sent.'; }
+  consent.addEventListener('change', () => {
+    if (blocked()) { consent.checked = false; status.textContent = 'Privacy signal honoured: no website observations are sent.'; return; }
+    status.textContent = consent.checked ? 'Optional daily website counts active for this visit only.' : 'Website measurement is off. Earlier anonymous counts cannot be individually identified.';
+    if (consent.checked) record('landing_view');
+  });
   document.getElementById('primary-cta').addEventListener('click', () => record('primary_cta_click'));
   for (const link of document.querySelectorAll('[data-download]')) {
     link.addEventListener('click', () => record('download_click', link.dataset.download));

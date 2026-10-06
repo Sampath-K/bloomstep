@@ -6,7 +6,7 @@ export function websitePanels(data) {
   }
   const count = value => {
     if (value === null) return 'Unknown / absent observations';
-    if (!Number.isInteger(value) || value <= 0) throw Error('Invalid website count.');
+    if (!Number.isInteger(value) || value < 50) throw Error('Invalid unsuppressed website count.');
     return value.toLocaleString();
   };
   const linkedCount = value => {

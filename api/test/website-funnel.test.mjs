@@ -75,9 +75,20 @@ test('anonymous event conversion publishes at the exact threshold without low-da
   const data = summarizeWebCounts(document, '2026-10-04', '2026-10-05');
   assert.equal(data.steps[0].rate, 1);
   assert.equal(data.steps[1].rate, 1);
-  assert.equal(data.daily[0].counts['primary_cta_click:search:unknown'], null);
-  assert.equal(data.daily[1].counts['primary_cta_click:search:unknown'], null);
+  assert.equal(data.daily[0].counts, null);
+  assert.equal(data.daily[1].counts, null);
   assert.match(data.definition, /not unique visitors/);
+});
+test('small subtractable source or architecture cells suppress the entire breakdown, never clamp ratios', () => {
+  const data = summarizeWebCounts({ days: { '2026-10-05': { counts: {
+    'landing_view:search:unknown': 50, 'landing_view:referral:unknown': 1,
+    'primary_cta_click:search:unknown': 100,
+    'download_click:search:arm64': 50, 'download_click:search:x64': 1,
+  } } } }, '2026-10-05', '2026-10-05');
+  assert.ok(Object.values(data.sources).every(value => value === null));
+  assert.ok(Object.values(data.architectures).every(value => value === null));
+  assert.equal(data.steps[0].rate, 100 / 51);
+  assert.match(data.definition, /exceed 100%/);
 });
 test('bot/burst and unauthorized operator reads fail closed; synthetic cannot enter real document', async () => {
   const f = fixture();
