@@ -210,3 +210,8 @@ local practice day. Check-in/undo writes have monotonic microsecond timestamps
 even under a frozen clock; resetting an edit to the old frozen time would
 correctly lose to the server's newer recipe version. Conflict behavior is not
 relaxed to accommodate a backwards test clock.
+After saving naturalness, the control intentionally changes to the next
+available date during its cooldown. The journey waits for a newly persisted
+reflection and the stable weekly control, asserts the cooldown label, and
+advances through the actual second-reflection window; it does not require the
+old Check-naturalness label to remain or bypass the cooldown.

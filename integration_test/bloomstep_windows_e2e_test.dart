@@ -298,8 +298,9 @@ void main() {
         await _dismissCelebration(tester);
       }
       await tester.ensureVisible(find.text('Check naturalness'));
-      await _naturalnessReflection(tester);
+      await _naturalnessReflection(tester, activeStore!);
       expect((await activeStore!.habits()).single.status, 'active');
+      expect(find.textContaining('Naturalness available '), findsOneWidget);
 
       for (var day = 18; day <= 31; day++) {
         await _advanceClock(tester);
@@ -314,10 +315,10 @@ void main() {
         await _dismissCelebration(tester);
       }
       await tester.ensureVisible(find.text('Check naturalness'));
-      await _naturalnessReflection(tester);
+      await _naturalnessReflection(tester, activeStore!);
       await _waitFor(
         tester,
-        find.text('Check naturalness'),
+        find.text('Weekly reflection / Recipe Doctor'),
         ready: () async =>
             (await activeStore!.habits()).single.status == 'graduated',
       );
@@ -653,7 +654,11 @@ Future<void> _plant(
   await tester.tap(find.text('Plant this seed'));
 }
 
-Future<void> _naturalnessReflection(WidgetTester tester) async {
+Future<void> _naturalnessReflection(
+  WidgetTester tester,
+  GardenStore store,
+) async {
+  final previous = ((await store.export())['reflections'] as List).length;
   await tester.tap(find.text('Check naturalness'));
   await tester.pumpAndSettle();
   expect(find.text('How natural does this feel?'), findsOneWidget);
@@ -669,7 +674,12 @@ Future<void> _naturalnessReflection(WidgetTester tester) async {
   );
   await tester.ensureVisible(find.text('Save reflection'));
   await tester.tap(find.text('Save reflection'));
-  await _waitFor(tester, find.text('Check naturalness'));
+  await _waitFor(
+    tester,
+    find.text('Weekly reflection / Recipe Doctor'),
+    ready: () async =>
+        ((await store.export())['reflections'] as List).length == previous + 1,
+  );
 }
 
 Future<void> _advanceClock(WidgetTester tester) async {
