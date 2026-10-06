@@ -116,6 +116,19 @@ Fresh same-owner SQLite stores download the planted recipe, Did-more check-in,
 and deletion ledger through the real backend GET path, independently of the
 original profile's local records.
 
+The readbacks exposed a production fingerprint mismatch for whole reflection
+scores: JSON returns `7`, while SQLite REAL stores `7.0`. Reflection fingerprints
+now normalize that numeric field to double so equivalent imported/acknowledged
+content does not echo into the upload outbox. Stored/wire score values, immutable
+record semantics, session guards and backend validation are unchanged. A focused
+red-to-green sync regression covers integer, whole-double and fractional scores.
+Legacy integer-based fingerprints may queue one idempotent resend; successful
+snapshot acknowledgment converges to the canonical hash and stays empty after
+database reopen. There is no bulk state rewrite or implicit acknowledgment of
+different content. The regression also keeps changed-score submissions pending;
+existing backend immutable-ID retry tests verify that resends do not overwrite
+reflection content or create duplicate rows.
+
 The test login emits no sign-in/acquisition telemetry and does not opt the
 synthetic profile into analytics. Habit/feedback fixtures use the existing
 default-off telemetry consent behavior; synthetic records and receipts are not

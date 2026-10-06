@@ -1,7 +1,160 @@
+import 'dart:convert';
+import 'dart:io';
+
 import 'package:bloomstep/core/garden_store.dart';
+import 'package:crypto/crypto.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:path/path.dart' as p;
+import 'package:sqflite_common_ffi/sqflite_ffi.dart';
 
 void main() {
+  test(
+    'legacy integer reflection fingerprint converges once across reopen',
+    () async {
+      final root = await Directory.systemTemp.createTemp(
+        'bloomstep-fingerprint-',
+      );
+      final path = p.join(root.path, 'garden.sqlite');
+      var store = await GardenStore.open(path, 'reflection-owner');
+      addTearDown(() async {
+        await store.close();
+        await root.delete(recursive: true);
+      });
+      final habit = await store.plant(
+        aspiration: 'Calm',
+        anchor: 'coffee',
+        behavior: 'one breath',
+        celebration: 'smile',
+        species: 'Cosmos',
+      );
+      final received = {
+        'id': 'd441aaf0-0e56-4221-b74e-d6c2a3946888',
+        'habitId': habit.id,
+        'items': '[7,7,7,7]',
+        'score': 7,
+        'ts': '2026-10-04T12:00:00.000000Z',
+      };
+      await store.mergeSync({
+        'habits': [],
+        'checkins': [],
+        'reflections': [received],
+        'voice': [],
+      });
+      final keys = received.keys.toList()..sort();
+      final legacy = sha256
+          .convert(
+            utf8.encode(
+              jsonEncode({for (final key in keys) key: received[key]}),
+            ),
+          )
+          .toString();
+      await store.close();
+      final db = await databaseFactoryFfi.openDatabase(path);
+      try {
+        expect(
+          await db.update(
+            'sync_state',
+            {'fingerprint': legacy},
+            where: 'account = ? AND tableName = ? AND recordId = ?',
+            whereArgs: ['reflection-owner', 'reflections', received['id']],
+          ),
+          1,
+        );
+      } finally {
+        await db.close();
+      }
+      store = await GardenStore.open(path, 'reflection-owner');
+      expect((await store.syncPayload())['reflections'], hasLength(1));
+      await store.acknowledgeSync({
+        'reflections': [received],
+      });
+      expect((await store.syncPayload())['reflections'], isEmpty);
+      await store.close();
+      store = await GardenStore.open(path, 'reflection-owner');
+      expect((await store.syncPayload())['reflections'], isEmpty);
+      expect((await store.export())['reflections'], hasLength(1));
+    },
+  );
+
+  test(
+    'integer server reflection scores stay acknowledged after SQLite import',
+    () async {
+      final store = await GardenStore.open(':memory:', 'reflection-owner');
+      addTearDown(store.close);
+      final habit = await store.plant(
+        aspiration: 'Calm',
+        anchor: 'coffee',
+        behavior: 'one breath',
+        celebration: 'smile',
+        species: 'Cosmos',
+      );
+      final payload = await store.syncPayload();
+      await store.mergeSync({
+        'habits': payload['habits'],
+        'checkins': [],
+        'reflections': [
+          {
+            'id': 'd441aaf0-0e56-4221-b74e-d6c2a3946888',
+            'habitId': habit.id,
+            'items': '[7,7,7,7]',
+            'score': 7,
+            'ts': '2026-10-04T12:00:00.000000Z',
+          },
+          {
+            'id': 'd441aaf0-0e56-4221-b74e-d6c2a3946889',
+            'habitId': habit.id,
+            'items': '[6,6,6,7]',
+            'score': 6.25,
+            'ts': '2026-09-20T12:00:00.000000Z',
+          },
+          {
+            'id': 'd441aaf0-0e56-4221-b74e-d6c2a3946890',
+            'habitId': habit.id,
+            'items': '[7,7,7,7]',
+            'score': 7.0,
+            'ts': '2026-09-06T12:00:00.000000Z',
+          },
+          {
+            'id': 'd441aaf0-0e56-4221-b74e-d6c2a3946891',
+            'habitId': habit.id,
+            'items': '[1,1,1,1]',
+            'score': 1,
+            'ts': '2026-08-23T12:00:00.000000Z',
+          },
+        ],
+        'voice': [],
+      });
+      final stored = (await store.export())['reflections'] as List;
+      expect(stored, hasLength(4));
+      expect(stored.map((row) => (row as Map)['score']), [7.0, 6.25, 7.0, 1.0]);
+      expect(
+        stored.map((row) => (row as Map)['score']),
+        everyElement(isA<double>()),
+      );
+      expect((await store.syncPayload())['reflections'], isEmpty);
+      final original = Map<String, Object?>.from(stored.first as Map)
+        ..remove('account');
+      final different = {...original, 'items': '[6,6,6,6]', 'score': 6};
+      await store.mergeSync({
+        'habits': [],
+        'checkins': [],
+        'reflections': [different],
+        'voice': [],
+      });
+      expect((await store.syncPayload())['reflections'], [original]);
+      await store.acknowledgeSync({
+        'reflections': [different],
+      });
+      expect((await store.syncPayload())['reflections'], hasLength(1));
+      await store.acknowledgeSync({
+        'reflections': [
+          {...original, 'score': 7},
+        ],
+      });
+      expect((await store.syncPayload())['reflections'], isEmpty);
+    },
+  );
+
   test('additive server support receipt sidecar never becomes a native row or unpurged collector', () async {
     final store = await GardenStore.open(
       ':memory:',
