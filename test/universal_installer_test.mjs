@@ -199,3 +199,22 @@ test('genuine outcome oracle rejects transient apps and unsuccessful installer e
   assert.match(proof, /ownedAppWindowVisible/);
   assert.match(proof, /wizardExitCode/);
 });
+test('compiler compatibility uses observed engine banner, not missing ISCC file-version resources', () => {
+  const helper = fileURLToPath(new URL('../tool/inno_compiler_version.ps1', import.meta.url)).replaceAll("'", "''");
+  const script = `$ErrorActionPreference='Stop'; . '${helper}';
+    if ((Get-InnoEngineVersion @('Compiler engine version: Inno Setup 6.3.0')).ToString() -ne '6.3.0') { throw 'Minimum version not recognized' }
+    if ((Get-InnoEngineVersion @('Compiler engine version: Inno Setup 6.7.1')).ToString() -ne '6.7.1') { throw 'Observed version lost' }
+    foreach ($bad in @('File version: 0.0.0.0','Compiler engine version: Inno Setup 6.2.2','Compiler engine version: Other Tool 7.0.0')) {
+      $rejected=$false; try { Get-InnoEngineVersion @($bad) } catch { $rejected=$true }
+      if (-not $rejected) { throw 'Unknown/unsupported compiler accepted' }
+    }
+    'PASS'`;
+  assert.match(execFileSync('pwsh', ['-NoProfile', '-NonInteractive', '-Command', script], { encoding: 'utf8' }), /PASS/);
+  const workflow = read('.github/workflows/ci.yml');
+  assert.match(workflow, /Get-InnoEngineVersion/);
+  assert.match(workflow, /inno-toolchain-probe\.iss/);
+  assert.doesNotMatch(workflow, /compiler\.VersionInfo\.File(?:Major|Minor)Part\s+-(?:lt|eq|gt)/);
+  assert.match(workflow, /fileVersion = \$compiler\.VersionInfo\.FileVersion/);
+  assert.match(workflow, /Tee-Object -Variable engineOutput/);
+  assert.match(read('packaging/inno-toolchain-probe.iss'), /Output=no/);
+});

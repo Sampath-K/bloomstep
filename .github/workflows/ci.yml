@@ -489,11 +489,22 @@ jobs:
             if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           }
           $compiler = Get-Item "${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe"
-          if ($compiler.VersionInfo.FileMajorPart -lt 6 -or
-              ($compiler.VersionInfo.FileMajorPart -eq 6 -and $compiler.VersionInfo.FileMinorPart -lt 3)) {
-            throw 'Universal native OS routing requires Inno Setup 6.3 or newer.'
+          @{
+            executable = $compiler.Name
+            fileVersion = $compiler.VersionInfo.FileVersion
+            productVersion = $compiler.VersionInfo.ProductVersion
+            fileMajorPart = $compiler.VersionInfo.FileMajorPart
+            fileMinorPart = $compiler.VersionInfo.FileMinorPart
+            executableSha256 = (Get-FileHash $compiler.FullName).Hash.ToLower()
+          } | ConvertTo-Json -Compress | Write-Output
+          . .\tool\inno_compiler_version.ps1
+          & $compiler.FullName packaging\inno-toolchain-probe.iss | Tee-Object -Variable engineOutput
+          if ($LASTEXITCODE -ne 0) {
+            throw "Compile-only Inno toolchain probe failed with exit $LASTEXITCODE; no installer output was requested."
           }
-          Write-Output "Inno compiler: $($compiler.VersionInfo.FileVersion)"
+          $engineVersion = Get-InnoEngineVersion @($engineOutput)
+          Write-Output "Verified Inno compiler engine: $engineVersion"
+          "BLOOMSTEP_INNO_ENGINE_VERSION=$engineVersion" | Out-File $env:GITHUB_ENV -Encoding utf8 -Append
       - name: Verify genuine same-source Release inputs and compile offline universal setup
         shell: pwsh
         env:
@@ -522,7 +533,7 @@ jobs:
           @{
             kind = 'bloomstep-offline-universal-v1'; source = $source; version = $version
             installerFile = $installer.Name; installerSha256 = $hash; bytes = $installer.Length
-            compiler = (Get-Item "${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe").VersionInfo.FileVersion
+            compiler = $env:BLOOMSTEP_INNO_ENGINE_VERSION
             signatureStatus = (Get-AuthenticodeSignature $installer.FullName).Status.ToString()
             payloadManifests = $payloadHashes
           } | ConvertTo-Json -Depth 4 | Set-Content "$output\universal-manifest.json" -Encoding utf8

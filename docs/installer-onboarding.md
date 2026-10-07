@@ -28,7 +28,11 @@ reports the **native Windows OS** architecture; Inno uses
 32-bit/unsupported Windows before installing. `x64compatible` must not
 select a universal payload because it includes ARM Windows x64 emulation.
 The compiler must be observed as Inno 6.3 or newer; its exact version is
-recorded in the package manifest.
+recorded in the package manifest. The gate logs executable version metadata
+before running an `Output=no` compile-only probe. It requires a single
+authoritative compiler-engine banner and successful architecture-syntax
+compilation; missing/old engine evidence fails closed. ISCC executable
+resource metadata alone is not the compiler-engine version.
 
 Tradeoff: one larger download carries both native payloads; measure the
 compiled byte count rather than promising a size. No runtime payload fetch,
