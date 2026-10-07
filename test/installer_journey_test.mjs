@@ -6,9 +6,9 @@ const read = path => readFileSync(new URL(`../${path}`, import.meta.url), 'utf8'
 const installer = read('packaging/bloomstep.iss');
 
 test('three original educational beats precede options without tracking or a forced exercise', () => {
-  assert.match(installer, /WelcomeLabel2=Anchor a routine\./);
-  assert.match(installer, /RecipePage := CreateCustomPage\(wpWelcome, 'Plant a tiny recipe'/);
-  assert.match(installer, /GrowPage := CreateCustomPage\(RecipePage.ID, 'Celebrate and grow'/);
+  assert.match(installer, /WelcomeLabel2=Your garden starts with one seed\./);
+  assert.match(installer, /RecipePage := CreateCustomPage\(wpWelcome, 'A tiny recipe'/);
+  assert.match(installer, /GrowPage := CreateCustomPage\(RecipePage.ID, 'Watch it become a garden'/);
   assert.match(installer, /DisableDirPage=no/);
   assert.match(installer, /DisableProgramGroupPage=yes/);
   assert.match(installer, /UsePreviousAppDir=yes/);
@@ -46,4 +46,42 @@ test('Finish launch is default checked, user-toggleable, successful interactive 
   assert.match(proof, /100, 150, 200/);
   assert.match(proof, /compiledFixture\.installerSha256[\s\S]*Get-FileHash/);
   assert.match(proof, /exact hash-authorized compiled inert journey fixture/);
+});
+
+test('limited-task failures preserve sanitized diagnostics without weakening launch assertions', () => {
+  const proof = read('tool/verify_installer_journey.ps1');
+  assert.match(proof, /function Write-JourneyWorkerDiagnostic/);
+  assert.match(proof, /trap\s*\{[\s\S]*Write-JourneyWorkerDiagnostic[\s\S]*throw/);
+  for (const field of ['taskState', 'lastTaskResult', 'workerDiagnosticPresent', 'outcomePresent',
+    'sessionId', 'userInteractive', 'tokenElevated', 'errorType', 'errorLine']) {
+    assert.ok(proof.includes(field), field);
+  }
+  assert.match(proof, /Write-JourneyWorkerDiagnostic -Stage 'starting'/);
+  assert.match(proof, /Write-JourneyWorkerDiagnostic -Stage 'helpers-loaded'/);
+  assert.match(proof, /"\$Mode-task-diagnostic\.json"/);
+  assert.match(proof, /"\$Mode-worker-diagnostic\.json"/);
+  assert.match(proof, /classification = 'UNKNOWN/);
+  assert.match(proof, /if \(-not \(Test-Path \$result\)\) \{[\s\S]*throw/);
+  assert.doesNotMatch(proof, /errorMessage\s*=|userName\s*=|workerSid\s*=/);
+  assert.match(proof, /if \(\$launches.Count -ne \$expected\) \{ throw/);
+  assert.match(proof, /if \(\$launches\[0\]\.sid -ne \$sid -or \$launches\[0\]\.elevated\) \{ throw/);
+});
+
+test('owner-trial preview10 alone can publish with a visible failed launch evidence job', () => {
+  const workflow = read('.github/workflows/ci.yml');
+  const evidence = workflow.split('  installer-launch-evidence:')[1]?.split('  test-and-build-windows:')[0];
+  assert.ok(evidence);
+  assert.match(evidence, /launch-after-install: UNVERIFIED \(preview gap, owner manual trial pending\)/);
+  assert.match(evidence, /if: always\(\)/);
+  assert.doesNotMatch(evidence, /continue-on-error/);
+  const ordinary = workflow.split('  test-and-build-windows:')[1].split('  release:')[0];
+  assert.doesNotMatch(ordinary, /verify_installer_journey\.ps1/);
+  const release = workflow.split('  release:')[1];
+  assert.match(release, /needs: \[api, test-and-build-windows, installer-launch-evidence\]/);
+  assert.match(release, /needs\.api\.result == 'success'/);
+  assert.match(release, /needs\.test-and-build-windows\.result == 'success'/);
+  assert.match(release, /needs\.installer-launch-evidence\.result == 'success' \|\| github\.ref_name == 'v0\.1\.0-preview\.10'/);
+  assert.match(release, /owner trial only/);
+  assert.match(release, /launch-after-install: not yet verified, pending owner manual trial/);
+  assert.match(release, /public site remains on preview\.9/);
 });

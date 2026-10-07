@@ -290,18 +290,24 @@ try {
   $seedCheckinCount=Store-Scalar "SELECT count(*) FROM checkins WHERE account='synthetic-preview-only'" $null
   $result.phase='text-save'
   Open-Builder
-  Action 'Calm'
+  Action 'pour my morning drink'
+  Action 'take one slow breath'
+  Action 'relax my shoulders and smile'
+  Action 'Make it my own (optional)'
   $saved='Bloomstep acceptance test CI save '+[Guid]::NewGuid().ToString('N').Substring(0,8)
   $canceled='Bloomstep acceptance test CI cancel '+[Guid]::NewGuid().ToString('N').Substring(0,8)
   $result.textEntry=[SyntheticInput]::SetText($script:view,[uint32]$script:app.Id,'I want more...',$saved)
   Action 'I practiced my celebration' 44
   Action 'Plant this seed'
   Wait-Label 'Plant one tiny step' $false
+  Wait-Label 'See my seed'
+  Action 'See my seed'
   Find-Fixture $saved
   $result.savedVisible=$true
   $result.phase='text-cancel'
   Open-Builder
-  $result.cancelTextEntry=[SyntheticInput]::SetText($script:view,[uint32]$script:app.Id,'I want more...',$canceled)
+  Action 'Make it my own (optional)'
+  $result.cancelTextEntry=[SyntheticInput]::SetText($script:view,[uint32]$script:app.Id,'After I...',$canceled)
   Action 'Cancel'
   Wait-Label 'Plant one tiny step' $false
   if([SyntheticInput]::Has($script:view,$canceled)) {throw 'Canceled synthetic recipe appeared in garden.'}

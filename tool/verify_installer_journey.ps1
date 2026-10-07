@@ -7,6 +7,26 @@ param(
   [switch]$Worker
 )
 $ErrorActionPreference = 'Stop'
+function Write-JourneyWorkerDiagnostic {
+  param([string]$Stage, [System.Management.Automation.ErrorRecord]$Failure)
+  $identity = [Security.Principal.WindowsIdentity]::GetCurrent()
+  $tokenElevated = ([Security.Principal.WindowsPrincipal]$identity).IsInRole(
+    [Security.Principal.WindowsBuiltInRole]::Administrator)
+  @{
+    schemaVersion = 1; mode = $Mode; stage = $Stage
+    sessionId = (Get-Process -Id $PID).SessionId
+    userInteractive = [Environment]::UserInteractive; tokenElevated = $tokenElevated
+    desktopAvailability = 'UNKNOWN: session and UserInteractive do not establish GUI availability'
+    errorType = if ($Failure) { $Failure.Exception.GetType().FullName } else { $null }
+    errorLine = if ($Failure) { $Failure.InvocationInfo.ScriptLineNumber } else { $null }
+    errorCategory = if ($Failure) { $Failure.CategoryInfo.Category.ToString() } else { $null }
+  } | ConvertTo-Json | Set-Content (Join-Path $EvidenceDir "$Mode-worker-diagnostic.json") -Encoding utf8
+}
+trap {
+  if ($Worker) { Write-JourneyWorkerDiagnostic -Stage 'failed' -Failure $_ }
+  throw
+}
+if ($Worker) { Write-JourneyWorkerDiagnostic -Stage 'starting' }
 if ($env:BLOOMSTEP_ISOLATED_JOURNEY_FIXTURE -ne 'true' -and -not $Worker) {
   throw 'This proof runs only on a disposable CI host with an inert fixture, never a customer installer.'
 }
@@ -47,6 +67,15 @@ if ($admin -and $Mode -ne 'elevated' -and -not $Worker) {
     } while ((-not (Test-Path (Join-Path $EvidenceDir "$Mode.json"))) -and
       ($info.LastRunTime -lt $startedAt -or $info.LastTaskResult -eq 267009) -and (Get-Date) -lt $deadline)
     $result = Join-Path $EvidenceDir "$Mode.json"
+    $task = Get-ScheduledTask -TaskName $taskName
+    @{
+      schemaVersion = 1; mode = $Mode; taskState = $task.State.ToString()
+      lastTaskResult = $info.LastTaskResult; lastRunTime = $info.LastRunTime.ToUniversalTime().ToString('o')
+      waitedUntilDeadline = (Get-Date) -ge $deadline
+      outcomePresent = Test-Path $result
+      workerDiagnosticPresent = Test-Path (Join-Path $EvidenceDir "$Mode-worker-diagnostic.json")
+      classification = 'UNKNOWN: inspect worker stage/error; task completion alone does not establish installer or launch success'
+    } | ConvertTo-Json | Set-Content (Join-Path $EvidenceDir "$Mode-task-diagnostic.json") -Encoding utf8
     if (-not (Test-Path $result)) {
       throw "Limited interactive task produced no $Mode evidence; desktop/token availability is not established. Task result: $($info.LastTaskResult)"
     }
@@ -56,6 +85,7 @@ if ($admin -and $Mode -ne 'elevated' -and -not $Worker) {
 if ($Mode -ne 'elevated' -and $admin) { throw 'Normal launch proof must have an actual non-elevated token.' }
 if ($Mode -eq 'elevated' -and -not $admin) { throw 'Elevated no-launch branch needs an actual elevated CI token.' }
 & "$PSScriptRoot\verify_onboarding_wizard.ps1" -Installer $Installer -EvidenceDir $EvidenceDir -LoadHelpersOnly
+if ($Worker) { Write-JourneyWorkerDiagnostic -Stage 'helpers-loaded' }
 if (-not [OnboardingWizard]::SetProcessDpiAwarenessContext([IntPtr](-4))) {
   throw 'Per-monitor physical capture coordinates unavailable.'
 }
@@ -68,6 +98,7 @@ if ($Mode -eq 'silent') { $options += ' /VERYSILENT /SUPPRESSMSGBOXES' }
 if ($Mode -eq 'unattended') { $options += ' /SUPPRESSMSGBOXES' }
 if ($Mode -eq 'failure') { $options += ' /FORCEFIXTUREFAILURE' }
 $setup = Start-Process -FilePath $Installer -ArgumentList $options -PassThru
+if ($Worker) { Write-JourneyWorkerDiagnostic -Stage 'installer-started' }
 $owned = [Collections.Generic.HashSet[int]]::new()
 [void]$owned.Add($setup.Id)
 $states = [Collections.Generic.List[object]]::new()
@@ -204,6 +235,7 @@ try {
     screenReaderAcceptance = 'UNKNOWN; UIA/keyboard evidence is not a Narrator acceptance claim'
     states = $states
   } | ConvertTo-Json -Depth 8 | Set-Content (Join-Path $EvidenceDir "$Mode.json") -Encoding utf8
+  if ($Worker) { Write-JourneyWorkerDiagnostic -Stage 'verified' }
 } finally {
   foreach ($window in [OnboardingWizard]::Windows()) {
     [uint32]$owner = 0

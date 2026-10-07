@@ -12,14 +12,19 @@ test('the first native wizard page is Welcome with original art and short indepe
   assert.match(installer, /WelcomeLabel1=Welcome to Bloomstep/);
   const welcome = /^WelcomeLabel2=(.*)$/m.exec(installer)?.[1];
   assert.ok(welcome);
-  assert.match(welcome, /^Anchor a routine\./);
-  assert.match(welcome, /Make a tiny habit part of your day/);
-  assert.match(welcome, /Anchor: after pouring my morning drink/);
-  assert.match(welcome, /Anchor: after opening my laptop/);
+  assert.match(welcome, /^Your garden starts with one seed\./);
   assert.match(welcome, /Free Windows download\. Limited preview\. Sign-in required\./);
   assert.match(welcome, /Next: plant a tiny recipe/);
   assert.doesNotMatch(welcome, /verified MVP|unsigned|affiliated|medical/);
-  assert.ok(welcome.length < 550);
+  assert.ok(welcome.length < 220);
+  assert.match(installer, /WizardForm.WizardBitmapImage.Visible := False/);
+  assert.match(installer, /AddVisualBeat\(WizardForm.WelcomePage/);
+  assert.match(installer, /Your garden starts with one seed/);
+  assert.match(installer, /A tiny recipe/);
+  assert.match(installer, /Watch it become a garden/);
+  assert.match(installer, /Step 1 of 3/);
+  assert.match(installer, /Step 2 of 3/);
+  assert.match(installer, /Step 3 of 3/);
   assert.match(installer, /DisableDirPage=no/);
   assert.match(installer, /DisableProgramGroupPage=yes/);
   assert.match(installer, /CreateCustomPage\(wpSelectDir,/);
@@ -28,12 +33,15 @@ test('the first native wizard page is Welcome with original art and short indepe
   assert.match(capture, /Welcome', 'recipe', 'grow', 'destination', 'optional-observations', 'ready'/);
   assert.match(capture, /installerSha256/);
   assert.match(capture, /receiptAbsent/);
+  assert.match(capture, /compiledFixture\.installationProhibited/);
+  assert.match(capture, /compiledFixture\.installerSha256[\s\S]*Get-FileHash/);
+  assert.match(capture, /Only the exact hash-authorized compile-only onboarding fixture/);
 });
 
 test('installer teaches on existing native steps without extra pages or changing security defaults', () => {
   assert.equal((installer.match(/CreateCustomPage\(/g) ?? []).length, 3);
   assert.match(installer, /ReadyMemoNote[\s\S]*routine[\s\S]*tiny[\s\S]*celebrat/);
-  assert.match(installer, /FinishedLabel=.*sign-in/i);
+  assert.match(installer, /FinishedLabel=.*sign[ -]in/i);
   assert.match(installer, /independent app inspired by the Tiny Habits method/);
   assert.match(installer, /https:\/\/tinyhabits.com\/book\//);
   assert.match(installer, /PrivilegesRequired=lowest/);
@@ -66,4 +74,20 @@ test('wizard art is explicit, strict, real BMP and reproducible', () => {
     { encoding: 'utf8' });
   assert.equal(result.status, 0, result.stderr);
   assert.match(read('.github/workflows/ci.yml'), /test\/installer_onboarding_test.mjs/);
+});
+
+test('full-panel illustrations export actual supported PlantArt and are not screenshot evidence', () => {
+  const exporter = read('tool/installer_art_export_test.dart');
+  assert.match(exporter, /PlantArt/);
+  assert.match(exporter, /GrowthStage.values/);
+  assert.match(exporter, /debugShowCheckedModeBanner: false/);
+  assert.doesNotMatch(exporter, /evergreen|GrowthStage\.tree/);
+  const manifest = JSON.parse(read('packaging/assets/education-art-provenance.json'));
+  assert.equal(manifest.kind, 'authored-illustrations-not-installer-screenshots');
+  for (const name of ['education-seed', 'education-recipe', 'education-growth', 'education-hero']) {
+    const bmp = readFileSync(new URL(`../packaging/assets/${name}.bmp`, import.meta.url));
+    assert.equal(bmp.readInt32LE(18), 1000);
+    assert.equal(bmp.readInt32LE(22), name === 'education-hero' ? 260 : 420);
+    assert.match(installer, new RegExp(`assets\\\\${name}\\.bmp`));
+  }
 });

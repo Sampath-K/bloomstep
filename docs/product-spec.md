@@ -14,7 +14,8 @@ account deletion are guardrails. Ages 16+. Not medical advice.
 
 Tiny first (less than 30 seconds); celebration first; autonomy; privacy by
 default; coming back is a success. Plants never wilt, die, or lose a stage.
-No punishment, loss-aversion streak mechanics, leaderboards, ads or AI in MVP.
+No punishment, loss-aversion streak mechanics or leaderboards. Habit text is
+never sold or used for ads. AI features, if added, will be explained and optional.
 Content is original, with factual attribution to behavior design research.
 Do not use a third party's trademark in the product name or marketing headline.
 No copied book exercises or validated questionnaire wording without verified
@@ -137,7 +138,7 @@ kill switch must be verified before production launch.
 
 | Loop | Approved minimum |
 | --- | --- |
-| Habit | Sign in; aspiration; five starter recipes; custom anchor/tiny behavior/celebration; practice celebration; choose among three species; plant; persistent SQLite; prompt to practice now. First habit target <90s, first check-in same session. Recommend one habit initially; soft cap three with explicit override. |
+| Habit | Sign in; primary three-step anchor, tiny-action and celebration picker using the five original recipes; zero required typing; visible progress and live full-recipe preview; Back retains choices; optional custom text/aspiration and three species. Incomplete actions explain why. Celebration practice is optional, never a creation/edit gate. Plant into persistent SQLite, then show a recipe-specific next step and a clear garden continuation. First habit target <90s; first check-in is optional, not creation acceptance. Recommend one habit initially; soft cap three with explicit override. |
 | Check-in | Did it / Did more / Not today; optional forgot/too hard/anchor absent/motivation reason; no response is no data. Personal celebration within 300ms; persistent client event IDs; one effective result per habit per **local** date; edits and undo append events; sync retries idempotent. |
 | Garden | Five stages: seed, sprout at 3, sapling at 10, budding at 21, bloom at 30 practice days plus score >=4/7. No negative stage changes after rest or corrected data. Permanent Grove after graduation. Deterministic species/plant variation, vector visuals, screen-reader labels and reduced motion. Optional day/night, seasons, decor, pollinators and return celebration, never a penalty. |
 | Reminders | Real Windows local toasts and tray actions; opt-in permission/context; optional autostart; chosen local time, quiet hours default 21:30-07:30; <=1 prompt/habit/day and <=3 notifications/app/day; snooze/fewer/off. Three ignored halves frequency, seven pauses with in-app explanation. Device scheduling, not paid service. Respect OS settings/Focus; never use urgent bypass. Re-evaluate local time/DST/travel. Median of last 14 check-in times after five samples, rounded 15m. |

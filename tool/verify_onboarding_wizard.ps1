@@ -1,10 +1,29 @@
 param(
   [Parameter(Mandatory=$true)][string]$Installer,
   [Parameter(Mandatory=$true)][string]$EvidenceDir,
+  [string]$FixtureManifest,
   [switch]$LoadHelpersOnly,
   [switch]$AllowUnavailableKeyboard
 )
 $ErrorActionPreference = 'Stop'
+if (-not $LoadHelpersOnly) {
+  if (-not $FixtureManifest) { throw 'Compile-only fixture authority is required before capture.' }
+  $compiledFixture = Get-Content -LiteralPath $FixtureManifest -Raw | ConvertFrom-Json
+  $compiledSourcePath = Join-Path (Split-Path -Parent $FixtureManifest) 'fixture-preprocessed.iss'
+  $compiledSource = Get-Content -LiteralPath $compiledSourcePath -Raw
+  if ($compiledFixture.kind -ne 'compile-only-onboarding-fixture-v1' -or
+      $compiledFixture.fixtureAppId -ne '8E9B101B-CB3D-4C0F-B733-FC1DFFB75129' -or
+      $compiledFixture.installationProhibited -ne $true -or
+      $compiledFixture.sourceRevision -notmatch '^[a-f0-9]{40}$' -or
+      $compiledFixture.preprocessedSha256 -ne (Get-FileHash -LiteralPath $compiledSourcePath).Hash.ToLower() -or
+      $compiledSource -notmatch 'AppId=\{\{8E9B101B-CB3D-4C0F-B733-FC1DFFB75129\}' -or
+      $compiledSource -notmatch "function PrepareToInstall[\s\S]*?Result := 'Compile-only onboarding fixture\. Installation is prohibited; cancel this wizard\.';[\s\S]*?end;" -or
+      $compiledFixture.installerFile -ne [IO.Path]::GetFileName($Installer) -or
+      $compiledFixture.installerSha256 -ne (Get-FileHash -LiteralPath $Installer).Hash.ToLower()) {
+    throw 'Only the exact hash-authorized compile-only onboarding fixture may be captured; never a customer installer.'
+  }
+  $env:BLOOMSTEP_SOURCE_REVISION = $compiledFixture.sourceRevision
+}
 Add-Type -AssemblyName System.Drawing
 Add-Type -AssemblyName UIAutomationClient, UIAutomationTypes
 Add-Type @'
@@ -103,8 +122,8 @@ try {
         throw 'First observed wizard page was not Welcome.'
       }
       $step = if ($text.Contains('Welcome to Bloomstep')) { 'Welcome' }
-        elseif ($text.Contains('Plant a tiny recipe')) { 'recipe' }
-        elseif ($text.Contains('Celebrate and grow')) { 'grow' }
+        elseif ($text.Contains('A tiny recipe')) { 'recipe' }
+        elseif ($text.Contains('Watch it become a garden')) { 'grow' }
         elseif ($text.Contains('Optional local installation observations')) { 'optional-observations' }
         elseif ($text.Contains('Ready to install this unsigned Bloomstep preview')) { 'ready' }
         elseif ($text.Contains('Select Destination Location')) { 'destination' }
@@ -172,7 +191,7 @@ try {
         if (-not [OnboardingWizard]::Describe($window).Contains('Welcome to Bloomstep')) { throw 'Keyboard Back did not return to Welcome.' }
         $shell.SendKeys('%n')
         Start-Sleep -Milliseconds 200
-        if (-not [OnboardingWizard]::Describe($window).Contains('Plant a tiny recipe')) { throw 'Keyboard Next did not restore recipe teaching.' }
+        if (-not [OnboardingWizard]::Describe($window).Contains('A tiny recipe')) { throw 'Keyboard Next did not restore recipe teaching.' }
         $backVerified = $true
       }
       if ($keyboardAvailable) { $shell.SendKeys('%n') }

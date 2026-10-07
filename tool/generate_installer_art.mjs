@@ -1,5 +1,6 @@
 import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import assert from 'node:assert/strict';
+import { createHash } from 'node:crypto';
 
 // Original geometric garden art, rasterized without fonts or external assets.
 function garden(width, height, small, growth = false) {
@@ -68,10 +69,30 @@ const directory = new URL('../packaging/assets/', import.meta.url);
 if (!check) mkdirSync(directory, { recursive: true });
 for (const [name, width, height, small, growth] of [
   ['wizard-garden', 164, 314, false, false], ['wizard-seed', 55, 55, true, false],
-  ['education-seed', 160, 160, true, false], ['education-growth', 160, 160, false, true],
 ]) {
   const path = new URL(`${name}.bmp`, directory);
   const bytes = garden(width, height, small, growth);
   if (check) assert.deepEqual(readFileSync(path), bytes, `Regenerate original ${name}.bmp`);
   else writeFileSync(path, bytes);
+}
+
+if (check) {
+  const manifest = JSON.parse(readFileSync(new URL('education-art-provenance.json', directory), 'utf8'));
+  assert.equal(manifest.kind, 'authored-illustrations-not-installer-screenshots');
+  const hash = bytes => createHash('sha256').update(bytes).digest('hex');
+  assert.equal(manifest.sources.length, 3);
+  for (const source of manifest.sources) {
+    assert.equal(hash(readFileSync(new URL(`../${source.path}`, import.meta.url))), source.sha256,
+      `Re-export authored illustrations after changing ${source.path}`);
+  }
+  assert.deepEqual(manifest.assets.map(asset => asset.file),
+    ['education-seed.bmp', 'education-recipe.bmp', 'education-growth.bmp', 'education-hero.bmp']);
+  for (const asset of manifest.assets) {
+    const bytes = readFileSync(new URL(asset.file, directory));
+    assert.equal(hash(bytes), asset.sha256, `Original illustration changed: ${asset.file}`);
+    assert.equal(bytes.subarray(0, 2).toString(), 'BM');
+    assert.equal(bytes.readInt32LE(18), asset.width);
+    assert.equal(bytes.readInt32LE(22), asset.height);
+    assert.equal(bytes.readUInt16LE(28), 24);
+  }
 }

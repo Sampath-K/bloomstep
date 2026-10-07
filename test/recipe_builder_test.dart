@@ -7,6 +7,170 @@ import 'package:flutter_test/flutter_test.dart';
 import '../integration_test/bloomstep_windows_e2e_test.dart' as journey;
 
 void main() {
+  Future<void> openBuilder(
+    WidgetTester tester, {
+    void Function(RecipeDraft?)? onSaved,
+    double textScale = 1,
+  }) async {
+    await tester.pumpWidget(
+      MaterialApp(
+        builder: (context, child) => MediaQuery(
+          data: MediaQuery.of(context)
+              .copyWith(textScaler: TextScaler.linear(textScale)),
+          child: child!,
+        ),
+        home: Builder(
+          builder: (context) => Scaffold(
+            body: TextButton(
+              onPressed: () async {
+                final draft = await showDialog<RecipeDraft>(
+                  context: context,
+                  builder: (_) => const RecipeBuilder(),
+                );
+                onSaved?.call(draft);
+              },
+              child: const Text('Create'),
+            ),
+          ),
+        ),
+      ),
+    );
+    await tester.tap(find.text('Create'));
+    await tester.pumpAndSettle();
+  }
+
+  testWidgets(
+    'three picks plant a complete recipe without typing or practice',
+    (tester) async {
+      RecipeDraft? saved;
+      await openBuilder(tester, onSaved: (draft) => saved = draft);
+      expect(
+        find.text('Step 1 of 3 · Start with something familiar'),
+        findsOneWidget,
+      );
+      expect(find.text('Choose an anchor to continue.'), findsOneWidget);
+      expect(find.byType(TextFormField), findsNothing);
+      await tester.tap(find.text('pour my morning drink'));
+      await tester.pumpAndSettle();
+      expect(
+        find.text('Step 2 of 3 · Make it wonderfully small'),
+        findsOneWidget,
+      );
+      expect(
+        find.textContaining('After I pour my morning drink'),
+        findsOneWidget,
+      );
+      await tester.tap(find.text('take one slow breath'));
+      await tester.pumpAndSettle();
+      expect(find.text('Step 3 of 3 · Almost there'), findsOneWidget);
+      await tester.tap(find.text('relax my shoulders and smile'));
+      await tester.pumpAndSettle();
+      expect(
+        find.textContaining('Then I celebrate: relax my shoulders and smile'),
+        findsOneWidget,
+      );
+      expect(
+        tester
+            .widget<FilledButton>(
+              find.widgetWithText(FilledButton, 'Plant this seed'),
+            )
+            .enabled,
+        isTrue,
+      );
+      await tester.tap(find.text('Plant this seed'));
+      await tester.pumpAndSettle();
+      expect(saved?.anchor, starterRecipes.first.anchor);
+      expect(saved?.behavior, starterRecipes.first.behavior);
+      expect(saved?.celebration, starterRecipes.first.celebration);
+      expect(saved?.templateCategory, 'calm');
+      expect(saved?.celebrationPracticed, isFalse);
+      expect(tester.takeException(), isNull);
+    },
+  );
+
+  testWidgets(
+    'Back retains choices and an incomplete recipe explains its disabled action',
+    (tester) async {
+      await openBuilder(tester, textScale: 1.5);
+      await tester.ensureVisible(find.text('open my laptop'));
+      await tester.tap(find.text('open my laptop'));
+      await tester.pumpAndSettle();
+      await tester.ensureVisible(find.text('write my one next step'));
+      await tester.tap(find.text('write my one next step'));
+      await tester.pumpAndSettle();
+      expect(
+        find.text('Choose a celebration to plant your seed.'),
+        findsOneWidget,
+      );
+      expect(
+        tester
+            .widget<FilledButton>(
+              find.widgetWithText(FilledButton, 'Plant this seed'),
+            )
+            .enabled,
+        isFalse,
+      );
+      await tester.tap(find.text('Back'));
+      await tester.pumpAndSettle();
+      expect(
+        find.textContaining('I will write my one next step'),
+        findsOneWidget,
+      );
+      await tester.tap(find.text('Back'));
+      await tester.pumpAndSettle();
+      expect(find.textContaining('After I open my laptop'), findsOneWidget);
+      expect(tester.takeException(), isNull);
+    },
+  );
+
+  testWidgets('picker reflows on a compact window with large text', (
+    tester,
+  ) async {
+    await tester.binding.setSurfaceSize(const Size(420, 760));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+    await openBuilder(tester, textScale: 1.5);
+    await tester.ensureVisible(find.text('sit down with a book'));
+    await tester.tap(find.text('sit down with a book'));
+    await tester.pumpAndSettle();
+    await tester.ensureVisible(find.text('read one sentence'));
+    await tester.tap(find.text('read one sentence'));
+    await tester.pumpAndSettle();
+    await tester.ensureVisible(find.text('say "I learned something"'));
+    await tester.tap(find.text('say "I learned something"'));
+    await tester.pumpAndSettle();
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets(
+    'planting shows a personal next step with one clear continuation',
+    (tester) async {
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: PlantedRecipeDialog(
+              recipe: RecipeDraft(
+                'Calm',
+                'pour my morning drink',
+                'take one slow breath',
+                'relax my shoulders and smile',
+                'Cosmos',
+              ),
+            ),
+          ),
+        ),
+      );
+      expect(find.text('Your seed is planted'), findsOneWidget);
+      expect(
+        find.text(
+          'Your next step:\nAfter I pour my morning drink, I will take one slow breath. Then I celebrate: relax my shoulders and smile.',
+        ),
+        findsOneWidget,
+      );
+      expect(find.widgetWithText(FilledButton, 'See my seed'), findsOneWidget);
+      expect(tester.takeException(), isNull);
+    },
+  );
+
   test('synthetic UTC window respects API future cap and distinct days', () {
     for (final runStartedAt in [
       DateTime.utc(2026, 10, 6),

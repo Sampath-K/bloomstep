@@ -291,7 +291,7 @@ class _GardenScreenState extends State<GardenScreen> {
       context: context,
       builder: (_) => RecipeBuilder(habit: prefill),
     );
-    if (recipe == null) return;
+    if (recipe == null || !mounted || closing || working) return;
     await _act(() async {
       await widget.store.plant(
         aspiration: recipe.aspiration,
@@ -303,6 +303,11 @@ class _GardenScreenState extends State<GardenScreen> {
         celebrationPracticed: recipe.celebrationPracticed,
       );
     });
+    if (!mounted || closing || error != null) return;
+    await showDialog<void>(
+      context: context,
+      builder: (_) => PlantedRecipeDialog(recipe: recipe),
+    );
   }
 
   Future<bool> _confirm(String title, String message, String action) async =>

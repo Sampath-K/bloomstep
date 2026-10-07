@@ -83,6 +83,76 @@ jobs:
           npm --prefix site ci
           node --test site/test/*.test.mjs
           npm --prefix site run build
+  installer-launch-evidence:
+    name: 'launch-after-install: UNVERIFIED (preview gap, owner manual trial pending)'
+    if: github.event_name != 'workflow_dispatch' || (!inputs.verify_aggregates && !inputs.verify_spend_guard && !inputs.verify_edge_warning)
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+      - name: Install Inno Setup
+        shell: pwsh
+        run: |
+          if (-not (Test-Path "${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe")) {
+            choco install innosetup --no-progress -y
+          }
+      - name: Verify inert installing-user launch branches without customer data
+        id: launch-proof
+        shell: pwsh
+        env:
+          BLOOMSTEP_ISOLATED_JOURNEY_FIXTURE: 'true'
+        run: |
+          $env:BLOOMSTEP_SOURCE_REVISION = git rev-parse HEAD
+          $fixture = Join-Path $env:RUNNER_TEMP 'bloomstep-inert-launch-payload'
+          $output = Join-Path $env:RUNNER_TEMP 'bloomstep-inert-launch-installer'
+          $evidence = Join-Path $env:RUNNER_TEMP 'bloomstep-inert-launch-evidence'
+          New-Item -ItemType Directory -Path $fixture, $evidence, $output -Force | Out-Null
+          & "$env:WINDIR\Microsoft.NET\Framework64\v4.0.30319\csc.exe" /nologo /target:winexe "/out:$fixture\bloomstep.exe" tool\fixtures\installer_launch_probe.cs
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          & "${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe" /Qp /DOnboardingJourneyFixture /DAppArch=x64 /DAppVersion=0.0.0-contract "/DSourceDir=$fixture" "/DOnboardingPreprocessOutput=$output\inert-preprocessed.iss" "/O$output" packaging\bloomstep.iss
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          $installer = (Get-ChildItem "$output\*.exe").FullName
+          $preprocessed = Get-Content "$output\inert-preprocessed.iss" -Raw
+          if ($preprocessed -notmatch 'AppId=\{\{A6690692-4D92-475A-9EAC-1AD867AB0635\}' -or
+              $preprocessed -notmatch 'AppName=Bloomstep isolated journey proof') {
+            throw 'Compiled fixture identity was not explicitly isolated.'
+          }
+          $manifest = Join-Path $evidence 'compiled-fixture-manifest.json'
+          @{
+            kind = 'inert-journey-fixture-v1'
+            sourceRevision = $env:BLOOMSTEP_SOURCE_REVISION
+            fixtureAppId = 'A6690692-4D92-475A-9EAC-1AD867AB0635'
+            payloadSource = 'tool/fixtures/installer_launch_probe.cs'
+            payloadSha256 = (Get-FileHash "$fixture\bloomstep.exe").Hash.ToLower()
+            installerFile = [IO.Path]::GetFileName($installer)
+            installerSha256 = (Get-FileHash $installer).Hash.ToLower()
+            reportedProductName = (Get-Item $installer).VersionInfo.ProductName
+          } | ConvertTo-Json | Set-Content $manifest -Encoding utf8
+          foreach ($mode in @('checked-launch','unchecked-launch','silent','unattended','cancel','failure','elevated')) {
+            & pwsh -NoProfile -File .\tool\verify_installer_journey.ps1 -Installer $installer -FixtureManifest $manifest -EvidenceDir $evidence -Mode $mode
+            if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          }
+      - name: Preserve sanitized inert launch evidence (not app acceptance)
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: bloomstep-inert-launch-proof-NOT-APP-ACCEPTANCE
+          path: ${{ runner.temp }}/bloomstep-inert-launch-evidence/
+          if-no-files-found: error
+      - name: Report acknowledged owner-trial preview gap
+        if: always()
+        shell: pwsh
+        run: |
+          @'
+          launch-after-install: UNVERIFIED (preview gap, owner manual trial pending)
+
+          Inert automated proof outcome: ${{ steps.launch-proof.outcome }}.
+          No masked failure, no claimed customer-app or launch acceptance.
+          Only preview.10 has the user-authorized owner-trial publication exception.
+          The public site remains on preview.9 until both checked/unchecked owner trials pass.
+          Before M2/open preview/Store, blocking automated or recorded clean-machine human proof is required again.
+          '@ | Add-Content $env:GITHUB_STEP_SUMMARY
   test-and-build-windows:
     if: github.event_name != 'workflow_dispatch' || (!inputs.verify_aggregates && !inputs.verify_spend_guard && !inputs.verify_edge_warning)
     strategy:
@@ -124,62 +194,42 @@ jobs:
           $fixture = Join-Path $env:RUNNER_TEMP 'bloomstep-installer-compile-fixture'
           $output = Join-Path $env:RUNNER_TEMP 'bloomstep-onboarding-fixture'
           $evidence = Join-Path $env:RUNNER_TEMP 'bloomstep-onboarding-evidence'
-          & "${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe" /Qp /DOnboardingFixture /DAppArch=${{ matrix.arch }} /DAppVersion=0.0.0-contract "/DSourceDir=$fixture" "/O$output" packaging\bloomstep.iss
+          & "${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe" /Qp /DOnboardingFixture /DAppArch=${{ matrix.arch }} /DAppVersion=0.0.0-contract "/DSourceDir=$fixture" "/DOnboardingPreprocessOutput=$output\fixture-preprocessed.iss" "/O$output" packaging\bloomstep.iss
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-          if ('${{ matrix.arch }}' -eq 'arm64') {
-            & .\tool\verify_onboarding_wizard.ps1 -Installer (Get-ChildItem "$output\*.exe").FullName -EvidenceDir $evidence -AllowUnavailableKeyboard
-          } else {
-            & .\tool\verify_onboarding_wizard.ps1 -Installer (Get-ChildItem "$output\*.exe").FullName -EvidenceDir $evidence
+          $installer = (Get-ChildItem "$output\*.exe").FullName
+          $preprocessed = Get-Content "$output\fixture-preprocessed.iss" -Raw
+          if ($preprocessed -notmatch 'AppId=\{\{8E9B101B-CB3D-4C0F-B733-FC1DFFB75129\}' -or
+              $preprocessed -notmatch 'Installation is prohibited; cancel this wizard') {
+            throw 'Capture compile must retain its distinct AppId and unconditional installation prohibition.'
           }
+          $manifest = Join-Path $output 'capture-fixture-manifest.json'
+          @{
+            kind = 'compile-only-onboarding-fixture-v1'
+            fixtureAppId = '8E9B101B-CB3D-4C0F-B733-FC1DFFB75129'
+            installationProhibited = $true
+            sourceRevision = $env:BLOOMSTEP_SOURCE_REVISION
+            installerFile = [IO.Path]::GetFileName($installer)
+            installerSha256 = (Get-FileHash $installer).Hash.ToLower()
+            preprocessedSha256 = (Get-FileHash "$output\fixture-preprocessed.iss").Hash.ToLower()
+          } | ConvertTo-Json | Set-Content $manifest -Encoding utf8
+          if ('${{ matrix.arch }}' -eq 'arm64') {
+            & .\tool\verify_onboarding_wizard.ps1 -Installer $installer -FixtureManifest $manifest -EvidenceDir $evidence -AllowUnavailableKeyboard
+          } else {
+            & .\tool\verify_onboarding_wizard.ps1 -Installer $installer -FixtureManifest $manifest -EvidenceDir $evidence
+          }
+      - name: Preserve bounded compile-only capture fixture authority
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: bloomstep-onboarding-capture-fixture-${{ matrix.arch }}-NOT-FOR-RELEASE
+          path: ${{ runner.temp }}/bloomstep-onboarding-fixture/
+          if-no-files-found: error
       - name: Preserve compile-only wizard evidence (not a public installer)
         if: always()
         uses: actions/upload-artifact@v4
         with:
           name: bloomstep-onboarding-${{ matrix.arch }}-NOT-FOR-RELEASE
           path: ${{ runner.temp }}/bloomstep-onboarding-evidence/
-          if-no-files-found: error
-      - name: Verify inert installing-user launch branches without customer data
-        if: matrix.arch == 'x64'
-        shell: pwsh
-        env:
-          BLOOMSTEP_ISOLATED_JOURNEY_FIXTURE: 'true'
-        run: |
-          $env:BLOOMSTEP_SOURCE_REVISION = git rev-parse HEAD
-          $fixture = Join-Path $env:RUNNER_TEMP 'bloomstep-inert-launch-payload'
-          $output = Join-Path $env:RUNNER_TEMP 'bloomstep-inert-launch-installer'
-          $evidence = Join-Path $env:RUNNER_TEMP 'bloomstep-inert-launch-evidence'
-          New-Item -ItemType Directory -Path $fixture, $evidence, $output -Force | Out-Null
-          & "$env:WINDIR\Microsoft.NET\Framework64\v4.0.30319\csc.exe" /nologo /target:winexe "/out:$fixture\bloomstep.exe" tool\fixtures\installer_launch_probe.cs
-          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-          & "${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe" /Qp /DOnboardingJourneyFixture /DAppArch=x64 /DAppVersion=0.0.0-contract "/DSourceDir=$fixture" "/DOnboardingPreprocessOutput=$output\inert-preprocessed.iss" "/O$output" packaging\bloomstep.iss
-          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-          $installer = (Get-ChildItem "$output\*.exe").FullName
-          $preprocessed = Get-Content "$output\inert-preprocessed.iss" -Raw
-          if ($preprocessed -notmatch 'AppId=\{\{A6690692-4D92-475A-9EAC-1AD867AB0635\}' -or
-              $preprocessed -notmatch 'AppName=Bloomstep isolated journey proof') {
-            throw 'Compiled fixture identity was not explicitly isolated.'
-          }
-          $manifest = Join-Path $evidence 'compiled-fixture-manifest.json'
-          @{
-            kind = 'inert-journey-fixture-v1'
-            sourceRevision = $env:BLOOMSTEP_SOURCE_REVISION
-            fixtureAppId = 'A6690692-4D92-475A-9EAC-1AD867AB0635'
-            payloadSource = 'tool/fixtures/installer_launch_probe.cs'
-            payloadSha256 = (Get-FileHash "$fixture\bloomstep.exe").Hash.ToLower()
-            installerFile = [IO.Path]::GetFileName($installer)
-            installerSha256 = (Get-FileHash $installer).Hash.ToLower()
-            reportedProductName = (Get-Item $installer).VersionInfo.ProductName
-          } | ConvertTo-Json | Set-Content $manifest -Encoding utf8
-          foreach ($mode in @('checked-launch','unchecked-launch','silent','unattended','cancel','failure','elevated')) {
-            & pwsh -NoProfile -File .\tool\verify_installer_journey.ps1 -Installer $installer -FixtureManifest $manifest -EvidenceDir $evidence -Mode $mode
-            if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-          }
-      - name: Preserve sanitized inert launch evidence (not app acceptance)
-        if: always() && matrix.arch == 'x64'
-        uses: actions/upload-artifact@v4
-        with:
-          name: bloomstep-inert-launch-proof-NOT-APP-ACCEPTANCE
-          path: ${{ runner.temp }}/bloomstep-inert-launch-evidence/
           if-no-files-found: error
       - uses: subosito/flutter-action@v2
         if: matrix.arch == 'x64'
@@ -223,7 +273,9 @@ jobs:
         shell: pwsh
         env:
           BLOOMSTEP_TEST_EVIDENCE_PATH: ${{ runner.temp }}\bloomstep-synthetic-acceptance-details.json
+          BLOOMSTEP_TEST_SCREENSHOTS_DIR: ${{ runner.temp }}\bloomstep-v1-compiled-flutter-ui
         run: |
+          $env:BLOOMSTEP_SOURCE_REVISION = git rev-parse HEAD
           $bytes = New-Object byte[] 32
           $rng = [Security.Cryptography.RandomNumberGenerator]::Create()
           try { $rng.GetBytes($bytes) } finally { $rng.Dispose() }
@@ -273,6 +325,13 @@ jobs:
         with:
           name: bloomstep-synthetic-acceptance-${{ matrix.arch }}-NOT-PRODUCTION
           path: ${{ runner.temp }}/bloomstep-synthetic-acceptance*.json
+          if-no-files-found: error
+      - name: Preserve compiled synthetic Flutter builder frames
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: bloomstep-v1-compiled-flutter-ui-${{ matrix.arch }}-SYNTHETIC
+          path: ${{ runner.temp }}/bloomstep-v1-compiled-flutter-ui/
           if-no-files-found: error
       - name: Build real sign-in-gated release
         env:
@@ -404,8 +463,11 @@ jobs:
           path: ${{ runner.temp }}/synthetic-native-input.json
           if-no-files-found: warn
   release:
-    if: startsWith(github.ref, 'refs/tags/v')
-    needs: [api, test-and-build-windows]
+    if: >-
+      always() && startsWith(github.ref, 'refs/tags/v') &&
+      needs.api.result == 'success' && needs.test-and-build-windows.result == 'success' &&
+      (needs.installer-launch-evidence.result == 'success' || github.ref_name == 'v0.1.0-preview.10')
+    needs: [api, test-and-build-windows, installer-launch-evidence]
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -418,4 +480,14 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          gh release create "$GITHUB_REF_NAME" --repo "$GITHUB_REPOSITORY" --prerelease --title "Bloomstep $GITHUB_REF_NAME - engineering preview" --notes "Unsigned Windows engineering preview with real broker sign-in; provider availability depends on the configured customer flow. No anonymous or simulated login. This is NOT the complete verified MVP. See docs/status.md for actual evidence, runtime limits and outstanding launch gates. Verify the downloadable SHA-256 before installing." $(find artifacts -name '*.exe' -path '*/release-output/*') $(find artifacts -name 'SHA256-*.txt')
+          title="Bloomstep $GITHUB_REF_NAME - engineering preview"
+          notes="Unsigned Windows engineering preview with real broker sign-in; provider availability depends on the configured customer flow. No anonymous or simulated login. This is NOT the complete verified MVP. See docs/status.md for actual evidence, runtime limits and outstanding launch gates. Verify the downloadable SHA-256 before installing."
+          if [ "$GITHUB_REF_NAME" = "v0.1.0-preview.10" ]; then
+            title="Bloomstep $GITHUB_REF_NAME - owner trial only"
+            notes="$notes
+
+          launch-after-install: not yet verified, pending owner manual trial
+
+          Owner trial only; this GitHub prerelease is publicly accessible, not private. No external recruitment. The public site remains on preview.9 until the owner reports both paths pass: checked Finish starts exactly one non-elevated app as the installing user, and unchecked Finish starts no app. Sign-in remains required before the builder. Either failure is a P0 frozen-v1 fix in the next preview. This exception ends after M1; before M2/open preview/Store, blocking automated or recorded clean-machine human launch proof is required again."
+          fi
+          gh release create "$GITHUB_REF_NAME" --repo "$GITHUB_REPOSITORY" --prerelease --title "$title" --notes "$notes" $(find artifacts -name '*.exe' -path '*/release-output/*') $(find artifacts -name 'SHA256-*.txt')

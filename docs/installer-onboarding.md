@@ -5,8 +5,10 @@ The original source increment did not authorize a release. On 7 October 2026,
 the owner separately authorized website promotion of the already published
 preview.9 and standing quality-gated immutable preview releases for subsequent
 app/installer merges. Existing preview.8/preview.9 binaries remain immutable.
-PR review and a reviewed operational release-pipeline dependency still gate
-this source candidate; no new release has been published by this increment.
+Parent pixel review and mandatory exact-source quality gates still gate this
+candidate. The user-directed frozen-v1 resequence defers the new operational
+pipeline; the narrow preview.10 owner-trial exception is described below.
+No new release has been published by this increment.
 The separate website-only preview.9 promotion did not itself authorize app
 changes or release/tag mutation. The preview.8 warning/capture evidence below
 remains historical and must not be relabeled as preview.9.
@@ -19,8 +21,8 @@ remains historical and must not be relabeled as preview.9.
   method, not affiliated with or endorsed by BJ Fogg or Tiny Habits. Link only
   the official learning pages `https://tinyhabits.com` and
   `https://tinyhabits.com/book/`; learning is optional, never an install gate.
-- Keep the standard branded Welcome as **Anchor a routine**, followed by
-  **Plant a tiny recipe** and **Celebrate and grow**, then directory, existing
+- Keep branded Welcome as **Your garden starts with one seed**, followed by
+  **A tiny recipe** and **Watch it become a garden**, then directory, existing
   unchecked observations, Ready, progress and Finish. The three educational
   beats are guaranteed for interactive setup; silent setup skips them. Explicit
   destination selection is not skipped on upgrades; the previous directory is
@@ -38,8 +40,9 @@ remains historical and must not be relabeled as preview.9.
   are used. No new storage, tracker, auth, tenant or test-auth changes.
 - Browser help distinguishes Edge and Chrome on Windows. Ctrl+J and
   the browser's Downloads view are navigation, not permission to override a
-  warning. Browser versions and managed policies vary. No claimed observed
-  warning or fake screenshot. Any flow art is labeled illustrative.
+  warning. Browser versions and managed policies vary. The user-provided
+  preview.8 warnings are historical observations, not universal behavior or CI
+  captures. Never use a benign view as a warning fallback. Flow art is labeled illustrative.
 - Before any SmartScreen continuation: source, exact asset/architecture and
   release SHA-256 check; a hash establishes file consistency, not trust,
   signing or safety. Unknown, unexpected, malware, policy or verification
@@ -64,7 +67,7 @@ eligibility, support SLA or invitations to join a cohort are added.
 | JS disabled / API unavailable | Teaching, native details controls, architecture downloads, checksums and safety help still usable |
 | Edge / Chrome, blocked download | Browser-specific Downloads navigation; stop on unresolved warnings or managed policy; no blanket bypass |
 | SmartScreen reputation vs malware/policy block | Conditional existing unsigned-prompt guidance only; stop otherwise; no claim that a hash proves safety |
-| Wrong/unknown architecture | Manual Windows System type guidance and both preview.9 choices |
+| Wrong/unknown architecture | Manual Windows System type guidance and both current preview.9 choices; warning observations remain preview.8 |
 | Missing or corrupt bitmap | Strict build failure before distribution; no unchecked runtime extraction |
 | Art unavailable / high contrast | Complete text alternative; no meaning or control expressed by color/art alone |
 | Keyboard, dark/light, 320px, 200% scale | Visible focus, semantic headings/alt, wrapping and no horizontal scroll; system colors in forced-colors |
@@ -107,8 +110,11 @@ installation paths, and returns a nonempty `PrepareToInstall` error before
 installation. Neither Install nor Finish is clicked during capture. Ordinary
 CI compiles never supply that define and inspect full preprocessed source to
 reject fixture identity/guard leakage. Captures use physical per-monitor DPI
-coordinates; native Welcome, directory, consent, Start Menu and Ready steps were viewed
-at the host's 150% scale and canceled. No target directory was created.
+coordinates. Historical baseline Welcome, directory, consent, Start Menu and
+Ready views at a host's 150% scale were canceled without creating a target;
+that is not evidence for the redesigned candidate. Exact-head actual 100% and
+one high-DPI capture remain the frozen-v1 review requirement. Exhaustive DPI
+and Narrator acceptance remain Store-readiness work, not inferred from names.
 The updated source candidate makes the native **Launch Bloomstep and plant your
 first habit** Finish choice checked by default and freely user-toggleable.
 Launch is allowed only after successful interactive file installation on a
@@ -124,10 +130,35 @@ with a distinct AppId and no protocol registry writes. Its probe reports only
 launch count/token checks in sanitized artifacts; raw token information stays
 in the disposable target and is deleted. That fixture is not Bloomstep and
 does not prove ordinary app launch, provider sign-in or first-recipe acceptance.
+Limited-task failures retain task state/result and a sanitized worker stage,
+error type/line, session ID, interactive flag and elevation flag. These are
+diagnostics, not proof of an available GUI or successful launch; missing worker
+or outcome records remain failures. Names, SIDs and exception messages are not
+included in the public diagnostic records.
 The compile-only capture still never selects Install or Finish. Actual OS DPI
 is recorded; missing 100/150/200-percent pixels and screen-reader acceptance
 remain explicit coverage gaps until observed, never substituted with font or
 wizard-size scaling.
+
+The three visual beats are **Your garden starts with one seed**, **A tiny
+recipe**, and **Watch it become a garden**, with native progress/text
+equivalents. `tool/installer_art_export_test.dart` exports original full-panel
+illustrations from the existing five-stage `PlantArt` renderer and original
+recipe icons; these are authored artwork, not screenshots or evidence of a
+customer garden. To re-author, set `BLOOMSTEP_EXPORT_INSTALLER_ART=true` and run
+`flutter test --no-pub tool/installer_art_export_test.dart`; the exporter writes
+source/asset SHA-256 provenance. `node tool/generate_installer_art.mjs --check`
+rejects changed source or illustration bytes until explicitly re-exported.
+Ready and Finish use a garden hero; Ready attribution/limitations remain
+available behind the native **Preview details** button rather than a default
+text wall.
+
+Compile-only capture requires the CI source/hash manifest, distinct fixture
+AppId and unconditional installation prohibition before launching the fixture.
+It never selects Install or Finish, runs an app payload, or writes protocols.
+Actual window DPI is recorded. A separately approved local capture may use the
+same bounded exact-head fixture at the already configured OS DPI; it must not
+change display/security settings or use unrelated desktop imagery.
 
 Browser-specific panels are collapsed native `details` controls in the actual
 default page. Render evidence separates `home-default` from
@@ -155,12 +186,29 @@ Ordinary PR CI no longer triggers a new public-installer warning observation.
 Only the separately authorized explicit workflow-dispatch gate can run that tool.
 
 The three-beat/launch changes are **source candidate only**. The owner has
-authorized the next immutable preview.10 after this app/installer change
-merges, subject to exact-SHA quality gates, parent visual review before merge,
-and the separately reviewed release pipeline. Published installers must be
-downloaded again and hash-verified before any newest-download site pointer.
+authorized preview.10 after reviewed source merge and mandatory exact-SHA
+API/x64/ARM64/customer-quality gates using the existing release path; the new
+pipeline is deferred until after frozen v1. The separate launch-evidence job
+remains visibly failing when proof fails, with no `continue-on-error` or
+success-shaped skip. Only the exact preview.10 tag has an owner-trial release
+exception; later releases again require blocking launch evidence.
+
+**launch-after-install: not yet verified, pending owner manual trial**
+
+Preview.10 is **owner trial only**, publicly accessible on GitHub rather than
+private. The public site remains on preview.9 and no external recruitment is
+authorized until the owner reports both checked Finish (exactly one
+non-elevated app as installing user) and unchecked Finish (no launch) passing.
+Sign-in still precedes the builder. Either failure is a P0 frozen-v1 fix in the
+next preview. This exception ends after M1; before M2/open preview/Store,
+blocking automated or recorded clean-machine human launch proof is required
+again. Public installer bytes must be freshly downloaded and hash-verified
+before any later authorized site pointer promotion.
+
 Website-only changes deploy without a preview version bump. Historical
 preview.8 screenshots remain labeled preview.8; they are not preview.9/10
 warning observations. No release or new tag has been created by this increment.
-App guided creation/support and private first-created metrics are dependent
-follow-ups, not completed by this installer/site layer.
+The primary three-step picker and post-plant next-step source are included in
+frozen v1; source/widget tests do not replace signed-in customer acceptance.
+Further guided polish/support and private first-created metrics remain
+dependent follow-ups, not completed by this increment.
