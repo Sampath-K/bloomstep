@@ -52,6 +52,7 @@ test('limited-task failures preserve sanitized diagnostics without weakening lau
   const proof = read('tool/verify_installer_journey.ps1');
   assert.match(proof, /function Write-JourneyWorkerDiagnostic/);
   assert.match(proof, /trap\s*\{[\s\S]*Write-JourneyWorkerDiagnostic[\s\S]*throw/);
+  assert.match(proof, /trap\s*\{[\s\S]*\$originalFailure = \$_[\s\S]*throw \$originalFailure/);
   for (const field of ['taskState', 'lastTaskResult', 'workerDiagnosticPresent', 'outcomePresent',
     'sessionId', 'userInteractive', 'tokenElevated', 'errorType', 'errorLine']) {
     assert.ok(proof.includes(field), field);

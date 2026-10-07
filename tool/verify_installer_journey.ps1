@@ -23,8 +23,9 @@ function Write-JourneyWorkerDiagnostic {
   } | ConvertTo-Json | Set-Content (Join-Path $EvidenceDir "$Mode-worker-diagnostic.json") -Encoding utf8
 }
 trap {
-  if ($Worker) { Write-JourneyWorkerDiagnostic -Stage 'failed' -Failure $_ }
-  throw
+  $originalFailure = $_
+  if ($Worker) { Write-JourneyWorkerDiagnostic -Stage 'failed' -Failure $originalFailure }
+  throw $originalFailure
 }
 if ($Worker) { Write-JourneyWorkerDiagnostic -Stage 'starting' }
 if ($env:BLOOMSTEP_ISOLATED_JOURNEY_FIXTURE -ne 'true' -and -not $Worker) {
