@@ -3,14 +3,14 @@
   "googleVerification": "",
   "bingVerification": "",
   "release": {
-    "tag": "v0.1.0-preview.8",
+    "tag": "v0.1.0-preview.9",
     "arm64": {
-      "url": "https://github.com/Sampath-K/bloomstep/releases/download/v0.1.0-preview.8/Bloomstep-0.1.0-preview.8-windows-arm64-setup.exe",
-      "sha256": "2d87612664f91a099ca9201983259d728a6c768bba482c6e663d72c91358a562"
+      "url": "https://github.com/Sampath-K/bloomstep/releases/download/v0.1.0-preview.9/Bloomstep-0.1.0-preview.9-windows-arm64-setup.exe",
+      "sha256": "8eec7f2e571c36d0971912ae58e56822000818b13a8223833dfb9ef0d6fb9c07"
     },
     "x64": {
-      "url": "https://github.com/Sampath-K/bloomstep/releases/download/v0.1.0-preview.8/Bloomstep-0.1.0-preview.8-windows-x64-setup.exe",
-      "sha256": "ecd122fd8cc222fc197157595960210ed413e1aa4824c25b24bf3793649e2ae3"
+      "url": "https://github.com/Sampath-K/bloomstep/releases/download/v0.1.0-preview.9/Bloomstep-0.1.0-preview.9-windows-x64-setup.exe",
+      "sha256": "730b64ea27abeac9025847140f1bd97201aa1123709b3cea4357c4ccb9b9dc4b"
     }
   }
 }
