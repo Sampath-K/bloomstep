@@ -36,6 +36,14 @@ as high-DPI motion proof. Fast installs may legitimately show fewer scenes;
 three-scene/reduced-motion/high-DPI evidence and parent pixel review remain
 mandatory before merge, not inferred from a green capture script. Genuine
 non-elevated checked/unchecked launch/full journey acceptance remains pending.
+Receipts distinguish `seed-to-flower`, `routine-action-celebration` and
+`growing-garden`: different committed artwork hashes, actual native captions,
+captured PNG hashes and first-observed transition timestamps. Missing scenes
+are explicitly listed; timer logs distinguish initialization from installing.
+Exact PR run37627423101 reached Finish in1526ms (x64 static preference) and
+2104ms (ARM64 motion preference), both at96DPI. Only scene0 was visible;
+scene1/2 transitions and144DPI remain absent. These fast installs are not slowed
+to obtain screenshots. This passing lifecycle capture is not full pixel approval.
 The website promotion belongs to a separate PR. Preview.12's bytes/tag are
 unchanged; this source increment does not authorize a new public release.
 

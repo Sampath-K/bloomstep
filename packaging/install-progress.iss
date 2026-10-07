@@ -30,18 +30,39 @@ begin
 end;
 
 procedure ShowProgressScene(Scene: Integer);
+var
+  Identity, Phase: String;
+  Elapsed: Int64;
 begin
   if ProgressScene = Scene then Exit;
   ProgressScene := Scene;
   ProgressArt.Bitmap.Assign(ProgressImages[Scene]);
   case Scene of
-    0: ProgressCaption.Caption := 'A little is enough. Grow from there.';
-    1: ProgressCaption.Caption := 'After a familiar routine, try one tiny action. Celebrate your start.';
-    2: ProgressCaption.Caption := 'Your practice grows a garden. Not today leaves your growth intact.';
+    0: begin
+      Identity := 'seed-to-flower';
+      ProgressCaption.Caption := 'A little is enough. Grow from there.';
+    end;
+    1: begin
+      Identity := 'routine-action-celebration';
+      ProgressCaption.Caption := 'After a familiar routine, try one tiny action. Celebrate your start.';
+    end;
+    2: begin
+      Identity := 'growing-garden';
+      ProgressCaption.Caption := 'Your practice grows a garden. Not today leaves your growth intact.';
+    end;
   end;
   ProgressCaption.AdjustHeight();
   ProgressArt.Repaint();
   Log('Bloomstep install scene ' + IntToStr(Scene) + '.');
+  Phase := 'initialization';
+  Elapsed := 0;
+  if WizardForm.CurPageID = wpInstalling then
+  begin
+    Phase := 'installing';
+    Elapsed := GetTickCount64() - ProgressStartedAt;
+  end;
+  Log('Bloomstep scene identity=' + Identity + '; phase=' + Phase +
+    '; elapsedMilliseconds=' + IntToStr(Elapsed) + '.');
 end;
 
 procedure ProgressTimerTick(Window: HWND; Message: UINT; Id: UINT_PTR; Tick: DWORD);
@@ -80,7 +101,9 @@ var
 begin
   StopInstallMotion();
   if WizardSilent then Exit;
+  ProgressStartedAt := GetTickCount64();
   ProgressArt.Left := ProgressBaseLeft;
+  ProgressScene := -1;
   ShowProgressScene(0);
   MotionAllowed := False;
   if SystemParametersInfo($1042, 0, Animations, 0) then
@@ -92,7 +115,6 @@ begin
     Log('Bloomstep static install presentation: Windows animations disabled or unavailable.');
     Exit;
   end;
-  ProgressStartedAt := GetTickCount64();
   ProgressTimer := SetTimer(0, 0, 150, CreateCallback(@ProgressTimerTick));
   if ProgressTimer = 0 then
   begin

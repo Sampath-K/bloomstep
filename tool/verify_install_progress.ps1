@@ -22,6 +22,11 @@ foreach ($path in @($target, $receipt, $protocol)) {
 New-Item -ItemType Directory -Path $EvidenceDir -Force | Out-Null
 . "$PSScriptRoot\installer_owned_capture.ps1" -Installer $installer -EvidenceDir $EvidenceDir
 . "$PSScriptRoot\installer_window_contract.ps1"
+. "$PSScriptRoot\installer_scene_contract.ps1"
+$sceneCatalog = @(Get-InstallSceneCatalog)
+foreach ($scene in $sceneCatalog) {
+  $scene.expectedArtworkSha256 = (Get-FileHash (Join-Path $PSScriptRoot "..\packaging\assets\$($scene.artwork)")).Hash.ToLower()
+}
 [void][OnboardingWizard]::SetProcessDpiAwarenessContext([IntPtr](-4))
 $frames = [Collections.Generic.List[object]]::new()
 $finishObserved = $false
@@ -32,6 +37,9 @@ $report = [ordered]@{ kind = 'actual-compiled-install-progress-not-app-acceptanc
   source = $manifest.source; installerSha256 = $manifest.installerSha256; installed = $false;
   sceneFrames = $frames; finishObserved = $false; timerStopped = $false; outcome = 'running';
   cleanupVerified = $false;
+  sceneCatalog = $sceneCatalog;
+  sceneCoverage = Get-InstallSceneCoverage @();
+  artworkAuthority = 'Expected committed BMP identity/hash at exact source; PNG hash and observed native caption bind captured frames. Source artwork alone is not transition or motion proof.';
   applicationProxyClassification = 'Only empty, childless precommit TApplication handles sharing an observed owned wizard PID. All unexpected dialogs fail.';
   applicationProxies = [Collections.Generic.List[object]]::new();
   screenReaderAcceptance = 'UNKNOWN'; genuineFinishLaunch = 'UNVERIFIED; deliberately suppressed in this installation-only proof' }
@@ -107,6 +115,12 @@ try {
         $frame = Save-CaptureFrame $window ("actual-progress-{0:D4}.png" -f $frames.Count)
         $frame.scene = if ($text.Contains('After a familiar routine')) { 1 }
           elseif ($text.Contains('Your practice grows a garden')) { 2 } else { 0 }
+        $scene = $sceneCatalog[$frame.scene]
+        if (-not $text.Contains($scene.caption)) { throw 'Actual scene caption does not match the distinct panel identity.' }
+        $frame.sceneId = $scene.id
+        $frame.observedCaption = $scene.caption
+        $frame.expectedArtwork = $scene.artwork
+        $frame.expectedArtworkSha256 = $scene.expectedArtworkSha256
         $frame.elapsedMilliseconds = $captureClock.ElapsedMilliseconds - $installStartedAt
         $frames.Add($frame)
       }
@@ -159,6 +173,7 @@ try {
     finally {
       Save-CaptureStage 'finally-complete'
       if (-not $report.cleanupVerified) { $report.outcome += '; FAIL: owned cleanup incomplete' }
+      $report.sceneCoverage = Get-InstallSceneCoverage @($frames.ToArray())
       $report | ConvertTo-Json -Depth 10 | Set-Content (Join-Path $EvidenceDir 'actual-progress-proof.json') -Encoding utf8
     }
   }

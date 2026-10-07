@@ -68,6 +68,68 @@ test('actual proof measures transitions/finish/no dwell, never treats equivalent
   assert.match(proof, /timerStopped = -not \$body\.Contains\('Bloomstep progress timer disposal failed'\)/);
 });
 
+test('real progress receipts identify distinct artwork/captions/times and explicitly absent transitions',
+  { skip: process.platform !== 'win32' }, () => {
+    const contract = fileURLToPath(new URL('../tool/installer_scene_contract.ps1', import.meta.url));
+    const quote = value => `'${value.replaceAll("'", "''")}'`;
+    const script = `
+      $ErrorActionPreference = 'Stop'
+      . ${quote(contract)}
+      $catalog = @(Get-InstallSceneCatalog)
+      if ($catalog.Count -ne 3 -or @($catalog.id | Sort-Object -Unique).Count -ne 3 -or
+          @($catalog.artwork | Sort-Object -Unique).Count -ne 3 -or
+          @($catalog.caption | Sort-Object -Unique).Count -ne 3) {
+        throw 'Scenes must identify three distinct panels, not moving highlights.'
+      }
+      # Exact run37627423101 short-install observation; later scenes are absent.
+      $short = Get-InstallSceneCoverage @(
+        @{ scene = 0; elapsedMilliseconds = 257 },
+        @{ scene = 0; elapsedMilliseconds = 1273 }
+      )
+      if ($short.allThreeScenesObserved -or $short.orderedTransitionsObserved -or
+          @($short.absentSceneIds).Count -ne 2 -or $short.transitions.Count -ne 1) {
+        throw 'Short actual installation must not be called complete scene evidence.'
+      }
+      $complete = Get-InstallSceneCoverage @(
+        @{ scene = 0; elapsedMilliseconds = 200 },
+        @{ scene = 1; elapsedMilliseconds = 3210 },
+        @{ scene = 2; elapsedMilliseconds = 6280 }
+      )
+      if (-not $complete.allThreeScenesObserved -or -not $complete.orderedTransitionsObserved -or
+          $complete.transitions[1].firstObservedMilliseconds -ne 3210) {
+        throw 'Observed scene transitions must retain actual capture timestamps.'
+      }
+      $wrongOrder = Get-InstallSceneCoverage @(
+        @{ scene = 0; elapsedMilliseconds = 200 },
+        @{ scene = 2; elapsedMilliseconds = 6280 },
+        @{ scene = 1; elapsedMilliseconds = 9300 }
+      )
+      if ($wrongOrder.orderedTransitionsObserved) { throw 'Wrong order accepted.' }
+      foreach ($invalid in @(
+        @{ scene = 3; elapsedMilliseconds = 10 },
+        @{ scene = 0; elapsedMilliseconds = -1 },
+        @{ scene = '0'; elapsedMilliseconds = 10 },
+        @{ scene = 0 }
+      )) {
+        $rejected = $false
+        try { Get-InstallSceneCoverage @($invalid) | Out-Null } catch { $rejected = $true }
+        if (-not $rejected) { throw 'Malformed capture accepted.' }
+      }
+      $empty = Get-InstallSceneCoverage @()
+      if ($empty.allThreeScenesObserved -or $empty.absentSceneIds.Count -ne 3) {
+        throw 'Empty capture accepted.'
+      }
+    `;
+    const result = spawnSync('pwsh', ['-NoProfile', '-Command', script],
+      { encoding: 'utf8', timeout: 15000, windowsHide: true });
+    assert.equal(result.status, 0, result.stderr || result.stdout || String(result.error));
+    const proof = read('tool/verify_install_progress.ps1');
+    assert.match(proof, /sceneId/);
+    assert.match(proof, /expectedArtworkSha256/);
+    assert.match(proof, /sceneCoverage = Get-InstallSceneCoverage/);
+    assert.match(read('packaging/install-progress.iss'), /scene identity=[\s\S]*elapsedMilliseconds=/);
+  });
+
 test('owned capture success/timeout/cleanup write exact stage and process exit state without an installer',
   { skip: process.platform !== 'win32' }, () => {
     const directory = mkdtempSync(join(tmpdir(), 'bloomstep-benign-capture-wait-'));
