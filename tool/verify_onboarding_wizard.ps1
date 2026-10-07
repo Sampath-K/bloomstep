@@ -1,7 +1,8 @@
 param(
   [Parameter(Mandatory=$true)][string]$Installer,
   [Parameter(Mandatory=$true)][string]$EvidenceDir,
-  [switch]$LoadHelpersOnly
+  [switch]$LoadHelpersOnly,
+  [switch]$AllowUnavailableKeyboard
 )
 $ErrorActionPreference = 'Stop'
 Add-Type -AssemblyName System.Drawing
@@ -79,7 +80,8 @@ $owned = [Collections.Generic.HashSet[int]]::new()
 $states = [Collections.Generic.List[object]]::new()
 $seen = [Collections.Generic.HashSet[string]]::new()
 $ready = $false
-$backVerified = $false
+$backVerified = $null
+$keyboardAvailable = $true
 $expectedOrder = @('Welcome', 'recipe', 'grow', 'destination', 'optional-observations', 'ready')
 $receipt = Join-Path $env:LOCALAPPDATA 'Bloomstep\measurement\installer-receipt.json'
 if (Test-Path $receipt) { throw 'Capture refuses an existing installer receipt.' }
@@ -157,10 +159,14 @@ try {
       $next = [OnboardingWizard]::Find($window, '&Next')
       if ($next -eq [IntPtr]::Zero) { $next = [OnboardingWizard]::Find($window, '&Next >') }
       if ($next -eq [IntPtr]::Zero) { throw "Unexpected capture step; will not click Install or Finish: $text" }
-      if ([OnboardingWizard]::GetForegroundWindow() -ne $window -and
-          -not [OnboardingWizard]::SetForegroundWindow($window)) { throw 'Owned wizard could not obtain keyboard focus.' }
+      if ($keyboardAvailable -and [OnboardingWizard]::GetForegroundWindow() -ne $window -and
+          -not [OnboardingWizard]::SetForegroundWindow($window)) {
+        if (-not $AllowUnavailableKeyboard) { throw 'Owned wizard could not obtain keyboard focus.' }
+        Write-Warning 'Native keyboard coverage UNKNOWN: this isolated host cannot grant foreground. Capturing actual pages via owned controls; not a keyboard acceptance pass.'
+        $keyboardAvailable = $false
+      }
       $shell = New-Object -ComObject WScript.Shell
-      if ($step -eq 'recipe') {
+      if ($keyboardAvailable -and $step -eq 'recipe') {
         $shell.SendKeys('%b')
         Start-Sleep -Milliseconds 200
         if (-not [OnboardingWizard]::Describe($window).Contains('Welcome to Bloomstep')) { throw 'Keyboard Back did not return to Welcome.' }
@@ -169,7 +175,8 @@ try {
         if (-not [OnboardingWizard]::Describe($window).Contains('Plant a tiny recipe')) { throw 'Keyboard Next did not restore recipe teaching.' }
         $backVerified = $true
       }
-      $shell.SendKeys('%n')
+      if ($keyboardAvailable) { $shell.SendKeys('%n') }
+      else { [void][OnboardingWizard]::SendMessage($next, 0x00F5, [IntPtr]::Zero, [IntPtr]::Zero) }
       Start-Sleep -Milliseconds 300
     }
     Start-Sleep -Milliseconds 200
@@ -185,9 +192,12 @@ try {
     states = $states
     receiptAbsent = $true
     targetAbsent = -not (Test-Path $target)
-    keyboardNavigation = 'Actual Alt+N on owned native wizard; Install and Finish never selected'
+    keyboardNavigation = if ($keyboardAvailable) { 'Actual Alt+N on owned native wizard; Install and Finish never selected' }
+      else { 'UNKNOWN: isolated host cannot grant foreground; native owned Next controls invoked, not a keyboard pass' }
     keyboardBackVerified = $backVerified
     screenReaderAcceptance = 'Not established; UI Automation names recorded, not a Narrator acceptance claim'
+    automationRolesEstablished = $false
+    automationInterpretation = 'Provider exposed generic Pane names/false focusability; semantic roles and screen-reader order are UNKNOWN'
     installed = $false
   } | ConvertTo-Json -Depth 8 | Set-Content (Join-Path $EvidenceDir 'fixture-wizard-proof.json') -Encoding utf8
 } finally {

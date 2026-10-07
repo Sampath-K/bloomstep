@@ -44,4 +44,6 @@ test('Finish launch is default checked, user-toggleable, successful interactive 
   assert.match(proof, /Launch count/);
   assert.match(proof, /Installing user/);
   assert.match(proof, /100, 150, 200/);
+  assert.match(proof, /compiledFixture\.installerSha256[\s\S]*Get-FileHash/);
+  assert.match(proof, /exact hash-authorized compiled inert journey fixture/);
 });

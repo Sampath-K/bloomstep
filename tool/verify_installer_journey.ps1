@@ -1,5 +1,6 @@
 param(
   [Parameter(Mandatory=$true)][string]$Installer,
+  [Parameter(Mandatory=$true)][string]$FixtureManifest,
   [Parameter(Mandatory=$true)][string]$EvidenceDir,
   [ValidateSet('checked-launch','unchecked-launch','silent','unattended','cancel','failure','elevated')]
   [string]$Mode = 'checked-launch',
@@ -11,12 +12,18 @@ if ($env:BLOOMSTEP_ISOLATED_JOURNEY_FIXTURE -ne 'true' -and -not $Worker) {
 }
 $requestedScales = @(100, 150, 200)
 New-Item -ItemType Directory -Path $EvidenceDir -Force | Out-Null
-if ((Get-Item $Installer).VersionInfo.ProductName -ne 'Bloomstep isolated journey proof') {
-  throw 'Only the explicitly named inert journey fixture may be installed by this proof.'
+$compiledFixture = Get-Content $FixtureManifest -Raw | ConvertFrom-Json
+if ($compiledFixture.kind -ne 'inert-journey-fixture-v1' -or
+    $compiledFixture.fixtureAppId -ne 'A6690692-4D92-475A-9EAC-1AD867AB0635' -or
+    $compiledFixture.payloadSource -ne 'tool/fixtures/installer_launch_probe.cs' -or
+    $compiledFixture.installerFile -ne [IO.Path]::GetFileName($Installer) -or
+    $compiledFixture.installerSha256 -ne (Get-FileHash $Installer).Hash.ToLower() -or
+    [IO.Path]::GetFileName($Installer) -ne 'Bloomstep-0.0.0-contract-windows-x64-setup.exe') {
+  throw 'Only the exact hash-authorized compiled inert journey fixture may be installed by this proof.'
 }
 $authority = Join-Path $EvidenceDir 'fixture-authority.json'
 if (-not $Worker) {
-  @{ sourceRevision = $env:BLOOMSTEP_SOURCE_REVISION; installerSha256 = (Get-FileHash $Installer).Hash.ToLower() } |
+  @{ sourceRevision = $compiledFixture.sourceRevision; installerSha256 = (Get-FileHash $Installer).Hash.ToLower() } |
     ConvertTo-Json | Set-Content $authority -Encoding utf8
 }
 $authorization = Get-Content $authority -Raw | ConvertFrom-Json
@@ -26,7 +33,7 @@ $admin = ([Security.Principal.WindowsPrincipal][Security.Principal.WindowsIdenti
 if ($admin -and $Mode -ne 'elevated' -and -not $Worker) {
   # A supported limited interactive task tests the actual installing-user token.
   $taskName = 'Bloomstep-Journey-Proof-' + [Guid]::NewGuid().ToString()
-  $arguments = "-NoProfile -File `"$PSCommandPath`" -Installer `"$Installer`" -EvidenceDir `"$EvidenceDir`" -Mode $Mode -Worker"
+  $arguments = "-NoProfile -File `"$PSCommandPath`" -Installer `"$Installer`" -FixtureManifest `"$FixtureManifest`" -EvidenceDir `"$EvidenceDir`" -Mode $Mode -Worker"
   $action = New-ScheduledTaskAction -Execute (Get-Process -Id $PID).Path -Argument $arguments
   $principal = New-ScheduledTaskPrincipal -UserId ([Security.Principal.WindowsIdentity]::GetCurrent().Name) -LogonType Interactive -RunLevel Limited
   try {

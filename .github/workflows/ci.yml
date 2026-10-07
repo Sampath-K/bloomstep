@@ -126,7 +126,11 @@ jobs:
           $evidence = Join-Path $env:RUNNER_TEMP 'bloomstep-onboarding-evidence'
           & "${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe" /Qp /DOnboardingFixture /DAppArch=${{ matrix.arch }} /DAppVersion=0.0.0-contract "/DSourceDir=$fixture" "/O$output" packaging\bloomstep.iss
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-          & .\tool\verify_onboarding_wizard.ps1 -Installer (Get-ChildItem "$output\*.exe").FullName -EvidenceDir $evidence
+          if ('${{ matrix.arch }}' -eq 'arm64') {
+            & .\tool\verify_onboarding_wizard.ps1 -Installer (Get-ChildItem "$output\*.exe").FullName -EvidenceDir $evidence -AllowUnavailableKeyboard
+          } else {
+            & .\tool\verify_onboarding_wizard.ps1 -Installer (Get-ChildItem "$output\*.exe").FullName -EvidenceDir $evidence
+          }
       - name: Preserve compile-only wizard evidence (not a public installer)
         if: always()
         uses: actions/upload-artifact@v4
@@ -144,14 +148,30 @@ jobs:
           $fixture = Join-Path $env:RUNNER_TEMP 'bloomstep-inert-launch-payload'
           $output = Join-Path $env:RUNNER_TEMP 'bloomstep-inert-launch-installer'
           $evidence = Join-Path $env:RUNNER_TEMP 'bloomstep-inert-launch-evidence'
-          New-Item -ItemType Directory -Path $fixture -Force | Out-Null
+          New-Item -ItemType Directory -Path $fixture, $evidence, $output -Force | Out-Null
           & "$env:WINDIR\Microsoft.NET\Framework64\v4.0.30319\csc.exe" /nologo /target:winexe "/out:$fixture\bloomstep.exe" tool\fixtures\installer_launch_probe.cs
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-          & "${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe" /Qp /DOnboardingJourneyFixture /DAppArch=x64 /DAppVersion=0.0.0-contract "/DSourceDir=$fixture" "/O$output" packaging\bloomstep.iss
+          & "${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe" /Qp /DOnboardingJourneyFixture /DAppArch=x64 /DAppVersion=0.0.0-contract "/DSourceDir=$fixture" "/DOnboardingPreprocessOutput=$output\inert-preprocessed.iss" "/O$output" packaging\bloomstep.iss
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           $installer = (Get-ChildItem "$output\*.exe").FullName
+          $preprocessed = Get-Content "$output\inert-preprocessed.iss" -Raw
+          if ($preprocessed -notmatch 'AppId=\{\{A6690692-4D92-475A-9EAC-1AD867AB0635\}' -or
+              $preprocessed -notmatch 'AppName=Bloomstep isolated journey proof') {
+            throw 'Compiled fixture identity was not explicitly isolated.'
+          }
+          $manifest = Join-Path $evidence 'compiled-fixture-manifest.json'
+          @{
+            kind = 'inert-journey-fixture-v1'
+            sourceRevision = $env:BLOOMSTEP_SOURCE_REVISION
+            fixtureAppId = 'A6690692-4D92-475A-9EAC-1AD867AB0635'
+            payloadSource = 'tool/fixtures/installer_launch_probe.cs'
+            payloadSha256 = (Get-FileHash "$fixture\bloomstep.exe").Hash.ToLower()
+            installerFile = [IO.Path]::GetFileName($installer)
+            installerSha256 = (Get-FileHash $installer).Hash.ToLower()
+            reportedProductName = (Get-Item $installer).VersionInfo.ProductName
+          } | ConvertTo-Json | Set-Content $manifest -Encoding utf8
           foreach ($mode in @('checked-launch','unchecked-launch','silent','unattended','cancel','failure','elevated')) {
-            & pwsh -NoProfile -File .\tool\verify_installer_journey.ps1 -Installer $installer -EvidenceDir $evidence -Mode $mode
+            & pwsh -NoProfile -File .\tool\verify_installer_journey.ps1 -Installer $installer -FixtureManifest $manifest -EvidenceDir $evidence -Mode $mode
             if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           }
       - name: Preserve sanitized inert launch evidence (not app acceptance)
