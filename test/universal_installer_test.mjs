@@ -87,11 +87,11 @@ test('native routing source semantics reject unsupported hosts even with a misle
   }
   assert.match(source, /ArchitecturesAllowed=arm64 or x64os/);
 });
-test('unified customer download is fail-closed while the live public pointer remains preview9', async () => {
+test('unified customer download is fail-closed after the owner-authorized preview12 pointer update', async () => {
   const { renderDownloads, validateRelease } = await import('../site/release-downloads.mjs');
   const current = JSON.parse(read('site/customer-config.json'));
-  assert.equal(current.release.tag, 'v0.1.0-preview.9');
-  assert.equal(current.release.universal, undefined);
+  assert.equal(current.release.tag, 'v0.1.0-preview.12');
+  assert.equal(current.release.universal.sha256, 'fe115a7ada87858a55ba2610f778888079ee01a242f9ff74e18120a359292858');
   const release = {
     ...current.release, tag: 'v0.1.0-preview.11',
     ...Object.fromEntries(['arm64','x64','universal'].map(arch => [arch, {

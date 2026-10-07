@@ -1,10 +1,11 @@
 import puppeteer from 'puppeteer-core';
 import assert from 'node:assert/strict';
-import { mkdir } from 'node:fs/promises';
+import { mkdir, readFile } from 'node:fs/promises';
 import { join } from 'node:path';
 
 const origin = process.env.PREVIEW_ORIGIN ?? 'http://127.0.0.1:8083';
 const output = process.env.EVIDENCE_DIR;
+const { release } = JSON.parse(await readFile(new URL('./customer-config.json', import.meta.url)));
 if (output) await mkdir(output, { recursive: true });
 const browser = await puppeteer.launch({
   executablePath: process.env.CHROME_PATH ?? '/usr/bin/google-chrome',
@@ -34,6 +35,23 @@ try {
     assert.equal((await page.cookies()).length, 0);
     await page.click('#primary-cta');
     await page.waitForFunction(() => location.hash === '#download');
+    if (release.universal) {
+      assert.equal(await page.$eval('[data-universal-download] a', node => node.href), release.universal.url);
+      assert.equal(await page.$eval('[data-universal-download] ~ details', node => node.open), false);
+      let clickedTarget;
+      await page.exposeFunction('observeDownloadTarget', href => { clickedTarget = href; });
+      await page.$eval('[data-universal-download] a', node => new Promise(resolve => {
+        node.addEventListener('click', event => {
+          event.preventDefault();
+          void window.observeDownloadTarget(node.href).then(resolve);
+        }, { once: true });
+        node.click();
+      }));
+      assert.equal(clickedTarget, release.universal.url);
+      if (output) await (await page.$('#download')).screenshot({
+        path: join(output, `download-${width}.png`),
+      });
+    }
     assert.equal(posts.some(value => value.event === 'primary_cta_click'), true);
     const jsonLd = await page.$eval('script[type="application/ld+json"]', node => JSON.parse(node.textContent));
     assert.equal(jsonLd['@type'], 'SoftwareApplication');

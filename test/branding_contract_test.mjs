@@ -40,23 +40,24 @@ test('stable Windows storage is installed before instance, invitations and crede
 
 test('site, operator popup and download labels are product-branded', () => {
   const site = read('site/index.html');
-  assert.match(site, /Download Bloomstep ARM64/);
-  assert.match(site, /Download Bloomstep x64/);
+  assert.match(site, /Download Bloomstep for Windows/);
+  assert.match(site, /Bloomstep ARM64/);
+  assert.match(site, /Bloomstep x64/);
   assert.doesNotMatch(site, /Sign in to Bloomstep operator console/);
   assert.match(read('site/console.html'), /Sign in to Bloomstep operator console/);
   assert.match(site, /rel="icon"/);
   assert.match(read('site/operator-callback.html'), /Completing Bloomstep operator sign-in/);
 });
 
-test('current preview9 download links keep preview8 reminder evidence historical and do not imply customer acceptance', () => {
+test('current preview12 downloads keep preview8 and preview9 evidence historical without implying customer acceptance', () => {
   const site = read('site/releases/index.html');
-  for (const arch of ['arm64', 'x64']) {
-    assert.ok(site.includes(`releases/download/v0.1.0-preview.9/Bloomstep-0.1.0-preview.9-windows-${arch}-setup.exe`));
+  for (const arch of ['arm64', 'x64', 'universal']) {
+    assert.ok(site.includes(`releases/download/v0.1.0-preview.12/Bloomstep-0.1.0-preview.12-windows-${arch}-setup.exe`));
   }
-  assert.ok(site.includes('releases/tag/v0.1.0-preview.9'));
-  assert.ok(site.includes('8eec7f2e571c36d0971912ae58e56822000818b13a8223833dfb9ef0d6fb9c07'));
-  assert.ok(site.includes('730b64ea27abeac9025847140f1bd97201aa1123709b3cea4357c4ccb9b9dc4b'));
-  assert.match(site, /0\.1\.0-preview\.9 - published Windows downloads/);
+  assert.ok(site.includes('releases/tag/v0.1.0-preview.12'));
+  assert.ok(site.includes('fe115a7ada87858a55ba2610f778888079ee01a242f9ff74e18120a359292858'));
+  assert.match(site, /0\.1\.0-preview\.9 - historical Windows downloads/);
+  assert.match(site, /Launch after Finish remains unverified/);
   assert.match(site, /does not create or modify an app build, tag or release/);
   assert.match(site, /0\.1\.0-preview\.8 - fresh-consent app reminder observations/);
   assert.match(site, /0\.1\.0-preview\.8 - fresh-consent app reminder observations/);

@@ -7,6 +7,10 @@ export function validateRelease(release) {
       throw Error('Verified release assets and checksums required.');
     }
   }
+  if (release.universal?.bytes !== undefined &&
+      (!Number.isSafeInteger(release.universal.bytes) || release.universal.bytes <= 0)) {
+    throw Error('Verified release size must be a positive integer.');
+  }
 }
 
 export function renderDownloads(html, release) {
@@ -19,9 +23,11 @@ export function renderDownloads(html, release) {
         <p class="small">For support only. The primary Windows installer selects the native payload automatically; a browser CPU hint is not used.</p>
         <p><a data-download="x64" href="${release.x64.url}">Bloomstep x64</a> · <a data-download="arm64" href="${release.arm64.url}">Bloomstep ARM64</a></p>
       </details>`;
+  const size = release.universal.bytes === undefined ? '' :
+    `\n      <p class="small">Download size: ${(release.universal.bytes / 1e6).toFixed(2)} MB (${release.universal.bytes.toLocaleString('en-US')} bytes).</p>`;
   const primary = `<p id="architecture-guidance">One Windows installer. Windows selects the native x64 or ARM64 payload, including when setup runs under emulation. Unsupported 32-bit Windows cannot install. Both payloads are included; no internet is needed to install after downloading. Sign-in still needs a connection.</p>
-      <p class="small"><a href="/#windows-install-help">Windows installation help before opening the installer</a></p>
-      <p class="choices" data-universal-download><a class="button" data-download="unknown" href="${release.universal.url}">Download Bloomstep for Windows</a></p>
+      <p class="small"><a href="${html.includes('id="download-title"') ? '#windows-install-help' : '/#windows-install-help'}">Windows installation help before opening the installer</a></p>
+      <p class="choices" data-universal-download><a class="button" data-download="unknown" href="${release.universal.url}">Download Bloomstep for Windows</a></p>${size}
       ${secondary}`;
   if (html.includes('id="download-title"')) {
     const pattern = /<p id="architecture-guidance">[\s\S]*?(?=\s*<p class="small">The current Windows download)/;

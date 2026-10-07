@@ -83,11 +83,16 @@ Build inserts verification meta tags only for bounded valid tokens supplied
 through deployment variables or that config. The owner must sign into Bing
 Webmaster Tools and Google Search Console to obtain/verify those values and
 submit `/sitemap.xml`. No real verification secret is committed. The current
-website downloads are the already-published `v0.1.0-preview.9` unsigned
-ARM64/x64 assets; `site/build.mjs` uses this configuration to keep the home and
+website download is the already-published `v0.1.0-preview.12` unsigned
+universal installer (21,542,145 bytes); ARM64/x64 links are collapsed troubleshooting
+options only. The owner explicitly authorized this website pointer update before
+manual acceptance so the complete website-to-installer journey can be tested.
+Launch after Finish and the full owner journey remain unverified; no customer-ready
+or safety claim follows from publication. `site/build.mjs` keeps the home and
 releases pages aligned. The customer-site contract test pins both exact release
 URLs and SHA-256 values. Preview.8 remains historical release evidence, not a
-current download or a source of warning imagery for preview.9.
+current download. Customer-provided preview.8 warning images retain their explicit
+historical provenance and are not evidence of a warning on preview.12.
 
 TODO(owner): supply controller identity, privacy contact, applicable legal basis
 and processor/backup retention details. These facts are not invented by code.
