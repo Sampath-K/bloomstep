@@ -710,6 +710,11 @@ Future<void> _captureBuilderFrame(
 ) async {
   final directory = Platform.environment['BLOOMSTEP_TEST_SCREENSHOTS_DIR'];
   if (directory == null) return;
+  await tester.pumpAndSettle(
+    const Duration(milliseconds: 100),
+    EnginePhase.sendSemanticsUpdate,
+    const Duration(seconds: 10),
+  );
   final boundary =
       boundaryKey.currentContext!.findRenderObject()! as RenderRepaintBoundary;
   await tester.runAsync(() async {
