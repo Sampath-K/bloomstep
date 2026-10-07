@@ -58,7 +58,7 @@ try {
     assert.equal(await page.$$eval('[data-universal-download] a', links => links.length), 1, scenario.name);
     assert.equal(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), true, scenario.name);
     assert.equal(await page.$eval('[data-universal-download] a', link => link.textContent), 'Download Bloomstep for Windows');
-    assert.equal(await page.$eval('[data-universal-download] + details', node => node.open), false);
+    assert.equal(await page.$eval('[data-universal-download] ~ details', node => node.open), false);
     assert.equal(posts.length, 0);
     if (!scenario.noJS) {
       assert.equal(await page.evaluate(() => window.architectureQueries), 0);

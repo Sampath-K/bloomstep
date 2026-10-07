@@ -186,14 +186,17 @@
     </section>
     <section id="download" class="download" aria-labelledby="download-title">
       <h2 id="download-title">Bring a tiny garden to your Windows day.</h2>
-      <p id="architecture-guidance">For most Intel or AMD PCs, choose x64. For a Windows on ARM PC, choose ARM64. Check Settings → System → About → System type if you are unsure.</p>
+      <p id="architecture-guidance">One installer for your Windows PC. It automatically chooses the right version. Install offline after downloading; sign-in needs an internet connection.</p>
       <p class="small"><a href="#windows-install-help">Windows installation help before opening the installer</a></p>
-      <p class="choices">
-        <a class="button" data-download="x64" href="https://github.com/Sampath-K/bloomstep/releases/download/v0.1.0-preview.9/Bloomstep-0.1.0-preview.9-windows-x64-setup.exe">Download Bloomstep x64</a>
-        <a class="button" data-download="arm64" href="https://github.com/Sampath-K/bloomstep/releases/download/v0.1.0-preview.9/Bloomstep-0.1.0-preview.9-windows-arm64-setup.exe">Download Bloomstep ARM64</a>
-      </p>
+      <p class="choices" data-universal-download><a class="button" data-download="unknown" href="https://github.com/Sampath-K/bloomstep/releases/download/v0.1.0-preview.12/Bloomstep-0.1.0-preview.12-windows-universal-setup.exe">Download Bloomstep for Windows</a></p>
+      <p class="small">Download size: 21.54 MB.</p>
+      <details><summary>Other downloads (troubleshooting)</summary>
+        <p class="small">For support only. Windows selects the native x64 or ARM64 payload, including when setup runs under emulation. Unsupported 32-bit Windows cannot install. Both payloads are included; a browser CPU hint is not used.</p>
+        <p class="small">Exact download size: 21.54 MB (21,542,145 bytes).</p>
+        <p><a data-download="x64" href="https://github.com/Sampath-K/bloomstep/releases/download/v0.1.0-preview.12/Bloomstep-0.1.0-preview.12-windows-x64-setup.exe">Bloomstep x64</a> · <a data-download="arm64" href="https://github.com/Sampath-K/bloomstep/releases/download/v0.1.0-preview.12/Bloomstep-0.1.0-preview.12-windows-arm64-setup.exe">Bloomstep ARM64</a></p>
+      </details>
       <p class="small">The current Windows download is free. A sign-in is required to use the app. Downloads are hosted on Bloomstep's GitHub release page.</p>
-      <p class="small">Current release: <span id="download-version">0.1.0-preview.9</span>. Check the exact filenames and SHA-256 values on the <a href="/releases/">releases page</a> before opening a file.</p>
+      <p class="small">Current release: <span id="download-version">0.1.0-preview.12</span>. Check the exact filenames and SHA-256 values on the <a href="/releases/">releases page</a> before opening a file.</p>
       <details id="download-help">
         <summary>Need help downloading?</summary>
         <h3>Finding a download in your browser</h3>
