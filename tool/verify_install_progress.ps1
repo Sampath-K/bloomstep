@@ -21,15 +21,19 @@ foreach ($path in @($target, $receipt, $protocol)) {
 }
 New-Item -ItemType Directory -Path $EvidenceDir -Force | Out-Null
 . "$PSScriptRoot\installer_owned_capture.ps1" -Installer $installer -EvidenceDir $EvidenceDir
+. "$PSScriptRoot\installer_window_contract.ps1"
 [void][OnboardingWizard]::SetProcessDpiAwarenessContext([IntPtr](-4))
 $frames = [Collections.Generic.List[object]]::new()
 $finishObserved = $false
 $committed = $false
 $installStartedAt = $null
+$trustedApplicationProxies = @{}
 $report = [ordered]@{ kind = 'actual-compiled-install-progress-not-app-acceptance';
   source = $manifest.source; installerSha256 = $manifest.installerSha256; installed = $false;
   sceneFrames = $frames; finishObserved = $false; timerStopped = $false; outcome = 'running';
   cleanupVerified = $false;
+  applicationProxyClassification = 'Only empty, childless precommit TApplication handles sharing an observed owned wizard PID. All unexpected dialogs fail.';
+  applicationProxies = [Collections.Generic.List[object]]::new();
   screenReaderAcceptance = 'UNKNOWN'; genuineFinishLaunch = 'UNVERIFIED; deliberately suppressed in this installation-only proof' }
 $log = Join-Path $EvidenceDir 'actual-install.log'
 try {
@@ -37,8 +41,37 @@ try {
   $deadline = $captureClock.ElapsedMilliseconds + 120000
   while (-not $finishObserved -and $captureClock.ElapsedMilliseconds -lt $deadline) {
     Update-CaptureTree
-    foreach ($window in Get-CaptureWindows) {
+    $windows = @(Get-CaptureWindows)
+    $wizardOwners = @($windows | Where-Object { [OnboardingWizard]::ClassName($_) -eq 'TWizardForm' } |
+      ForEach-Object {
+        [uint32]$owner = 0
+        [void][OnboardingWizard]::GetWindowThreadProcessId($_, [ref]$owner)
+        $owner
+      })
+    if (-not $committed) {
+      foreach ($window in $windows) {
+        [uint32]$owner = 0
+        [void][OnboardingWizard]::GetWindowThreadProcessId($window, [ref]$owner)
+        if (Test-InnoApplicationProxy ([OnboardingWizard]::ClassName($window)) ([OnboardingWizard]::Describe($window)) `
+            ([OnboardingWizard]::HasVisibleChildren($window)) $owner $wizardOwners) {
+          $handle = $window.ToInt64()
+          if (-not $trustedApplicationProxies.ContainsKey($handle)) {
+            $trustedApplicationProxies[$handle] = $owner
+            $report.applicationProxies.Add(@{ pid = $owner; class = 'TApplication';
+              title = [OnboardingWizard]::GetWindowTitle($window); text = ''; hasVisibleChildren = $false })
+            Save-CaptureStage 'recognized-empty-precommit-application-proxy'
+          }
+        }
+      }
+    }
+    foreach ($window in $windows) {
       if ([OnboardingWizard]::ClassName($window) -ne 'TWizardForm') {
+        [uint32]$owner = 0
+        [void][OnboardingWizard]::GetWindowThreadProcessId($window, [ref]$owner)
+        if ($trustedApplicationProxies.ContainsKey($window.ToInt64()) -and
+            $trustedApplicationProxies[$window.ToInt64()] -eq $owner -and
+            (Test-InnoApplicationProxy ([OnboardingWizard]::ClassName($window)) ([OnboardingWizard]::Describe($window)) `
+             ([OnboardingWizard]::HasVisibleChildren($window)) $owner $wizardOwners)) { continue }
         Save-CaptureStage 'unexpected-install-dialog'
         throw 'Actual installer presented an unexpected owned dialog; no override.'
       }

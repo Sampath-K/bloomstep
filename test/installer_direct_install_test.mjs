@@ -105,3 +105,39 @@ test('owned capture success/timeout/cleanup write exact stage and process exit s
       rmSync(directory, { recursive: true, force: true });
     }
   });
+
+test('exact captured VCL application proxies are not dialogs; genuine unknown dialogs still fail closed',
+  { skip: process.platform !== 'win32' }, () => {
+    const contract = fileURLToPath(new URL('../tool/installer_window_contract.ps1', import.meta.url));
+    const quote = value => `'${value.replaceAll("'", "''")}'`;
+    const script = `
+      $ErrorActionPreference = 'Stop'
+      . ${quote(contract)}
+      # Exact source37621602047 sanitized precommit observations on both hosts.
+      foreach ($owner in @(6504, 5156)) {
+        if (-not (Test-InnoApplicationProxy 'TApplication' '' $false $owner @($owner))) {
+          throw 'Actual empty VCL proxy was misclassified as a dialog.'
+        }
+      }
+      foreach ($class in @('#32770', 'TSetupMessageForm', 'UnknownDialog')) {
+        if (Test-InnoApplicationProxy $class '' $false 6504 @(6504)) {
+          throw 'Unknown/real dialog was ignored.'
+        }
+      }
+      if ((Test-InnoApplicationProxy 'TApplication' 'A policy block' $false 6504 @(6504)) -or
+          (Test-InnoApplicationProxy 'TApplication' '' $true 6504 @(6504)) -or
+          (Test-InnoApplicationProxy 'TApplication' '' $false 9999 @(6504)) -or
+          (Test-InnoApplicationProxy 'TApplication' $null $false 6504 @(6504)) -or
+          (Test-InnoApplicationProxy 'TApplication' '' $null 6504 @(6504)) -or
+          (Test-InnoApplicationProxy 'TApplication' '' $false 6504 @())) {
+        throw 'Unknown/interactive/unowned window was classified as a trusted proxy.'
+      }
+    `;
+    const result = spawnSync('pwsh', ['-NoProfile', '-Command', script],
+      { encoding: 'utf8', timeout: 15000, windowsHide: true });
+    assert.equal(result.status, 0, result.stderr || result.stdout || String(result.error));
+    const proof = read('tool/verify_install_progress.ps1');
+    assert.match(proof, /trustedApplicationProxies/);
+    assert.match(proof, /unexpected owned dialog/);
+    assert.match(read('tool/installer_owned_capture.ps1'), /GetWindowTitle/);
+  });

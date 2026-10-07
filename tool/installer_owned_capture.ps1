@@ -51,10 +51,18 @@ function Save-CaptureStage([string]$Stage) {
     [uint32]$owner = 0
     [void][OnboardingWizard]::GetWindowThreadProcessId($_, [ref]$owner)
     $text = [OnboardingWizard]::Describe($_)
+    $title = [OnboardingWizard]::GetWindowTitle($_)
     foreach ($private in @($env:RUNNER_TEMP, $env:LOCALAPPDATA, $env:USERPROFILE)) {
-      if ($private) { $text = $text.Replace($private, '[ISOLATED-HOST-PATH]') }
+      if ($private) {
+        $text = $text.Replace($private, '[ISOLATED-HOST-PATH]')
+        $title = $title.Replace($private, '[ISOLATED-HOST-PATH]')
+      }
     }
-    @{ pid = $owner; class = [OnboardingWizard]::ClassName($_); text = $text }
+    $bounds = [OnboardingWizard+Rect]::new()
+    $boundsKnown = [OnboardingWizard]::GetWindowRect($_, [ref]$bounds)
+    @{ pid = $owner; class = [OnboardingWizard]::ClassName($_); title = $title; text = $text;
+       hasVisibleChildren = [OnboardingWizard]::HasVisibleChildren($_);
+       bounds = if ($boundsKnown) { @{ width = $bounds.Right - $bounds.Left; height = $bounds.Bottom - $bounds.Top } } else { $null } }
   })
   $captureStages.Add(@{ stage = $Stage; elapsedMilliseconds = $captureClock.ElapsedMilliseconds;
     processes = $processes; dialogs = $dialogs })

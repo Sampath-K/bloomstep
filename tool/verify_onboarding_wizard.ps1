@@ -51,6 +51,17 @@ public static class OnboardingWizard {
   public static string ClassName(IntPtr h) {
     var b = new StringBuilder(256); GetClassName(h,b,b.Capacity); return b.ToString();
   }
+  public static string GetWindowTitle(IntPtr h) {
+    var b = new StringBuilder(4096); GetWindowText(h,b,b.Capacity); return b.ToString();
+  }
+  public static bool HasVisibleChildren(IntPtr owner) {
+    bool found = false;
+    EnumChildWindows(owner,(h,p) => {
+      if (IsWindowVisible(h)) found = true;
+      return true;
+    },IntPtr.Zero);
+    return found;
+  }
   public static IntPtr[] Windows() {
     var a = new List<IntPtr>();
     EnumWindows((h,p) => { if (IsWindowVisible(h)) a.Add(h); return true; }, IntPtr.Zero);
