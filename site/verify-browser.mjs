@@ -64,7 +64,12 @@ try {
   await offline.goto(origin, { waitUntil: 'networkidle0' });
   await offline.click('#website-consent');
   const links = await offline.$$eval('[data-download]', links => links.map(link => link.href));
-  assert.equal(links.length, 2);
+  const unified = await offline.$('[data-universal-download]') !== null;
+  assert.equal(links.length, unified ? 3 : 2);
+  if (unified) {
+    assert.equal(await offline.$eval('[data-universal-download] a', link => link.dataset.download), 'unknown');
+    assert.equal(await offline.$eval('[data-universal-download] a', link => link.textContent.trim()), 'Download Bloomstep for Windows');
+  }
   assert.ok(links.every(link => link.startsWith('https://github.com/Sampath-K/bloomstep/releases/download/')));
   await offline.click('#primary-cta');
   assert.equal(await offline.evaluate(() => location.hash), '#download');
