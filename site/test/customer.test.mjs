@@ -53,6 +53,33 @@ test('customer and engineering surfaces are separated with honest SEO', () => {
   assert.match(home, /SoftwareApplication/);
   assert.doesNotMatch(home, /aggregateRating/);
 });
+test('public Windows downloads match the published preview.9 release', () => {
+  const read = file => readFileSync(new URL('../' + file, import.meta.url), 'utf8');
+  const config = JSON.parse(read('customer-config.json'));
+  const home = read('index.html'), releases = read('releases/index.html');
+  const assets = {
+    arm64: {
+      label: 'ARM64',
+      sha256: '8eec7f2e571c36d0971912ae58e56822000818b13a8223833dfb9ef0d6fb9c07',
+    },
+    x64: {
+      label: 'x64',
+      sha256: '730b64ea27abeac9025847140f1bd97201aa1123709b3cea4357c4ccb9b9dc4b',
+    },
+  };
+  assert.equal(config.release.tag, 'v0.1.0-preview.9');
+  for (const [architecture, asset] of Object.entries(assets)) {
+    const filename = `Bloomstep-0.1.0-preview.9-windows-${architecture}-setup.exe`;
+    const url = `https://github.com/Sampath-K/bloomstep/releases/download/v0.1.0-preview.9/${filename}`;
+    assert.equal(config.release[architecture].url, url);
+    assert.equal(config.release[architecture].sha256, asset.sha256);
+    assert.ok(home.includes(url));
+    assert.ok(releases.includes(url));
+    assert.ok(releases.includes(`${asset.label} SHA-256: ${asset.sha256}`));
+  }
+  assert.match(home, /id="download-version">0\.1\.0-preview\.9</);
+  assert.match(releases, /0\.1\.0-preview\.8 - fresh-consent app reminder observations/);
+});
 test('website panel separates event conversion and receipt cohorts, rejects substitute zeros', () => {
   const data = { schemaVersion: 1, channel: 'web', synthetic: false, definition: 'Events, not people.',
     stages: { landing_view: 100, primary_cta_click: 50, download_click: null },

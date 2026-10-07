@@ -1,8 +1,10 @@
 # Installer and customer onboarding contract
 
 Authorized source increment from main `30fd380194bed46686c5483accfa71ff06c9f068`.
-This is not a release authorization. Keep preview.8 downloads and checksums;
-preview.9 tagging/publication and public recruitment/promotion remain held.
+This website-only promotion points to the already-published preview.9 downloads;
+it does not authorize app changes, release/tag mutation, or a future release.
+The preview.8 warning/capture evidence below remains historical and must not be
+relabeled as preview.9.
 
 ## Behaviour (contract before implementation)
 
@@ -52,7 +54,7 @@ eligibility, support SLA or invitations to join a cohort are added.
 | JS disabled / API unavailable | Teaching, native details controls, architecture downloads, checksums and safety help still usable |
 | Edge / Chrome, blocked download | Browser-specific Downloads navigation; stop on unresolved warnings or managed policy; no blanket bypass |
 | SmartScreen reputation vs malware/policy block | Conditional existing unsigned-prompt guidance only; stop otherwise; no claim that a hash proves safety |
-| Wrong/unknown architecture | Manual Windows System type guidance and both unchanged preview.8 choices |
+| Wrong/unknown architecture | Manual Windows System type guidance and both preview.9 choices |
 | Missing or corrupt bitmap | Strict build failure before distribution; no unchecked runtime extraction |
 | Art unavailable / high contrast | Complete text alternative; no meaning or control expressed by color/art alone |
 | Keyboard, dark/light, 320px, 200% scale | Visible focus, semantic headings/alt, wrapping and no horizontal scroll; system colors in forced-colors |
