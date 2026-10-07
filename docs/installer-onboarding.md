@@ -147,7 +147,10 @@ illustrations from the existing five-stage `PlantArt` renderer and original
 recipe icons; these are authored artwork, not screenshots or evidence of a
 customer garden. To re-author, set `BLOOMSTEP_EXPORT_INSTALLER_ART=true` and run
 `flutter test --no-pub tool/installer_art_export_test.dart`; the exporter writes
-source/asset SHA-256 provenance. `node tool/generate_installer_art.mjs --check`
+source/asset SHA-256 provenance (authored text source is normalized to UTF-8/LF
+for cross-platform checkout; bitmap bytes are hashed unchanged). This does not
+change the raw source/image hashes of the genuine customer warnings.
+`node tool/generate_installer_art.mjs --check`
 rejects changed source or illustration bytes until explicitly re-exported.
 Ready and Finish use a garden hero; Ready attribution/limitations remain
 available behind the native **Preview details** button rather than a default

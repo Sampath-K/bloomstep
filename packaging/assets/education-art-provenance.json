@@ -1,20 +1,21 @@
 {
   "schemaVersion": 1,
   "kind": "authored-illustrations-not-installer-screenshots",
+  "sourceNormalization": "UTF-8 text with LF line endings",
   "renderer": "Flutter PlantArt, supported seed/sprout/sapling/budding/bloom; original vector recipe icons",
   "textEquivalents": "Native wizard labels describe the stages, sample recipes and garden; no text baked into these illustrations.",
   "sources": [
     {
       "path": "tool/installer_art_export_test.dart",
-      "sha256": "6e94439821f5aa928d5e671be70ca1908994620c77996777baa249ae671c3d4e"
+      "sha256": "c051400ac36f45f2ff2944c9dad1fea8524348e130f0ba64eae340d9ab89e400"
     },
     {
       "path": "lib/features/garden/plant_art.dart",
-      "sha256": "1a9baef7ece2c24df698846cedf568325e21e7d37791037845f3b8761a6637b3"
+      "sha256": "4dcf3125379089e0dbd39cb211c1e349ee99c97ec003010af6103aea42a0eef2"
     },
     {
       "path": "lib/app/theme.dart",
-      "sha256": "efb4d8df6266c7b101c8a2bfd5d490ebf38272a69019ecea3fac2d1ac86f8734"
+      "sha256": "50b63e8a956fff4f2f2e31230334d8cb99381e320b546e0bb1167f5cfa5c1aa3"
     }
   ],
   "assets": [

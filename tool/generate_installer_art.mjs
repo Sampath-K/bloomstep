@@ -79,10 +79,11 @@ for (const [name, width, height, small, growth] of [
 if (check) {
   const manifest = JSON.parse(readFileSync(new URL('education-art-provenance.json', directory), 'utf8'));
   assert.equal(manifest.kind, 'authored-illustrations-not-installer-screenshots');
+  assert.equal(manifest.sourceNormalization, 'UTF-8 text with LF line endings');
   const hash = bytes => createHash('sha256').update(bytes).digest('hex');
   assert.equal(manifest.sources.length, 3);
   for (const source of manifest.sources) {
-    assert.equal(hash(readFileSync(new URL(`../${source.path}`, import.meta.url))), source.sha256,
+    assert.equal(hash(readFileSync(new URL(`../${source.path}`, import.meta.url), 'utf8').replace(/\r\n/g, '\n')), source.sha256,
       `Re-export authored illustrations after changing ${source.path}`);
   }
   assert.deepEqual(manifest.assets.map(asset => asset.file),

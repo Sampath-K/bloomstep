@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
+import { createHash } from 'node:crypto';
 
 const read = path => readFileSync(new URL(`../${path}`, import.meta.url), 'utf8');
 const installer = read('packaging/bloomstep.iss');
@@ -84,6 +85,11 @@ test('full-panel illustrations export actual supported PlantArt and are not scre
   assert.doesNotMatch(exporter, /evergreen|GrowthStage\.tree/);
   const manifest = JSON.parse(read('packaging/assets/education-art-provenance.json'));
   assert.equal(manifest.kind, 'authored-illustrations-not-installer-screenshots');
+  assert.equal(manifest.sourceNormalization, 'UTF-8 text with LF line endings');
+  for (const source of manifest.sources) {
+    const text = read(source.path).replace(/\r\n/g, '\n');
+    assert.equal(createHash('sha256').update(text).digest('hex'), source.sha256);
+  }
   for (const name of ['education-seed', 'education-recipe', 'education-growth', 'education-hero']) {
     const bmp = readFileSync(new URL(`../packaging/assets/${name}.bmp`, import.meta.url));
     assert.equal(bmp.readInt32LE(18), 1000);

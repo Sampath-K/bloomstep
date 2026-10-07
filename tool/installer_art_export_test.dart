@@ -215,6 +215,7 @@ void main() {
       final manifest = <String, Object?>{
         'schemaVersion': 1,
         'kind': 'authored-illustrations-not-installer-screenshots',
+        'sourceNormalization': 'UTF-8 text with LF line endings',
         'renderer': 'Flutter PlantArt, supported seed/sprout/sapling/budding/bloom; original vector recipe icons',
         'textEquivalents': 'Native wizard labels describe the stages, sample recipes and garden; no text baked into these illustrations.',
         'sources': <Object>[],
@@ -228,7 +229,13 @@ void main() {
         ]) {
           (manifest['sources']! as List<Object>).add({
             'path': path,
-            'sha256': sha256.convert(await File(path).readAsBytes()).toString(),
+            'sha256': sha256
+                .convert(
+                  utf8.encode(
+                    (await File(path).readAsString()).replaceAll('\r\n', '\n'),
+                  ),
+                )
+                .toString(),
           });
         }
       });
