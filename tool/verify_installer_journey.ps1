@@ -156,21 +156,20 @@ try {
         throw "Unexpected owned dialog: $text"
       }
       $checkbox = [OnboardingWizard]::Find($window, 'Save optional local observations (unchecked by default)')
-      if ($checkbox -ne [IntPtr]::Zero -and
-          [OnboardingWizard]::SendMessage($checkbox, 0x00F0, [IntPtr]::Zero, [IntPtr]::Zero).ToInt32() -ne 0) {
-        throw 'Observations must stay unchecked.'
+      if ($checkbox -ne [IntPtr]::Zero) {
+        throw 'Installer observation prompt must not exist.'
       }
       if ($Mode -eq 'cancel') {
         $cancel = [OnboardingWizard]::Find($window, 'Cancel')
         if ($cancel -eq [IntPtr]::Zero) { throw 'Native Cancel unavailable.' }
-        [void][OnboardingWizard]::SendMessage($cancel, 0x00F5, [IntPtr]::Zero, [IntPtr]::Zero)
+        if (-not [OnboardingWizard]::PostMessage($cancel, 0x00F5, [IntPtr]::Zero, [IntPtr]::Zero)) { throw 'Owned Cancel dispatch failed.' }
         Start-Sleep -Milliseconds 200
         foreach ($confirmation in [OnboardingWizard]::Windows()) {
           [uint32]$confirmationOwner = 0
           [void][OnboardingWizard]::GetWindowThreadProcessId($confirmation, [ref]$confirmationOwner)
           if (-not $owned.Contains([int]$confirmationOwner)) { continue }
           $yes = [OnboardingWizard]::Find($confirmation, 'Yes')
-          if ($yes -ne [IntPtr]::Zero) { [void][OnboardingWizard]::SendMessage($yes, 0x00F5, [IntPtr]::Zero, [IntPtr]::Zero) }
+          if ($yes -ne [IntPtr]::Zero -and -not [OnboardingWizard]::PostMessage($yes, 0x00F5, [IntPtr]::Zero, [IntPtr]::Zero)) { throw 'Owned Cancel confirmation dispatch failed.' }
         }
         $finished = $true
         break
@@ -184,6 +183,7 @@ try {
         if ($Mode -in @('elevated','unattended')) {
           if ($null -ne $launch) { throw 'Elevated/unattended installer offered a launch checkbox.' }
         } else {
+          if ($text.Contains('Installing') -or $text.Contains('Extracting files')) { continue }
           if ($null -eq $launch) { throw 'Launch choice was not visibly available.' }
           $pattern = $launch.GetCurrentPattern([Windows.Automation.TogglePattern]::Pattern)
           if ($pattern.Current.ToggleState -ne [Windows.Automation.ToggleState]::On) { throw 'Launch choice not default checked.' }

@@ -52,9 +52,12 @@ export function verifyReleaseEvidence({ root, source, tag, runId, genuineResult,
     requireEvidence(proof.installedPeMachine === (arch === 'x64' ? 0x8664 : 0xaa64) &&
       proof.nativeArchitectureProbe.nativeArchitecture === arch &&
       proof.nativeArchitectureProbe.processMachine === 0x8664, 'Actual native/emulated process routing mismatch.');
-    requireEvidence(proof.welcome.file === 'actual-universal-welcome.png' &&
-      digest(readFileSync(join(root, `native-${arch}`, proof.welcome.file))) === proof.welcome.sha256,
-    'Same-run actual Welcome frame hash mismatch.');
+    const frame = proof.entry ?? proof.welcome;
+    requireEvidence(frame && (proof.entry ?
+      frame.page === 'destination' && frame.file === 'actual-universal-destination.png' :
+      frame.file === 'actual-universal-welcome.png') &&
+      digest(readFileSync(join(root, `native-${arch}`, frame.file))) === frame.sha256,
+    'Same-run actual entry frame hash mismatch.');
     native[arch] = proof;
     const result = readJson(join(root, `launch-${arch}`, 'genuine-universal-app-launch-receipt.json'));
     requireEvidence(result.source === source && result.architecture === arch &&
@@ -92,17 +95,23 @@ if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.ur
   writeFileSync(join(output, 'release-evidence.json'), `${JSON.stringify(receipt, null, 2)}\n`);
   const url = `https://github.com/Sampath-K/bloomstep/releases/download/${tag}`;
   for (const arch of ['x64', 'arm64']) {
-    copyFileSync(join(root, `native-${arch}`, 'actual-universal-welcome.png'),
-      join(output, `actual-universal-welcome-${arch}.png`));
+    const frame = receipt.native[arch].entry ?? receipt.native[arch].welcome;
+    copyFileSync(join(root, `native-${arch}`, frame.file),
+      join(output, frame.file.replace('.png', `-${arch}.png`)));
     writeFileSync(join(output, `native-lifecycle-${arch}.json`), `${JSON.stringify(receipt.native[arch], null, 2)}\n`);
     writeFileSync(join(output, `genuine-launch-${arch}.json`), `${JSON.stringify(receipt.launch[arch], null, 2)}\n`);
   }
+  const destinationFirst = Object.values(receipt.native).every(proof => proof.entry?.page === 'destination');
+  const pageChecklist = destinationFirst ?
+    `- [ ] Destination opens first with the per-user folder/Browse; Install is the only commitment. During real installation original scenes may transition; fast completion is never delayed. Check actual motion/reduced-motion and high-DPI readability separately.\n` +
+    `- [ ] Cancel before installation leaves no payload. Installer observations are entirely disabled, including silent installs; prior legacy receipts are not new consent.\n` :
+    `- [ ] Offline payload install succeeds; Welcome, two illustrated recipe cards, full garden and Back/Cancel remain readable. No animation is included.\n` +
+    `- [ ] Cancel before installation leaves no payload or observations. Optional observations remain unchecked/default-off and absent unless explicitly selected.\n`;
   const checklist = `# Owner manual-test checklist — ${tag}\n\n` +
     `Status: PENDING. Genuine launch-after-Finish remains explicitly UNVERIFIED when the hosted elevated-token guard stops before installation. This is not customer-ready or full acceptance.\n\n` +
     `Use clean disposable native x64 and ARM64 slots as the ordinary installing user; do not run as administrator or disable protections. Verify exact release filename and SHA-256 first. Unknown source/hash, malware or managed-policy block means STOP. Hash consistency is not safety/signing.\n\n` +
     `- [ ] One primary universal download routes to the native OS without an architecture choice; also exercise x64 process emulation on ARM where available.\n` +
-    `- [ ] Offline payload install succeeds; Welcome, two illustrated recipe cards, full garden and Back/Cancel remain readable. No animation is included.\n` +
-    `- [ ] Cancel before installation leaves no payload or observations. Optional observations remain unchecked/default-off and absent unless explicitly selected.\n` +
+    pageChecklist +
     `- [ ] Checked Finish exits successfully and starts exactly one native, non-elevated app as the installing user; same process survives at least ten seconds with visible window. Record observed outcome, not an assumption.\n` +
     `- [ ] In a separate clean slot, unchecked Finish exits successfully and starts no app. Manual Start Menu launch remains possible.\n` +
     `- [ ] Ordinary sign-in, tiny routine-linked habit, check-in, celebration and full garden journey work; cancel/exit and keyboard/focus/accessibility remain usable.\n` +
@@ -118,8 +127,10 @@ if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.ur
     `Source \`${source}\`; [same-run build/native proof](${receipt.origin}). Public binary/checksum/manifests must match this run, never another same-source build. ` +
     `Genuine launch: **${receipt.genuineLaunch}**. Native lifecycle evidence does not establish sign-in/full journey or installer safety.\n\n` +
     `## Actual static installer screenshots\n\n` +
-    `These are the actual compiled universal Welcome on isolated CI x64/ARM64, followed by Cancel. They are not customer app/Finish acceptance, universal warning or safety evidence. Static illustrations only.\n\n` +
-    `![Actual x64 universal Welcome, isolated CI Cancel evidence](${url}/actual-universal-welcome-x64.png)\n\n` +
-    `![Actual ARM64 universal Welcome, isolated CI Cancel evidence](${url}/actual-universal-welcome-arm64.png)\n\n` + checklist);
+    `These are the actual compiled universal ${destinationFirst ? 'destination' : 'Welcome'} on isolated CI x64/ARM64, followed by Cancel. They are not motion, customer app/Finish acceptance, universal warning or safety evidence.\n\n` +
+    ['x64', 'arm64'].map(arch => {
+      const frame = receipt.native[arch].entry ?? receipt.native[arch].welcome;
+      return `![Actual ${arch} universal entry, isolated CI Cancel evidence](${url}/${frame.file.replace('.png', `-${arch}.png`)})`;
+    }).join('\n\n') + '\n\n' + checklist);
   console.log(`${mode ? 'AUDIT ONLY, NOT AUTHORIZED FOR PUBLICATION: ' : ''}Verified one-run release package, both native/frame receipts and ${receipt.genuineLaunch}.`);
 }

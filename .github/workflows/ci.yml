@@ -77,7 +77,7 @@ jobs:
       - run: npm test
       - run: node ../tool/generate_event_registry.mjs --check
       - run: node --test ../test/universal_installer_test.mjs ../test/release_bundle_test.mjs
-      - run: node --test ../test/site_console_test.mjs ../test/measurement_packaging_test.mjs ../test/installer_onboarding_test.mjs ../test/installer_journey_test.mjs ../test/public_claims_test.mjs ../test/identity_callbacks_test.mjs ../test/branding_contract_test.mjs ../test/synthetic_native_contract_test.mjs
+      - run: node --test ../test/site_console_test.mjs ../test/measurement_packaging_test.mjs ../test/installer_onboarding_test.mjs ../test/installer_journey_test.mjs ../test/installer_direct_install_test.mjs ../test/public_claims_test.mjs ../test/identity_callbacks_test.mjs ../test/branding_contract_test.mjs ../test/synthetic_native_contract_test.mjs
       - name: Verify bundled operator authentication
         working-directory: .
         run: |
@@ -189,7 +189,7 @@ jobs:
           if ($compiledSource -match 'Installation is prohibited|8E9B101B-CB3D-4C0F-B733-FC1DFFB75129|A6690692-4D92-475A-9EAC-1AD867AB0635|function PrepareToInstall|isolated journey proof') {
             throw 'Production compile contains capture-only fixture guard or identity.'
           }
-      - name: Capture compile-only native Welcome and ordered default-off pages
+      - name: Capture compile-only native destination and explicit Install commitment
         shell: pwsh
         run: |
           $env:BLOOMSTEP_SOURCE_REVISION = git rev-parse HEAD
@@ -431,13 +431,19 @@ jobs:
           path: |
             build/windows/${{ matrix.arch }}/runner/Release/
             release-output/
-      - name: Verify optional measurement wizard and genuine installed observations
+      - name: Verify disabled installer observations and legacy privacy cleanup
         shell: pwsh
         run: |
           $installer = (Get-ChildItem release-output\*.exe).FullName
           & .\tool\verify_measurement_install.ps1 -Installer $installer -Target (Join-Path $env:RUNNER_TEMP 'Bloomstep-measurement-smoke')
           $protocolKey = 'Registry::HKEY_CURRENT_USER\Software\Classes\bloomstep\shell\open\command'
           if (Test-Path $protocolKey) { throw 'Owned invitation protocol survived measurement uninstall.' }
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: installer-disabled-observations-${{ matrix.arch }}-NOT-CUSTOMER
+          path: ${{ runner.temp }}/disabled-installer-observations-proof/
+          if-no-files-found: warn
       - name: Build isolated Windows runtime probe
         if: matrix.arch == 'arm64'
         run: flutter build windows --profile --target tool/runtime_probe.dart
@@ -632,6 +638,16 @@ jobs:
         shell: pwsh
         run: |
           & .\tool\verify_universal_installer.ps1 -PackageDir (Join-Path $PWD 'universal-output') -ExpectedArch '${{ matrix.arch }}' -EvidenceDir (Join-Path $env:RUNNER_TEMP 'universal-native-evidence')
+      - name: Capture actual real-install motion and Finish without launching the app
+        shell: pwsh
+        run: |
+          & .\tool\verify_install_progress.ps1 -PackageDir (Join-Path $PWD 'universal-output') -EvidenceDir (Join-Path $env:RUNNER_TEMP 'universal-progress-evidence')
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: universal-progress-${{ matrix.arch }}-NOT-APP-ACCEPTANCE
+          path: ${{ runner.temp }}/universal-progress-evidence/
+          if-no-files-found: error
       - uses: actions/upload-artifact@v4
         if: always()
         with:

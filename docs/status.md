@@ -4,6 +4,16 @@
 cloud deployment and native background behavior require integration evidence.
 This ledger is updated with verified outcomes, not inferred from source code.
 
+**Active installer-only UX increment (unreleased, review pending):** replace
+the multi-Next wizard with destination/Browse → Install → Finish. Reuse original
+scenes only during real install, with read-only reduced-motion preference and
+no minimum dwell. Remove all installer observation creation while preserving
+legacy owner-matched cleanup and app consent compatibility. New compiled
+motion/Finish/native lifecycle evidence and parent pixel review are pending;
+the general owner functional report does not close genuine checked/unchecked
+non-elevated launch or full-journey acceptance. Immutable preview.12 is unchanged;
+the separate website promotion branch is not part of this source increment.
+
 **Frozen v1 merged and published for owner trial (PR21):** merge
 `45efbf2da0cb8363675321e5e257d5dd66391f04` is the immutable
 `v0.1.0-preview.10` source. Real

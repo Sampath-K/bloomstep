@@ -76,8 +76,8 @@ try {
         if (-not $seen.Add($text)) { continue }
         if ([OnboardingWizard]::ClassName($window) -ne 'TWizardForm') { throw 'Unexpected owned genuine installer dialog; no automatic override.' }
         $observations = [OnboardingWizard]::Find($window,'Save optional local observations (unchecked by default)')
-        if ($observations -ne [IntPtr]::Zero -and [OnboardingWizard]::SendMessage($observations,0x00F0,[IntPtr]::Zero,[IntPtr]::Zero).ToInt32() -ne 0) {
-          throw 'Genuine optional observations must remain unchecked.'
+        if ($observations -ne [IntPtr]::Zero) {
+          throw 'Installer observation prompt must not exist.'
         }
         $finish = [OnboardingWizard]::Find($window,'Finish')
         if ($finish -ne [IntPtr]::Zero) {

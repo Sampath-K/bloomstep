@@ -1,5 +1,52 @@
 # Installer and customer onboarding contract
 
+## Active destination-first source increment (not yet released)
+
+User-directed follow-up after immutable preview.12: destination/Browse is the
+only preinstall decision, retaining the per-user default and upgrade location.
+The native button is explicitly **Install**, not Next. Welcome, teaching,
+observations and Ready pages are removed. Existing authored seed/recipe/garden
+BMPs move to real installing progress with a native `CreateCallback`/`SetTimer`
+callback: roughly three seconds per scene and a small bounded drift. Inno's
+actual progress bar remains authoritative; scenes are not progress percentages.
+There is no sleep, minimum dwell, network host, WebView or added dependency.
+Windows `SPI_GETCLIENTAREAANIMATION` is queried read-only; disabled or unavailable
+preferences produce static art. Page changes, completion, modal interruptions
+and setup disposal stop the callback. Finish says **Bloomstep is ready** and
+**Open Bloomstep to create your first tiny habit**; existing successful,
+interactive, non-elevated checked/unchecked/silent launch guards are unchanged.
+
+Installer observations are **disabled**, including silent installs: no prompt,
+receipt/event/UUID generation, owner marker or replacement consent. Upgrade
+still removes an old owner marker, never adopts its consent, and preserves
+unmatched existing legacy receipts. Legacy uninstall still removes only receipts
+and `.pending` files whose first event matches that installation's owner marker.
+An unmatched old receipt remains subject to the existing app's seven-day
+next-access expiry/privacy controls; app-side compatibility and separate consent
+flows are not changed.
+
+Contract RED evidence precedes implementation. Disposable CI records exact
+package/source hashes, actual destination/Cancel, timed real-install frames,
+Finish, timer disposal and bounded owned-process stage/exit state. It records
+actual DPI and missing coverage rather than labeling enlarged/static source art
+as high-DPI motion proof. Fast installs may legitimately show fewer scenes;
+three-scene/reduced-motion/high-DPI evidence and parent pixel review remain
+mandatory before merge, not inferred from a green capture script. Genuine
+non-elevated checked/unchecked launch/full journey acceptance remains pending.
+The website promotion belongs to a separate PR. Preview.12's bytes/tag are
+unchanged; this source increment does not authorize a new public release.
+
+References: [Inno last-page Install caption](https://jrsoftware.org/ishelp/topic_setup_disablereadypage.htm),
+[supported native timer callback](https://jrsoftware.org/ishelp/topic_isxfunc_createcallback.htm),
+[supported native controls](https://jrsoftware.org/ishelp/topic_scriptclasses.htm),
+[Windows animation preference](https://learn.microsoft.com/en-us/windows/win32/api/winuser/nf-winuser-systemparametersinfow).
+Microsoft's [billboard](https://learn.microsoft.com/en-us/windows/win32/msi/billboard-control)
+and [progress UX](https://learn.microsoft.com/en-us/windows/win32/uxguide/progress-bars)
+(Windows 7-era guidance) are pattern references only, not a new MSI dependency
+or accessibility certification.
+
+The sections below describe earlier iterations and publication boundaries.
+
 Authorized source increment from main `30fd380194bed46686c5483accfa71ff06c9f068`.
 The original source increment did not authorize a release. On 7 October 2026,
 the owner separately authorized website promotion of the already published

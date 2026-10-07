@@ -8,30 +8,15 @@ import { createHash } from 'node:crypto';
 const read = path => readFileSync(new URL(`../${path}`, import.meta.url), 'utf8');
 const installer = read('packaging/bloomstep.iss');
 
-test('the first native wizard page is Welcome with original art and short independent-preview teaching', () => {
-  assert.match(installer, /DisableWelcomePage=no/);
-  assert.match(installer, /WelcomeLabel1=Welcome to Bloomstep/);
-  const welcome = /^WelcomeLabel2=(.*)$/m.exec(installer)?.[1];
-  assert.ok(welcome);
-  assert.match(welcome, /^Your garden starts with one seed\./);
-  assert.match(welcome, /Free Windows download\. Limited preview\. Sign-in required\./);
-  assert.match(welcome, /Next: plant a tiny recipe/);
-  assert.doesNotMatch(welcome, /verified MVP|unsigned|affiliated|medical/);
-  assert.ok(welcome.length < 220);
-  assert.match(installer, /WizardForm.WizardBitmapImage.Visible := False/);
-  assert.match(installer, /AddVisualBeat\(WizardForm.WelcomePage/);
-  assert.match(installer, /Your garden starts with one seed/);
-  assert.match(installer, /A tiny recipe/);
-  assert.match(installer, /Watch it become a garden/);
-  assert.match(installer, /Step 1 of 3/);
-  assert.match(installer, /Step 2 of 3/);
-  assert.match(installer, /Step 3 of 3/);
+test('the first native wizard page is destination with one explicit Install commitment', () => {
+  assert.match(installer, /DisableWelcomePage=yes/);
+  assert.match(installer, /DisableReadyPage=yes/);
   assert.match(installer, /DisableDirPage=no/);
   assert.match(installer, /DisableProgramGroupPage=yes/);
-  assert.match(installer, /CreateCustomPage\(wpSelectDir,/);
+  assert.doesNotMatch(installer, /CreateCustomPage\(/);
   const capture = read('tool/verify_onboarding_wizard.ps1');
-  assert.match(capture, /First observed wizard page was not Welcome/);
-  assert.match(capture, /Welcome', 'recipe', 'grow', 'destination', 'optional-observations', 'ready'/);
+  assert.match(capture, /First observed wizard page was not destination/);
+  assert.match(capture, /expectedOrder = @\('destination'\)/);
   assert.match(capture, /installerSha256/);
   assert.match(capture, /receiptAbsent/);
   assert.match(capture, /compiledFixture\.installationProhibited/);
@@ -39,15 +24,13 @@ test('the first native wizard page is Welcome with original art and short indepe
   assert.match(capture, /Only the exact hash-authorized compile-only onboarding fixture/);
 });
 
-test('installer teaches on existing native steps without extra pages or changing security defaults', () => {
-  assert.equal((installer.match(/CreateCustomPage\(/g) ?? []).length, 3);
-  assert.match(installer, /ReadyMemoNote[\s\S]*routine[\s\S]*tiny[\s\S]*celebrat/);
+test('installer teaches only during real progress without extra pages or changing security defaults', () => {
+  assert.equal((installer.match(/CreateCustomPage\(/g) ?? []).length, 0);
+  assert.match(read('packaging/install-progress.iss'), /routine[\s\S]*tiny[\s\S]*Celebrate/);
   assert.match(installer, /FinishedLabel=.*sign[ -]in/i);
-  assert.match(installer, /independent app inspired by the Tiny Habits method/);
-  assert.match(installer, /https:\/\/tinyhabits.com\/book\//);
   assert.match(installer, /PrivilegesRequired=lowest/);
-  assert.match(installer, /MeasurementCheckBox.Checked := False/);
-  assert.match(installer, /if WizardSilent then Exit/);
+  assert.doesNotMatch(installer, /MeasurementCheckBox|SaveStringToFile/);
+  assert.match(read('packaging/install-progress.iss'), /if WizardSilent then Exit/);
   assert.match(installer, /postinstall skipifsilent runasoriginaluser/);
   assert.doesNotMatch(installer, /ShellExec|DownloadTemporaryFile|PrivilegesRequired=admin/);
 });
@@ -56,7 +39,7 @@ test('capture fixture rejects installation before effects and cannot enter produ
   assert.match(installer, /#ifdef OnboardingFixture\s+function PrepareToInstall[\s\S]*?Installation is prohibited[\s\S]*?#endif/);
   const production = read('.github/workflows/ci.yml').split('name: Build unsigned preview installer')[1].split('name: Installer lifecycle smoke test')[0];
   assert.doesNotMatch(production, /\/DOnboardingFixture/);
-  const capture = read('.github/workflows/ci.yml').split('name: Capture compile-only native Welcome')[1]
+  const capture = read('.github/workflows/ci.yml').split('name: Capture compile-only native destination')[1]
     .split('name: Preserve bounded compile-only capture fixture authority')[0];
   assert.ok(capture.indexOf('New-Item -ItemType Directory -Path $output, $evidence -Force') >= 0);
   assert.ok(capture.indexOf('New-Item -ItemType Directory') < capture.indexOf('/DOnboardingPreprocessOutput='),

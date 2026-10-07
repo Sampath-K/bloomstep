@@ -162,28 +162,29 @@ try {
       [void][OnboardingWizard]::GetWindowThreadProcessId($window,[ref]$owner)
       if (-not $owned.Contains([int]$owner)) { continue }
       $text = [OnboardingWizard]::Describe($window)
-      if (-not $cancelRequested -and $text -match 'Your garden starts with one seed') {
+      if (-not $cancelRequested -and $text -match 'Select Destination Location') {
         $wizardProcess = Get-Process -Id $owner
         [void]$wizardProcess.Handle
         $ownedProcesses[[int]$owner] = $wizardProcess
         $wizardProcessId = [int]$owner
         Start-Sleep -Milliseconds 300
         $rectangle = [OnboardingWizard+Rect]::new()
-        if (-not [OnboardingWizard]::GetWindowRect($window,[ref]$rectangle)) { throw 'Owned Welcome bounds unavailable.' }
+        if (-not [OnboardingWizard]::GetWindowRect($window,[ref]$rectangle)) { throw 'Owned destination bounds unavailable.' }
         $width = $rectangle.Right - $rectangle.Left
         $height = $rectangle.Bottom - $rectangle.Top
-        if ($width -lt 100 -or $height -lt 100) { throw 'Owned Welcome bounds invalid.' }
+        if ($width -lt 100 -or $height -lt 100) { throw 'Owned destination bounds invalid.' }
         $bitmap = [Drawing.Bitmap]::new($width,$height)
         $graphics = [Drawing.Graphics]::FromImage($bitmap)
         $dc = $graphics.GetHdc()
         try {
-          if (-not [OnboardingWizard]::PrintWindow($window,$dc,2)) { throw 'Owned universal Welcome capture failed.' }
+          if (-not [OnboardingWizard]::PrintWindow($window,$dc,2)) { throw 'Owned universal destination capture failed.' }
         } finally { $graphics.ReleaseHdc($dc) }
-        $frame = Join-Path $EvidenceDir 'actual-universal-welcome.png'
+        $frame = Join-Path $EvidenceDir 'actual-universal-destination.png'
         try { $bitmap.Save($frame,[Drawing.Imaging.ImageFormat]::Png) }
         finally { $graphics.Dispose(); $bitmap.Dispose() }
-        $report.welcome = @{
-          file = 'actual-universal-welcome.png'; sha256 = (Get-FileHash $frame).Hash.ToLower()
+        $report.entry = @{
+          page = 'destination'
+          file = 'actual-universal-destination.png'; sha256 = (Get-FileHash $frame).Hash.ToLower()
           width = $width; height = $height; actualDpi = [OnboardingWizard]::GetDpiForWindow($window)
           scope = 'Actual compiled universal package on isolated CI host; Cancel only, not app acceptance'
         }

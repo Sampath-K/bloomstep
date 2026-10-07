@@ -5,21 +5,19 @@ import { readFileSync } from 'node:fs';
 const read = path => readFileSync(new URL(`../${path}`, import.meta.url), 'utf8');
 const installer = read('packaging/bloomstep.iss');
 
-test('three original educational beats precede options without tracking or a forced exercise', () => {
-  assert.match(installer, /WelcomeLabel2=Your garden starts with one seed\./);
-  assert.match(installer, /RecipePage := CreateCustomPage\(wpWelcome, 'A tiny recipe'/);
-  assert.match(installer, /GrowPage := CreateCustomPage\(RecipePage.ID, 'Watch it become a garden'/);
+test('destination-first removes educational steps and all installer observations without changing app consent', () => {
+  assert.match(installer, /DisableWelcomePage=yes/);
+  assert.match(installer, /DisableReadyPage=yes/);
   assert.match(installer, /DisableDirPage=no/);
   assert.match(installer, /DisableProgramGroupPage=yes/);
   assert.match(installer, /UsePreviousAppDir=yes/);
-  assert.match(installer, /Not today.*preserves.*growth/);
-  assert.match(installer, /Tiny action: take one slow breath/);
-  assert.match(installer, /Tiny action: write my one next step/);
-  assert.match(installer, /Celebration: relax my shoulders and smile/);
-  assert.match(installer, /Celebration: say "I have a starting point"/);
+  assert.doesNotMatch(installer, /CreateCustomPage|SaveStringToFile|CoCreateGuid/);
+  const progress = read('packaging/install-progress.iss');
+  assert.match(progress, /Not today leaves your growth intact/);
+  assert.match(progress, /familiar routine, try one tiny action\. Celebrate/);
   assert.match(installer, /Source: "assets\\education-seed.bmp"; Flags: dontcopy/);
   assert.match(installer, /Source: "assets\\education-growth.bmp"; Flags: dontcopy/);
-  assert.match(installer, /function ShouldSkipPage[\s\S]*WizardSilent[\s\S]*RecipePage.ID[\s\S]*GrowPage.ID/);
+  assert.match(progress, /WizardSilent/);
   assert.doesNotMatch(installer, /education_step_view|stepview|education_link_click/);
 });
 

@@ -14,21 +14,17 @@ test('Pascal code cannot be mistaken for an Inno section tag', () => {
 });
 test('silent/default-off upgrades do not inherit prior measurement ownership', () => {
   assert.match(installer, /\[InstallDelete\][\s\S]*?Type: files; Name: "\{app\}\\measurement-owner\.txt"/);
-  assert.match(installer, /MeasurementCheckBox\.Checked := False/);
-  const callback = installer.split('procedure CurStepChanged')[1].split('procedure CurUninstallStepChanged')[0];
-  assert.ok(callback.indexOf('if WizardSilent then Exit') < callback.indexOf("MeasurementEvent('installer_started'"));
-  assert.ok(callback.indexOf('if not MeasurementCheckBox.Checked then Exit') < callback.indexOf("MeasurementEvent('installer_started'"));
+  assert.doesNotMatch(installer, /MeasurementCheckBox|SaveStringToFile|MeasurementEvent/);
   assert.match(workflow, /Upgrade inherited a prior installation measurement owner/);
   assert.match(workflow, /Silent upgrade manufactured a measurement receipt/);
 });
 test('real wizard proof is separate from compile-only fixture and precedes distribution', () => {
   assert.match(workflow, /Compile-only fixture; never installed or distributed/);
   assert.match(workflow, /verify_measurement_install\.ps1 -Installer \$installer/);
-  assert.ok(workflow.indexOf('Verify optional measurement wizard') < workflow.indexOf('name: Publish preview'));
+  assert.ok(workflow.indexOf('Verify disabled installer observations') < workflow.indexOf('name: Publish preview'));
   const smoke = readFileSync(new URL('../tool/verify_measurement_install.ps1', import.meta.url), 'utf8');
-  assert.match(smoke, /Installer observation consent was not default-off/);
-  assert.match(smoke, /installer_started,install_completed,first_launch,signin_view/);
+  assert.match(smoke, /Installer observations must not exist/);
+  assert.match(smoke, /Legacy unmatched receipt changed/);
   assert.match(smoke, /Owned uninstall did not remove the installer receipt/);
-  // Inno Setup 6 modern wizard actually exposes "&Next", without a chevron.
-  assert.match(smoke, /@\('&Next','&Next >'/);
+  assert.match(smoke, /Legacy pending receipt/);
 });
