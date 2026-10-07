@@ -692,7 +692,9 @@ jobs:
         env:
           RELEASE_TAG: ${{ startsWith(github.ref, 'refs/tags/v') && github.ref_name || 'v0.1.0-preview' }}
         run: |
-          & .\tool\build_msix.ps1 -Artifacts "$PWD\artifacts" -Version ($env:RELEASE_TAG.TrimStart('v')) -SourceSha $env:GITHUB_SHA -Publisher 'CN=Bloomstep unsigned SDK validation only' -Output "$PWD\msix-sdk-validation" -UnsignedValidationOnly
+          $source = git rev-parse HEAD
+          if ($LASTEXITCODE -ne 0) { throw 'Checked-out source identity is unavailable.' }
+          & .\tool\build_msix.ps1 -Artifacts "$PWD\artifacts" -Version ($env:RELEASE_TAG.TrimStart('v')) -SourceSha $source -Publisher 'CN=Bloomstep unsigned SDK validation only' -Output "$PWD\msix-sdk-validation" -UnsignedValidationOnly
       - name: Validate two-version SDK signing and untrusted publisher rejection without installation
         shell: pwsh
         run: |

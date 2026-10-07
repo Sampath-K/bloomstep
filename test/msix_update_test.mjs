@@ -67,6 +67,10 @@ test('candidate workflow is exact-source gated, signed and not a publishing/migr
   assert.match(builder, /UNSIGNED-SDK-VALIDATION-ONLY/);
   assert.match(ci, /msix-sdk-validation:[\s\S]*needs: \[test-and-build-windows\]/);
   assert.match(ci, /build_msix\.ps1[\s\S]*-UnsignedValidationOnly/);
+  const validation = ci.split('  msix-sdk-validation:')[1].split('  release:')[0];
+  assert.match(validation, /\$source = git rev-parse HEAD/);
+  assert.match(validation, /-SourceSha \$source/);
+  assert.doesNotMatch(validation, /-SourceSha \$env:GITHUB_SHA/);
   assert.match(ci, /verify_msix_packaging\.ps1/);
   assert.doesNotMatch(workflow + builder,
     /gh release|Add-AppxPackage|Import-Certificate|TrustedPeople|Root\\|Start-Process|ForceApplicationShutdown/);
