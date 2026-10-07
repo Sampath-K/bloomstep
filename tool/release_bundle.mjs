@@ -7,7 +7,17 @@ const digest = bytes => createHash('sha256').update(bytes).digest('hex');
 const readJson = path => JSON.parse(readFileSync(path, 'utf8').replace(/^\uFEFF/, ''));
 const requireEvidence = (condition, message) => { if (!condition) throw new Error(message); };
 
-export function verifyReleaseEvidence({ root, source, tag, runId, genuineResult }) {
+export function normalizeChecksumErrors(value) {
+  const lines = typeof value === 'string' ? [value] : value;
+  const allowed = ['The source file is corrupted',
+    'Verification of the source file failed: The hash of the file is incorrect'];
+  requireEvidence(Array.isArray(lines) && lines.length > 0 &&
+    lines.every(line => typeof line === 'string' && allowed.includes(line)),
+  'Native checksum evidence must contain only exact recognized error strings.');
+  return lines;
+}
+
+export function verifyReleaseEvidence({ root, source, tag, runId, genuineResult, auditOnly = false }) {
   requireEvidence(/^[a-f0-9]{40}$/.test(source) && /^\d+$/.test(runId), 'Invalid release source/run identity.');
   const packageDir = join(root, 'universal-output');
   const manifest = readJson(join(packageDir, 'universal-manifest.json'));
@@ -35,10 +45,9 @@ export function verifyReleaseEvidence({ root, source, tag, runId, genuineResult 
       'corruptMarkerAndPayloadAbsent']) {
       requireEvidence(proof[key] === true, `Native lifecycle requirement missing: ${key}`);
     }
+    normalizeChecksumErrors(proof.checksumErrorLines);
     requireEvidence(proof.cancelWizardExitCode === 2 && proof.cancelLauncherExitCode === 2 &&
-      proof.corruptExitCode === 5 && Array.isArray(proof.checksumErrorLines) &&
-      proof.checksumErrorLines.some(line => line === 'The source file is corrupted' ||
-        line === 'Verification of the source file failed: The hash of the file is incorrect'),
+      proof.corruptExitCode === 5,
     'Native cancellation/checksum rollback evidence missing.');
     requireEvidence(proof.installedPeMachine === (arch === 'x64' ? 0x8664 : 0xaa64) &&
       proof.nativeArchitectureProbe.nativeArchitecture === arch &&
@@ -54,15 +63,16 @@ export function verifyReleaseEvidence({ root, source, tag, runId, genuineResult 
       requireEvidence(result.outcome === 'PASS actual checked/unchecked genuine app launch only' &&
         result.modes?.length === 2, 'Genuine checked/unchecked successful evidence missing.');
     } else {
-      requireEvidence(tag === 'v0.1.0-preview.11' && genuineResult === 'failure' &&
+      requireEvidence((tag === 'v0.1.0-preview.12' || (auditOnly && tag === 'v0.1.0-preview.11')) && genuineResult === 'failure' &&
         result.outcome === 'UNVERIFIED' && result.workerTokenElevated === true &&
         result.workerInteractive === true && Array.isArray(result.modes) && result.modes.length === 0,
-      'Exact preview11 manual-trial exception requires elevated pre-install guard evidence, not arbitrary failure.');
+      'Exact preview12 manual-trial exception requires elevated pre-install guard evidence, not arbitrary failure.');
     }
     launch[arch] = result;
   }
   return {
     kind: 'bloomstep-same-run-owner-trial-release-evidence-v1', source, tag, actionsRunId: runId,
+    publicationAuthorized: !auditOnly,
     origin: `https://github.com/Sampath-K/bloomstep/actions/runs/${runId}`,
     package: manifest, native, launch,
     genuineLaunch: genuineResult === 'success' ? 'PASS automated checked/unchecked only; full owner journey pending' :
@@ -73,9 +83,11 @@ export function verifyReleaseEvidence({ root, source, tag, runId, genuineResult 
 }
 
 if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
-  const [, , root, source, tag, runId, genuineResult] = process.argv;
-  const receipt = verifyReleaseEvidence({ root, source, tag, runId, genuineResult });
-  const output = join(root, 'release-proof');
+  const [, , root, source, tag, runId, genuineResult, mode] = process.argv;
+  requireEvidence(mode === undefined || (mode === '--audit-failed-preview11' && tag === 'v0.1.0-preview.11'),
+    'Unknown publication/audit mode.');
+  const receipt = verifyReleaseEvidence({ root, source, tag, runId, genuineResult, auditOnly: mode !== undefined });
+  const output = join(root, mode ? 'release-proof-audit-NOT-FOR-PUBLICATION' : 'release-proof');
   mkdirSync(output, { recursive: true });
   writeFileSync(join(output, 'release-evidence.json'), `${JSON.stringify(receipt, null, 2)}\n`);
   const url = `https://github.com/Sampath-K/bloomstep/releases/download/${tag}`;
@@ -109,5 +121,5 @@ if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.ur
     `These are the actual compiled universal Welcome on isolated CI x64/ARM64, followed by Cancel. They are not customer app/Finish acceptance, universal warning or safety evidence. Static illustrations only.\n\n` +
     `![Actual x64 universal Welcome, isolated CI Cancel evidence](${url}/actual-universal-welcome-x64.png)\n\n` +
     `![Actual ARM64 universal Welcome, isolated CI Cancel evidence](${url}/actual-universal-welcome-arm64.png)\n\n` + checklist);
-  console.log(`Verified one-run release package, both native/frame receipts and ${receipt.genuineLaunch}.`);
+  console.log(`${mode ? 'AUDIT ONLY, NOT AUTHORIZED FOR PUBLICATION: ' : ''}Verified one-run release package, both native/frame receipts and ${receipt.genuineLaunch}.`);
 }

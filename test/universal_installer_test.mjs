@@ -18,7 +18,7 @@ test('universal installer bundles exclusive native OS payloads without bootstrap
   assert.match(source, /postinstall skipifsilent runasoriginaluser/);
   assert.doesNotMatch(source, /DownloadTemporaryFile|dontverifychecksum|skipifsourcedoesntexist|PrivilegesRequired=admin/);
 });
-test('universal packaging remains required and source-pinned, manual trial exception is exact preview11 only', () => {
+test('universal packaging remains required and source-pinned, recovery exception is exact preview12 only', () => {
   const workflow = read('.github/workflows/ci.yml');
   assert.match(workflow, /universal-installer:/);
   assert.match(workflow, /universal-native-proof:/);
@@ -26,8 +26,8 @@ test('universal packaging remains required and source-pinned, manual trial excep
   assert.match(workflow, /payload-manifest-/);
   assert.match(workflow, /needs: \[api, test-and-build-windows, installer-launch-evidence, universal-native-proof, universal-app-launch-evidence\]/);
   assert.match(workflow, /github\.ref_name == 'v0\.1\.0-preview\.10'/);
-  assert.match(workflow, /needs\.universal-app-launch-evidence\.result == 'success' \|\| github\.ref_name == 'v0\.1\.0-preview\.11'/);
-  assert.doesNotMatch(workflow, /github\.ref_name == 'v0\.1\.0-preview\.12'/);
+  assert.match(workflow, /needs\.universal-app-launch-evidence\.result == 'success' \|\| github\.ref_name == 'v0\.1\.0-preview\.12'/);
+  assert.doesNotMatch(workflow, /github\.ref_name == 'v0\.1\.0-preview\.13'/);
   assert.match(workflow, /release_bundle\.mjs/);
   assert.match(workflow, /universal-native-\$\{\{ matrix\.arch/);
 });

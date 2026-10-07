@@ -7,7 +7,7 @@ preview.9 and standing quality-gated immutable preview releases for subsequent
 app/installer merges. Existing preview.8/preview.9 binaries remain immutable.
 Parent pixel review and mandatory exact-source quality gates still gate this
 candidate. The user-directed frozen-v1 resequence defers the new operational
-pipeline; the exact preview.10 and separately authorized preview.11
+pipeline; the exact preview.10 and separately authorized recovery preview.12
 owner-manual-trial exceptions are described below.
 No new release has been published by this increment.
 The separate website-only preview.9 promotion did not itself authorize app
@@ -103,18 +103,26 @@ native process must still be alive at the end of the ten-second observation
 window with a visible owned app window; a briefly sampled/crashed process is
 not a pass. Ordinary sign-in and full journey still require owner acceptance.
 
-The owner separately authorized **only exact preview.11** as a manual-test
-candidate on 7 October 2026, with genuine launch-after-Finish explicitly
+The owner separately authorized an exact manual-test candidate on 7 October
+2026, with genuine launch-after-Finish explicitly
 UNVERIFIED. Exact-head API/x64/ARM64/customer-quality/universal-native gates
-and parent review remain mandatory. This is not an implicit extension of
-preview.10 or a general exception: preview.12 and later require launch proof.
+and parent review remain mandatory. Preview.11's tag-run native evidence
+passed, but publication failed because the release validator expected an
+array while PowerShell serialized the single exact checksum error as a
+string. That tag stays immutable and unpublished. Parent authorized carrying
+only this manual-trial exception to **exact recovery preview.12**, not a
+general future waiver; preview.13 and later again require launch proof.
 Publication verifies the selected tag-run package bytes, source/version,
 payload manifests, both actual native lifecycle/frame receipts, and genuine
-launch receipts bound to that SAME package SHA. The preview.11 exception
+launch receipts bound to that SAME package SHA. The preview.12 exception
 accepts only the known elevated interactive worker guard with zero modes,
 not an arbitrary launch failure. Jobs remain visibly failed; no protection,
 installer behavior or token guard changes. Same-source builds may have
-different binary hashes; never mix push/PR/tag-run artifacts.
+different binary hashes; never mix push/PR/tag-run artifacts. Checksum receipt
+normalization accepts one exact error string or a nonempty string array
+containing only exact recognized errors; missing/malformed/unknown entries
+or incorrect lifecycle exits still fail. An explicit failed-preview11 local
+audit validates its original bytes/receipts without authorizing publication.
 
 The GitHub prerelease is publicly accessible, not a private distribution.
 It is intended only for the owner manual checklist, not recruitment or
