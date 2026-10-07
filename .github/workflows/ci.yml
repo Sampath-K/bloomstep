@@ -530,6 +530,27 @@ jobs:
             Copy-Item "artifacts\bloomstep-windows-$arch\release-output\payload-manifest-$arch.json" $output
           }
           Write-Output "Offline universal installer compressed bytes: $($installer.Length)"
+      - name: Compile real native x64 host-query probe, never a release asset
+        shell: pwsh
+        run: |
+          $output = Join-Path $PWD 'native-probe-output'
+          New-Item -ItemType Directory -Path $output -Force | Out-Null
+          $vswhere = "${env:ProgramFiles(x86)}\Microsoft Visual Studio\Installer\vswhere.exe"
+          $vs = & $vswhere -latest -products '*' -requires Microsoft.VisualStudio.Component.VC.Tools.x86.x64 -property installationPath
+          if (-not $vs) { throw 'Existing x64 MSVC toolchain required for a native (not managed) process probe.' }
+          $vcvars = Join-Path $vs 'VC\Auxiliary\Build\vcvars64.bat'
+          $source = Join-Path $PWD 'tool\fixtures\native_architecture_probe.cpp'
+          $probe = Join-Path $output 'native-host-x64-probe.exe'
+          $object = Join-Path $env:RUNNER_TEMP 'native-host-x64-probe.obj'
+          & $env:ComSpec /d /s /c "call `"$vcvars`" >nul && cl /nologo /W4 /WX /EHsc /MT `"$source`" /Fo`"$object`" /Fe`"$probe`" /link /NOLOGO"
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          @{
+            kind = 'native-x64-host-query-probe-v1'; source = (git rev-parse HEAD)
+            sourceFile = 'tool/fixtures/native_architecture_probe.cpp'
+            sourceSha256 = (Get-FileHash $source).Hash.ToLower()
+            probeSha256 = (Get-FileHash $probe).Hash.ToLower()
+            visualStudioVersion = (& $vswhere -latest -products '*' -requires Microsoft.VisualStudio.Component.VC.Tools.x86.x64 -property installationVersion)
+          } | ConvertTo-Json | Set-Content "$output\native-probe-manifest.json" -Encoding utf8
       - name: Compile isolated checksum fault-injection fixture, never a release asset
         shell: pwsh
         run: |
@@ -560,6 +581,10 @@ jobs:
           path: universal-output/
       - uses: actions/upload-artifact@v4
         with:
+          name: universal-native-host-query-NOT-APP
+          path: native-probe-output/
+      - uses: actions/upload-artifact@v4
+        with:
           name: universal-integrity-fixture-NOT-FOR-RELEASE
           path: |
             universal-integrity-output/isolated-corrupted-setup.exe
@@ -588,6 +613,10 @@ jobs:
         with:
           name: universal-integrity-fixture-NOT-FOR-RELEASE
           path: universal-integrity-output
+      - uses: actions/download-artifact@v4
+        with:
+          name: universal-native-host-query-NOT-APP
+          path: native-probe-output
       - name: Verify offline native routing and disposable installer lifecycle
         shell: pwsh
         run: |

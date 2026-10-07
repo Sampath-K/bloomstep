@@ -112,7 +112,7 @@ test('actual proof requires package and native machine authority, cancel, instal
   const proof = read('tool/verify_universal_installer.ps1');
   assert.match(proof, /GITHUB_ACTIONS/);
   assert.match(proof, /manifest\.source -ne \$source/);
-  assert.match(proof, /\/platform:x64/);
+  assert.match(proof, /native-probe-manifest\.json/);
   assert.match(proof, /processMachine -ne 0x8664/);
   assert.match(proof, /cancelBeforePayload/);
   assert.match(proof, /selectedPayloadAllHashesVerified/);
@@ -122,6 +122,18 @@ test('actual proof requires package and native machine authority, cancel, instal
   const workflow = read('.github/workflows/ci.yml');
   assert.match(workflow, /universal-integrity-fixture/);
   assert.doesNotMatch(workflow, /gh release create[^\n]*integrity/);
+});
+test('ARM emulation proof uses a genuine native x64 process, not managed PE metadata', () => {
+  const source = read('tool/fixtures/native_architecture_probe.cpp');
+  assert.match(source, /IsWow64Process2/);
+  assert.match(source, /sizeof\(void\*\) == 8/);
+  assert.doesNotMatch(source, /System\.|CLR|WindowsIdentity/);
+  const workflow = read('.github/workflows/ci.yml');
+  assert.match(workflow, /vcvars64\.bat/);
+  assert.match(workflow, /native_architecture_probe\.cpp/);
+  assert.match(workflow, /native-probe-output/);
+  assert.match(workflow, /native-probe-manifest\.json/);
+  assert.doesNotMatch(workflow, /gh release create[^\n]*native-probe/);
 });
 test('actual PowerShell corruption oracle ignores command paths and verifies Welcome Cancel exit (no installer execution)', () => {
   const helper = fileURLToPath(new URL('../tool/universal_integrity_contract.ps1', import.meta.url)).replaceAll("'", "''");

@@ -50,8 +50,11 @@ The manifest plus trusted same-run Actions artifact provenance establishes
 the input chain; PE structure alone is not proof that arbitrary bytes are a
 genuine build.
 
-CI universal proof uses disposable actual x64 and ARM64 runners, an x64
-process querying native architecture on ARM, owned-window Cancel before
+CI universal proof uses disposable actual x64 and ARM64 runners and a native
+MSVC-built x64 console process (not managed PE metadata or a CLR that may
+run natively on ARM), with a source/hash-pinned separate test artifact.
+That process queries native architecture on ARM. Lifecycle proof covers
+owned-window Cancel before
 payload, actual selected installed PE/all-file hash/inventory readback,
 silent/default-off zero receipt, and owned uninstall. A separate isolated
 AppId checksum fixture contains genuine release payloads plus one

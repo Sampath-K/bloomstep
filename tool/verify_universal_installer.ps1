@@ -26,9 +26,18 @@ if ($manifest.payloadManifests.$ExpectedArch -ne
   throw 'Selected payload manifest hash mismatch.'
 }
 New-Item -ItemType Directory -Path $EvidenceDir -Force | Out-Null
-$probe = Join-Path $env:RUNNER_TEMP 'Bloomstep-native-architecture-x64-probe.exe'
-& "$env:WINDIR\Microsoft.NET\Framework64\v4.0.30319\csc.exe" /nologo /platform:x64 "/out:$probe" tool\fixtures\native_architecture_probe.cs
-if ($LASTEXITCODE -ne 0) { throw 'x64 native architecture probe compilation failed.' }
+$probe = Join-Path $PWD 'native-probe-output\native-host-x64-probe.exe'
+$probeManifest = Get-Content (Join-Path $PWD 'native-probe-output\native-probe-manifest.json') -Raw | ConvertFrom-Json
+if ($probeManifest.kind -ne 'native-x64-host-query-probe-v1' -or $probeManifest.source -ne $source -or
+    $probeManifest.sourceFile -ne 'tool/fixtures/native_architecture_probe.cpp' -or
+    $probeManifest.sourceSha256 -ne (Get-FileHash "$PSScriptRoot\fixtures\native_architecture_probe.cpp").Hash.ToLower() -or
+    $probeManifest.probeSha256 -ne (Get-FileHash $probe).Hash.ToLower()) {
+  throw 'Native x64 host-query probe source/hash authority mismatch.'
+}
+$probeBytes = [IO.File]::ReadAllBytes($probe)
+if ([BitConverter]::ToUInt16($probeBytes,[BitConverter]::ToInt32($probeBytes,60)+4) -ne 0x8664) {
+  throw 'Native process probe is not AMD64.'
+}
 $native = (& $probe $ExpectedArch) | ConvertFrom-Json
 if ($LASTEXITCODE -ne 0 -or $native.nativeArchitecture -ne $ExpectedArch -or -not $native.process64Bit -or
     ($ExpectedArch -eq 'arm64' -and $native.processMachine -ne 0x8664)) {
@@ -46,6 +55,7 @@ $report = [ordered]@{
   kind = 'actual-universal-native-lifecycle-not-customer-acceptance'
   source = $source; architecture = $ExpectedArch; packageSha256 = $manifest.installerSha256
   compressedBytes = $manifest.bytes; nativeArchitectureProbe = $native
+  nativeProbeSha256 = $probeManifest.probeSha256
   offlineMechanism = 'Both payloads embedded, no download/bootstrap/child-installer code'
   keyboardOrNarrator = 'UNKNOWN'; checkedUncheckedInteractiveLaunch = 'UNVERIFIED: separate blocking proof still required'
   outcome = 'running'
