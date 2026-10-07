@@ -13,6 +13,77 @@ The separate website-only preview.9 promotion did not itself authorize app
 changes or release/tag mutation. The preview.8 warning/capture evidence below
 remains historical and must not be relabeled as preview.9.
 
+## Bounded universal follow-up (unreleased)
+
+PR21 merged as `45efbf2da0cb8363675321e5e257d5dd66391f04`; that exact source
+was published as immutable preview.10 after parent actual-pixel review.
+Preview.10 and its public bytes are not rebuilt or replaced. The website
+continues to offer preview.9 until separate owner acceptance/promotion.
+
+The new package uses the existing Inno wizard and embeds both genuine,
+same-run Release directories, not nested installers. `ProcessorArchitecture`
+reports the **native Windows OS** architecture; Inno uses
+`IsWow64Process2`'s native machine (with `GetNativeSystemInfo` fallback).
+`paX64` and `paArm64` are exclusive file checks; `arm64 or x64os` rejects
+32-bit/unsupported Windows before installing. `x64compatible` must not
+select a universal payload because it includes ARM Windows x64 emulation.
+The compiler must be observed as Inno 6.3 or newer; its exact version is
+recorded in the package manifest.
+
+Tradeoff: one larger download carries both native payloads; measure the
+compiled byte count rather than promising a size. No runtime payload fetch,
+retry, network host, temporary bootstrap installer or ARM fallback is added.
+Installation is offline once downloaded; sign-in/sync still require a
+connection. Secondary per-architecture assets remain support options.
+Existing per-user `PrivilegesRequired=lowest` and `runasoriginaluser` remain.
+No signing capability is added: a new package hash has its own reputation,
+and unknown-publisher/reputation warnings can remain. It does not newly
+require admin/UAC elevation; do not elevate to bypass a warning. Checksums
+establish consistency, not signing or safety.
+
+Before compilation, each Release tree must match the same-run source/version,
+native EXE/DLL machine types, required Flutter assets, exact inventory and
+SHA-256 hashes. Missing/corrupt/debug/fixture inputs fail; no
+`skipifsourcedoesntexist` or disabled embedded checksum is permitted.
+The manifest plus trusted same-run Actions artifact provenance establishes
+the input chain; PE structure alone is not proof that arbitrary bytes are a
+genuine build.
+
+CI universal proof uses disposable actual x64 and ARM64 runners, an x64
+process querying native architecture on ARM, owned-window Cancel before
+payload, actual selected installed PE/all-file hash/inventory readback,
+silent/default-off zero receipt, and owned uninstall. A separate isolated
+AppId checksum fixture contains genuine release payloads plus one
+uncompressed marker; exactly one marker byte is changed in a copy. A checksum
+failure must roll back the payload and leave observations absent. This is
+fault-injection evidence, not a corrupted public release or customer trial.
+Unsupported/32-bit hosts have contract coverage, not real hardware proof.
+Keyboard/Narrator and ordinary sign-in/customer launch acceptance are not
+inferred from these checks.
+
+The next preview requires exact-head API/x64/ARM64/customer-quality,
+universal-native proof, actual independent checked/unchecked non-elevated
+installing-user proof, and parent review before ordinary merge/tag/publication.
+The exact preview.10 exception does not extend. If the hosted worker is
+elevated again, preserve its failed guard/diagnostics and report the clean
+human-machine prerequisite; no skip, success fallback or protection change.
+
+Owner checklist: fresh public package/source/checksum readback; native x64
+and ARM64 install (including emulated setup process); Welcome/recipe/garden
+education and Back/Cancel; optional observations unchecked with zero receipt;
+checked Finish exactly one non-elevated app as the installing user; unchecked
+Finish zero app; ordinary sign-in and full garden journey; offline installation
+and explicit unsupported/corrupt stop. Keep the public pointer on preview.9
+and no external recruitment until separate owner acceptance. Promote the
+same verified immutable bytes if accepted, not a rebuild.
+
+The site supports an optional verified `release.universal` URL/SHA-256 entry.
+Without it current preview.9 rendering is unchanged. With it the static,
+no-JS primary link is "Download Bloomstep for Windows", with secondary
+architecture links collapsed. Browser CPU hints are not queried in that mode;
+its click uses the existing `unknown` architecture category without changing
+telemetry or consent. No invented candidate checksum is committed.
+
 ## Behaviour (contract before implementation)
 
 - Teach one routine-linked tiny action and a personal celebration using original

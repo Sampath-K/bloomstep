@@ -2,6 +2,7 @@ import { build } from 'esbuild';
 import { mkdir, writeFile, readFile } from 'node:fs/promises';
 import { validatePublicConfig } from './operator-auth.mjs';
 import { fileURLToPath } from 'node:url';
+import { validateRelease, renderDownloads } from './release-downloads.mjs';
 
 const values=['CONSOLE_CLIENT_ID','OIDC_ISSUER','OIDC_API_SCOPE','API_ORIGIN'].map(key=>process.env[key]);
 if(values.some(Boolean) && !values.every(Boolean)) throw Error('All public console deployment identifiers are required together.');
@@ -23,16 +24,11 @@ await build({entryPoints:[fileURLToPath(new URL('./customer.mjs',import.meta.url
 const customer = JSON.parse(await readFile(new URL('./customer-config.json',import.meta.url),'utf8'));
 const origin = new URL(customer.origin);
 if(origin.protocol !== 'https:' || origin.origin !== customer.origin) throw Error('Canonical origin must be an HTTPS origin.');
-if(!/^v[0-9A-Za-z.-]+$/.test(customer.release.tag)) throw Error('Explicit release tag required.');
-for (const arch of ['arm64','x64']) {
-  const release = customer.release[arch];
-  const expected = `https://github.com/Sampath-K/bloomstep/releases/download/${customer.release.tag}/Bloomstep-${customer.release.tag.slice(1)}-windows-${arch}-setup.exe`;
-  if(release.url !== expected ||
-      !/^[a-f0-9]{64}$/.test(release.sha256)) throw Error('Verified release assets and checksums required.');
-}
+validateRelease(customer.release);
 for (const page of ['index.html','releases/index.html']) {
   const url = new URL(`./${page}`,import.meta.url);
   let html = await readFile(url,'utf8');
+  html = renderDownloads(html, customer.release);
   html = html.replaceAll('https://brave-plant-02c10e800.5.azurestaticapps.net',customer.origin);
   for (const arch of ['arm64','x64']) {
     html = html.replace(new RegExp(`https://github\\.com/Sampath-K/bloomstep/releases/download/[^"\\s]+-windows-${arch}-setup\\.exe`,'g'),customer.release[arch].url);

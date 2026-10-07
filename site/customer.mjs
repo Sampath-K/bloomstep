@@ -74,7 +74,7 @@ function initializeCustomer() {
     link.addEventListener('click', () => record('download_click', link.dataset.download));
   }
   // Coarse CPU guidance is used for display only, never sent as a visitor attribute.
-  if (navigator.userAgentData?.getHighEntropyValues) {
+  if (!document.querySelector('[data-universal-download]') && navigator.userAgentData?.getHighEntropyValues) {
     navigator.userAgentData.getHighEntropyValues(['architecture', 'bitness']).then(value => {
       const arch = architectureHint(value.architecture, value.bitness);
       if (arch === 'unknown') return;

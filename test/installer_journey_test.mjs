@@ -78,7 +78,8 @@ test('owner-trial preview10 alone can publish with a visible failed launch evide
   const ordinary = workflow.split('  test-and-build-windows:')[1].split('  release:')[0];
   assert.doesNotMatch(ordinary, /verify_installer_journey\.ps1/);
   const release = workflow.split('  release:')[1];
-  assert.match(release, /needs: \[api, test-and-build-windows, installer-launch-evidence\]/);
+  assert.match(release, /needs: \[api, test-and-build-windows, installer-launch-evidence, universal-native-proof\]/);
+  assert.match(release, /needs\.universal-native-proof\.result == 'success'/);
   assert.match(release, /needs\.api\.result == 'success'/);
   assert.match(release, /needs\.test-and-build-windows\.result == 'success'/);
   assert.match(release, /needs\.installer-launch-evidence\.result == 'success' \|\| github\.ref_name == 'v0\.1\.0-preview\.10'/);

@@ -1,11 +1,24 @@
 #ifndef AppArch
   #define AppArch "arm64"
 #endif
+#ifdef UniversalIntegrityFixture
+  #ifndef OnboardingJourneyFixture
+    #error Integrity fault injection requires the isolated journey identity, never a public package.
+  #endif
+#endif
 #ifndef AppVersion
   #define AppVersion "0.1.0-preview"
 #endif
 #ifndef SourceDir
   #define SourceDir "..\build\windows\" + AppArch + "\runner\Release"
+#endif
+#if AppArch == "universal"
+  #ifndef SourceDirX64
+    #error Universal packaging requires the verified x64 Release directory.
+  #endif
+  #ifndef SourceDirArm64
+    #error Universal packaging requires the verified ARM64 Release directory.
+  #endif
 #endif
 
 [Setup]
@@ -46,7 +59,10 @@ WizardSmallImageFile=assets\wizard-seed.bmp
 UninstallDisplayIcon={app}\bloomstep.exe
 CloseApplications=yes
 RestartApplications=no
-#if AppArch == "arm64"
+#if AppArch == "universal"
+ArchitecturesAllowed=arm64 or x64os
+ArchitecturesInstallIn64BitMode=arm64 or x64os
+#elif AppArch == "arm64"
 ArchitecturesAllowed=arm64
 ArchitecturesInstallIn64BitMode=arm64
 #else
@@ -62,11 +78,19 @@ FinishedHeadingLabel=Bloomstep is installed
 FinishedLabel=Next: sign in and choose your first tiny recipe.%nLimited unsigned preview. Opening the app below is optional.
 
 [Files]
+#if AppArch == "universal"
+Source: "{#SourceDirX64}\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs createallsubdirs; Check: UseX64Payload
+Source: "{#SourceDirArm64}\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs createallsubdirs; Check: UseArm64Payload
+#else
 Source: "{#SourceDir}\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs createallsubdirs
+#endif
 Source: "assets\education-seed.bmp"; Flags: dontcopy
 Source: "assets\education-growth.bmp"; Flags: dontcopy
 Source: "assets\education-recipe.bmp"; Flags: dontcopy
 Source: "assets\education-hero.bmp"; Flags: dontcopy
+#ifdef UniversalIntegrityFixture
+Source: "{#IntegrityMarker}"; DestDir: "{app}"; DestName: "integrity-probe.txt"; Flags: ignoreversion nocompression
+#endif
 
 [InstallDelete]
 Type: files; Name: "{app}\measurement-owner.txt"
@@ -92,6 +116,17 @@ Root: HKCU; Subkey: "Software\Classes\bloomstep\shell\open\command"; ValueType: 
 #endif
 
 [Code]
+#if AppArch == "universal"
+function UseX64Payload(): Boolean;
+begin
+  Result := ProcessorArchitecture = paX64;
+end;
+
+function UseArm64Payload(): Boolean;
+begin
+  Result := ProcessorArchitecture = paArm64;
+end;
+#endif
 #ifdef OnboardingFixture
 function PrepareToInstall(var NeedsRestart: Boolean): String;
 begin
