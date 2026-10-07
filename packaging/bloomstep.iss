@@ -74,6 +74,7 @@ ArchitecturesInstallIn64BitMode=x64compatible
 [Messages]
 SelectDirDesc=Choose where Bloomstep will grow.
 SelectDirLabel3=Bloomstep will use this folder. Select Install to begin, Browse to choose another folder, or Cancel to leave without installing.
+SelectDirBrowseLabel=Select Install to begin. To choose a different folder, select Browse.
 FinishedHeadingLabel=Bloomstep is ready
 FinishedLabel=Open Bloomstep to create your first tiny habit.%nLimited unsigned Windows preview. Sign-in required. Opening the app below is optional.
 

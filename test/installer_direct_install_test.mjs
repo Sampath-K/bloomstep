@@ -15,6 +15,8 @@ test('destination is the sole preinstall decision and Install commits, with nati
   assert.match(setup, /DefaultDirName=\{localappdata\}\\Programs\\Bloomstep/);
   assert.match(setup, /UsePreviousAppDir=yes/);
   assert.match(setup, /CurPageID = wpSelectDir[\s\S]*msgButtonInstall/);
+  assert.match(setup, /^SelectDirBrowseLabel=.*Install.*Browse/m);
+  assert.match(read('tool/verify_onboarding_wizard.ps1'), /defaultDirectoryMatches = \$true/);
   assert.doesNotMatch(setup, /CreateCustomPage\(|MeasurementCheckBox|MeasurementEvent|WriteMeasurement|SaveStringToFile/);
   assert.match(setup, /FinishedHeadingLabel=Bloomstep is ready/);
   assert.match(setup, /Open Bloomstep to create your first tiny habit/);
@@ -63,6 +65,7 @@ test('actual proof measures transitions/finish/no dwell, never treats equivalent
   assert.match(proof, /sceneFrames/);
   assert.match(proof, /finishObserved/);
   assert.match(proof, /timerStopped/);
+  assert.match(proof, /timerStopped = -not \$body\.Contains\('Bloomstep progress timer disposal failed'\)/);
 });
 
 test('owned capture success/timeout/cleanup write exact stage and process exit state without an installer',

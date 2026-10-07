@@ -29,6 +29,7 @@ $installStartedAt = $null
 $report = [ordered]@{ kind = 'actual-compiled-install-progress-not-app-acceptance';
   source = $manifest.source; installerSha256 = $manifest.installerSha256; installed = $false;
   sceneFrames = $frames; finishObserved = $false; timerStopped = $false; outcome = 'running';
+  cleanupVerified = $false;
   screenReaderAcceptance = 'UNKNOWN'; genuineFinishLaunch = 'UNVERIFIED; deliberately suppressed in this installation-only proof' }
 $log = Join-Path $EvidenceDir 'actual-install.log'
 try {
@@ -47,6 +48,7 @@ try {
       }
       if (-not $committed) {
         if (-not $text.Contains('Select Destination Location')) { throw 'First actual page was not destination.' }
+        if ($text -match 'click Next|select Next') { throw 'Destination hint still instructs Next instead of Install.' }
         $install = [OnboardingWizard]::Find($window, 'Install')
         $browse = [OnboardingWizard]::Find($window, 'Browse...')
         if ($install -eq [IntPtr]::Zero -or $browse -eq [IntPtr]::Zero) { throw 'Native destination Install/Browse controls missing.' }
@@ -84,11 +86,15 @@ try {
   }
   Wait-CaptureTree 'install'
   if ($setup.ExitCode -ne 0) { throw 'Actual installer launcher exit was not0.' }
+  if (@($captureOwned.Values | Where-Object { $_.ExitCode -ne 0 }).Count -ne 0) {
+    throw 'Actual owned installer child did not exit0.'
+  }
   if (Test-Path $receipt) { throw 'Installer observations must not exist.' }
   if (-not (Test-Path "$target\bloomstep.exe")) { throw 'Actual progress install did not create the payload.' }
   $body = Get-Content $log -Raw
-  $report.timerStopped = $body.Contains('Bloomstep install presentation stopped.') -or
-    $body.Contains('Bloomstep static install presentation') -or $body.Contains('progress timer could not be created')
+  $report.timerStopped = -not $body.Contains('Bloomstep progress timer disposal failed') -and
+    ($body.Contains('Bloomstep install presentation stopped.') -or
+     $body.Contains('Bloomstep static install presentation') -or $body.Contains('progress timer could not be created'))
   if (-not $report.timerStopped) { throw 'Actual motion timer stop/static evidence missing.' }
   $report.staticPreference = $body.Contains('Bloomstep static install presentation')
   $report.observedScenes = @($frames.scene | Sort-Object -Unique)
@@ -114,10 +120,12 @@ try {
         throw 'Actual motion proof owned uninstall failed.'
       }
     }
+    $report.cleanupVerified = -not ((Test-Path "$target\bloomstep.exe") -or (Test-Path $protocol))
   } finally {
     try { Stop-CaptureTree }
     finally {
       Save-CaptureStage 'finally-complete'
+      if (-not $report.cleanupVerified) { $report.outcome += '; FAIL: owned cleanup incomplete' }
       $report | ConvertTo-Json -Depth 10 | Set-Content (Join-Path $EvidenceDir 'actual-progress-proof.json') -Encoding utf8
     }
   }

@@ -92,14 +92,14 @@ New-Item -ItemType Directory -Path $EvidenceDir -Force | Out-Null
 if (-not [OnboardingWizard]::SetProcessDpiAwarenessContext([IntPtr](-4))) {
   throw 'Capture process could not use per-monitor DPI coordinates.'
 }
-$target = Join-Path $EvidenceDir 'NEVER-INSTALL'
+$target = Join-Path $env:LOCALAPPDATA 'Programs\Bloomstep'
 $receipt = Join-Path $env:LOCALAPPDATA 'Bloomstep\measurement\installer-receipt.json'
 if ((Test-Path $target) -or (Test-Path $receipt)) { throw 'Capture refuses existing installation/receipt state.' }
 $states = [Collections.Generic.List[object]]::new()
 $report = @{ sourceRevision = $compiledFixture.sourceRevision; installerSha256 = $compiledFixture.installerSha256;
   expectedOrder = @('destination'); states = $states; installed = $false; outcome = 'running' }
 try {
-  $setup = Start-CaptureProcess $Installer "/SP- /NORESTART /DIR=`"$target`"" 'destination-fixture'
+  $setup = Start-CaptureProcess $Installer '/SP- /NORESTART' 'destination-fixture'
   $observed = $false
   $cancelled = $false
   $deadline = $captureClock.ElapsedMilliseconds + 40000
@@ -109,6 +109,11 @@ try {
       $text = [OnboardingWizard]::Describe($window)
       if (-not $observed -and [OnboardingWizard]::ClassName($window) -eq 'TWizardForm') {
         if (-not $text.Contains('Select Destination Location')) { throw 'First observed wizard page was not destination.' }
+        if ($text -match 'click Next|select Next') { throw 'Destination hint still instructs Next instead of Install.' }
+        if ([OnboardingWizard]::Find($window, $target) -eq [IntPtr]::Zero) {
+          throw 'Native destination did not preserve the current per-user default.'
+        }
+        $report.defaultDirectoryMatches = $true
         foreach ($caption in @('Install', 'Browse...', 'Cancel')) {
           if ([OnboardingWizard]::Find($window, $caption) -eq [IntPtr]::Zero) { throw "Destination control missing: $caption" }
         }
