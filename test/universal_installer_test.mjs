@@ -108,7 +108,7 @@ test('unified customer download is fail-closed after the owner-authorized previe
   assert.match(html, /data-universal-download/);
   assert.match(html, /data-download="unknown"[^>]*>Download Bloomstep for Windows/);
   assert.match(html, /Windows selects the native x64 or ARM64 payload/);
-  assert.match(html, /<details[^>]*>[\s\S]*Secondary architecture-specific downloads/);
+  assert.match(html, /<details[^>]*>[\s\S]*Other downloads \(troubleshooting\)/);
   assert.doesNotMatch(html, /data-universal-download[\s\S]*?<div class="choices"/);
 });
 test('actual proof requires package and native machine authority, cancel, installed hashes and corrupt rollback', () => {

@@ -19,13 +19,16 @@ export function renderDownloads(html, release) {
     if (html.includes('data-universal-download')) throw Error('Restore the per-architecture source before reverting a unified pointer.');
     return html;
   }
-  const secondary = `<details><summary>Secondary architecture-specific downloads</summary>
-        <p class="small">For support only. The primary Windows installer selects the native payload automatically; a browser CPU hint is not used.</p>
+  const exactSize = release.universal.bytes === undefined ? '' :
+    `<p class="small">Exact download size: ${(release.universal.bytes / 1e6).toFixed(2)} MB (${release.universal.bytes.toLocaleString('en-US')} bytes).</p>`;
+  const secondary = `<details><summary>Other downloads (troubleshooting)</summary>
+        <p class="small">For support only. Windows selects the native x64 or ARM64 payload, including when setup runs under emulation. Unsupported 32-bit Windows cannot install. Both payloads are included; a browser CPU hint is not used.</p>
+        ${exactSize}
         <p><a data-download="x64" href="${release.x64.url}">Bloomstep x64</a> · <a data-download="arm64" href="${release.arm64.url}">Bloomstep ARM64</a></p>
       </details>`;
   const size = release.universal.bytes === undefined ? '' :
-    `\n      <p class="small">Download size: ${(release.universal.bytes / 1e6).toFixed(2)} MB (${release.universal.bytes.toLocaleString('en-US')} bytes).</p>`;
-  const primary = `<p id="architecture-guidance">One Windows installer. Windows selects the native x64 or ARM64 payload, including when setup runs under emulation. Unsupported 32-bit Windows cannot install. Both payloads are included; no internet is needed to install after downloading. Sign-in still needs a connection.</p>
+    `\n      <p class="small">Download size: ${(release.universal.bytes / 1e6).toFixed(2)} MB.</p>`;
+  const primary = `<p id="architecture-guidance">One installer for your Windows PC. It automatically chooses the right version. Install offline after downloading; sign-in needs an internet connection.</p>
       <p class="small"><a href="${html.includes('id="download-title"') ? '#windows-install-help' : '/#windows-install-help'}">Windows installation help before opening the installer</a></p>
       <p class="choices" data-universal-download><a class="button" data-download="unknown" href="${release.universal.url}">Download Bloomstep for Windows</a></p>${size}
       ${secondary}`;
