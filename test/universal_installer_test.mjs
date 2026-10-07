@@ -199,6 +199,41 @@ test('genuine outcome oracle rejects transient apps and unsuccessful installer e
   assert.match(proof, /ownedAppWindowVisible/);
   assert.match(proof, /wizardExitCode/);
 });
+test('genuine Inno product authority permits only trailing ASCII resource padding', () => {
+  const helper = fileURLToPath(new URL('../tool/universal_integrity_contract.ps1', import.meta.url)).replaceAll("'", "''");
+  const script = `$ErrorActionPreference='Stop'; . '${helper}';
+    foreach ($valid in @('Bloomstep',('Bloomstep'+(' '*51)))) {
+      if (-not (Test-BloomstepInnoProductName $valid)) { throw 'Genuine padded resource rejected' }
+    }
+    if (-not (Test-BloomstepInnoProductName ('Bloomstep isolated journey proof'.PadRight(60,' ')) 'Bloomstep isolated journey proof')) { throw 'Known padded fixture rejected' }
+    if (Test-BloomstepInnoProductName ('Bloomstep isolated journey proof'.PadRight(60,' '))) { throw 'Fixture accepted as product' }
+    foreach ($invalid in @('',' Bloomstep','Bloomstep other','bloomstep',('Bloomstep'+[char]9),('Bloomstep'+[char]10),('Bloomstep'+[char]13),('Bloomstep'+[char]160))) {
+      if (Test-BloomstepInnoProductName $invalid) { throw 'Non-product identity accepted' }
+    }
+    'PASS'`;
+  assert.match(execFileSync('pwsh', ['-NoProfile', '-NonInteractive', '-Command', script], { encoding: 'utf8' }), /PASS/);
+  assert.match(read('tool/verify_universal_app_launch.ps1'), /Test-BloomstepInnoProductName/);
+  assert.match(read('tool/verify_universal_installer.ps1'), /Test-BloomstepInnoProductName/);
+});
+test('owned Cancel and other modal wizard clicks cannot block the evidence deadline', () => {
+  for (const name of ['tool/verify_universal_installer.ps1', 'tool/verify_universal_app_launch.ps1']) {
+    const proof = read(name);
+    assert.doesNotMatch(proof, /SendMessage\([^;\n]*0x00F5/);
+    assert.match(proof, /PostMessage\([^;\n]*0x00F5/);
+  }
+  const proof = read('tool/verify_universal_installer.ps1');
+  assert.match(proof, /cancel-dispatch/);
+  assert.match(proof, /cancel-confirmation/);
+  assert.match(proof, /Save-NativeStage/);
+  assert.doesNotMatch(proof, /Start-Process[^\n]* -Wait/);
+  assert.match(proof, /TimeoutSeconds = 120/);
+  assert.match(proof, /AddSeconds\(\$TimeoutSeconds\)/);
+  assert.match(proof, /parentPid = \$ownedParents/);
+  assert.match(proof, /ownedDialogs = \$dialogs/);
+  for (const stage of ['install', 'uninstall', 'corrupt', 'cleanup-uninstall']) {
+    assert.match(proof, new RegExp(`Invoke-NativeProcess '${stage}'`));
+  }
+});
 test('compiler compatibility uses observed engine banner, not missing ISCC file-version resources', () => {
   const helper = fileURLToPath(new URL('../tool/inno_compiler_version.ps1', import.meta.url)).replaceAll("'", "''");
   const script = `$ErrorActionPreference='Stop'; . '${helper}';

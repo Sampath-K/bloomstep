@@ -33,6 +33,12 @@ before running an `Output=no` compile-only probe. It requires a single
 authoritative compiler-engine banner and successful architecture-syntax
 compilation; missing/old engine evidence fails closed. ISCC executable
 resource metadata alone is not the compiler-engine version.
+CI product-resource authority accepts only trailing ASCII-space padding
+after the two exact known product/isolated-fixture names, never leading
+whitespace or another name. Owned Cancel/confirmation clicks are posted
+nonblocking because Inno opens a modal exit question. Native proof writes
+per-stage PID/exit/dialog/invocation receipts before and after dispatch and
+bounded install/uninstall/corruption/cleanup waits; a timeout fails, not passes.
 
 Tradeoff: one larger download carries both native payloads; measure the
 compiled byte count rather than promising a size. No runtime payload fetch,

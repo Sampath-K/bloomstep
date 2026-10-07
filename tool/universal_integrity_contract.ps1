@@ -11,6 +11,12 @@ function Assert-WelcomeCancelExit([int]$ExitCode) {
   if ($ExitCode -ne 2) { throw "Owned Welcome wizard did not return Inno's pre-install Cancel exit code 2: $ExitCode" }
 }
 
+function Test-BloomstepInnoProductName([string]$ProductName,
+    [ValidateSet('Bloomstep','Bloomstep isolated journey proof')][string]$ExpectedName = 'Bloomstep') {
+  if ($null -eq $ProductName) { return $false }
+  return ($ProductName.TrimEnd([char]32) -ceq $ExpectedName)
+}
+
 function Assert-GenuineLaunchOutcome([string]$Mode, [int]$WizardExitCode, [int]$LauncherExitCode,
     [int]$LaunchCount, [bool]$SameAppAlive, [bool]$VisibleOwnedWindow) {
   if ($Mode -notin @('checked-launch','unchecked-launch') -or $WizardExitCode -ne 0 -or $LauncherExitCode -ne 0) {

@@ -58,28 +58,105 @@ $report = [ordered]@{
   nativeProbeSha256 = $probeManifest.probeSha256
   offlineMechanism = 'Both payloads embedded, no download/bootstrap/child-installer code'
   keyboardOrNarrator = 'UNKNOWN'; checkedUncheckedInteractiveLaunch = 'UNVERIFIED: separate blocking proof still required'
+  stages = [Collections.Generic.List[object]]::new()
   outcome = 'running'
 }
 $setup = $null
+$owned = [Collections.Generic.HashSet[int]]::new()
+$ownedProcesses = @{}
+$ownedParents = @{}
+$proofClock = [Diagnostics.Stopwatch]::StartNew()
+function Save-NativeStage([string]$Stage, [string]$Invocation = '') {
+  $states = @($ownedProcesses.Keys | ForEach-Object {
+    $process = $ownedProcesses[$_]
+    $exited = $process.HasExited
+    @{ pid = [int]$_; parentPid = $ownedParents[$_]; exited = $exited; exitCode = if ($exited) { $process.ExitCode } else { $null } }
+  })
+  $dialogs = @([OnboardingWizard]::Windows() | ForEach-Object {
+    [uint32]$owner = 0
+    [void][OnboardingWizard]::GetWindowThreadProcessId($_,[ref]$owner)
+    if ($owned.Contains([int]$owner)) {
+      $description = [OnboardingWizard]::Describe($_)
+      foreach ($privatePath in @($env:RUNNER_TEMP,$env:LOCALAPPDATA,$env:USERPROFILE)) {
+        if ($privatePath) { $description = $description.Replace($privatePath,'[ISOLATED-PATH]') }
+      }
+      @{ pid = [int]$owner; handle = $_.ToInt64(); description = $description }
+    }
+  })
+  $report.stages.Add(@{
+    stage = $Stage; elapsedSeconds = $proofClock.Elapsed.TotalSeconds
+    utc = [DateTime]::UtcNow.ToString('o'); invocation = $Invocation
+    processes = $states; ownedDialogs = $dialogs
+  })
+  $report | ConvertTo-Json -Depth 9 | Set-Content (Join-Path $EvidenceDir 'universal-native-receipt.json') -Encoding utf8
+}
+function Update-NativeOwnedProcesses {
+  $snapshot = Get-CimInstance Win32_Process
+  for ($i = 0; $i -lt 5; $i++) {
+    foreach ($process in $snapshot) {
+      $parent = $ownedProcesses[[int]$process.ParentProcessId]
+      if ($parent -and -not $parent.HasExited -and -not $owned.Contains([int]$process.ProcessId)) {
+        $live = Get-Process -Id $process.ProcessId -ErrorAction SilentlyContinue
+        if ($live) {
+          [void]$live.Handle
+          [void]$owned.Add([int]$live.Id)
+          $ownedProcesses[[int]$live.Id] = $live
+          $ownedParents[[int]$live.Id] = [int]$process.ParentProcessId
+        }
+      }
+    }
+  }
+}
+function Invoke-NativeProcess([string]$Stage, [string]$File, [string]$Arguments, [int]$TimeoutSeconds = 120) {
+  if ($TimeoutSeconds -lt 1 -or $TimeoutSeconds -gt 120) { throw 'Native process timeout must be 1 through 120 seconds.' }
+  $invocation = "$([IO.Path]::GetFileName($File)) $Arguments"
+  foreach ($privatePath in @($env:RUNNER_TEMP,$env:LOCALAPPDATA,$env:USERPROFILE)) {
+    if ($privatePath) { $invocation = $invocation.Replace($privatePath,'[ISOLATED-PATH]') }
+  }
+  Save-NativeStage "$Stage-before-start" $invocation
+  $process = Start-Process $File -ArgumentList $Arguments -PassThru
+  [void]$process.Handle
+  [void]$owned.Add($process.Id)
+  $ownedProcesses[$process.Id] = $process
+  $ownedParents[$process.Id] = $PID
+  Save-NativeStage "$Stage-started"
+  $deadline = (Get-Date).AddSeconds($TimeoutSeconds)
+  $nextReceipt = (Get-Date).AddSeconds(5)
+  while ((Get-Date) -lt $deadline) {
+    Update-NativeOwnedProcesses
+    if ($process.HasExited -and @($ownedProcesses.Values | Where-Object { -not $_.HasExited }).Count -eq 0) {
+      Save-NativeStage "$Stage-after-wait"
+      return $process
+    }
+    if ((Get-Date) -ge $nextReceipt) {
+      Save-NativeStage "$Stage-waiting"
+      $nextReceipt = (Get-Date).AddSeconds(5)
+    }
+    Start-Sleep -Milliseconds 200
+  }
+  $report.outcome = 'failure'
+  Save-NativeStage "$Stage-timeout"
+  foreach ($child in $ownedProcesses.Values) {
+    if (-not $child.HasExited) { Stop-Process -Id $child.Id -Force }
+  }
+  Save-NativeStage "$Stage-timeout-stopped"
+  throw "Owned $Stage process tree did not exit within $TimeoutSeconds seconds; inspect stage receipt and owned dialogs."
+}
 try {
   & .\tool\verify_onboarding_wizard.ps1 -Installer $installer -EvidenceDir $EvidenceDir -LoadHelpersOnly
+  Save-NativeStage 'cancel-before-start' '/SP- /NORESTART /DIR=[ISOLATED-CANCEL-TARGET]'
   $setup = Start-Process $installer -ArgumentList "/SP- /NORESTART /DIR=`"$cancelTarget`"" -PassThru
-  $owned = [Collections.Generic.HashSet[int]]::new()
   [void]$owned.Add($setup.Id)
-  $ownedProcesses = @{}
   [void]$setup.Handle
   $ownedProcesses[$setup.Id] = $setup
+  $ownedParents[$setup.Id] = $PID
+  Save-NativeStage 'cancel-started'
   $wizardProcessId = $null
   $cancelled = $false
   $cancelRequested = $false
   $deadline = (Get-Date).AddSeconds(40)
   while ((Get-Date) -lt $deadline -and -not $cancelled) {
-    $processes = Get-CimInstance Win32_Process
-    for ($i=0;$i -lt 5;$i++) {
-      foreach ($process in $processes) {
-        if ($owned.Contains([int]$process.ParentProcessId)) { [void]$owned.Add([int]$process.ProcessId) }
-      }
-    }
+    Update-NativeOwnedProcesses
     foreach ($window in [OnboardingWizard]::Windows()) {
       [uint32]$owner = 0
       [void][OnboardingWizard]::GetWindowThreadProcessId($window,[ref]$owner)
@@ -112,12 +189,23 @@ try {
         }
         $button = [OnboardingWizard]::Find($window,'Cancel')
         if ($button -eq [IntPtr]::Zero) { throw 'Owned Welcome Cancel control missing.' }
-        [void][OnboardingWizard]::SendMessage($button,0x00F5,[IntPtr]::Zero,[IntPtr]::Zero)
+        Save-NativeStage 'cancel-dispatch'
+        if (-not [OnboardingWizard]::PostMessage($button,0x00F5,[IntPtr]::Zero,[IntPtr]::Zero)) {
+          throw 'Owned Welcome Cancel dispatch failed.'
+        }
         $cancelRequested = $true
+        Save-NativeStage 'cancel-dispatched'
       }
       $yes = [OnboardingWizard]::Find($window,'Yes')
       if ($yes -ne [IntPtr]::Zero) {
-        [void][OnboardingWizard]::SendMessage($yes,0x00F5,[IntPtr]::Zero,[IntPtr]::Zero)
+        if (-not $cancelRequested -or $text -notmatch 'Exit Setup|Do you wish to exit Setup|Setup is not complete') {
+          throw 'Unexpected owned Yes dialog; no automatic warning override.'
+        }
+        Save-NativeStage 'cancel-confirmation'
+        if (-not [OnboardingWizard]::PostMessage($yes,0x00F5,[IntPtr]::Zero,[IntPtr]::Zero)) {
+          throw 'Owned Cancel confirmation dispatch failed.'
+        }
+        Save-NativeStage 'cancel-confirmation-dispatched'
       }
     }
     Start-Sleep -Milliseconds 200
@@ -133,7 +221,8 @@ try {
   $report.cancelLauncherExitCode = $setup.ExitCode
   Assert-WelcomeCancelExit $wizardExitCode
   $report.cancelBeforePayload = $true
-  $installed = Start-Process $installer -ArgumentList "/VERYSILENT /SUPPRESSMSGBOXES /NORESTART /DIR=`"$target`"" -Wait -PassThru
+  Save-NativeStage 'cancel-exit-verified'
+  $installed = Invoke-NativeProcess 'install' $installer "/VERYSILENT /SUPPRESSMSGBOXES /NORESTART /DIR=`"$target`""
   if ($installed.ExitCode -ne 0 -or -not (Test-Path "$target\bloomstep.exe")) { throw 'Universal native installation failed.' }
   if (Test-Path $measurement) { throw 'Universal silent installation collected observations.' }
   foreach ($file in $payload.files) {
@@ -156,7 +245,7 @@ try {
   $report.selectedPayloadAllHashesVerified = $true
   $report.installedPeMachine = $machine
   $report.nonSelectedPayloadNotInstalled = $true
-  $uninstall = Start-Process "$target\unins000.exe" -ArgumentList '/VERYSILENT /SUPPRESSMSGBOXES /NORESTART' -Wait -PassThru
+  $uninstall = Invoke-NativeProcess 'uninstall' "$target\unins000.exe" '/VERYSILENT /SUPPRESSMSGBOXES /NORESTART'
   if ($uninstall.ExitCode -ne 0 -or (Test-Path "$target\bloomstep.exe") -or (Test-Path $protocol)) {
     throw 'Universal owned uninstall did not remove payload/protocol.'
   }
@@ -168,11 +257,12 @@ try {
   if ($fault.kind -ne 'isolated-embedded-checksum-fault-v1' -or $fault.source -ne $source -or
       $fault.fixtureAppId -ne 'A6690692-4D92-475A-9EAC-1AD867AB0635' -or
       $fault.installerSha256 -ne (Get-FileHash $faultExe).Hash.ToLower() -or
-      (Get-Item $faultExe).VersionInfo.ProductName -ne 'Bloomstep isolated journey proof') {
+      -not (Test-BloomstepInnoProductName (Get-Item $faultExe).VersionInfo.ProductName 'Bloomstep isolated journey proof')) {
     throw 'Isolated corrupted fixture identity/hash authority mismatch.'
   }
   $faultLog = Join-Path $env:RUNNER_TEMP 'Bloomstep-universal-corrupt-private.log'
-  $failed = Start-Process $faultExe -ArgumentList "/VERYSILENT /SUPPRESSMSGBOXES /NORESTART /DIR=`"$corruptTarget`" /LOG=`"$faultLog`"" -Wait -PassThru
+  $report.corruptionLogFile = [IO.Path]::GetFileName($faultLog)
+  $failed = Invoke-NativeProcess 'corrupt' $faultExe "/VERYSILENT /SUPPRESSMSGBOXES /NORESTART /DIR=`"$corruptTarget`" /LOG=`"$faultLog`""
   $checksumErrors = if (Test-Path $faultLog) { @(Get-EmbeddedChecksumErrors (Get-Content $faultLog)) } else { @() }
   $remainingFiles = if (Test-Path $corruptTarget) { @(Get-ChildItem $corruptTarget -Recurse -File -Force) } else { @() }
   if ($failed.ExitCode -eq 0 -or $remainingFiles.Count -ne 0 -or
@@ -186,15 +276,20 @@ try {
   $report.outcome = 'success'
 } catch {
   $report.outcome = 'failure'
+  Save-NativeStage 'failure'
   throw
 } finally {
-  if ($setup) {
-    foreach ($id in $owned) {
-      if (Get-Process -Id $id -ErrorAction SilentlyContinue) { Stop-Process -Id $id -Force }
-    }
+  Save-NativeStage 'cleanup-before'
+  foreach ($process in $ownedProcesses.Values) {
+    if (-not $process.HasExited) { Stop-Process -Id $process.Id -Force }
   }
   if (Test-Path "$target\unins000.exe") {
-    Start-Process "$target\unins000.exe" -ArgumentList '/VERYSILENT /SUPPRESSMSGBOXES /NORESTART' -Wait
+    $cleanup = Invoke-NativeProcess 'cleanup-uninstall' "$target\unins000.exe" '/VERYSILENT /SUPPRESSMSGBOXES /NORESTART'
+    if ($cleanup.ExitCode -ne 0) {
+      $report.outcome = 'failure'
+      Save-NativeStage 'cleanup-uninstall-failed'
+      throw 'Owned cleanup uninstaller failed; inspect stage receipt.'
+    }
   }
-  $report | ConvertTo-Json -Depth 6 | Set-Content (Join-Path $EvidenceDir 'universal-native-receipt.json') -Encoding utf8
+  Save-NativeStage 'cleanup-after'
 }

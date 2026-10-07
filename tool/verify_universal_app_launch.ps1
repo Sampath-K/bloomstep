@@ -25,7 +25,7 @@ try {
   if ($manifest.kind -ne 'bloomstep-offline-universal-v1' -or $manifest.source -ne $report.source -or
       $manifest.installerFile -ne "Bloomstep-$($manifest.version)-windows-universal-setup.exe" -or
       $manifest.installerSha256 -ne (Get-FileHash $installer).Hash.ToLower() -or
-      (Get-Item $installer).VersionInfo.ProductName -ne 'Bloomstep') {
+      -not (Test-BloomstepInnoProductName (Get-Item $installer).VersionInfo.ProductName)) {
     throw 'Genuine universal source/name/hash/product authority mismatch.'
   }
   $payloadPath = Join-Path $PackageDir "payload-manifest-$ExpectedArch.json"
@@ -96,14 +96,18 @@ try {
             $toggle.Toggle()
             if ($toggle.Current.ToggleState -ne [Windows.Automation.ToggleState]::Off) { throw 'Actual launch choice did not become unchecked.' }
           }
-          [void][OnboardingWizard]::SendMessage($finish,0x00F5,[IntPtr]::Zero,[IntPtr]::Zero)
+          if (-not [OnboardingWizard]::PostMessage($finish,0x00F5,[IntPtr]::Zero,[IntPtr]::Zero)) {
+            throw 'Owned genuine Finish dispatch failed.'
+          }
           $finished = $true
           break
         }
         $next = [OnboardingWizard]::Find($window,'Next >')
         if ($next -eq [IntPtr]::Zero) { $next = [OnboardingWizard]::Find($window,'Next') }
         if ($next -eq [IntPtr]::Zero) { $next = [OnboardingWizard]::Find($window,'Install') }
-        if ($next -ne [IntPtr]::Zero) { [void][OnboardingWizard]::SendMessage($next,0x00F5,[IntPtr]::Zero,[IntPtr]::Zero) }
+        if ($next -ne [IntPtr]::Zero -and -not [OnboardingWizard]::PostMessage($next,0x00F5,[IntPtr]::Zero,[IntPtr]::Zero)) {
+          throw 'Owned genuine Next/Install dispatch failed.'
+        }
       }
       Start-Sleep -Milliseconds 200
     }
