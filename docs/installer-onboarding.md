@@ -7,7 +7,12 @@ only preinstall decision, retaining the per-user default and upgrade location.
 The native button is explicitly **Install**, not Next. Welcome, teaching,
 observations and Ready pages are removed. Existing authored seed/recipe/garden
 BMPs move to real installing progress with a native `CreateCallback`/`SetTimer`
-callback: roughly three seconds per scene and a small bounded drift.
+callback and a small bounded drift. Following actual1.5-2.1second installations,
+parent-directed cadence is600ms: seed, recipe, then garden at1200ms, retaining
+the last panel rather than repeatedly cycling. It runs only while installing,
+never delays completion, and does not guarantee all panels on faster installs.
+These brief visual transitions are not a guarantee that users read every caption.
+Windows reduced-motion continues to keep scene0 static, not rapidly swap scenes.
 CI's exact Inno6.7.1 `CreateCallback` returns `LongWord` (32-bit setup callback
 address), not the `NativeInt` used by newer online help. The declaration is
 bound to that engine's supported signature on both native OS hosts.
@@ -42,7 +47,8 @@ captured PNG hashes and first-observed transition timestamps. Missing scenes
 are explicitly listed; timer logs distinguish initialization from installing.
 Exact PR run37627423101 reached Finish in1526ms (x64 static preference) and
 2104ms (ARM64 motion preference), both at96DPI. Only scene0 was visible;
-scene1/2 transitions and144DPI remain absent. These fast installs are not slowed
+scene1/2 transitions and144DPI remain absent in that earlier3000ms-cadence run.
+New600ms source needs its own actual compiled evidence. These fast installs are not slowed
 to obtain screenshots. This passing lifecycle capture is not full pixel approval.
 The website promotion belongs to a separate PR. Preview.12's bytes/tag are
 unchanged; this source increment does not authorize a new public release.

@@ -87,7 +87,8 @@ begin
     Exit;
   end;
   Elapsed := GetTickCount64() - ProgressStartedAt;
-  Scene := (Elapsed div 3000) mod 3;
+  Scene := Elapsed div 600;
+  if Scene > 2 then Scene := 2;
   ShowProgressScene(Scene);
   Drift := (Elapsed div 150) mod 8;
   if Drift > 4 then Drift := 8 - Drift;

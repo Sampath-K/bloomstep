@@ -35,7 +35,8 @@ function Get-InstallSceneCoverage([AllowEmptyCollection()][object[]]$Frames) {
     allThreeScenesObserved = $observed.Count -eq 3
     orderedTransitionsObserved = $transitions.Count -ge 3 -and
       $transitions[0].scene -eq 0 -and $transitions[1].scene -eq 1 -and $transitions[2].scene -eq 2
-    expectedIntervalMilliseconds = 3000
+    expectedIntervalMilliseconds = 600
+    sequencePolicy = 'Advance twice during real installation, then retain garden; never wait for a scene or repeatedly cycle.'
     timestampScope = 'First actual captured frame of each transition, relative to posted Install; not exact timer-dispatch time.'
   }
 }

@@ -35,7 +35,8 @@ test('three existing scenes use supported native timer and read-only Windows red
   assert.doesNotMatch(progress, /NativeInt/);
   assert.match(progress, /SystemParametersInfoW@user32\.dll/);
   assert.match(progress, /\$1042/);
-  assert.match(progress, /Elapsed div 3000/);
+  assert.match(progress, /Elapsed div 600/);
+  assert.match(progress, /if Scene > 2 then Scene := 2/);
   assert.match(progress, /WizardSilent/);
   assert.match(progress, /ssPostInstall|StopInstallMotion/);
   assert.match(progress, /MotionAllowed := False/);
@@ -44,6 +45,18 @@ test('three existing scenes use supported native timer and read-only Windows red
   for (const name of ['education-seed.bmp', 'education-recipe.bmp', 'education-growth.bmp']) {
     assert.ok(progress.includes(name));
   }
+});
+test('short installs advance three panels without dwell or repeated flashing; fast completion remains immediate', () => {
+  const progress = read('packaging/install-progress.iss');
+  const interval = Number(progress.match(/Scene := Elapsed div (\d+);/)?.[1]);
+  assert.equal(interval, 600);
+  assert.match(progress, /if Scene > 2 then Scene := 2/);
+  const sceneAt = elapsed => Math.min(Math.floor(elapsed / interval), 2);
+  assert.deepEqual([0, 599, 600, 1199, 1200, 1500, 2100, 60000].map(sceneAt),
+    [0, 0, 1, 1, 2, 2, 2, 2]);
+  assert.doesNotMatch(progress, /Scene :=.*mod 3|Sleep\(|while.*Scene/);
+  assert.match(progress, /not SystemParametersInfo[\s\S]*ShowProgressScene\(0\)/);
+  assert.match(read('tool/installer_scene_contract.ps1'), /expectedIntervalMilliseconds = 600/);
 });
 test('installer never creates or adopts receipt consent; legacy owner-matched uninstall and app compatibility remain', () => {
   const setup = read('packaging/bloomstep.iss');
