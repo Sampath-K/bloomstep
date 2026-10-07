@@ -122,6 +122,7 @@ jobs:
           $manifest = Join-Path $evidence 'compiled-fixture-manifest.json'
           @{
             kind = 'inert-journey-fixture-v1'
+            fixtureArch = 'universal'
             sourceRevision = $env:BLOOMSTEP_SOURCE_REVISION
             fixtureAppId = 'A6690692-4D92-475A-9EAC-1AD867AB0635'
             payloadSource = 'tool/fixtures/installer_launch_probe.cs'
@@ -597,13 +598,47 @@ jobs:
           name: universal-native-${{ matrix.arch }}-NOT-CUSTOMER-ACCEPTANCE
           path: ${{ runner.temp }}/universal-native-evidence/
           if-no-files-found: error
+  universal-app-launch-evidence:
+    name: 'genuine universal app checked/unchecked launch (${{ matrix.arch }})'
+    needs: universal-installer
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: windows-latest
+            arch: x64
+          - os: windows-11-arm
+            arch: arm64
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+      - uses: actions/download-artifact@v4
+        with:
+          name: bloomstep-universal-installer
+          path: universal-output
+      - name: Actual genuine app launch requires a clean non-elevated installing user
+        shell: pwsh
+        env:
+          BLOOMSTEP_UNIVERSAL_APP_PROOF: 'true'
+        run: |
+          & .\tool\verify_universal_app_launch.ps1 -PackageDir (Join-Path $PWD 'universal-output') -ExpectedArch '${{ matrix.arch }}' -EvidenceDir (Join-Path $env:RUNNER_TEMP 'genuine-universal-launch-evidence')
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: genuine-universal-launch-${{ matrix.arch }}-NOT-FULL-OWNER-ACCEPTANCE
+          path: ${{ runner.temp }}/genuine-universal-launch-evidence/
+          if-no-files-found: error
   release:
     if: >-
       always() && startsWith(github.ref, 'refs/tags/v') &&
       needs.api.result == 'success' && needs.test-and-build-windows.result == 'success' &&
       needs.universal-native-proof.result == 'success' &&
+      needs.universal-app-launch-evidence.result == 'success' &&
       (needs.installer-launch-evidence.result == 'success' || github.ref_name == 'v0.1.0-preview.10')
-    needs: [api, test-and-build-windows, installer-launch-evidence, universal-native-proof]
+    needs: [api, test-and-build-windows, installer-launch-evidence, universal-native-proof, universal-app-launch-evidence]
     runs-on: ubuntu-latest
     permissions:
       contents: write

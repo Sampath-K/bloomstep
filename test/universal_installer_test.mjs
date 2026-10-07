@@ -3,6 +3,8 @@ import assert from 'node:assert/strict';
 import { readFileSync, mkdtempSync, mkdirSync, writeFileSync, rmSync, symlinkSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
+import { execFileSync } from 'node:child_process';
+import { fileURLToPath } from 'node:url';
 
 const read = name => readFileSync(new URL(`../${name}`, import.meta.url), 'utf8');
 test('universal installer bundles exclusive native OS payloads without bootstrap or privilege changes', () => {
@@ -22,7 +24,7 @@ test('universal packaging remains required and source-pinned, next release has n
   assert.match(workflow, /universal-native-proof:/);
   assert.match(workflow, /release_payload\.mjs verify/);
   assert.match(workflow, /payload-manifest-/);
-  assert.match(workflow, /needs: \[api, test-and-build-windows, installer-launch-evidence, universal-native-proof\]/);
+  assert.match(workflow, /needs: \[api, test-and-build-windows, installer-launch-evidence, universal-native-proof, universal-app-launch-evidence\]/);
   assert.match(workflow, /github\.ref_name == 'v0\.1\.0-preview\.10'/);
   assert.doesNotMatch(workflow, /github\.ref_name == 'v0\.1\.0-preview\.11'/);
 });
@@ -36,9 +38,17 @@ test('release inputs require exact source, version, architecture, inventory and 
     mkdirSync(join(root, 'data', 'flutter_assets'), { recursive: true });
     for (const file of ['bloomstep.exe', 'flutter_windows.dll']) writeFileSync(join(root, file), pe);
     writeFileSync(join(root, 'data', 'icudtl.dat'), 'fixture only');
+    writeFileSync(join(root, 'data', 'app.so'), 'synthetic AOT shape fixture, never a genuine Release claim');
     writeFileSync(join(root, 'data', 'flutter_assets', 'AssetManifest.bin'), 'fixture only');
     const manifest = createPayloadManifest(root, { arch: 'arm64', source, version });
     assert.equal(verifyPayloadManifest(root, manifest, { arch: 'arm64', source, version }).arch, 'arm64');
+    rmSync(join(root, 'data', 'app.so'));
+    assert.throws(() => createPayloadManifest(root, { arch: 'arm64', source, version }), /app\.so/);
+    writeFileSync(join(root, 'data', 'app.so'), 'synthetic AOT shape fixture, never a genuine Release claim');
+    const wrongPe = Buffer.from(pe); wrongPe.writeUInt16LE(0x8664, 68);
+    writeFileSync(join(root, 'flutter_windows.dll'), wrongPe);
+    assert.throws(() => createPayloadManifest(root, { arch: 'arm64', source, version }), /architecture/);
+    writeFileSync(join(root, 'flutter_windows.dll'), pe);
     assert.throws(() => verifyPayloadManifest(root, manifest, { arch: 'x64', source, version }), /identity|architecture/);
     assert.throws(() => verifyPayloadManifest(root, manifest, { arch: 'arm64', source: 'b'.repeat(40), version }), /identity/);
     assert.throws(() => verifyPayloadManifest(root, manifest, { arch: 'arm64', source, version: '0.1.0-preview.10' }), /identity/);
@@ -112,4 +122,40 @@ test('actual proof requires package and native machine authority, cancel, instal
   const workflow = read('.github/workflows/ci.yml');
   assert.match(workflow, /universal-integrity-fixture/);
   assert.doesNotMatch(workflow, /gh release create[^\n]*integrity/);
+});
+test('actual PowerShell corruption oracle ignores command paths and verifies Welcome Cancel exit (no installer execution)', () => {
+  const helper = fileURLToPath(new URL('../tool/universal_integrity_contract.ps1', import.meta.url)).replaceAll("'", "''");
+  const script = `. '${helper}';
+    $wrong = @(Get-EmbeddedChecksumErrors @('Command line: /DIR=C:\\universal-corrupt /LOG=C:\\corrupt-private.log','Error: Setup initialization failed','Checksum file: C:\\CRC.txt'));
+    if ($wrong.Count -ne 0) { throw 'Path/header manufactured checksum success' }
+    $valid = @(Get-EmbeddedChecksumErrors @('2026-10-07 05:02:06.811   Error: The source file is corrupted','The source file is corrupted'));
+    if ($valid.Count -ne 1 -or $valid[0] -ne 'The source file is corrupted') { throw 'Specific sanitized error missing' }
+    Assert-WelcomeCancelExit 2;
+    foreach ($code in @(0,1,3,4,5)) {
+      $rejected = $false;
+      try { Assert-WelcomeCancelExit $code } catch { $rejected = $true }
+      if (-not $rejected) { throw 'Non-cancel exit accepted' }
+    }
+    'PASS'`;
+  const output = execFileSync('pwsh', ['-NoProfile', '-NonInteractive', '-Command', script], { encoding: 'utf8' });
+  assert.match(output, /PASS/);
+  const proof = read('tool/verify_universal_installer.ps1');
+  assert.match(proof, /Get-EmbeddedChecksumErrors/);
+  assert.match(proof, /Assert-WelcomeCancelExit/);
+  assert.match(proof, /checksumErrorLines/);
+  assert.doesNotMatch(proof, /-notmatch '\(\?i\)corrupt\|checksum\|CRC'/);
+});
+test('next universal release requires genuine app launch evidence independently of the inert fixture', () => {
+  const workflow = read('.github/workflows/ci.yml');
+  assert.match(workflow, /universal-app-launch-evidence:/);
+  assert.match(workflow, /needs\.universal-app-launch-evidence\.result == 'success'/);
+  const proof = read('tool/verify_universal_app_launch.ps1');
+  assert.match(proof, /GITHUB_ACTIONS/);
+  assert.match(proof, /installerSha256/);
+  assert.match(proof, /ProcessTokenProbe\]::Elevated\(\$PID\)/);
+  assert.match(proof, /checked-launch','unchecked-launch/);
+  assert.match(proof, /ProcessTokenProbe\]::Sid/);
+  assert.match(proof, /ProcessTokenProbe\]::Elevated\(\$app\.Id\)/);
+  assert.match(proof, /default checked/);
+  assert.doesNotMatch(proof, /continue-on-error|inert-journey-fixture-v1/);
 });

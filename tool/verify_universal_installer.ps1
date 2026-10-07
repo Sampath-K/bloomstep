@@ -4,6 +4,7 @@ param(
   [Parameter(Mandatory=$true)][string]$EvidenceDir
 )
 $ErrorActionPreference = 'Stop'
+. "$PSScriptRoot\universal_integrity_contract.ps1"
 if ($env:GITHUB_ACTIONS -ne 'true' -or -not $env:RUNNER_TEMP) {
   throw 'Universal installer lifecycle proof is restricted to disposable GitHub runners.'
 }
@@ -55,7 +56,12 @@ try {
   $setup = Start-Process $installer -ArgumentList "/SP- /NORESTART /DIR=`"$cancelTarget`"" -PassThru
   $owned = [Collections.Generic.HashSet[int]]::new()
   [void]$owned.Add($setup.Id)
+  $ownedProcesses = @{}
+  [void]$setup.Handle
+  $ownedProcesses[$setup.Id] = $setup
+  $wizardProcessId = $null
   $cancelled = $false
+  $cancelRequested = $false
   $deadline = (Get-Date).AddSeconds(40)
   while ((Get-Date) -lt $deadline -and -not $cancelled) {
     $processes = Get-CimInstance Win32_Process
@@ -69,7 +75,12 @@ try {
       [void][OnboardingWizard]::GetWindowThreadProcessId($window,[ref]$owner)
       if (-not $owned.Contains([int]$owner)) { continue }
       $text = [OnboardingWizard]::Describe($window)
-      if ($text -match 'Your garden starts with one seed') {
+      if (-not $cancelRequested -and $text -match 'Your garden starts with one seed') {
+        $wizardProcess = Get-Process -Id $owner
+        [void]$wizardProcess.Handle
+        $ownedProcesses[[int]$owner] = $wizardProcess
+        $wizardProcessId = [int]$owner
+        Start-Sleep -Milliseconds 300
         $rectangle = [OnboardingWizard+Rect]::new()
         if (-not [OnboardingWizard]::GetWindowRect($window,[ref]$rectangle)) { throw 'Owned Welcome bounds unavailable.' }
         $width = $rectangle.Right - $rectangle.Left
@@ -92,6 +103,7 @@ try {
         $button = [OnboardingWizard]::Find($window,'Cancel')
         if ($button -eq [IntPtr]::Zero) { throw 'Owned Welcome Cancel control missing.' }
         [void][OnboardingWizard]::SendMessage($button,0x00F5,[IntPtr]::Zero,[IntPtr]::Zero)
+        $cancelRequested = $true
       }
       $yes = [OnboardingWizard]::Find($window,'Yes')
       if ($yes -ne [IntPtr]::Zero) {
@@ -101,11 +113,15 @@ try {
     Start-Sleep -Milliseconds 200
     $setup.Refresh()
     $alive = @($owned | ForEach-Object { Get-Process -Id $_ -ErrorAction SilentlyContinue })
-    $cancelled = $alive.Count -eq 0
+    $cancelled = $cancelRequested -and $alive.Count -eq 0
   }
   if (-not $cancelled -or (Test-Path $cancelTarget) -or (Test-Path $measurement)) {
     throw 'Welcome Cancel did not finish without payload or observation effects.'
   }
+  $wizardExitCode = $ownedProcesses[$wizardProcessId].ExitCode
+  $report.cancelWizardExitCode = $wizardExitCode
+  $report.cancelLauncherExitCode = $setup.ExitCode
+  Assert-WelcomeCancelExit $wizardExitCode
   $report.cancelBeforePayload = $true
   $installed = Start-Process $installer -ArgumentList "/VERYSILENT /SUPPRESSMSGBOXES /NORESTART /DIR=`"$target`"" -Wait -PassThru
   if ($installed.ExitCode -ne 0 -or -not (Test-Path "$target\bloomstep.exe")) { throw 'Universal native installation failed.' }
@@ -147,12 +163,15 @@ try {
   }
   $faultLog = Join-Path $env:RUNNER_TEMP 'Bloomstep-universal-corrupt-private.log'
   $failed = Start-Process $faultExe -ArgumentList "/VERYSILENT /SUPPRESSMSGBOXES /NORESTART /DIR=`"$corruptTarget`" /LOG=`"$faultLog`"" -Wait -PassThru
-  if ($failed.ExitCode -eq 0 -or (Test-Path "$corruptTarget\bloomstep.exe") -or
-      (Test-Path $measurement) -or -not (Test-Path $faultLog) -or
-      (Get-Content $faultLog -Raw) -notmatch '(?i)corrupt|checksum|CRC') {
+  $checksumErrors = if (Test-Path $faultLog) { @(Get-EmbeddedChecksumErrors (Get-Content $faultLog)) } else { @() }
+  $remainingFiles = if (Test-Path $corruptTarget) { @(Get-ChildItem $corruptTarget -Recurse -File -Force) } else { @() }
+  if ($failed.ExitCode -eq 0 -or $remainingFiles.Count -ne 0 -or
+      (Test-Path $measurement) -or $checksumErrors.Count -eq 0) {
     throw 'Corrupted embedded payload was not rejected with rollback and no observation effects.'
   }
   $report.corruptedEmbeddedChecksumRollbackVerified = $true
+  $report.checksumErrorLines = $checksumErrors
+  $report.corruptMarkerAndPayloadAbsent = $true
   $report.corruptExitCode = $failed.ExitCode
   $report.outcome = 'success'
 } catch {

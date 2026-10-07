@@ -39,7 +39,9 @@ if ($compiledFixture.kind -ne 'inert-journey-fixture-v1' -or
     $compiledFixture.payloadSource -ne 'tool/fixtures/installer_launch_probe.cs' -or
     $compiledFixture.installerFile -ne [IO.Path]::GetFileName($Installer) -or
     $compiledFixture.installerSha256 -ne (Get-FileHash $Installer).Hash.ToLower() -or
-    [IO.Path]::GetFileName($Installer) -ne 'Bloomstep-0.0.0-contract-windows-x64-setup.exe') {
+    -not ([IO.Path]::GetFileName($Installer) -eq 'Bloomstep-0.0.0-contract-windows-x64-setup.exe' -or
+      ([IO.Path]::GetFileName($Installer) -eq 'Bloomstep-0.0.0-contract-windows-universal-setup.exe' -and
+        $compiledFixture.fixtureArch -eq 'universal'))) {
   throw 'Only the exact hash-authorized compiled inert journey fixture may be installed by this proof.'
 }
 $authority = Join-Path $EvidenceDir 'fixture-authority.json'

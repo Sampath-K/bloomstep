@@ -34,7 +34,7 @@ export function peMachine(bytes) {
 export function createPayloadManifest(root, expected) {
   identity(expected);
   const inventory = files(root);
-  for (const required of ['bloomstep.exe', 'flutter_windows.dll', 'data/icudtl.dat', 'data/flutter_assets/AssetManifest.bin']) {
+  for (const required of ['bloomstep.exe', 'flutter_windows.dll', 'data/app.so', 'data/icudtl.dat', 'data/flutter_assets/AssetManifest.bin']) {
     if (!inventory.includes(required)) throw Error(`Missing required Release payload: ${required}`);
   }
   const machine = expected.arch === 'arm64' ? 0xaa64 : 0x8664;

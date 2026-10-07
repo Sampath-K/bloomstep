@@ -42,7 +42,8 @@ require admin/UAC elevation; do not elevate to bypass a warning. Checksums
 establish consistency, not signing or safety.
 
 Before compilation, each Release tree must match the same-run source/version,
-native EXE/DLL machine types, required Flutter assets, exact inventory and
+native EXE/DLL machine types, required Flutter assets and `data/app.so` AOT
+payload, exact inventory and
 SHA-256 hashes. Missing/corrupt/debug/fixture inputs fail; no
 `skipifsourcedoesntexist` or disabled embedded checksum is permitted.
 The manifest plus trusted same-run Actions artifact provenance establishes
@@ -60,6 +61,23 @@ fault-injection evidence, not a corrupted public release or customer trial.
 Unsupported/32-bit hosts have contract coverage, not real hardware proof.
 Keyboard/Narrator and ordinary sign-in/customer launch acceptance are not
 inferred from these checks.
+
+The checksum oracle accepts only the actual Inno "The source file is
+corrupted" / source hash-verification error, not path/header mentions of
+corruption, checksum or CRC. The receipt retains sanitized specific error
+lines and requires all target files, including the marker, absent. Owned
+Welcome Cancel must return Inno's pre-install Cancel exit code 2; process
+absence alone is not acceptance.
+
+Independent genuine universal-app launch jobs on x64/ARM64 require the
+same-source/hash-authorized product package and native payload, a real
+non-elevated interactive installing token, default-checked Finish versus
+explicit unchecked Finish, actual process count/owning-user SID/token
+elevation and zero observations. Only disposable CI can run this proof;
+no ordinary user/customer installation is authorized. The inert fixture
+remains separate evidence. An elevated hosted worker fails **before**
+installer start and cannot satisfy the genuine launch gate. No raw SIDs,
+profile paths or user data are published in its sanitized receipt.
 
 The next preview requires exact-head API/x64/ARM64/customer-quality,
 universal-native proof, actual independent checked/unchecked non-elevated
