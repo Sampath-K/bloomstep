@@ -27,6 +27,7 @@ public static class OnboardingWizard {
   [DllImport("user32.dll")] public static extern bool SetProcessDpiAwarenessContext(IntPtr context);
   [DllImport("user32.dll")] public static extern uint GetDpiForWindow(IntPtr h);
   [DllImport("user32.dll")] public static extern bool SetForegroundWindow(IntPtr h);
+  [DllImport("user32.dll")] public static extern IntPtr GetForegroundWindow();
   public struct Rect { public int Left, Top, Right, Bottom; }
   public static string ClassName(IntPtr h) {
     var b = new StringBuilder(256); GetClassName(h,b,b.Capacity); return b.ToString();
@@ -156,7 +157,8 @@ try {
       $next = [OnboardingWizard]::Find($window, '&Next')
       if ($next -eq [IntPtr]::Zero) { $next = [OnboardingWizard]::Find($window, '&Next >') }
       if ($next -eq [IntPtr]::Zero) { throw "Unexpected capture step; will not click Install or Finish: $text" }
-      if (-not [OnboardingWizard]::SetForegroundWindow($window)) { throw 'Owned wizard could not obtain keyboard focus.' }
+      if ([OnboardingWizard]::GetForegroundWindow() -ne $window -and
+          -not [OnboardingWizard]::SetForegroundWindow($window)) { throw 'Owned wizard could not obtain keyboard focus.' }
       $shell = New-Object -ComObject WScript.Shell
       if ($step -eq 'recipe') {
         $shell.SendKeys('%b')
@@ -176,7 +178,8 @@ try {
   if (($states.step -join ',') -ne ($expectedOrder -join ',')) { throw 'Incomplete educational/options order.' }
   if (Test-Path $receipt) { throw 'Pre-consent educational capture wrote an installer receipt.' }
   @{
-    sourceRevision = $env:GITHUB_SHA
+    sourceRevision = $env:BLOOMSTEP_SOURCE_REVISION
+    workflowRevision = $env:GITHUB_SHA
     installerSha256 = (Get-FileHash $Installer).Hash.ToLower()
     expectedOrder = $expectedOrder
     states = $states
@@ -188,6 +191,17 @@ try {
     installed = $false
   } | ConvertTo-Json -Depth 8 | Set-Content (Join-Path $EvidenceDir 'fixture-wizard-proof.json') -Encoding utf8
 } finally {
+  if (-not $ready) {
+    @{
+      sourceRevision = $env:BLOOMSTEP_SOURCE_REVISION
+      workflowRevision = $env:GITHUB_SHA
+      installerSha256 = (Get-FileHash $Installer).Hash.ToLower()
+      outcome = 'incomplete native capture; see failing CI step, not an acceptance pass'
+      states = $states
+      installed = $false
+      screenReaderAcceptance = 'UNKNOWN'
+    } | ConvertTo-Json -Depth 8 | Set-Content (Join-Path $EvidenceDir 'fixture-wizard-proof.json') -Encoding utf8
+  }
   foreach ($window in [OnboardingWizard]::Windows()) {
     [uint32]$owner = 0
     [void][OnboardingWizard]::GetWindowThreadProcessId($window, [ref]$owner)

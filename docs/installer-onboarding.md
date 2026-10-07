@@ -1,10 +1,15 @@
 # Installer and customer onboarding contract
 
 Authorized source increment from main `30fd380194bed46686c5483accfa71ff06c9f068`.
-This website-only promotion points to the already-published preview.9 downloads;
-it does not authorize app changes, release/tag mutation, or a future release.
-The preview.8 warning/capture evidence below remains historical and must not be
-relabeled as preview.9.
+The original source increment did not authorize a release. On 7 October 2026,
+the owner separately authorized website promotion of the already published
+preview.9 and standing quality-gated immutable preview releases for subsequent
+app/installer merges. Existing preview.8/preview.9 binaries remain immutable.
+PR review and a reviewed operational release-pipeline dependency still gate
+this source candidate; no new release has been published by this increment.
+The separate website-only preview.9 promotion did not itself authorize app
+changes or release/tag mutation. The preview.8 warning/capture evidence below
+remains historical and must not be relabeled as preview.9.
 
 ## Behaviour (contract before implementation)
 
@@ -149,8 +154,13 @@ separate benign history sample remains accurately labeled, not a warning fallbac
 Ordinary PR CI no longer triggers a new public-installer warning observation.
 Only the separately authorized explicit workflow-dispatch gate can run that tool.
 
-The three-beat/launch changes are **source candidate only**, pending a future
-explicitly authorized release. Advertised preview.8 binaries/checksums are
-immutable; no preview.9 promotion, new tag or public binary is authorized.
+The three-beat/launch changes are **source candidate only**. The owner has
+authorized the next immutable preview.10 after this app/installer change
+merges, subject to exact-SHA quality gates, parent visual review before merge,
+and the separately reviewed release pipeline. Published installers must be
+downloaded again and hash-verified before any newest-download site pointer.
+Website-only changes deploy without a preview version bump. Historical
+preview.8 screenshots remain labeled preview.8; they are not preview.9/10
+warning observations. No release or new tag has been created by this increment.
 App guided creation/support and private first-created metrics are dependent
 follow-ups, not completed by this installer/site layer.

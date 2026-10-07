@@ -23,6 +23,7 @@ UsePreviousAppDir=yes
 #endif
 #ifdef OnboardingJourneyFixture
 AppName=Bloomstep isolated journey proof
+VersionInfoProductName=Bloomstep isolated journey proof
 #else
 AppName=Bloomstep
 #endif

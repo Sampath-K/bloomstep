@@ -16,7 +16,7 @@ if ((Get-Item $Installer).VersionInfo.ProductName -ne 'Bloomstep isolated journe
 }
 $authority = Join-Path $EvidenceDir 'fixture-authority.json'
 if (-not $Worker) {
-  @{ sourceRevision = $env:GITHUB_SHA; installerSha256 = (Get-FileHash $Installer).Hash.ToLower() } |
+  @{ sourceRevision = $env:BLOOMSTEP_SOURCE_REVISION; installerSha256 = (Get-FileHash $Installer).Hash.ToLower() } |
     ConvertTo-Json | Set-Content $authority -Encoding utf8
 }
 $authorization = Get-Content $authority -Raw | ConvertFrom-Json
@@ -148,7 +148,8 @@ try {
           if ($pattern.Current.ToggleState -ne [Windows.Automation.ToggleState]::On) { throw 'Launch choice not default checked.' }
           $checked = $true
           if ($Mode -eq 'unchecked-launch') {
-            if (-not [OnboardingWizard]::SetForegroundWindow($window)) { throw 'Owned Finish focus failed.' }
+            if ([OnboardingWizard]::GetForegroundWindow() -ne $window -and
+                -not [OnboardingWizard]::SetForegroundWindow($window)) { throw 'Owned Finish focus failed.' }
             $launch.SetFocus()
             $shell.SendKeys(' ')
             Start-Sleep -Milliseconds 200
@@ -163,7 +164,8 @@ try {
       $next = [OnboardingWizard]::Find($window, 'Next')
       if ($next -eq [IntPtr]::Zero) { $next = [OnboardingWizard]::Find($window, 'Next >') }
       if ($next -ne [IntPtr]::Zero) {
-        if (-not [OnboardingWizard]::SetForegroundWindow($window)) { throw 'Owned Next focus failed.' }
+        if ([OnboardingWizard]::GetForegroundWindow() -ne $window -and
+            -not [OnboardingWizard]::SetForegroundWindow($window)) { throw 'Owned Next focus failed.' }
         $shell.SendKeys('%n')
       } else {
         $install = [OnboardingWizard]::Find($window, 'Install')

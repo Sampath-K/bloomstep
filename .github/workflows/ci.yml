@@ -96,6 +96,8 @@ jobs:
     runs-on: ${{ matrix.runner }}
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
       - name: Install Inno Setup
         shell: pwsh
         run: |
@@ -118,6 +120,7 @@ jobs:
       - name: Capture compile-only native Welcome and ordered default-off pages
         shell: pwsh
         run: |
+          $env:BLOOMSTEP_SOURCE_REVISION = git rev-parse HEAD
           $fixture = Join-Path $env:RUNNER_TEMP 'bloomstep-installer-compile-fixture'
           $output = Join-Path $env:RUNNER_TEMP 'bloomstep-onboarding-fixture'
           $evidence = Join-Path $env:RUNNER_TEMP 'bloomstep-onboarding-evidence'
@@ -137,6 +140,7 @@ jobs:
         env:
           BLOOMSTEP_ISOLATED_JOURNEY_FIXTURE: 'true'
         run: |
+          $env:BLOOMSTEP_SOURCE_REVISION = git rev-parse HEAD
           $fixture = Join-Path $env:RUNNER_TEMP 'bloomstep-inert-launch-payload'
           $output = Join-Path $env:RUNNER_TEMP 'bloomstep-inert-launch-installer'
           $evidence = Join-Path $env:RUNNER_TEMP 'bloomstep-inert-launch-evidence'
