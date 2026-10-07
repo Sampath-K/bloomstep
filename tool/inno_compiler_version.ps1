@@ -1,5 +1,5 @@
 function Get-InnoEngineVersion {
-  param([Parameter(Mandatory)][string[]]$OutputLines)
+  param([Parameter(Mandatory)][AllowEmptyString()][string[]]$OutputLines)
   $versions = @($OutputLines | ForEach-Object {
     if ($_ -match '^Compiler engine version: Inno Setup (?<Version>\d+\.\d+\.\d+(?:\.\d+)?)(?: \(u\))?\s*$') {
       [version]$Matches.Version

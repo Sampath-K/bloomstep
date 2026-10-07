@@ -203,8 +203,8 @@ test('compiler compatibility uses observed engine banner, not missing ISCC file-
   const helper = fileURLToPath(new URL('../tool/inno_compiler_version.ps1', import.meta.url)).replaceAll("'", "''");
   const script = `$ErrorActionPreference='Stop'; . '${helper}';
     if ((Get-InnoEngineVersion @('Compiler engine version: Inno Setup 6.3.0')).ToString() -ne '6.3.0') { throw 'Minimum version not recognized' }
-    if ((Get-InnoEngineVersion @('Compiler engine version: Inno Setup 6.7.1')).ToString() -ne '6.7.1') { throw 'Observed version lost' }
-    foreach ($bad in @('File version: 0.0.0.0','Compiler engine version: Inno Setup 6.2.2','Compiler engine version: Other Tool 7.0.0')) {
+    if ((Get-InnoEngineVersion @('Inno Setup 6 Command-Line Compiler','','Compiler engine version: Inno Setup 6.7.1','','Successful compile. Output was disabled.')).ToString() -ne '6.7.1') { throw 'Observed multiline version lost' }
+    foreach ($bad in @('','File version: 0.0.0.0','Compiler engine version: Inno Setup 6.2.2','Compiler engine version: Other Tool 7.0.0')) {
       $rejected=$false; try { Get-InnoEngineVersion @($bad) } catch { $rejected=$true }
       if (-not $rejected) { throw 'Unknown/unsupported compiler accepted' }
     }
