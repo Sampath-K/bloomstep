@@ -7,8 +7,11 @@ only preinstall decision, retaining the per-user default and upgrade location.
 The native button is explicitly **Install**, not Next. Welcome, teaching,
 observations and Ready pages are removed. Existing authored seed/recipe/garden
 BMPs move to real installing progress with a native `CreateCallback`/`SetTimer`
-callback: roughly three seconds per scene and a small bounded drift. Inno's
-actual progress bar remains authoritative; scenes are not progress percentages.
+callback: roughly three seconds per scene and a small bounded drift.
+CI's exact Inno6.7.1 `CreateCallback` returns `LongWord` (32-bit setup callback
+address), not the `NativeInt` used by newer online help. The declaration is
+bound to that engine's supported signature on both native OS hosts.
+Inno's actual progress bar remains authoritative; scenes are not progress percentages.
 There is no sleep, minimum dwell, network host, WebView or added dependency.
 Windows `SPI_GETCLIENTAREAANIMATION` is queried read-only; disabled or unavailable
 preferences produce static art. Page changes, completion, modal interruptions

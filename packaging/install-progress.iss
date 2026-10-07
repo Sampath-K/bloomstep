@@ -1,5 +1,5 @@
 // Native callbacks and controls documented by Inno; no Delphi TTimer dependency.
-function SetTimer(Window: HWND; Id: UINT_PTR; Interval: UINT; Callback: NativeInt): UINT_PTR;
+function SetTimer(Window: HWND; Id: UINT_PTR; Interval: UINT; Callback: LongWord): UINT_PTR;
   external 'SetTimer@user32.dll stdcall';
 function KillTimer(Window: HWND; Id: UINT_PTR): Boolean;
   external 'KillTimer@user32.dll stdcall';

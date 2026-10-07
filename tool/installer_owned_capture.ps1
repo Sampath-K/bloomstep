@@ -4,6 +4,10 @@ if (-not ('OnboardingWizard' -as [type])) {
 }
 $captureOwned = @{}
 $captureParents = @{}
+$captureInvocations = @{}
+$captureAuthority = @{ source = (git rev-parse HEAD); installerFile = [IO.Path]::GetFileName($Installer);
+  installerSha256 = (Get-FileHash $Installer).Hash.ToLower() }
+$captureInvocation = $null
 $captureClock = [Diagnostics.Stopwatch]::StartNew()
 $captureStages = [Collections.Generic.List[object]]::new()
 $captureStage = 'initializing'
@@ -18,7 +22,12 @@ function Update-CaptureTree {
     foreach ($child in $tree) {
       if ($captureOwned.ContainsKey([int]$child.ParentProcessId) -and -not $captureOwned.ContainsKey([int]$child.ProcessId)) {
         $process = Get-Process -Id $child.ProcessId -ErrorAction SilentlyContinue
-        if ($null -ne $process) { Register-CaptureProcess $process ([int]$child.ParentProcessId) }
+        $parent = $captureOwned[[int]$child.ParentProcessId]
+        if ($null -ne $process -and $process.StartTime -ge $parent.StartTime -and
+            (-not $parent.HasExited -or $process.StartTime -le $parent.ExitTime)) {
+          Register-CaptureProcess $process ([int]$child.ParentProcessId)
+          $captureInvocations[$process.Id] = $captureInvocations[$parent.Id]
+        }
       }
     }
   }
@@ -35,7 +44,8 @@ function Save-CaptureStage([string]$Stage) {
   $processes = @($captureOwned.Keys | ForEach-Object {
     $process = $captureOwned[$_]
     @{ pid = [int]$_; parentPid = $captureParents[$_]; exited = $process.HasExited;
-       exitCode = if ($process.HasExited) { $process.ExitCode } else { $null } }
+       exitCode = if ($process.HasExited) { $process.ExitCode } else { $null };
+       invocation = $captureInvocations[$_] }
   })
   $dialogs = @(Get-CaptureWindows | ForEach-Object {
     [uint32]$owner = 0
@@ -48,14 +58,21 @@ function Save-CaptureStage([string]$Stage) {
   })
   $captureStages.Add(@{ stage = $Stage; elapsedMilliseconds = $captureClock.ElapsedMilliseconds;
     processes = $processes; dialogs = $dialogs })
-  @{ stages = $captureStages; stage = $Stage; processes = $processes; dialogs = $dialogs;
+  @{ authority = $captureAuthority; plannedInvocation = $captureInvocation;
+     stages = $captureStages; stage = $Stage; processes = $processes; dialogs = $dialogs;
      elapsedMilliseconds = $captureClock.ElapsedMilliseconds; evidenceDirectory = '[EVIDENCE-DIRECTORY]' } |
     ConvertTo-Json -Depth 10 | Set-Content (Join-Path $EvidenceDir 'owned-stage-receipt.json') -Encoding utf8
 }
 function Start-CaptureProcess([string]$File, [string]$Arguments, [string]$Stage) {
+  $redacted = $Arguments
+  foreach ($private in @($env:RUNNER_TEMP, $env:LOCALAPPDATA, $env:USERPROFILE)) {
+    if ($private) { $redacted = $redacted.Replace($private, '[ISOLATED-HOST-PATH]') }
+  }
+  $script:captureInvocation = @{ file = [IO.Path]::GetFileName($File); arguments = $redacted; stage = $Stage }
   Save-CaptureStage "$Stage-before-start"
   $process = Start-Process -FilePath $File -ArgumentList $Arguments -PassThru
   Register-CaptureProcess $process $PID
+  $captureInvocations[$process.Id] = $captureInvocation
   Save-CaptureStage "$Stage-started"
   return $process
 }

@@ -144,6 +144,10 @@ try {
   $report.cancelExit = $setup.ExitCode
   $report.outcome = 'actual-destination-and-Cancel; Install never selected'
   $report.keyboardNavigation = 'UNKNOWN; original native Install/Browse/Cancel controls and UIA names captured, not keyboard or Narrator acceptance'
+} catch {
+  $report.outcome = 'FAIL; actual destination evidence incomplete'
+  Save-CaptureStage 'destination-proof-failed'
+  throw
 } finally {
   try { Stop-CaptureTree }
   finally { $report | ConvertTo-Json -Depth 10 | Set-Content (Join-Path $EvidenceDir 'fixture-wizard-proof.json') -Encoding utf8 }

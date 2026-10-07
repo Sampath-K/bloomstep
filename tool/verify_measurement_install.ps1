@@ -66,6 +66,10 @@ try {
   if ([IO.File]::ReadAllText($receipt) -ne $synthetic) { throw 'Legacy unmatched receipt changed by another owner uninstall.' }
   $report.unmatchedLegacyReceiptPreserved = $true
   $report.outcome = 'verified-legacy-privacy-and-zero-new-installer-observations'
+} catch {
+  $report.outcome = 'FAIL; legacy privacy proof incomplete'
+  Save-CaptureStage 'privacy-proof-failed'
+  throw
 } finally {
   try {
     Stop-CaptureTree

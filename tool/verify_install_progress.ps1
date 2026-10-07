@@ -98,6 +98,12 @@ try {
   $report.finishObserved = $true
   $report.installed = $true
   $report.outcome = 'installation-and-Finish-observed-not-app-acceptance'
+} catch {
+  $report.outcome = 'FAIL; actual installation/motion evidence incomplete'
+  $report.failureType = $_.Exception.GetType().FullName
+  $report.failureLine = $_.InvocationInfo.ScriptLineNumber
+  Save-CaptureStage 'install-proof-failed'
+  throw
 } finally {
   try {
     Stop-CaptureTree

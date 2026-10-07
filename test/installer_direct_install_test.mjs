@@ -1,6 +1,10 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { readFileSync } from 'node:fs';
+import { readFileSync, mkdtempSync, rmSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
+import { spawnSync } from 'node:child_process';
+import { fileURLToPath } from 'node:url';
 
 const read = path => readFileSync(new URL(`../${path}`, import.meta.url), 'utf8');
 test('destination is the sole preinstall decision and Install commits, with native Browse/error/cancel behavior', () => {
@@ -24,6 +28,9 @@ test('three existing scenes use supported native timer and read-only Windows red
   assert.match(progress, /SetTimer@user32\.dll/);
   assert.match(progress, /KillTimer@user32\.dll/);
   assert.match(progress, /CreateCallback\(@ProgressTimerTick\)/);
+  // The current online help describes newer setup engines. CI uses Inno6.7.1.
+  assert.match(progress, /Callback: LongWord\): UINT_PTR/);
+  assert.doesNotMatch(progress, /NativeInt/);
   assert.match(progress, /SystemParametersInfoW@user32\.dll/);
   assert.match(progress, /\$1042/);
   assert.match(progress, /Elapsed div 3000/);
@@ -57,3 +64,41 @@ test('actual proof measures transitions/finish/no dwell, never treats equivalent
   assert.match(proof, /finishObserved/);
   assert.match(proof, /timerStopped/);
 });
+
+test('owned capture success/timeout/cleanup write exact stage and process exit state without an installer',
+  { skip: process.platform !== 'win32' }, () => {
+    const directory = mkdtempSync(join(tmpdir(), 'bloomstep-benign-capture-wait-'));
+    const library = fileURLToPath(new URL('../tool/installer_owned_capture.ps1', import.meta.url));
+    const quote = value => `'${value.replaceAll("'", "''")}'`;
+    const script = `
+      $ErrorActionPreference = 'Stop'
+      $EvidenceDir = ${quote(directory)}
+      $shell = (Get-Process -Id $PID).Path
+      . ${quote(library)} -Installer $shell -EvidenceDir $EvidenceDir
+      $fast = Start-CaptureProcess $shell '-NoProfile -Command "exit 0"' 'benign-success'
+      Wait-CaptureTree 'benign-success' 15
+      if ($fast.ExitCode -ne 0) { throw 'Benign success did not exit0.' }
+      $sleep = Start-CaptureProcess $shell '-NoProfile -Command "Start-Sleep -Seconds 20"' 'benign-timeout'
+      $rejected = $false
+      try { Wait-CaptureTree 'benign-timeout' 1 }
+      catch { $rejected = $_.Exception.Message.Contains('exceeded') }
+      finally { Stop-CaptureTree }
+      if (-not $rejected) { throw 'Timeout did not fail.' }
+      $receipt = Get-Content (Join-Path $EvidenceDir 'owned-stage-receipt.json') -Raw | ConvertFrom-Json
+      if ($receipt.stage -ne 'finally-owned-exit-state' -or
+          @($receipt.stages.stage) -notcontains 'benign-timeout-timeout' -or
+          @($receipt.processes | Where-Object { -not $_.exited }).Count -ne 0) {
+        throw 'Timeout/cleanup did not persist owned stage/exit state.'
+      }
+      if (@($receipt.processes | Where-Object { $_.pid -eq $sleep.Id }).Count -ne 1) {
+        throw 'Timed-out exact owned PID missing.'
+      }
+    `;
+    try {
+      const result = spawnSync('pwsh', ['-NoProfile', '-Command', script],
+        { encoding: 'utf8', timeout: 45000, windowsHide: true });
+      assert.equal(result.status, 0, result.stderr || result.stdout || String(result.error));
+    } finally {
+      rmSync(directory, { recursive: true, force: true });
+    }
+  });
