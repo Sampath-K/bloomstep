@@ -194,6 +194,7 @@ jobs:
           $fixture = Join-Path $env:RUNNER_TEMP 'bloomstep-installer-compile-fixture'
           $output = Join-Path $env:RUNNER_TEMP 'bloomstep-onboarding-fixture'
           $evidence = Join-Path $env:RUNNER_TEMP 'bloomstep-onboarding-evidence'
+          New-Item -ItemType Directory -Path $output, $evidence -Force | Out-Null
           & "${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe" /Qp /DOnboardingFixture /DAppArch=${{ matrix.arch }} /DAppVersion=0.0.0-contract "/DSourceDir=$fixture" "/DOnboardingPreprocessOutput=$output\fixture-preprocessed.iss" "/O$output" packaging\bloomstep.iss
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           $installer = (Get-ChildItem "$output\*.exe").FullName

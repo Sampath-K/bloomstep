@@ -56,6 +56,11 @@ test('capture fixture rejects installation before effects and cannot enter produ
   assert.match(installer, /#ifdef OnboardingFixture\s+function PrepareToInstall[\s\S]*?Installation is prohibited[\s\S]*?#endif/);
   const production = read('.github/workflows/ci.yml').split('name: Build unsigned preview installer')[1].split('name: Installer lifecycle smoke test')[0];
   assert.doesNotMatch(production, /\/DOnboardingFixture/);
+  const capture = read('.github/workflows/ci.yml').split('name: Capture compile-only native Welcome')[1]
+    .split('name: Preserve bounded compile-only capture fixture authority')[0];
+  assert.ok(capture.indexOf('New-Item -ItemType Directory -Path $output, $evidence -Force') >= 0);
+  assert.ok(capture.indexOf('New-Item -ItemType Directory') < capture.indexOf('/DOnboardingPreprocessOutput='),
+    'Inno preprocessing writes before the compiler creates its output directory.');
 });
 
 test('wizard art is explicit, strict, real BMP and reproducible', () => {
