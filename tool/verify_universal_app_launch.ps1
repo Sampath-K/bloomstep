@@ -4,6 +4,7 @@ param(
   [Parameter(Mandatory=$true)][string]$EvidenceDir
 )
 $ErrorActionPreference = 'Stop'
+. "$PSScriptRoot\universal_integrity_contract.ps1"
 if ($env:GITHUB_ACTIONS -ne 'true' -or $env:BLOOMSTEP_UNIVERSAL_APP_PROOF -ne 'true' -or -not $env:RUNNER_TEMP) {
   throw 'Genuine universal app launch proof is restricted to explicitly authorized disposable CI.'
 }
@@ -58,6 +59,7 @@ try {
     $setup = Start-Process $installer -ArgumentList "/SP- /NORESTART /DIR=`"$target`"" -PassThru
     [void]$owned.Add($setup.Id)
     $finished = $false
+    $wizardProcess = $null
     $deadline = (Get-Date).AddMinutes(3)
     while (-not $finished -and (Get-Date) -lt $deadline) {
       $processes = Get-CimInstance Win32_Process
@@ -79,6 +81,8 @@ try {
         }
         $finish = [OnboardingWizard]::Find($window,'Finish')
         if ($finish -ne [IntPtr]::Zero) {
+          $wizardProcess = Get-Process -Id $owner
+          [void]$wizardProcess.Handle
           foreach ($file in $payload.files) {
             if ((Get-FileHash (Join-Path $target $file.path)).Hash.ToLower() -ne $file.sha256) { throw 'Genuine selected payload hash changed before Finish.' }
           }
@@ -104,6 +108,11 @@ try {
       Start-Sleep -Milliseconds 200
     }
     if (-not $finished) { throw 'Genuine interactive journey exceeded bounded deadline.' }
+    if (-not $wizardProcess -or -not $wizardProcess.WaitForExit(30000) -or -not $setup.WaitForExit(30000)) {
+      throw 'Actual genuine wizard/launcher did not exit after Finish within the bounded deadline.'
+    }
+    $wizardExitCode = $wizardProcess.ExitCode
+    $launcherExitCode = $setup.ExitCode
     $observeUntil = (Get-Date).AddSeconds(10)
     do {
       foreach ($app in @(Get-Process -Name bloomstep -ErrorAction SilentlyContinue)) {
@@ -116,8 +125,26 @@ try {
       Start-Sleep -Milliseconds 100
     } while ((Get-Date) -lt $observeUntil)
     $expectedCount = if ($mode -eq 'checked-launch') {1} else {0}
-    if ($apps.Count -ne $expectedCount -or (Test-Path $measurement)) { throw 'Actual genuine launch count/default-off receipt mismatch.' }
-    $report.modes.Add(@{ mode=$mode; launchCount=$apps.Count; installingUserMatches=if($expectedCount -eq 1){$true}else{$null}; nonElevated=if($expectedCount -eq 1){$true}else{$null}; observationReceiptAbsent=$true; observationSeconds=10 })
+    $sameExactTargetAppAlive = $false
+    $ownedAppWindowVisible = $false
+    if ($apps.Count -eq 1) {
+      $app = Get-Process -Id (@($apps)[0])
+      $sameExactTargetAppAlive = -not $app.HasExited -and $app.Path -eq "$target\bloomstep.exe"
+      if ([ProcessTokenProbe]::Sid($app.Id) -ne $installingSid -or [ProcessTokenProbe]::Elevated($app.Id)) {
+        throw 'Actual surviving app installing-user or token elevation changed.'
+      }
+      foreach ($window in [OnboardingWizard]::Windows()) {
+        [uint32]$windowOwner = 0
+        [void][OnboardingWizard]::GetWindowThreadProcessId($window,[ref]$windowOwner)
+        if ($windowOwner -eq $app.Id) { $ownedAppWindowVisible = $true }
+      }
+    }
+    Assert-GenuineLaunchOutcome $mode $wizardExitCode $launcherExitCode $apps.Count $sameExactTargetAppAlive $ownedAppWindowVisible
+    if (Test-Path $measurement) { throw 'Actual genuine default-off receipt mismatch.' }
+    $report.modes.Add(@{ mode=$mode; launchCount=$apps.Count; wizardExitCode=$wizardExitCode; launcherExitCode=$launcherExitCode;
+      sameExactTargetAppAlive=$sameExactTargetAppAlive; ownedAppWindowVisible=$ownedAppWindowVisible;
+      installingUserMatches=if($expectedCount -eq 1){$true}else{$null}; nonElevated=if($expectedCount -eq 1){$true}else{$null};
+      observationReceiptAbsent=$true; observationSeconds=10 })
     foreach ($id in $apps) { if (Get-Process -Id $id -ErrorAction SilentlyContinue) { Stop-Process -Id $id } }
     $uninstall = Start-Process "$target\unins000.exe" -ArgumentList '/VERYSILENT /SUPPRESSMSGBOXES /NORESTART' -Wait -PassThru
     if ($uninstall.ExitCode -ne 0 -or (Test-Path "$target\bloomstep.exe") -or (Test-Path $protocol)) { throw 'Genuine owned uninstall failed.' }

@@ -125,7 +125,7 @@ test('actual proof requires package and native machine authority, cancel, instal
 });
 test('actual PowerShell corruption oracle ignores command paths and verifies Welcome Cancel exit (no installer execution)', () => {
   const helper = fileURLToPath(new URL('../tool/universal_integrity_contract.ps1', import.meta.url)).replaceAll("'", "''");
-  const script = `. '${helper}';
+  const script = `$ErrorActionPreference='Stop'; . '${helper}';
     $wrong = @(Get-EmbeddedChecksumErrors @('Command line: /DIR=C:\\universal-corrupt /LOG=C:\\corrupt-private.log','Error: Setup initialization failed','Checksum file: C:\\CRC.txt'));
     if ($wrong.Count -ne 0) { throw 'Path/header manufactured checksum success' }
     $valid = @(Get-EmbeddedChecksumErrors @('2026-10-07 05:02:06.811   Error: The source file is corrupted','The source file is corrupted'));
@@ -158,4 +158,29 @@ test('next universal release requires genuine app launch evidence independently 
   assert.match(proof, /ProcessTokenProbe\]::Elevated\(\$app\.Id\)/);
   assert.match(proof, /default checked/);
   assert.doesNotMatch(proof, /continue-on-error|inert-journey-fixture-v1/);
+});
+test('genuine outcome oracle rejects transient apps and unsuccessful installer exits (no app execution)', () => {
+  const helper = fileURLToPath(new URL('../tool/universal_integrity_contract.ps1', import.meta.url)).replaceAll("'", "''");
+  const script = `$ErrorActionPreference='Stop'; . '${helper}';
+    Assert-GenuineLaunchOutcome 'checked-launch' 0 0 1 $true $true;
+    Assert-GenuineLaunchOutcome 'unchecked-launch' 0 0 0 $false $false;
+    foreach ($bad in @(
+      @('checked-launch',0,0,1,$false,$false),
+      @('checked-launch',0,0,1,$true,$false),
+      @('checked-launch',1,0,1,$true,$true),
+      @('checked-launch',0,1,1,$true,$true),
+      @('unchecked-launch',1,0,0,$false,$false),
+      @('unchecked-launch',0,0,1,$true,$true)
+    )) {
+      $rejected = $false;
+      try { Assert-GenuineLaunchOutcome @bad } catch { $rejected = $true }
+      if (-not $rejected) { throw 'Transient/uninstalled outcome accepted' }
+    }
+    'PASS'`;
+  assert.match(execFileSync('pwsh', ['-NoProfile', '-NonInteractive', '-Command', script], { encoding: 'utf8' }), /PASS/);
+  const proof = read('tool/verify_universal_app_launch.ps1');
+  assert.match(proof, /Assert-GenuineLaunchOutcome/);
+  assert.match(proof, /sameExactTargetAppAlive/);
+  assert.match(proof, /ownedAppWindowVisible/);
+  assert.match(proof, /wizardExitCode/);
 });

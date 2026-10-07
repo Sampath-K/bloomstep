@@ -78,6 +78,10 @@ no ordinary user/customer installation is authorized. The inert fixture
 remains separate evidence. An elevated hosted worker fails **before**
 installer start and cannot satisfy the genuine launch gate. No raw SIDs,
 profile paths or user data are published in its sanitized receipt.
+Both branches require actual wizard/launcher successful exit0. The checked
+native process must still be alive at the end of the ten-second observation
+window with a visible owned app window; a briefly sampled/crashed process is
+not a pass. Ordinary sign-in and full journey still require owner acceptance.
 
 The next preview requires exact-head API/x64/ARM64/customer-quality,
 universal-native proof, actual independent checked/unchecked non-elevated

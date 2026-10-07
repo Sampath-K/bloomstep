@@ -10,3 +10,17 @@ function Get-EmbeddedChecksumErrors([string[]]$Lines) {
 function Assert-WelcomeCancelExit([int]$ExitCode) {
   if ($ExitCode -ne 2) { throw "Owned Welcome wizard did not return Inno's pre-install Cancel exit code 2: $ExitCode" }
 }
+
+function Assert-GenuineLaunchOutcome([string]$Mode, [int]$WizardExitCode, [int]$LauncherExitCode,
+    [int]$LaunchCount, [bool]$SameAppAlive, [bool]$VisibleOwnedWindow) {
+  if ($Mode -notin @('checked-launch','unchecked-launch') -or $WizardExitCode -ne 0 -or $LauncherExitCode -ne 0) {
+    throw 'Genuine checked/unchecked proof requires successful actual wizard and launcher exit0.'
+  }
+  if ($Mode -eq 'checked-launch') {
+    if ($LaunchCount -ne 1 -or -not $SameAppAlive -or -not $VisibleOwnedWindow) {
+      throw 'Genuine checked app must survive the observation window with one exact-target process and visible owned window.'
+    }
+  } elseif ($LaunchCount -ne 0 -or $SameAppAlive -or $VisibleOwnedWindow) {
+    throw 'Genuine unchecked Finish must produce no app process or window.'
+  }
+}
