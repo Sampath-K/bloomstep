@@ -26,7 +26,7 @@ on:
 
 jobs:
   edge-download-observation:
-    if: (github.event_name == 'pull_request' && github.event.action == 'opened') || (github.event_name == 'workflow_dispatch' && inputs.verify_edge_warning && !inputs.verify_aggregates && !inputs.verify_spend_guard)
+    if: github.event_name == 'workflow_dispatch' && inputs.verify_edge_warning && !inputs.verify_aggregates && !inputs.verify_spend_guard
     runs-on: windows-latest
     steps:
       - uses: actions/checkout@v4
@@ -76,7 +76,7 @@ jobs:
       - run: npm run check
       - run: npm test
       - run: node ../tool/generate_event_registry.mjs --check
-      - run: node --test ../test/site_console_test.mjs ../test/measurement_packaging_test.mjs ../test/installer_onboarding_test.mjs ../test/identity_callbacks_test.mjs ../test/branding_contract_test.mjs ../test/synthetic_native_contract_test.mjs
+      - run: node --test ../test/site_console_test.mjs ../test/measurement_packaging_test.mjs ../test/installer_onboarding_test.mjs ../test/installer_journey_test.mjs ../test/public_claims_test.mjs ../test/identity_callbacks_test.mjs ../test/branding_contract_test.mjs ../test/synthetic_native_contract_test.mjs
       - name: Verify bundled operator authentication
         working-directory: .
         run: |
@@ -112,9 +112,51 @@ jobs:
           & "${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe" /Qp /DAppArch=${{ matrix.arch }} /DAppVersion=0.0.0-contract "/DSourceDir=$fixture" "/DOnboardingPreprocessOutput=$output\production-preprocessed.iss" "/O$output" packaging\bloomstep.iss
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           $compiledSource = Get-Content "$output\production-preprocessed.iss" -Raw
-          if ($compiledSource -match 'Installation is prohibited|8E9B101B-CB3D-4C0F-B733-FC1DFFB75129|function PrepareToInstall') {
+          if ($compiledSource -match 'Installation is prohibited|8E9B101B-CB3D-4C0F-B733-FC1DFFB75129|A6690692-4D92-475A-9EAC-1AD867AB0635|function PrepareToInstall|isolated journey proof') {
             throw 'Production compile contains capture-only fixture guard or identity.'
           }
+      - name: Capture compile-only native Welcome and ordered default-off pages
+        shell: pwsh
+        run: |
+          $fixture = Join-Path $env:RUNNER_TEMP 'bloomstep-installer-compile-fixture'
+          $output = Join-Path $env:RUNNER_TEMP 'bloomstep-onboarding-fixture'
+          $evidence = Join-Path $env:RUNNER_TEMP 'bloomstep-onboarding-evidence'
+          & "${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe" /Qp /DOnboardingFixture /DAppArch=${{ matrix.arch }} /DAppVersion=0.0.0-contract "/DSourceDir=$fixture" "/O$output" packaging\bloomstep.iss
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          & .\tool\verify_onboarding_wizard.ps1 -Installer (Get-ChildItem "$output\*.exe").FullName -EvidenceDir $evidence
+      - name: Preserve compile-only wizard evidence (not a public installer)
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: bloomstep-onboarding-${{ matrix.arch }}-NOT-FOR-RELEASE
+          path: ${{ runner.temp }}/bloomstep-onboarding-evidence/
+          if-no-files-found: error
+      - name: Verify inert installing-user launch branches without customer data
+        if: matrix.arch == 'x64'
+        shell: pwsh
+        env:
+          BLOOMSTEP_ISOLATED_JOURNEY_FIXTURE: 'true'
+        run: |
+          $fixture = Join-Path $env:RUNNER_TEMP 'bloomstep-inert-launch-payload'
+          $output = Join-Path $env:RUNNER_TEMP 'bloomstep-inert-launch-installer'
+          $evidence = Join-Path $env:RUNNER_TEMP 'bloomstep-inert-launch-evidence'
+          New-Item -ItemType Directory -Path $fixture -Force | Out-Null
+          & "$env:WINDIR\Microsoft.NET\Framework64\v4.0.30319\csc.exe" /nologo /target:winexe "/out:$fixture\bloomstep.exe" tool\fixtures\installer_launch_probe.cs
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          & "${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe" /Qp /DOnboardingJourneyFixture /DAppArch=x64 /DAppVersion=0.0.0-contract "/DSourceDir=$fixture" "/O$output" packaging\bloomstep.iss
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          $installer = (Get-ChildItem "$output\*.exe").FullName
+          foreach ($mode in @('checked-launch','unchecked-launch','silent','unattended','cancel','failure','elevated')) {
+            & pwsh -NoProfile -File .\tool\verify_installer_journey.ps1 -Installer $installer -EvidenceDir $evidence -Mode $mode
+            if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          }
+      - name: Preserve sanitized inert launch evidence (not app acceptance)
+        if: always() && matrix.arch == 'x64'
+        uses: actions/upload-artifact@v4
+        with:
+          name: bloomstep-inert-launch-proof-NOT-APP-ACCEPTANCE
+          path: ${{ runner.temp }}/bloomstep-inert-launch-evidence/
+          if-no-files-found: error
       - uses: subosito/flutter-action@v2
         if: matrix.arch == 'x64'
         with:

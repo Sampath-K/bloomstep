@@ -13,9 +13,19 @@
 AppId={{8E9B101B-CB3D-4C0F-B733-FC1DFFB75129}
 UsePreviousAppDir=no
 #else
+#ifdef OnboardingJourneyFixture
+AppId={{A6690692-4D92-475A-9EAC-1AD867AB0635}
+UsePreviousAppDir=no
+#else
 AppId={{99BE7E95-0565-4C72-A4DD-46D1D5B6C679}
+UsePreviousAppDir=yes
 #endif
+#endif
+#ifdef OnboardingJourneyFixture
+AppName=Bloomstep isolated journey proof
+#else
 AppName=Bloomstep
+#endif
 AppVersion={#AppVersion}
 AppPublisher=Bloomstep contributors
 AppPublisherURL=https://github.com/Sampath-K/bloomstep
@@ -28,6 +38,8 @@ Compression=lzma2
 SolidCompression=yes
 WizardStyle=modern
 DisableWelcomePage=no
+DisableDirPage=no
+DisableProgramGroupPage=yes
 WizardImageFile=assets\wizard-garden.bmp
 WizardSmallImageFile=assets\wizard-seed.bmp
 UninstallDisplayIcon={app}\bloomstep.exe
@@ -43,13 +55,15 @@ ArchitecturesInstallIn64BitMode=x64compatible
 
 [Messages]
 WelcomeLabel1=Welcome to Bloomstep
-WelcomeLabel2=Bloomstep pairs a familiar routine with one safe, tiny action. Celebrate in your own way.%n%nLimited unsigned Windows preview, not the complete verified MVP or medical advice. Sign-in is required; some features and sign-in options are still being refined.%n%nAn independent app inspired by the Tiny Habits method, not affiliated with or endorsed by BJ Fogg or Tiny Habits.%n%nNext reviews your install folder and optional local observations. Nothing is sent by this installer.
+WelcomeLabel2=Anchor a routine.%nMake a tiny habit part of your day.%n%nAnchor: after pouring my morning drink%nTiny action: take one slow breath%nCelebration: relax my shoulders and smile%n%nAnchor: after opening my laptop%nTiny action: write my one next step%nCelebration: say "I have a starting point"%n%nFree Windows download. Limited preview. Sign-in required.%nNext: plant a tiny recipe.
 ReadyLabel1=Ready to install this unsigned Bloomstep preview.
 FinishedHeadingLabel=Bloomstep is installed
 FinishedLabel=Bloomstep is ready for sign-in. Try one safe, tiny action after a familiar routine, then celebrate in your own way. Your plant keeps its growth even on a "not today" day.%n%nThis is a limited unsigned preview, not the complete verified MVP or medical advice. Opening the app below is optional.
 
 [Files]
 Source: "{#SourceDir}\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs createallsubdirs
+Source: "assets\education-seed.bmp"; Flags: dontcopy
+Source: "assets\education-growth.bmp"; Flags: dontcopy
 
 [InstallDelete]
 Type: files; Name: "{app}\measurement-owner.txt"
@@ -59,24 +73,37 @@ Name: "{group}\Bloomstep"; Filename: "{app}\bloomstep.exe"
 Name: "{group}\Uninstall Bloomstep"; Filename: "{uninstallexe}"
 
 [Run]
-Filename: "{app}\bloomstep.exe"; Description: "Open Bloomstep (sign-in-gated preview)"; Flags: nowait postinstall skipifsilent unchecked
+Filename: "{app}\bloomstep.exe"; Description: "Launch Bloomstep and plant your first habit"; Flags: nowait postinstall skipifsilent runasoriginaluser; Check: CanLaunchBloomstep; AfterInstall: MarkBloomstepLaunched
 
 [UninstallDelete]
 Type: files; Name: "{userstartup}\Bloomstep.lnk"
 Type: files; Name: "{app}\measurement-owner.txt"
 
 [Registry]
+#ifndef OnboardingJourneyFixture
 Root: HKCU; Subkey: "Software\Microsoft\Windows\CurrentVersion\Run"; ValueName: "Bloomstep"; Flags: uninsdeletevalue dontcreatekey
 Root: HKCU; Subkey: "Software\Classes\bloomstep"; ValueType: string; ValueData: "URL:Bloomstep invitation"
 Root: HKCU; Subkey: "Software\Classes\bloomstep"; ValueType: string; ValueName: "URL Protocol"; ValueData: ""
 Root: HKCU; Subkey: "Software\Classes\bloomstep\DefaultIcon"; ValueType: string; ValueData: "{app}\bloomstep.exe,0"
 Root: HKCU; Subkey: "Software\Classes\bloomstep\shell\open\command"; ValueType: string; ValueData: """{app}\bloomstep.exe"" ""%1"""
+#endif
 
 [Code]
 #ifdef OnboardingFixture
 function PrepareToInstall(var NeedsRestart: Boolean): String;
 begin
   Result := 'Compile-only onboarding fixture. Installation is prohibited; cancel this wizard.';
+end;
+#endif
+#ifdef OnboardingJourneyFixture
+function PrepareToInstall(var NeedsRestart: Boolean): String;
+var
+  I: Integer;
+begin
+  Result := '';
+  for I := 1 to ParamCount do
+    if CompareText(ParamStr(I), '/FORCEFIXTUREFAILURE') = 0 then
+      Result := 'Isolated fixture installation failure. No files installed.';
 end;
 #endif
 
@@ -89,17 +116,54 @@ type
   TMeasurementTime = record
     Year, Month, DayOfWeek, Day, Hour, Minute, Second, Milliseconds: Word;
   end;
+  TWindowStationFlags = record
+    Inherit, Reserved, Flags: LongWord;
+  end;
 
 function CoCreateGuid(var Guid: TMeasurementGuid): Integer;
   external 'CoCreateGuid@ole32.dll stdcall';
 procedure GetSystemTime(var Time: TMeasurementTime);
   external 'GetSystemTime@kernel32.dll stdcall';
+function GetProcessWindowStation(): THandle;
+  external 'GetProcessWindowStation@user32.dll stdcall';
+function GetUserObjectInformation(Handle: THandle; Index: Integer;
+  var Flags: TWindowStationFlags; Size: LongWord; var Needed: LongWord): Boolean;
+  external 'GetUserObjectInformationW@user32.dll stdcall';
 
 var
+  RecipePage, GrowPage: TWizardPage;
   MeasurementPage: TWizardPage;
   MeasurementCheckBox: TNewCheckBox;
   MeasurementStarted: Boolean;
   MeasurementConsentAt, MeasurementStartEvent, MeasurementOwnerId: String;
+  InstallationSucceeded, LaunchAttempted, InteractiveDesktop: Boolean;
+
+function CanLaunchBloomstep(): Boolean;
+var
+  I: Integer;
+begin
+  Result := InstallationSucceeded and not WizardSilent and not IsAdmin and not LaunchAttempted and InteractiveDesktop;
+  for I := 1 to ParamCount do
+    if (CompareText(ParamStr(I), '/SUPPRESSMSGBOXES') = 0) or
+       (CompareText(ParamStr(I), '/NOCANCEL') = 0) then Result := False;
+end;
+
+procedure MarkBloomstepLaunched();
+begin
+  LaunchAttempted := True;
+end;
+
+procedure CurPageChanged(CurPageID: Integer);
+begin
+  if (CurPageID = wpFinished) and IsAdmin then
+    WizardForm.FinishedLabel.Caption := WizardForm.FinishedLabel.Caption +
+      #13#10#13#10 + 'Automatic launch is unavailable from an elevated installer. Close Setup and open Bloomstep normally from your Windows account.';
+end;
+
+function ShouldSkipPage(PageID: Integer): Boolean;
+begin
+  Result := WizardSilent and ((PageID = RecipePage.ID) or (PageID = GrowPage.ID));
+end;
 
 function MeasurementPath(): String;
 begin
@@ -174,12 +238,70 @@ begin
   Result := Result + NewLine + NewLine + ReadyMemoNote;
 end;
 
+procedure AddEducation(Page: TWizardPage; ImageName, Body, Card: String);
+var
+  Art: TBitmapImage;
+  Text, Example: TNewStaticText;
+begin
+  ExtractTemporaryFile(ImageName);
+  Art := TBitmapImage.Create(Page);
+  Art.Parent := Page.Surface;
+  Art.Width := ScaleX(112);
+  Art.Height := ScaleY(112);
+  Art.Stretch := True;
+  Art.Bitmap.LoadFromFile(ExpandConstant('{tmp}\' + ImageName));
+  Text := TNewStaticText.Create(Page);
+  Text.Parent := Page.Surface;
+  Text.Left := Art.Width + ScaleX(16);
+  Text.Width := Page.SurfaceWidth - Text.Left;
+  Text.AutoSize := False;
+  Text.WordWrap := True;
+  Text.Caption := Body;
+  Text.AdjustHeight();
+  Example := TNewStaticText.Create(Page);
+  Example.Parent := Page.Surface;
+  Example.Top := Art.Height + ScaleY(12);
+  Example.Width := Page.SurfaceWidth;
+  Example.AutoSize := False;
+  Example.WordWrap := True;
+  Example.Caption := Card;
+  Example.AdjustHeight();
+  if (Text.Height > Art.Height) or (Example.Top + Example.Height > Page.SurfaceHeight) then
+    RaiseException('Education text does not fit the scaled wizard. Cancel and report the display scale; no installation has started.');
+end;
+
 procedure InitializeWizard();
 var
   Disclosure: TNewStaticText;
+  StationFlags: TWindowStationFlags;
+  Needed: LongWord;
 begin
+  if not GetUserObjectInformation(GetProcessWindowStation(), 1, StationFlags, 12, Needed) then
+    RaiseException('Windows desktop state could not be verified. Cancel setup and open it normally from your Windows account.');
+  InteractiveDesktop := (StationFlags.Flags and 1) <> 0;
   WizardForm.ReadyMemo.WordWrap := True;
   WizardForm.ReadyMemo.ScrollBars := ssVertical;
+  RecipePage := CreateCustomPage(wpWelcome, 'Plant a tiny recipe',
+    'Choose one small action. Make it smaller if it feels difficult.');
+  AddEducation(RecipePage, 'education-seed.bmp',
+    'Pair an existing routine with a tiny action.' + #13#10 +
+    'Celebrate in your own way.',
+    'Anchor: after pouring my morning drink' + #13#10 +
+    'Tiny action: take one slow breath' + #13#10 +
+    'Celebration: relax my shoulders and smile' + #13#10#13#10 +
+    'Anchor: after opening my laptop' + #13#10 +
+    'Tiny action: write my one next step' + #13#10 +
+    'Celebration: say "I have a starting point"' + #13#10#13#10 +
+    'These are examples. You choose and edit your own recipe in Bloomstep.');
+  GrowPage := CreateCustomPage(RecipePage.ID, 'Celebrate and grow',
+    'Small habits form a garden. Rest is part of the rhythm.');
+  AddEducation(GrowPage, 'education-growth.bmp',
+    'Celebrate your moment.' + #13#10 +
+    'Not today preserves your plant''s growth.',
+    'Your plant can grow: seed, sprout, sapling, budding, bloom.' + #13#10#13#10 +
+    'Check in with Did it or Did more. Choose Not today when you need rest.' + #13#10#13#10 +
+    'Each recipe has its own plant. Together, your habits make a garden.' + #13#10#13#10 +
+    'Next: choose where to install. Optional observations stay off unless you choose them.');
   MeasurementPage := CreateCustomPage(wpSelectDir,
     'Optional local installation observations',
     'Off by default. Nothing is sent by this installer.');
@@ -203,6 +325,7 @@ procedure CurStepChanged(CurStep: TSetupStep);
 var
   Completed: String;
 begin
+  if CurStep = ssPostInstall then InstallationSucceeded := True;
   if WizardSilent then Exit;
   if not MeasurementCheckBox.Checked then Exit;
   if CurStep = ssInstall then begin

@@ -14,9 +14,14 @@ relabeled as preview.9.
   method, not affiliated with or endorsed by BJ Fogg or Tiny Habits. Link only
   the official learning pages `https://tinyhabits.com` and
   `https://tinyhabits.com/book/`; learning is optional, never an install gate.
-- Restore the standard native Welcome after explicit creator review, then
-  reuse directory, existing optional observations, Start Menu, ready, progress
-  and finish. Add no custom educational pages, quizzes, tracking,
+- Keep the standard branded Welcome as **Anchor a routine**, followed by
+  **Plant a tiny recipe** and **Celebrate and grow**, then directory, existing
+  unchecked observations, Ready, progress and Finish. The three educational
+  beats are guaranteed for interactive setup; silent setup skips them. Explicit
+  destination selection is not skipped on upgrades; the previous directory is
+  prefilled and visibly reviewed, preserving custom install locations. The
+  isolated fixture never reuses a previous path. The optional Start Menu-folder page is omitted (existing shortcut
+  creation remains). No quizzes, tracking,
   autoplay or required external navigation. Keep per-user/no-elevation setup,
   silent/default-off receipts, ownership, protocol and sign-in gates unchanged.
 - Use original, deterministic bitmap art in native wizard chrome. Compiler
@@ -59,7 +64,7 @@ eligibility, support SLA or invitations to join a cohort are added.
 | Art unavailable / high contrast | Complete text alternative; no meaning or control expressed by color/art alone |
 | Keyboard, dark/light, 320px, 200% scale | Visible focus, semantic headings/alt, wrapping and no horizontal scroll; system colors in forced-colors |
 | Reduced motion / no interaction | Static original art; no animation, audio, autoplay, quiz or decorative clickable controls |
-| Wizard welcome / directory / ready / progress / finish | Native back/cancel/install navigation, short welcome/ready teaching, optional finish launch; no custom educational step |
+| Wizard welcome / recipe / grow / directory / observations / ready / progress / finish | Three original illustrated beats before options, native Back/Next/Cancel/Install navigation, freely toggleable Finish launch |
 | Wizard observations / silent upgrade | Existing separate unchecked consent and error notification; silent does not collect or inherit ownership |
 | Cancel before install | No installation or receipt side effect from educational content; viewing art never uploads |
 | Fixture compile / visual inspection | Compile real Inno installer with inert fixture payload, inspect UI then cancel before install; no customer install/data/elevation |
@@ -99,10 +104,53 @@ CI compiles never supply that define and inspect full preprocessed source to
 reject fixture identity/guard leakage. Captures use physical per-monitor DPI
 coordinates; native Welcome, directory, consent, Start Menu and Ready steps were viewed
 at the host's 150% scale and canceled. No target directory was created.
-Progress/Finish remain source/compile evidence only: post-install launch is
-explicitly `unchecked`, not visually exercised by installing a fixture.
+The updated source candidate makes the native **Launch Bloomstep and plant your
+first habit** Finish choice checked by default and freely user-toggleable.
+Launch is allowed only after successful interactive file installation on a
+visible desktop, without administrator elevation, explicit unattended flags or
+a prior launch attempt. Silent, failed and canceled setup cannot launch.
+`runasoriginaluser` preserves installing-user credentials; it is not used as a
+workaround for an elevated start. The elevated Finish instead explains how to
+open the app normally. Product and installer observations remain separately
+unchecked/default-off, with no retrospective educational events.
+
+`tool/verify_installer_journey.ps1` is restricted to a named inert CI fixture,
+with a distinct AppId and no protocol registry writes. Its probe reports only
+launch count/token checks in sanitized artifacts; raw token information stays
+in the disposable target and is deleted. That fixture is not Bloomstep and
+does not prove ordinary app launch, provider sign-in or first-recipe acceptance.
+The compile-only capture still never selects Install or Finish. Actual OS DPI
+is recorded; missing 100/150/200-percent pixels and screen-reader acceptance
+remain explicit coverage gaps until observed, never substituted with font or
+wizard-size scaling.
 
 Browser-specific panels are collapsed native `details` controls in the actual
 default page. Render evidence separates `home-default` from
 `home-help-expanded`; expanded screenshots are intentional inspection states,
 not the default user journey. Both states are checked for narrow-page reflow.
+
+## Genuine customer warning walkthrough
+
+`site/assets/customer-warning-provenance.json` is the public source of truth for
+the five user-authorized preview.8 ARM64 images, original/transformed hashes,
+pixel crops and the single non-warning background redaction. Private originals
+and personal paths are not published. `tool/prepare_customer_warnings.py`
+validates all five exact source hashes before pixel-only lossless transformation:
+no scaling, metadata, reconstruction or inferred warning pixels.
+
+The Edge profile toolbar/face and unrelated document background are excluded,
+while the complete Keep anyway button and original setup filename (including
+the displayed `(1)` duplicate-download suffix) remain. Windows outside-dialog
+edges are cropped. Every visible caption says real customer-provided screenshot,
+not CI; browser/OS versions are unknown. Screenshots do not establish binary
+SHA-256, execution success, app acceptance, safety or universal warning behavior.
+They replace the benign Edge TXT view in the warning walkthrough; Chrome's
+separate benign history sample remains accurately labeled, not a warning fallback.
+Ordinary PR CI no longer triggers a new public-installer warning observation.
+Only the separately authorized explicit workflow-dispatch gate can run that tool.
+
+The three-beat/launch changes are **source candidate only**, pending a future
+explicitly authorized release. Advertised preview.8 binaries/checksums are
+immutable; no preview.9 promotion, new tag or public binary is authorized.
+App guided creation/support and private first-created metrics are dependent
+follow-ups, not completed by this installer/site layer.

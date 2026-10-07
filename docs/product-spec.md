@@ -48,8 +48,9 @@ confidence, not lesson completion, attendance, streaks or time in the app.
 4. **Curated learning/bookmarks:** original short summaries plus author/date,
    canonical link, study type, evidence strength and limitations. Distinguish
    method claims from peer-reviewed evidence; causal/freshness claims need
-   verified sources and review dates. No hosted AI, paid feed or scraped
-   copyrighted article text. A "recent" label requires an actual verified
+   verified sources and review dates. Hosted inference and paid feeds require
+   separate authorization; do not reproduce copyrighted article text.
+   A "recent" label requires an actual verified
    publication date, not a generated summary.
 5. **Adaptive optional education:** self-select "New to habits", "Tried habits
    before" or "Fine-tuning", with Skip/change-anytime and a manual/freeform
@@ -142,7 +143,7 @@ kill switch must be verified before production launch.
 | Reminders | Real Windows local toasts and tray actions; opt-in permission/context; optional autostart; chosen local time, quiet hours default 21:30-07:30; <=1 prompt/habit/day and <=3 notifications/app/day; snooze/fewer/off. Three ignored halves frequency, seven pauses with in-app explanation. Device scheduling, not paid service. Respect OS settings/Focus; never use urgent bypass. Re-evaluate local time/DST/travel. Median of last 14 check-in times after five samples, rounded 15m. |
 | Identity | Real OIDC broker with Microsoft account/work-school, Google and email OTP; system browser authorization code + PKCE, unpredictable state and nonce; validate token signature/issuer/audience/expiry/nonce. Never embedded browser or fake sign-in. Provider/platform capabilities verified, not assumed. Refresh credentials in OS secure storage. Authenticated offline sessions; per-account isolation; sign-out clears device data with unsynced-data warning. No silent email-based linking. |
 | Sync | Functions JWT verification on **every** endpoint, server-derived partition `/userId`, Cosmos persistent records, retry, append-event union and last-writer-wins recipe/settings with deterministic conflicts. Never accept client-selected account identity. Two-device verification including offline edits/restarts. |
-| User learning | Weekly reflection under 60s; four 1-7 naturalness items every 14 days; explain deterministic Recipe Doctor based on check-in reasons (specific/reliable anchor, smaller behavior, reconsider aspiration/celebration). Two consecutive naturalness scores >=5.5 plus practice >=60% of last 28 days graduates, not a fixed day count. Original content; no AI. |
+| User learning | Weekly reflection under 60s; four 1-7 naturalness items every 14 days; explain deterministic Recipe Doctor based on check-in reasons (specific/reliable anchor, smaller behavior, reconsider aspiration/celebration). Two consecutive naturalness scores >=5.5 plus practice >=60% of last 28 days graduates, not a fixed day count. Original content. AI features, if added, will be explained and optional. |
 | Reconnect | Gentle absence nudges at 3 then 7 days, maximum two per absence episode, then stop until return. Opt-out, ignored-reminder backoff, never guilt. Return earns a positive celebration. Windows background/tray/next-open delivery must actually be observed before claiming success. |
 | Telemetry | Separate optional consent, off by default. Typed allowlisted funnel registry, offline batching/retry, no email/habit/feedback text, 13-month raw retention, deletion propagation. Acquisition/install/sign-in/activation/check-in/graduation/referral/feedback/rating/reminder health; four admin dashboards (funnel, retention, outcomes, reminder health); daily aggregates; minimum 50-user cohort. Required diagnostic/security data disclosed separately. |
 | Feedback | Private in-app Idea/Bug/Question/Praise/This felt wrong form; optional diagnostic attachment consent; queued vs received distinction; my feedback statuses received/review/planned/in-progress/shipped/not-planned with reason; threaded private team responses visible after sync; role-protected audited admin console. No default public board or public free-text DMs. |

@@ -71,6 +71,8 @@ try {
   assert.equal(await offline.evaluate(() => localStorage.length), 0);
   await offline.close();
   for (const scenario of [
+    { name: 'mobile', width: 390, scale: 1, js: true },
+    { name: 'desktop', width: 1280, scale: 1, js: true },
     { name: 'narrow', width: 320, scale: 1, js: true },
     { name: 'no-js', width: 390, scale: 1, js: false },
     { name: 'two-times-density', width: 640, scale: 2, js: true },
@@ -120,6 +122,11 @@ try {
             { timeout: 10000 }, image);
         }
         await page.$eval('#download-help', node => node.scrollIntoView());
+        assert.equal(await page.$$eval('#download-help img[src*="/warning-"]', images =>
+          images.length === 5 && images.every(image => image.complete && image.naturalWidth > 0)), true,
+          'All five genuine warning assets load after explicit help expansion');
+        assert.equal(await page.$$eval('#download-help figcaption', captions => captions.filter(caption =>
+          caption.textContent.includes('Real customer-provided preview.8 ARM64 screenshot, not CI')).length), 5);
         assert.equal(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), true);
         if (scenario.forced) assert.equal(await page.$eval('.teaching-art', node => getComputedStyle(node).display), 'none');
         await page.keyboard.press('Tab');

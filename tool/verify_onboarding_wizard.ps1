@@ -1,9 +1,11 @@
 param(
   [Parameter(Mandatory=$true)][string]$Installer,
-  [Parameter(Mandatory=$true)][string]$EvidenceDir
+  [Parameter(Mandatory=$true)][string]$EvidenceDir,
+  [switch]$LoadHelpersOnly
 )
 $ErrorActionPreference = 'Stop'
 Add-Type -AssemblyName System.Drawing
+Add-Type -AssemblyName UIAutomationClient, UIAutomationTypes
 Add-Type @'
 using System;
 using System.Collections.Generic;
@@ -23,6 +25,8 @@ public static class OnboardingWizard {
   [DllImport("user32.dll")] public static extern bool PrintWindow(IntPtr h, IntPtr dc, uint flags);
   [DllImport("user32.dll")] public static extern bool GetWindowRect(IntPtr h, out Rect r);
   [DllImport("user32.dll")] public static extern bool SetProcessDpiAwarenessContext(IntPtr context);
+  [DllImport("user32.dll")] public static extern uint GetDpiForWindow(IntPtr h);
+  [DllImport("user32.dll")] public static extern bool SetForegroundWindow(IntPtr h);
   public struct Rect { public int Left, Top, Right, Bottom; }
   public static string ClassName(IntPtr h) {
     var b = new StringBuilder(256); GetClassName(h,b,b.Capacity); return b.ToString();
@@ -61,6 +65,7 @@ public static class OnboardingWizard {
   }
 }
 '@
+if ($LoadHelpersOnly) { return }
 if (-not [OnboardingWizard]::SetProcessDpiAwarenessContext([IntPtr](-4))) {
   throw 'Capture process could not use per-monitor DPI coordinates; do not claim a clipped screenshot.'
 }
@@ -73,6 +78,10 @@ $owned = [Collections.Generic.HashSet[int]]::new()
 $states = [Collections.Generic.List[object]]::new()
 $seen = [Collections.Generic.HashSet[string]]::new()
 $ready = $false
+$backVerified = $false
+$expectedOrder = @('Welcome', 'recipe', 'grow', 'destination', 'optional-observations', 'ready')
+$receipt = Join-Path $env:LOCALAPPDATA 'Bloomstep\measurement\installer-receipt.json'
+if (Test-Path $receipt) { throw 'Capture refuses an existing installer receipt.' }
 try {
   $deadline = (Get-Date).AddSeconds(40)
   while ((Get-Date) -lt $deadline -and -not $ready) {
@@ -90,6 +99,14 @@ try {
       if ($states.Count -eq 0 -and -not $text.Contains('Welcome to Bloomstep')) {
         throw 'First observed wizard page was not Welcome.'
       }
+      $step = if ($text.Contains('Welcome to Bloomstep')) { 'Welcome' }
+        elseif ($text.Contains('Plant a tiny recipe')) { 'recipe' }
+        elseif ($text.Contains('Celebrate and grow')) { 'grow' }
+        elseif ($text.Contains('Optional local installation observations')) { 'optional-observations' }
+        elseif ($text.Contains('Ready to install this unsigned Bloomstep preview')) { 'ready' }
+        elseif ($text.Contains('Select Destination Location')) { 'destination' }
+        else { throw "Unexpected wizard page: $text" }
+      if ($step -ne $expectedOrder[$states.Count]) { throw "Unexpected page order: $step" }
       $checkbox = [OnboardingWizard]::Find($window, 'Save optional local observations (unchecked by default)')
       if ($checkbox -ne [IntPtr]::Zero) {
         if ([OnboardingWizard]::SendMessage($checkbox, 0x00F0, [IntPtr]::Zero, [IntPtr]::Zero).ToInt32() -ne 0) {
@@ -110,7 +127,16 @@ try {
       $filename = 'fixture-wizard-' + $states.Count + '.png'
       try { $bitmap.Save((Join-Path $EvidenceDir $filename), [Drawing.Imaging.ImageFormat]::Png) }
       finally { $graphics.Dispose(); $bitmap.Dispose() }
-      $states.Add(@{ caption = $text; image = $filename; fixture = $true; installed = $false })
+      $root = [Windows.Automation.AutomationElement]::FromHandle($window)
+      $controls = $root.FindAll([Windows.Automation.TreeScope]::Descendants, [Windows.Automation.Condition]::TrueCondition)
+      $accessible = @($controls | ForEach-Object {
+        if (-not $_.Current.IsOffscreen -and $_.Current.Name) {
+          @{ name = $_.Current.Name; keyboardFocusable = $_.Current.IsKeyboardFocusable; type = $_.Current.ControlType.ProgrammaticName }
+        }
+      })
+      $states.Add(@{ step = $step; caption = $text; image = $filename; fixture = $true;
+        installed = $false; dpi = [OnboardingWizard]::GetDpiForWindow($window);
+        accessibility = $accessible; screenshotSha256 = (Get-FileHash (Join-Path $EvidenceDir $filename)).Hash.ToLower() })
       if ($text.Contains('Ready to install this unsigned Bloomstep preview')) {
         $memo = [OnboardingWizard]::Memo($window)
         if ($memo -eq [IntPtr]::Zero) { throw 'Native ready memo missing.' }
@@ -130,13 +156,37 @@ try {
       $next = [OnboardingWizard]::Find($window, '&Next')
       if ($next -eq [IntPtr]::Zero) { $next = [OnboardingWizard]::Find($window, '&Next >') }
       if ($next -eq [IntPtr]::Zero) { throw "Unexpected capture step; will not click Install or Finish: $text" }
-      [void][OnboardingWizard]::SendMessage($next, 0x00F5, [IntPtr]::Zero, [IntPtr]::Zero)
+      if (-not [OnboardingWizard]::SetForegroundWindow($window)) { throw 'Owned wizard could not obtain keyboard focus.' }
+      $shell = New-Object -ComObject WScript.Shell
+      if ($step -eq 'recipe') {
+        $shell.SendKeys('%b')
+        Start-Sleep -Milliseconds 200
+        if (-not [OnboardingWizard]::Describe($window).Contains('Welcome to Bloomstep')) { throw 'Keyboard Back did not return to Welcome.' }
+        $shell.SendKeys('%n')
+        Start-Sleep -Milliseconds 200
+        if (-not [OnboardingWizard]::Describe($window).Contains('Plant a tiny recipe')) { throw 'Keyboard Next did not restore recipe teaching.' }
+        $backVerified = $true
+      }
+      $shell.SendKeys('%n')
       Start-Sleep -Milliseconds 300
     }
     Start-Sleep -Milliseconds 200
   }
   if (-not $ready) { throw 'Owned fixture did not reach Ready within bounded capture deadline.' }
-  $states | ConvertTo-Json -Depth 4 | Set-Content (Join-Path $EvidenceDir 'fixture-wizard-proof.json') -Encoding utf8
+  if (($states.step -join ',') -ne ($expectedOrder -join ',')) { throw 'Incomplete educational/options order.' }
+  if (Test-Path $receipt) { throw 'Pre-consent educational capture wrote an installer receipt.' }
+  @{
+    sourceRevision = $env:GITHUB_SHA
+    installerSha256 = (Get-FileHash $Installer).Hash.ToLower()
+    expectedOrder = $expectedOrder
+    states = $states
+    receiptAbsent = $true
+    targetAbsent = -not (Test-Path $target)
+    keyboardNavigation = 'Actual Alt+N on owned native wizard; Install and Finish never selected'
+    keyboardBackVerified = $backVerified
+    screenReaderAcceptance = 'Not established; UI Automation names recorded, not a Narrator acceptance claim'
+    installed = $false
+  } | ConvertTo-Json -Depth 8 | Set-Content (Join-Path $EvidenceDir 'fixture-wizard-proof.json') -Encoding utf8
 } finally {
   foreach ($window in [OnboardingWizard]::Windows()) {
     [uint32]$owner = 0
