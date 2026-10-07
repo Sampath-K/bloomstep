@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import 'package:flutter/material.dart';
 import 'package:path/path.dart' as p;
 import 'package:path_provider/path_provider.dart';
@@ -11,8 +13,9 @@ import '../services/auth_observations.dart';
 import '../services/installer_measurement.dart';
 import 'theme.dart';
 import 'session_boundary.dart';
+import 'update_status.dart';
 
-class BloomstepApp extends StatelessWidget {
+class BloomstepApp extends StatefulWidget {
   const BloomstepApp({
     super.key,
     this.invitationInbox,
@@ -23,15 +26,26 @@ class BloomstepApp extends StatelessWidget {
   final InstallerMeasurement? measurement;
   final String? measurementWarning;
   @override
+  State<BloomstepApp> createState() => _BloomstepAppState();
+}
+
+class _BloomstepAppState extends State<BloomstepApp> {
+  final navigatorKey = GlobalKey<NavigatorState>();
+
+  @override
   Widget build(BuildContext context) => MaterialApp(
+    navigatorKey: navigatorKey,
     title: 'Bloomstep',
     debugShowCheckedModeBanner: false,
     theme: BloomstepTheme.light(),
     darkTheme: BloomstepTheme.dark(),
+    builder: (context, child) => Platform.isWindows
+        ? UpdateStatus(navigatorKey: navigatorKey, child: child!)
+        : child!,
     home: SignInScreen(
-      invitationInbox: invitationInbox,
-      measurement: measurement,
-      measurementWarning: measurementWarning,
+      invitationInbox: widget.invitationInbox,
+      measurement: widget.measurement,
+      measurementWarning: widget.measurementWarning,
     ),
   );
 }
