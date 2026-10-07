@@ -151,7 +151,7 @@ jobs:
 
           Inert automated proof outcome: ${{ steps.launch-proof.outcome }}.
           No masked failure, no claimed customer-app or launch acceptance.
-          Only exact preview.10 and preview.11 have separately user-authorized owner-trial publication exceptions.
+          Only exact preview.10 and recovery preview.12 have separately authorized owner-trial publication exceptions. Failed preview.11 remains immutable and unpublished.
           The public site remains on preview.9 until both checked/unchecked owner trials pass.
           Before M2/open preview/Store, blocking automated or recorded clean-machine human proof is required again.
           '@ | Add-Content $env:GITHUB_STEP_SUMMARY
@@ -676,8 +676,8 @@ jobs:
       always() && startsWith(github.ref, 'refs/tags/v') &&
       needs.api.result == 'success' && needs.test-and-build-windows.result == 'success' &&
       needs.universal-native-proof.result == 'success' &&
-      (needs.universal-app-launch-evidence.result == 'success' || github.ref_name == 'v0.1.0-preview.11') &&
-      (needs.installer-launch-evidence.result == 'success' || github.ref_name == 'v0.1.0-preview.10' || github.ref_name == 'v0.1.0-preview.11')
+      (needs.universal-app-launch-evidence.result == 'success' || github.ref_name == 'v0.1.0-preview.12') &&
+      (needs.installer-launch-evidence.result == 'success' || github.ref_name == 'v0.1.0-preview.10' || github.ref_name == 'v0.1.0-preview.12')
     needs: [api, test-and-build-windows, installer-launch-evidence, universal-native-proof, universal-app-launch-evidence]
     runs-on: ubuntu-latest
     permissions:
@@ -721,14 +721,14 @@ jobs:
         run: |
           title="Bloomstep $GITHUB_REF_NAME - owner trial only"
           notes="Unsigned Windows engineering preview with real broker sign-in; provider availability depends on the configured customer flow. No anonymous or simulated login. This is NOT the complete verified MVP. See docs/status.md for actual evidence, runtime limits and outstanding launch gates. Verify the downloadable SHA-256 before installing."
-          if [ "$GITHUB_REF_NAME" = "v0.1.0-preview.10" ] || [ "$GITHUB_REF_NAME" = "v0.1.0-preview.11" ]; then
+          if [ "$GITHUB_REF_NAME" = "v0.1.0-preview.10" ] || [ "$GITHUB_REF_NAME" = "v0.1.0-preview.12" ]; then
             title="Bloomstep $GITHUB_REF_NAME - owner trial only"
             notes="$notes
 
           launch-after-install: not yet verified, pending owner manual trial
           genuine launch-after-Finish: UNVERIFIED
 
-          Owner trial only; this GitHub prerelease is publicly accessible, not private. No external recruitment. The public site remains on preview.9 until the owner reports both paths pass: checked Finish starts exactly one non-elevated app as the installing user, and unchecked Finish starts no app. Sign-in remains required before the builder. Either failure is a P0 frozen-v1 fix in the next preview. Preview.11 has separate explicit authorization only for this manual owner-test candidate: the elevated hosted genuine-launch worker stopped before installation, not a launch pass. No general release exception. Before M2/open preview/Store, blocking automated or recorded clean-machine human launch proof is required again."
+          Owner trial only; this GitHub prerelease is publicly accessible, not private. No external recruitment. The public site remains on preview.9 until the owner reports both paths pass: checked Finish starts exactly one non-elevated app as the installing user, and unchecked Finish starts no app. Sign-in remains required before the builder. Either failure is a P0 frozen-v1 fix in the next preview. Recovery preview.12 has separate authorization only for this manual owner-test candidate after the preview.11 publication validator rejected a scalar checksum receipt; failed preview.11 stays immutable and unpublished. The elevated hosted genuine-launch worker stopped before installation, not a launch pass. No general future release exception. Before M2/open preview/Store, blocking automated or recorded clean-machine human launch proof is required again."
           fi
           notes="$notes
 

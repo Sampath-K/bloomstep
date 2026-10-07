@@ -84,7 +84,7 @@ test('exact owner trials preserve visible failed launch evidence and required na
   assert.match(release, /needs\.api\.result == 'success'/);
   assert.match(release, /needs\.test-and-build-windows\.result == 'success'/);
   assert.match(release, /needs\.installer-launch-evidence\.result == 'success' \|\| github\.ref_name == 'v0\.1\.0-preview\.10'/);
-  assert.match(release, /github\.ref_name == 'v0\.1\.0-preview\.11'/);
+  assert.match(release, /github\.ref_name == 'v0\.1\.0-preview\.12'/);
   assert.match(release, /genuine launch-after-Finish: UNVERIFIED/);
   assert.match(release, /release-proof/);
   assert.match(release, /owner trial only/);

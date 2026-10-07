@@ -17,7 +17,7 @@ evidence job failed its elevated-worker guard; this is not app acceptance.
 **Current bounded follow-up: one offline Windows installer.** Universal Inno
 packaging embeds the same-source x64 and ARM64 Release trees and selects only
 the native OS payload, not the setup process or browser architecture. This is
-source for exact preview.11, separately authorized for owner-only manual
+source for exact recovery preview.12, separately authorized for owner-only manual
 testing with genuine launch-after-Finish UNVERIFIED. Native x64/ARM64
 lifecycle/routing proof passes; hosted genuine proof stops before installation
 on elevated workers. Fresh exact-head gates and same-tag-run publication
@@ -29,7 +29,7 @@ fixture corruption evidence claim customer installation success or safety.
 **launch-after-install: not yet verified, pending owner manual trial**
 
 The user-authorized exceptions are exact preview.10 and separately approved
-preview.11 owner manual trials, not M2,
+recovery preview.12 owner manual trials, not M2,
 open preview or Store readiness. The separate automated evidence job retains
 real failures and sanitized diagnostics; it is not silently skipped or masked.
 Preview.10 was published after approved source merge and required gates as
@@ -42,10 +42,13 @@ next preview. Before M2/open preview/Store, blocking automated or recorded
 clean-machine human launch proof is required again. Improving automated
 desktop/token diagnostics remains a release-pipeline backlog item, not deleted.
 The preview.10 exception did **not** itself authorize the universal preview.
-The owner subsequently explicitly authorized exact preview.11 as an
-UNVERIFIED-launch manual-test candidate only. Its failed evidence remains
-visible; same-run package/native/frame/guard receipts gate publication.
-Later previews again require genuine checked/unchecked proof. No public-site
+The owner subsequently authorized a manual-test candidate. Preview.11's
+publication failed on a scalar-versus-array checksum-receipt adapter mismatch,
+not a native lifecycle failure. Parent approved recovery using only the next
+unused version, exact preview.12; failed preview.11 stays immutable and
+unpublished. Genuine launch remains UNVERIFIED/visibly failed; same-run
+package/native/frame/guard receipts gate publication. Later previews again
+require genuine checked/unchecked proof. No public-site
 promotion or full customer-ready claim follows from publishing this candidate.
 
 **Current developer increment: fresh-consent app reminder-preference observations (preview.8).**
