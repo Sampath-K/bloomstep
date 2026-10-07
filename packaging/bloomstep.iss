@@ -156,8 +156,8 @@ end;
 procedure CurPageChanged(CurPageID: Integer);
 begin
   if (CurPageID = wpFinished) and IsAdmin then
-    WizardForm.FinishedLabel.Caption := WizardForm.FinishedLabel.Caption +
-      #13#10#13#10 + 'Automatic launch is unavailable from an elevated installer. Close Setup and open Bloomstep normally from your Windows account.';
+    WizardForm.FinishedLabel.Caption := WizardForm.FinishedLabel.Caption + #13#10#13#10 +
+      'Automatic launch is unavailable from an elevated installer. Close Setup and open Bloomstep normally from your Windows account.';
 end;
 
 function ShouldSkipPage(PageID: Integer): Boolean;
