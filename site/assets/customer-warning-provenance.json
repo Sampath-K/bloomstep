@@ -1,0 +1,173 @@
+{
+  "schemaVersion": 1,
+  "captureSource": "customer-provided screenshots",
+  "release": "0.1.0-preview.8",
+  "architecture": "arm64",
+  "browser": "Microsoft Edge (customer-reported)",
+  "browserVersion": null,
+  "osVersion": null,
+  "ciCapture": false,
+  "privateOriginalsPublished": false,
+  "binaryHashEstablished": false,
+  "executionSuccessEstablished": false,
+  "appAcceptanceEstablished": false,
+  "safetyEstablished": false,
+  "universalWarningsEstablished": false,
+  "authorization": "User authorized warning-region cropping and privacy redaction for this walkthrough.",
+  "observedFilename": "Bloomstep-0.1.0-preview.8-windows-arm64-setup (1).exe",
+  "filenameNote": "(1) is the displayed duplicate-download suffix, not evidence of a different version or hash.",
+  "transformationTool": "tool/prepare_customer_warnings.py",
+  "transformationLibrary": "Pillow; lossless PNG, pixel-only RGB copy, no scaling",
+  "images": [
+    {
+      "file": "warning-edge-uncommon.png",
+      "sourceSha256": "2f3a4ffd0e8c1192d7fb38a53f127649849453dd32b0df61b44402a888d319e1",
+      "sourceDimensions": [
+        574,
+        456
+      ],
+      "sha256": "e396f0580452e1ae88efaf5343fc17c8f3dc115bc9142a8acca0bf2a412d05ba",
+      "dimensions": [
+        541,
+        354
+      ],
+      "transform": {
+        "crop": [
+          32,
+          102,
+          541,
+          354
+        ],
+        "coordinateSpace": "source pixels; x, y, width, height",
+        "redactions": [],
+        "privacyReason": "Exclude profile face, toolbar and unrelated page background.",
+        "resized": false,
+        "metadataStripped": true,
+        "warningPixelsReconstructed": false
+      }
+    },
+    {
+      "file": "warning-edge-menu.png",
+      "sourceSha256": "069f4a96060d4716ce0286f9079dc0e105a3c5be7be3ec921d7d19d4a004ecb2",
+      "sourceDimensions": [
+        300,
+        300
+      ],
+      "sha256": "2035bff84a40a5098914709c89520280f3f81f2ff198b8b46efcc6ac81931df2",
+      "dimensions": [
+        293,
+        300
+      ],
+      "transform": {
+        "crop": [
+          7,
+          0,
+          293,
+          300
+        ],
+        "coordinateSpace": "source pixels; x, y, width, height",
+        "redactions": [],
+        "privacyReason": "Exclude outside-menu left gutter.",
+        "resized": false,
+        "metadataStripped": true,
+        "warningPixelsReconstructed": false
+      }
+    },
+    {
+      "file": "warning-edge-keep-anyway.png",
+      "sourceSha256": "53e89b0e7aaa9c91f64eb651ae89fb055e8b241e678fa52f801d05a313a6a391",
+      "sourceDimensions": [
+        537,
+        737
+      ],
+      "sha256": "e1522e80c17a245b67e70ae7ee7d1e3365f9b5a9afb48e045e794917bd6d9c61",
+      "dimensions": [
+        529,
+        733
+      ],
+      "transform": {
+        "crop": [
+          0,
+          4,
+          529,
+          733
+        ],
+        "coordinateSpace": "source pixels; x, y, width, height",
+        "redactions": [
+          {
+            "rectangle": [
+              0,
+              707,
+              368,
+              26
+            ],
+            "coordinateSpace": "cropped pixels; x, y, width, height",
+            "fillRgb": [
+              36,
+              36,
+              36
+            ]
+          }
+        ],
+        "privacyReason": "Exclude top/right background gutters; mask unrelated document title below dialog, outside Keep anyway.",
+        "resized": false,
+        "metadataStripped": true,
+        "warningPixelsReconstructed": false
+      }
+    },
+    {
+      "file": "warning-windows-protected.png",
+      "sourceSha256": "4415aa34880c5e4b8784de6f2ed6b42d084b853c84c6630106c596652eb9fe42",
+      "sourceDimensions": [
+        804,
+        751
+      ],
+      "sha256": "cb0e35ef40092694fa2deb12da379280a919b86cd57420fab25cbce4f605b3d5",
+      "dimensions": [
+        798,
+        746
+      ],
+      "transform": {
+        "crop": [
+          4,
+          1,
+          798,
+          746
+        ],
+        "coordinateSpace": "source pixels; x, y, width, height",
+        "redactions": [],
+        "privacyReason": "Exclude outside-modal background at edges.",
+        "resized": false,
+        "metadataStripped": true,
+        "warningPixelsReconstructed": false
+      }
+    },
+    {
+      "file": "warning-windows-run-anyway.png",
+      "sourceSha256": "29a4a289f74c4343bf31b2ae4a8da3e95ed336e11506439108225945fce4ee55",
+      "sourceDimensions": [
+        799,
+        750
+      ],
+      "sha256": "89fcf9812b4c0cfc93e41a3914fbbe40ec09f11e44c471007c8115c5cc3c5481",
+      "dimensions": [
+        798,
+        746
+      ],
+      "transform": {
+        "crop": [
+          0,
+          4,
+          798,
+          746
+        ],
+        "coordinateSpace": "source pixels; x, y, width, height",
+        "redactions": [],
+        "privacyReason": "Exclude outside-modal top/right edge.",
+        "resized": false,
+        "metadataStripped": true,
+        "warningPixelsReconstructed": false
+      }
+    }
+  ]
+}

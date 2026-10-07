@@ -79,12 +79,19 @@ void main() {
     await waitForReady(find.text('Plant a habit'));
     await tester.tap(find.text('Plant a habit'));
     await tester.pumpAndSettle();
-    await tester.tap(find.widgetWithText(ActionChip, 'Calm'));
+    await tester.tap(find.text('pour my morning drink'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('take one slow breath'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('relax my shoulders and smile'));
     await tester.pumpAndSettle();
     await tester.ensureVisible(find.text('I practiced my celebration'));
     await tester.tap(find.text('I practiced my celebration'));
     await tester.pumpAndSettle();
     await tester.tap(find.text('Plant this seed'));
+    await waitForReady(find.text('See my seed'));
+    await tester.tap(find.text('See my seed'));
+    await tester.pumpAndSettle();
     await waitForReady(
       find.text('Did it'),
       databaseReady: () async => (await store.habits()).length == 1,

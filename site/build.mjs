@@ -9,6 +9,8 @@ await mkdir(new URL('./assets/',import.meta.url),{recursive:true});
 const index=await readFile(new URL('./index.html',import.meta.url),'utf8');
 for (const asset of ['habit-anchor.svg','habit-tiny.svg','habit-celebrate.svg',
   'download-flow.svg','edge-downloads.png','chrome-downloads.png','download-capture-provenance.json',
+  'warning-edge-uncommon.png','warning-edge-menu.png','warning-edge-keep-anyway.png',
+  'warning-windows-protected.png','warning-windows-run-anyway.png','customer-warning-provenance.json',
   'sample-garden.png','sample-garden-provenance.json']) {
   const bytes = await readFile(new URL(`./assets/${asset}`, import.meta.url));
   if (!bytes.length) throw Error(`Required onboarding asset is empty: ${asset}`);

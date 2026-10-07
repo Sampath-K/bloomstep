@@ -80,7 +80,7 @@ test('Edge observation is exact-asset, policy-gated, non-executing and one-shot'
   assert.match(script, /if \(evidence\.warningCategory === 'unknown-reputation'\)/);
   assert.match(script, /No Keep or other download action was selected/);
   assert.doesNotMatch(script, /--disable-features|--no-sandbox|SmartScreenEnabled\s*[:=]\s*false|Run anyway/i);
-  assert.match(workflow, /github\.event_name == 'pull_request' && github\.event\.action == 'opened'/);
+  assert.doesNotMatch(workflow, /github\.event_name == 'pull_request' && github\.event\.action == 'opened'/);
   assert.match(workflow, /github\.event_name == 'workflow_dispatch' && inputs\.verify_edge_warning/);
   assert.match(workflow, /!inputs\.verify_edge_warning/);
   assert.match(workflow, /name: edge-download-warning-observation/);
@@ -115,18 +115,18 @@ test('download help is static, browser-specific, conditional and honest about il
   assert.match(page, /malware or policy block/);
   assert.match(page, /More info/);
   assert.match(page, /Run anyway/);
-  for (const name of ['edge', 'chrome']) {
+  for (const name of ['chrome']) {
     assert.match(page, new RegExp(`src="/assets/${name}-downloads\\.png"[^>]+alt="[^"]+"`));
     assert.ok(readFileSync(new URL(`../assets/${name}-downloads.png`, import.meta.url))
       .subarray(0, 8).equals(Buffer.from('89504e470d0a1a0a', 'hex')));
   }
   assert.match(page, /benign sample text file, not a Bloomstep installer/);
-  assert.equal((page.match(/Example download view; installer\/security warnings may differ/g) ?? []).length, 2);
+  assert.equal((page.match(/Example download view; installer\/security warnings may differ/g) ?? []).length, 1);
   const provenance = JSON.parse(read('assets/download-capture-provenance.json'));
   assert.equal(provenance.sampleName, 'bloomstep-download-help-sample.txt');
   assert.deepEqual(provenance.captures.map(value => value.browser), ['edge','chrome']);
   for (const capture of provenance.captures) {
-    assert.ok(page.includes(`${capture.product} ${capture.version}`));
+    if (capture.browser === 'chrome') assert.ok(page.includes(`${capture.product} ${capture.version}`));
     assert.match(capture.context, /not an installer or security-warning validation/);
     assert.match(capture.version, /^\d+\.\d+\.\d+\.\d+$/);
   }

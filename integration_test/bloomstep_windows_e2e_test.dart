@@ -1,8 +1,11 @@
 import 'dart:convert';
 import 'dart:io';
+import 'dart:ui' as ui;
 
 import 'package:flutter/material.dart';
+import 'package:flutter/rendering.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:crypto/crypto.dart';
 import 'package:integration_test/integration_test.dart';
 import 'package:path/path.dart' as p;
 import 'package:bloomstep/core/garden_store.dart';
@@ -86,22 +89,26 @@ void main() {
       api = testApi;
       await tester.binding.setSurfaceSize(const Size(1200, 1000));
 
+      final captureBoundary = GlobalKey();
       await tester.pumpWidget(
-        TestOnlyBloomstepApp(
-          runRoot: runRoot,
-          expectedSecret: secret,
-          clock: testClock,
-          onAdvanceClock: () {
-            testNow = testNow.add(const Duration(days: 1));
-          },
-          onAuthenticated: (session, store) {
-            activeSession = session;
-            activeStore = store;
-          },
-          onSessionClosed: (_, _) {
-            activeSession = null;
-            activeStore = null;
-          },
+        RepaintBoundary(
+          key: captureBoundary,
+          child: TestOnlyBloomstepApp(
+            runRoot: runRoot,
+            expectedSecret: secret,
+            clock: testClock,
+            onAdvanceClock: () {
+              testNow = testNow.add(const Duration(days: 1));
+            },
+            onAuthenticated: (session, store) {
+              activeSession = session;
+              activeStore = store;
+            },
+            onSessionClosed: (_, _) {
+              activeSession = null;
+              activeStore = null;
+            },
+          ),
         ),
       );
       await tester.pumpAndSettle();
@@ -164,7 +171,7 @@ void main() {
         throwsArgumentError,
       );
 
-      await _plant(tester);
+      await _plant(tester, captureBoundary: captureBoundary);
       await _waitFor(
         tester,
         find.text('Did it'),
@@ -172,7 +179,7 @@ void main() {
       );
       var recipes = await activeStore!.habits();
       final firstRecipe = recipes.single;
-      expect(firstRecipe.behavior, contains('relax my shoulders'));
+      expect(firstRecipe.behavior, 'take one slow breath');
       await syncService().sync();
       expect((await activeStore!.habits()).single.id, firstRecipe.id);
       expect((await activeStore!.syncPayload())['habits'], isEmpty);
@@ -642,21 +649,93 @@ Future<void> _signIn(
 
 Future<void> _plant(
   WidgetTester tester, {
-  String behavior = 'relax my shoulders',
+  String? behavior,
+  GlobalKey? captureBoundary,
 }) async {
   await tester.tap(find.text('Plant a habit'));
   await tester.pumpAndSettle();
-  await tester.tap(find.widgetWithText(ActionChip, 'Calm'));
+  if (captureBoundary != null) {
+    await _captureBuilderFrame(tester, captureBoundary, 'picker-1-anchor');
+  }
+  await tester.tap(find.text('pour my morning drink'));
   await tester.pumpAndSettle();
-  await tester.enterText(
-    find.widgetWithText(TextFormField, 'I will...'),
-    behavior,
-  );
+  if (captureBoundary != null) {
+    await _captureBuilderFrame(tester, captureBoundary, 'picker-2-action');
+  }
+  if (behavior == null) {
+    await tester.tap(find.text('take one slow breath'));
+  } else {
+    await tester.ensureVisible(find.text('Make it my own (optional)'));
+    await tester.tap(find.text('Make it my own (optional)'));
+    await tester.pumpAndSettle();
+    await tester.enterText(
+      find.widgetWithText(TextFormField, 'I will...'),
+      behavior,
+    );
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Choose a celebration'));
+  }
   await tester.pumpAndSettle();
-  await tester.ensureVisible(find.text('I practiced my celebration'));
-  await tester.tap(find.text('I practiced my celebration'));
+  if (captureBoundary != null) {
+    await _captureBuilderFrame(tester, captureBoundary, 'picker-3-celebration');
+  }
+  await tester.ensureVisible(find.text('relax my shoulders and smile'));
+  await tester.tap(find.text('relax my shoulders and smile'));
   await tester.pumpAndSettle();
+  if (behavior != null) {
+    await tester.ensureVisible(find.text('I practiced my celebration'));
+    await tester.tap(find.text('I practiced my celebration'));
+    await tester.pumpAndSettle();
+  }
+  if (captureBoundary != null) {
+    await _captureBuilderFrame(
+      tester,
+      captureBoundary,
+      'picker-complete-optional-practice-off',
+    );
+  }
   await tester.tap(find.text('Plant this seed'));
+  await _waitFor(tester, find.text('See my seed'));
+  if (captureBoundary != null) {
+    await _captureBuilderFrame(tester, captureBoundary, 'planted-next-step');
+  }
+  await tester.tap(find.text('See my seed'));
+  await tester.pumpAndSettle();
+}
+
+Future<void> _captureBuilderFrame(
+  WidgetTester tester,
+  GlobalKey boundaryKey,
+  String name,
+) async {
+  final directory = Platform.environment['BLOOMSTEP_TEST_SCREENSHOTS_DIR'];
+  if (directory == null) return;
+  await tester.pumpAndSettle(
+    const Duration(milliseconds: 100),
+    EnginePhase.sendSemanticsUpdate,
+    const Duration(seconds: 10),
+  );
+  final boundary =
+      boundaryKey.currentContext!.findRenderObject()! as RenderRepaintBoundary;
+  await tester.runAsync(() async {
+    final image = await boundary.toImage(pixelRatio: 1);
+    try {
+      final data = await image.toByteData(format: ui.ImageByteFormat.png);
+      final bytes = data!.buffer.asUint8List();
+      await Directory(directory).create(recursive: true);
+      final file = File(p.join(directory, '$name.png'));
+      if (await file.exists()) {
+        throw StateError('Refusing to replace a previous rendered frame.');
+      }
+      await file.writeAsBytes(bytes);
+      await File(p.join(directory, 'frames.jsonl')).writeAsString(
+        '${jsonEncode({'sourceRevision': Platform.environment['BLOOMSTEP_SOURCE_REVISION'], 'kind': 'compiled-Windows-Flutter-rendered-frame-synthetic-only', 'file': '$name.png', 'sha256': sha256.convert(bytes).toString(), 'width': image.width, 'height': image.height, 'customerAcceptance': false, 'nativeWindowOrDpiProof': false})}\n',
+        mode: FileMode.append,
+      );
+    } finally {
+      image.dispose();
+    }
+  });
 }
 
 Future<void> _naturalnessReflection(

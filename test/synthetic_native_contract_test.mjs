@@ -3,6 +3,12 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 
 const read = name => readFileSync(new URL(`../${name}`, import.meta.url), 'utf8');
+test('compiled rendered evidence waits for dialog transitions before capturing pixels', () => {
+  const capture = read('integration_test/bloomstep_windows_e2e_test.dart')
+    .split('Future<void> _captureBuilderFrame(')[1].split('Future<void> _naturalnessReflection(')[0];
+  assert.match(capture, /await tester\.pumpAndSettle\(\s*const Duration\(milliseconds: 100\),\s*EnginePhase\.sendSemanticsUpdate,\s*const Duration\(seconds: 10\),?\s*\);/);
+  assert.ok(capture.indexOf('pumpAndSettle') < capture.indexOf('boundary.toImage'));
+});
 test('native input fixture is bounded to the CI-only ARM64 synthetic profile', () => {
   const harness = read('tool/verify_synthetic_input.ps1');
   assert.match(harness, /GITHUB_ACTIONS/);

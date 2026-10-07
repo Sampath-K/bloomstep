@@ -291,7 +291,7 @@ class _GardenScreenState extends State<GardenScreen> {
       context: context,
       builder: (_) => RecipeBuilder(habit: prefill),
     );
-    if (recipe == null) return;
+    if (recipe == null || !mounted || closing || working) return;
     await _act(() async {
       await widget.store.plant(
         aspiration: recipe.aspiration,
@@ -303,6 +303,11 @@ class _GardenScreenState extends State<GardenScreen> {
         celebrationPracticed: recipe.celebrationPracticed,
       );
     });
+    if (!mounted || closing || error != null) return;
+    await showDialog<void>(
+      context: context,
+      builder: (_) => PlantedRecipeDialog(recipe: recipe),
+    );
   }
 
   Future<bool> _confirm(String title, String message, String action) async =>
@@ -1364,7 +1369,7 @@ class _GardenScreenState extends State<GardenScreen> {
                   const Padding(
                     padding: EdgeInsets.all(12),
                     child: Text(
-                      'No AI. No streak penalties. Original content inspired by behavior design research. Health recipes are not medical advice. Ages 16+.',
+                      'No streak penalties. Your habit text is never sold or used for ads. AI features, if added, will be explained and optional. Original content inspired by behavior design research. Health recipes are not medical advice. Ages 16+.',
                     ),
                   ),
                 ],

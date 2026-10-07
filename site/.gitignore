@@ -13,4 +13,10 @@ assets/*
 !assets/edge-downloads.png
 !assets/chrome-downloads.png
 !assets/download-capture-provenance.json
+!assets/warning-edge-uncommon.png
+!assets/warning-edge-menu.png
+!assets/warning-edge-keep-anyway.png
+!assets/warning-windows-protected.png
+!assets/warning-windows-run-anyway.png
+!assets/customer-warning-provenance.json
 operator-config.json

@@ -13,9 +13,20 @@
 AppId={{8E9B101B-CB3D-4C0F-B733-FC1DFFB75129}
 UsePreviousAppDir=no
 #else
+#ifdef OnboardingJourneyFixture
+AppId={{A6690692-4D92-475A-9EAC-1AD867AB0635}
+UsePreviousAppDir=no
+#else
 AppId={{99BE7E95-0565-4C72-A4DD-46D1D5B6C679}
+UsePreviousAppDir=yes
 #endif
+#endif
+#ifdef OnboardingJourneyFixture
+AppName=Bloomstep isolated journey proof
+VersionInfoProductName=Bloomstep isolated journey proof
+#else
 AppName=Bloomstep
+#endif
 AppVersion={#AppVersion}
 AppPublisher=Bloomstep contributors
 AppPublisherURL=https://github.com/Sampath-K/bloomstep
@@ -28,6 +39,8 @@ Compression=lzma2
 SolidCompression=yes
 WizardStyle=modern
 DisableWelcomePage=no
+DisableDirPage=no
+DisableProgramGroupPage=yes
 WizardImageFile=assets\wizard-garden.bmp
 WizardSmallImageFile=assets\wizard-seed.bmp
 UninstallDisplayIcon={app}\bloomstep.exe
@@ -43,13 +56,17 @@ ArchitecturesInstallIn64BitMode=x64compatible
 
 [Messages]
 WelcomeLabel1=Welcome to Bloomstep
-WelcomeLabel2=Bloomstep pairs a familiar routine with one safe, tiny action. Celebrate in your own way.%n%nLimited unsigned Windows preview, not the complete verified MVP or medical advice. Sign-in is required; some features and sign-in options are still being refined.%n%nAn independent app inspired by the Tiny Habits method, not affiliated with or endorsed by BJ Fogg or Tiny Habits.%n%nNext reviews your install folder and optional local observations. Nothing is sent by this installer.
+WelcomeLabel2=Your garden starts with one seed.%nFree Windows download. Limited preview. Sign-in required.%nNext: plant a tiny recipe.
 ReadyLabel1=Ready to install this unsigned Bloomstep preview.
 FinishedHeadingLabel=Bloomstep is installed
-FinishedLabel=Bloomstep is ready for sign-in. Try one safe, tiny action after a familiar routine, then celebrate in your own way. Your plant keeps its growth even on a "not today" day.%n%nThis is a limited unsigned preview, not the complete verified MVP or medical advice. Opening the app below is optional.
+FinishedLabel=Next: sign in and choose your first tiny recipe.%nLimited unsigned preview. Opening the app below is optional.
 
 [Files]
 Source: "{#SourceDir}\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs createallsubdirs
+Source: "assets\education-seed.bmp"; Flags: dontcopy
+Source: "assets\education-growth.bmp"; Flags: dontcopy
+Source: "assets\education-recipe.bmp"; Flags: dontcopy
+Source: "assets\education-hero.bmp"; Flags: dontcopy
 
 [InstallDelete]
 Type: files; Name: "{app}\measurement-owner.txt"
@@ -59,24 +76,37 @@ Name: "{group}\Bloomstep"; Filename: "{app}\bloomstep.exe"
 Name: "{group}\Uninstall Bloomstep"; Filename: "{uninstallexe}"
 
 [Run]
-Filename: "{app}\bloomstep.exe"; Description: "Open Bloomstep (sign-in-gated preview)"; Flags: nowait postinstall skipifsilent unchecked
+Filename: "{app}\bloomstep.exe"; Description: "Launch Bloomstep and plant your first habit"; Flags: nowait postinstall skipifsilent runasoriginaluser; Check: CanLaunchBloomstep; AfterInstall: MarkBloomstepLaunched
 
 [UninstallDelete]
 Type: files; Name: "{userstartup}\Bloomstep.lnk"
 Type: files; Name: "{app}\measurement-owner.txt"
 
 [Registry]
+#ifndef OnboardingJourneyFixture
 Root: HKCU; Subkey: "Software\Microsoft\Windows\CurrentVersion\Run"; ValueName: "Bloomstep"; Flags: uninsdeletevalue dontcreatekey
 Root: HKCU; Subkey: "Software\Classes\bloomstep"; ValueType: string; ValueData: "URL:Bloomstep invitation"
 Root: HKCU; Subkey: "Software\Classes\bloomstep"; ValueType: string; ValueName: "URL Protocol"; ValueData: ""
 Root: HKCU; Subkey: "Software\Classes\bloomstep\DefaultIcon"; ValueType: string; ValueData: "{app}\bloomstep.exe,0"
 Root: HKCU; Subkey: "Software\Classes\bloomstep\shell\open\command"; ValueType: string; ValueData: """{app}\bloomstep.exe"" ""%1"""
+#endif
 
 [Code]
 #ifdef OnboardingFixture
 function PrepareToInstall(var NeedsRestart: Boolean): String;
 begin
   Result := 'Compile-only onboarding fixture. Installation is prohibited; cancel this wizard.';
+end;
+#endif
+#ifdef OnboardingJourneyFixture
+function PrepareToInstall(var NeedsRestart: Boolean): String;
+var
+  I: Integer;
+begin
+  Result := '';
+  for I := 1 to ParamCount do
+    if CompareText(ParamStr(I), '/FORCEFIXTUREFAILURE') = 0 then
+      Result := 'Isolated fixture installation failure. No files installed.';
 end;
 #endif
 
@@ -89,17 +119,62 @@ type
   TMeasurementTime = record
     Year, Month, DayOfWeek, Day, Hour, Minute, Second, Milliseconds: Word;
   end;
+  TWindowStationFlags = record
+    Inherit, Reserved, Flags: LongWord;
+  end;
 
 function CoCreateGuid(var Guid: TMeasurementGuid): Integer;
   external 'CoCreateGuid@ole32.dll stdcall';
 procedure GetSystemTime(var Time: TMeasurementTime);
   external 'GetSystemTime@kernel32.dll stdcall';
+function GetProcessWindowStation(): THandle;
+  external 'GetProcessWindowStation@user32.dll stdcall';
+function GetUserObjectInformation(Handle: THandle; Index: Integer;
+  var Flags: TWindowStationFlags; Size: LongWord; var Needed: LongWord): Boolean;
+  external 'GetUserObjectInformationW@user32.dll stdcall';
 
 var
+  RecipePage, GrowPage: TWizardPage;
   MeasurementPage: TWizardPage;
   MeasurementCheckBox: TNewCheckBox;
   MeasurementStarted: Boolean;
   MeasurementConsentAt, MeasurementStartEvent, MeasurementOwnerId: String;
+  InstallationSucceeded, LaunchAttempted, InteractiveDesktop: Boolean;
+  ReadySummary: String;
+  PreviewDetailsShown: Boolean;
+  PreviewDetailsButton: TNewButton;
+
+function CanLaunchBloomstep(): Boolean;
+var
+  I: Integer;
+begin
+  Result := InstallationSucceeded and not WizardSilent and not IsAdmin and not LaunchAttempted and InteractiveDesktop;
+  for I := 1 to ParamCount do
+    if (CompareText(ParamStr(I), '/SUPPRESSMSGBOXES') = 0) or
+       (CompareText(ParamStr(I), '/NOCANCEL') = 0) then Result := False;
+end;
+
+procedure MarkBloomstepLaunched();
+begin
+  LaunchAttempted := True;
+end;
+
+procedure CurPageChanged(CurPageID: Integer);
+begin
+  if (CurPageID = wpFinished) and IsAdmin then
+  begin
+    WizardForm.FinishedLabel.Caption := WizardForm.FinishedLabel.Caption + #13#10#13#10 +
+      'Automatic launch is unavailable from an elevated installer. Close Setup and open Bloomstep normally from your Windows account.';
+    WizardForm.FinishedLabel.AdjustHeight();
+    WizardForm.RunList.Top := WizardForm.FinishedLabel.Top + WizardForm.FinishedLabel.Height + ScaleY(12);
+    WizardForm.RunList.Height := WizardForm.FinishedPage.Height - WizardForm.RunList.Top - ScaleY(12);
+  end;
+end;
+
+function ShouldSkipPage(PageID: Integer): Boolean;
+begin
+  Result := WizardSilent and ((PageID = RecipePage.ID) or (PageID = GrowPage.ID));
+end;
 
 function MeasurementPath(): String;
 begin
@@ -154,17 +229,35 @@ begin
   MsgBox('Optional local measurement failed. Installation is independent and will continue. No data was sent. Clear the local installer receipt in Bloomstep before linking it if an incomplete receipt remains.', mbError, MB_OK);
 end;
 
+function PreviewDetails(): String;
+begin
+  Result := 'Bloomstep is an independent app inspired by the Tiny Habits method; not affiliated with or endorsed by BJ Fogg or Tiny Habits.' + #13#10 +
+    'Optional learning (not required): https://tinyhabits.com and https://tinyhabits.com/book/' + #13#10#13#10 +
+    'Limited unsigned preview. Sign-in required; features and sign-in options are still being refined. Not the complete verified MVP or medical advice. No Microsoft Store version yet.';
+end;
+
+procedure TogglePreviewDetails(Sender: TObject);
+begin
+  PreviewDetailsShown := not PreviewDetailsShown;
+  if PreviewDetailsShown then
+  begin
+    WizardForm.ReadyMemo.Lines.Text := ReadySummary + #13#10#13#10 + PreviewDetails();
+    PreviewDetailsButton.Caption := 'Hide preview details';
+  end
+  else
+  begin
+    WizardForm.ReadyMemo.Lines.Text := ReadySummary;
+    PreviewDetailsButton.Caption := 'Preview details';
+  end;
+end;
+
 function UpdateReadyMemo(Space, NewLine, MemoUserInfoInfo, MemoDirInfo,
   MemoTypeInfo, MemoComponentsInfo, MemoGroupInfo, MemoTasksInfo: String): String;
 var
   ReadyMemoNote: String;
 begin
-  ReadyMemoNote := 'A familiar routine, one tiny action, a personal celebration.' + NewLine +
-    'For example: after setting down my mug, I do one gentle shoulder roll and smile.' + NewLine +
-    'In Bloomstep, pair the routine and action in a recipe; check in without streak pressure.' + NewLine + NewLine +
-    'Bloomstep is an independent app inspired by the Tiny Habits method; not affiliated with or endorsed by BJ Fogg or Tiny Habits.' + NewLine +
-    'Optional learning (not required): https://tinyhabits.com and https://tinyhabits.com/book/' + NewLine + NewLine +
-    'Limited unsigned preview. Sign-in required; features and sign-in options are still being refined. Not the complete verified MVP or medical advice. No Microsoft Store version yet.' + NewLine + NewLine;
+  ReadyMemoNote := 'Next: sign in and choose a familiar routine, one tiny action and a personal celebration.' + NewLine +
+    'Limited unsigned preview. Sign-in required.';
   Result := MemoUserInfoInfo;
   if MemoDirInfo <> '' then Result := Result + MemoDirInfo;
   if MemoTypeInfo <> '' then Result := Result + NewLine + NewLine + MemoTypeInfo;
@@ -172,14 +265,141 @@ begin
   if MemoGroupInfo <> '' then Result := Result + NewLine + NewLine + MemoGroupInfo;
   if MemoTasksInfo <> '' then Result := Result + NewLine + NewLine + MemoTasksInfo;
   Result := Result + NewLine + NewLine + ReadyMemoNote;
+  ReadySummary := Result;
+  if PreviewDetailsShown then Result := Result + NewLine + NewLine + PreviewDetails();
+end;
+
+function AddNativeText(Parent: TWinControl; Left, Top, Width: Integer; Caption: String): TNewStaticText;
+var
+  Text: TNewStaticText;
+begin
+  Text := TNewStaticText.Create(WizardForm);
+  Text.Parent := Parent;
+  Text.Left := Left;
+  Text.Top := Top;
+  Text.Width := Width;
+  Text.AutoSize := False;
+  Text.WordWrap := True;
+  Text.Caption := Caption;
+  Text.AdjustHeight();
+  if Text.Top + Text.Height > Parent.Height then
+    RaiseException('Education text does not fit the scaled wizard. Cancel and report the display scale; no installation has started.');
+  Result := Text;
+end;
+
+function AddVisualBeat(Parent: TWinControl; Width: Integer; ImageName, Progress: String): TBitmapImage;
+var
+  Art: TBitmapImage;
+begin
+  AddNativeText(Parent, 0, 0, Width, Progress);
+  ExtractTemporaryFile(ImageName);
+  Art := TBitmapImage.Create(WizardForm);
+  Art.Parent := Parent;
+  Art.Top := ScaleY(24);
+  Art.Width := Width;
+  Art.Height := (Width * 420) div 1000;
+  Art.Stretch := True;
+  Art.Bitmap.LoadFromFile(ExpandConstant('{tmp}\' + ImageName));
+  Result := Art;
+end;
+
+function AddGardenHero(Parent: TWinControl; Left, Top, Width: Integer): TBitmapImage;
+var
+  Art: TBitmapImage;
+begin
+  ExtractTemporaryFile('education-hero.bmp');
+  Art := TBitmapImage.Create(WizardForm);
+  Art.Parent := Parent;
+  Art.Left := Left;
+  Art.Top := Top;
+  Art.Width := Width;
+  Art.Height := (Width * 260) div 1000;
+  Art.Stretch := True;
+  Art.Bitmap.LoadFromFile(ExpandConstant('{tmp}\education-hero.bmp'));
+  Result := Art;
 end;
 
 procedure InitializeWizard();
 var
   Disclosure: TNewStaticText;
+  StationFlags: TWindowStationFlags;
+  Needed: LongWord;
+  Art: TBitmapImage;
+  Text: TNewStaticText;
+  I, Width: Integer;
+  Stages: array[0..4] of String;
 begin
+  if not GetUserObjectInformation(GetProcessWindowStation(), 1, StationFlags, 12, Needed) then
+    RaiseException('Windows desktop state could not be verified. Cancel setup and open it normally from your Windows account.');
+  InteractiveDesktop := (StationFlags.Flags and 1) <> 0;
+  WizardForm.WizardBitmapImage.Visible := False;
+  WizardForm.WelcomeLabel1.Visible := False;
+  WizardForm.WelcomeLabel2.Visible := False;
+  Width := WizardForm.WelcomePage.Width - ScaleX(48);
+  Art := AddVisualBeat(WizardForm.WelcomePage, Width, 'education-seed.bmp',
+    'Welcome to Bloomstep - Step 1 of 3');
+  Art.Left := ScaleX(24);
+  Art.Top := ScaleY(80);
+  Text := AddNativeText(WizardForm.WelcomePage, ScaleX(24), ScaleY(30), Width,
+    'Your garden starts with one seed');
+  Text.Font.Size := 18;
+  Text.Font.Style := [fsBold];
+  Text.AdjustHeight();
+  Stages[0] := 'Seed'; Stages[1] := 'Sprout'; Stages[2] := 'Sapling';
+  Stages[3] := 'Budding'; Stages[4] := 'Bloom';
+  for I := 0 to 4 do
+    AddNativeText(WizardForm.WelcomePage, ScaleX(24) + (Width * I) div 5,
+      Art.Top + (Art.Height * 79) div 100, Width div 5, Stages[I]);
+  AddNativeText(WizardForm.WelcomePage, ScaleX(24), Art.Top + Art.Height + ScaleY(12), Width,
+    'Free Windows download. Limited preview. Sign-in required.' + #13#10 +
+    'Next: plant a tiny recipe.');
   WizardForm.ReadyMemo.WordWrap := True;
   WizardForm.ReadyMemo.ScrollBars := ssVertical;
+  RecipePage := CreateCustomPage(wpWelcome, 'A tiny recipe',
+    'Anchor a routine, choose a tiny action, celebrate in your own way.');
+  Art := AddVisualBeat(RecipePage.Surface, RecipePage.SurfaceWidth, 'education-recipe.bmp', 'Step 2 of 3 - Pick a small beginning');
+  AddNativeText(RecipePage.Surface, ScaleX(18), Art.Top + (Art.Height * 51) div 100,
+    (RecipePage.SurfaceWidth div 2) - ScaleX(36),
+    'Anchor: after pouring my morning drink' + #13#10 +
+    'Tiny action: take one slow breath' + #13#10 +
+    'Celebration: relax my shoulders and smile');
+  AddNativeText(RecipePage.Surface, (RecipePage.SurfaceWidth div 2) + ScaleX(18),
+    Art.Top + (Art.Height * 51) div 100, (RecipePage.SurfaceWidth div 2) - ScaleX(36),
+    'Anchor: after opening my laptop' + #13#10 +
+    'Tiny action: write my one next step' + #13#10 +
+    'Celebration: say "I have a starting point"');
+  AddNativeText(RecipePage.Surface, 0, Art.Top + Art.Height + ScaleY(8), RecipePage.SurfaceWidth,
+    'Illustrated examples. You choose your own recipe in Bloomstep.');
+  GrowPage := CreateCustomPage(RecipePage.ID, 'Watch it become a garden',
+    'Each recipe has its own plant. Your garden reflects your practice.');
+  Art := AddVisualBeat(GrowPage.Surface, GrowPage.SurfaceWidth, 'education-growth.bmp', 'Step 3 of 3 - Make room to grow');
+  AddNativeText(GrowPage.Surface, 0, Art.Top + Art.Height + ScaleY(8), GrowPage.SurfaceWidth,
+    'Illustration of supported plants. Not today preserves your plant''s growth.' + #13#10 +
+    'Next: choose where to install. Optional observations stay off.');
+  WizardForm.ReadyLabel.Visible := False;
+  Art := AddGardenHero(WizardForm.ReadyPage, WizardForm.ReadyMemo.Left, 0, WizardForm.ReadyMemo.Width);
+  WizardForm.ReadyMemo.Top := Art.Height + ScaleY(8);
+  WizardForm.ReadyMemo.Height := WizardForm.ReadyPage.Height - WizardForm.ReadyMemo.Top - ScaleY(36);
+  PreviewDetailsButton := TNewButton.Create(WizardForm);
+  PreviewDetailsButton.Parent := WizardForm.ReadyPage;
+  PreviewDetailsButton.Left := WizardForm.ReadyMemo.Left;
+  PreviewDetailsButton.Top := WizardForm.ReadyPage.Height - ScaleY(28);
+  PreviewDetailsButton.Width := ScaleX(156);
+  PreviewDetailsButton.Height := ScaleY(24);
+  PreviewDetailsButton.Caption := 'Preview details';
+  PreviewDetailsButton.OnClick := @TogglePreviewDetails;
+  WizardForm.WizardBitmapImage2.Visible := False;
+  WizardForm.FinishedHeadingLabel.Left := ScaleX(24);
+  WizardForm.FinishedHeadingLabel.Width := WizardForm.FinishedPage.Width - ScaleX(48);
+  Art := AddGardenHero(WizardForm.FinishedPage, ScaleX(24), ScaleY(60), WizardForm.FinishedHeadingLabel.Width);
+  WizardForm.FinishedLabel.Left := ScaleX(24);
+  WizardForm.FinishedLabel.Top := Art.Top + Art.Height + ScaleY(12);
+  WizardForm.FinishedLabel.Width := WizardForm.FinishedHeadingLabel.Width;
+  WizardForm.FinishedLabel.AdjustHeight();
+  WizardForm.RunList.Left := ScaleX(24);
+  WizardForm.RunList.Width := WizardForm.FinishedHeadingLabel.Width;
+  WizardForm.RunList.Top := WizardForm.FinishedLabel.Top + WizardForm.FinishedLabel.Height + ScaleY(12);
+  WizardForm.RunList.Height := WizardForm.FinishedPage.Height - WizardForm.RunList.Top - ScaleY(12);
   MeasurementPage := CreateCustomPage(wpSelectDir,
     'Optional local installation observations',
     'Off by default. Nothing is sent by this installer.');
@@ -203,6 +423,7 @@ procedure CurStepChanged(CurStep: TSetupStep);
 var
   Completed: String;
 begin
+  if CurStep = ssPostInstall then InstallationSucceeded := True;
   if WizardSilent then Exit;
   if not MeasurementCheckBox.Checked then Exit;
   if CurStep = ssInstall then begin

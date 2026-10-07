@@ -4,6 +4,29 @@
 cloud deployment and native background behavior require integration evidence.
 This ledger is updated with verified outcomes, not inferred from source code.
 
+**Frozen v1 source candidate (PR21, not merged or released):** real
+privacy-transformed preview.8 warning images, a primary three-step zero-type
+recipe picker with optional practice and a post-plant next step, and three
+full-panel native educational illustrations exported from supported `PlantArt`.
+Parent review of actual compiled pixels and mandatory API/x64/ARM64/customer
+quality gates remain required; authored illustrations are not installer
+screenshots or launch acceptance.
+
+**launch-after-install: not yet verified, pending owner manual trial**
+
+The user-authorized exception is only the preview.10 owner trial, not M2,
+open preview or Store readiness. The separate automated evidence job retains
+real failures and sanitized diagnostics; it is not silently skipped or masked.
+After approved source merge and required gates, preview.10 may be published as
+an **owner trial only** GitHub prerelease. It is publicly accessible, not private.
+The public website stays on preview.9 and there is no external recruitment
+until the owner reports both checked Finish (exactly one non-elevated app as the
+installing user, then existing auth/builder) and unchecked Finish (no launch)
+passing in clean isolated slots. Either failure is a P0 frozen-v1 fix in the
+next preview. Before M2/open preview/Store, blocking automated or recorded
+clean-machine human launch proof is required again. Improving automated
+desktop/token diagnostics remains a release-pipeline backlog item, not deleted.
+
 **Current developer increment: fresh-consent app reminder-preference observations (preview.8).**
 A separate unchecked/versioned choice is wired into Settings, owner SQLite
 transactions, real reminder initialization/preference transitions, existing

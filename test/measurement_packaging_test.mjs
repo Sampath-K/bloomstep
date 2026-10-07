@@ -9,6 +9,8 @@ test('Pascal code cannot be mistaken for an Inno section tag', () => {
   assert.ok(code);
   assert.equal(code.split(/\r?\n/).some(line => /^\s*\[/.test(line)), false,
     'A Pascal array beginning a line is parsed as an invalid section tag by ISCC.');
+  assert.equal(code.split(/\r?\n/).some(line => /^\s*#\d/.test(line)), false,
+    'A Pascal character code beginning a line is parsed as an ISPP directive.');
 });
 test('silent/default-off upgrades do not inherit prior measurement ownership', () => {
   assert.match(installer, /\[InstallDelete\][\s\S]*?Type: files; Name: "\{app\}\\measurement-owner\.txt"/);
