@@ -1,0 +1,113 @@
+import { createHash } from 'node:crypto';
+import { readFileSync, writeFileSync, mkdirSync, copyFileSync } from 'node:fs';
+import { join, resolve } from 'node:path';
+import { fileURLToPath } from 'node:url';
+
+const digest = bytes => createHash('sha256').update(bytes).digest('hex');
+const readJson = path => JSON.parse(readFileSync(path, 'utf8').replace(/^\uFEFF/, ''));
+const requireEvidence = (condition, message) => { if (!condition) throw new Error(message); };
+
+export function verifyReleaseEvidence({ root, source, tag, runId, genuineResult }) {
+  requireEvidence(/^[a-f0-9]{40}$/.test(source) && /^\d+$/.test(runId), 'Invalid release source/run identity.');
+  const packageDir = join(root, 'universal-output');
+  const manifest = readJson(join(packageDir, 'universal-manifest.json'));
+  const expectedName = `Bloomstep-${tag.slice(1)}-windows-universal-setup.exe`;
+  requireEvidence(manifest.kind === 'bloomstep-offline-universal-v1' && manifest.source === source &&
+    tag === `v${manifest.version}` && manifest.installerFile === expectedName, 'Release package source/version/name identity mismatch.');
+  const bytes = readFileSync(join(packageDir, expectedName));
+  requireEvidence(bytes.length === manifest.bytes && digest(bytes) === manifest.installerSha256,
+    'Release package bytes/hash mismatch.');
+  const checksum = readFileSync(join(packageDir, 'SHA256-universal.txt'), 'utf8').replace(/^\uFEFF/, '').trim();
+  requireEvidence(checksum === `${manifest.installerSha256}  ${expectedName}`, 'Release checksum authority mismatch.');
+  const native = {}, launch = {};
+  for (const arch of ['x64', 'arm64']) {
+    const payloadFile = join(packageDir, `payload-manifest-${arch}.json`);
+    const payload = readJson(payloadFile);
+    requireEvidence(digest(readFileSync(payloadFile)) === manifest.payloadManifests[arch] &&
+      payload.kind === 'bloomstep-release-payload-v1' && payload.source === source &&
+      payload.version === manifest.version && payload.arch === arch, 'Same-run payload manifest identity/hash mismatch.');
+    const proof = readJson(join(root, `native-${arch}`, 'universal-native-receipt.json'));
+    requireEvidence(proof.source === source && proof.architecture === arch &&
+      proof.packageSha256 === manifest.installerSha256 && proof.outcome === 'success',
+    'Native receipt source/package/run binding mismatch.');
+    for (const key of ['selectedPayloadAllHashesVerified', 'nonSelectedPayloadNotInstalled',
+      'defaultOffObservationReceiptAbsent', 'uninstallVerified', 'corruptedEmbeddedChecksumRollbackVerified',
+      'corruptMarkerAndPayloadAbsent']) {
+      requireEvidence(proof[key] === true, `Native lifecycle requirement missing: ${key}`);
+    }
+    requireEvidence(proof.cancelWizardExitCode === 2 && proof.cancelLauncherExitCode === 2 &&
+      proof.corruptExitCode === 5 && Array.isArray(proof.checksumErrorLines) &&
+      proof.checksumErrorLines.some(line => line === 'The source file is corrupted' ||
+        line === 'Verification of the source file failed: The hash of the file is incorrect'),
+    'Native cancellation/checksum rollback evidence missing.');
+    requireEvidence(proof.installedPeMachine === (arch === 'x64' ? 0x8664 : 0xaa64) &&
+      proof.nativeArchitectureProbe.nativeArchitecture === arch &&
+      proof.nativeArchitectureProbe.processMachine === 0x8664, 'Actual native/emulated process routing mismatch.');
+    requireEvidence(proof.welcome.file === 'actual-universal-welcome.png' &&
+      digest(readFileSync(join(root, `native-${arch}`, proof.welcome.file))) === proof.welcome.sha256,
+    'Same-run actual Welcome frame hash mismatch.');
+    native[arch] = proof;
+    const result = readJson(join(root, `launch-${arch}`, 'genuine-universal-app-launch-receipt.json'));
+    requireEvidence(result.source === source && result.architecture === arch &&
+      result.installerSha256 === manifest.installerSha256, 'Genuine launch source/package/run binding mismatch.');
+    if (genuineResult === 'success') {
+      requireEvidence(result.outcome === 'PASS actual checked/unchecked genuine app launch only' &&
+        result.modes?.length === 2, 'Genuine checked/unchecked successful evidence missing.');
+    } else {
+      requireEvidence(tag === 'v0.1.0-preview.11' && genuineResult === 'failure' &&
+        result.outcome === 'UNVERIFIED' && result.workerTokenElevated === true &&
+        result.workerInteractive === true && Array.isArray(result.modes) && result.modes.length === 0,
+      'Exact preview11 manual-trial exception requires elevated pre-install guard evidence, not arbitrary failure.');
+    }
+    launch[arch] = result;
+  }
+  return {
+    kind: 'bloomstep-same-run-owner-trial-release-evidence-v1', source, tag, actionsRunId: runId,
+    origin: `https://github.com/Sampath-K/bloomstep/actions/runs/${runId}`,
+    package: manifest, native, launch,
+    genuineLaunch: genuineResult === 'success' ? 'PASS automated checked/unchecked only; full owner journey pending' :
+      'UNVERIFIED: elevated hosted worker stopped before installation; owner manual trial pending',
+    publicPointer: 'v0.1.0-preview.9', ownerAcceptance: 'PENDING',
+    crossRunBinaryEquivalence: 'Not asserted. Same-source packaging can differ; all evidence is bound within this one run.',
+  };
+}
+
+if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
+  const [, , root, source, tag, runId, genuineResult] = process.argv;
+  const receipt = verifyReleaseEvidence({ root, source, tag, runId, genuineResult });
+  const output = join(root, 'release-proof');
+  mkdirSync(output, { recursive: true });
+  writeFileSync(join(output, 'release-evidence.json'), `${JSON.stringify(receipt, null, 2)}\n`);
+  const url = `https://github.com/Sampath-K/bloomstep/releases/download/${tag}`;
+  for (const arch of ['x64', 'arm64']) {
+    copyFileSync(join(root, `native-${arch}`, 'actual-universal-welcome.png'),
+      join(output, `actual-universal-welcome-${arch}.png`));
+    writeFileSync(join(output, `native-lifecycle-${arch}.json`), `${JSON.stringify(receipt.native[arch], null, 2)}\n`);
+    writeFileSync(join(output, `genuine-launch-${arch}.json`), `${JSON.stringify(receipt.launch[arch], null, 2)}\n`);
+  }
+  const checklist = `# Owner manual-test checklist — ${tag}\n\n` +
+    `Status: PENDING. Genuine launch-after-Finish remains explicitly UNVERIFIED when the hosted elevated-token guard stops before installation. This is not customer-ready or full acceptance.\n\n` +
+    `Use clean disposable native x64 and ARM64 slots as the ordinary installing user; do not run as administrator or disable protections. Verify exact release filename and SHA-256 first. Unknown source/hash, malware or managed-policy block means STOP. Hash consistency is not safety/signing.\n\n` +
+    `- [ ] One primary universal download routes to the native OS without an architecture choice; also exercise x64 process emulation on ARM where available.\n` +
+    `- [ ] Offline payload install succeeds; Welcome, two illustrated recipe cards, full garden and Back/Cancel remain readable. No animation is included.\n` +
+    `- [ ] Cancel before installation leaves no payload or observations. Optional observations remain unchecked/default-off and absent unless explicitly selected.\n` +
+    `- [ ] Checked Finish exits successfully and starts exactly one native, non-elevated app as the installing user; same process survives at least ten seconds with visible window. Record observed outcome, not an assumption.\n` +
+    `- [ ] In a separate clean slot, unchecked Finish exits successfully and starts no app. Manual Start Menu launch remains possible.\n` +
+    `- [ ] Ordinary sign-in, tiny routine-linked habit, check-in, celebration and full garden journey work; cancel/exit and keyboard/focus/accessibility remain usable.\n` +
+    `- [ ] Record native OS/architecture, package hash, installing-user/elevation confirmation, checked/unchecked outcomes and any failure, with no private identity in shared screenshots.\n\n` +
+    `Any launch/journey failure is P0 for a new immutable preview, not mutation of these bytes. No external recruitment or public-pointer change. The site stays preview9 until separately agreed owner trials pass; promote these SAME verified binaries only after separate approval.\n`;
+  writeFileSync(join(output, 'owner-trial-checklist.md'), checklist);
+  writeFileSync(join(output, 'evidence-notes.md'),
+    `## Executive summary and verified single download\n\n` +
+    `[Download Bloomstep for Windows — universal owner-test installer](${url}/${receipt.package.installerFile})\n\n` +
+    `One offline installer, native x64/ARM64 routing; per-architecture installers are support-only secondary assets. ` +
+    `Measured size **${receipt.package.bytes.toLocaleString('en-US')} bytes**; compiler ${receipt.package.compiler}; ${receipt.package.signatureStatus}.\n\n` +
+    `SHA-256: \`${receipt.package.installerSha256}\`\n\n` +
+    `Source \`${source}\`; [same-run build/native proof](${receipt.origin}). Public binary/checksum/manifests must match this run, never another same-source build. ` +
+    `Genuine launch: **${receipt.genuineLaunch}**. Native lifecycle evidence does not establish sign-in/full journey or installer safety.\n\n` +
+    `## Actual static installer screenshots\n\n` +
+    `These are the actual compiled universal Welcome on isolated CI x64/ARM64, followed by Cancel. They are not customer app/Finish acceptance, universal warning or safety evidence. Static illustrations only.\n\n` +
+    `![Actual x64 universal Welcome, isolated CI Cancel evidence](${url}/actual-universal-welcome-x64.png)\n\n` +
+    `![Actual ARM64 universal Welcome, isolated CI Cancel evidence](${url}/actual-universal-welcome-arm64.png)\n\n` + checklist);
+  console.log(`Verified one-run release package, both native/frame receipts and ${receipt.genuineLaunch}.`);
+}

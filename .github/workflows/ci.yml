@@ -76,7 +76,7 @@ jobs:
       - run: npm run check
       - run: npm test
       - run: node ../tool/generate_event_registry.mjs --check
-      - run: node --test ../test/universal_installer_test.mjs
+      - run: node --test ../test/universal_installer_test.mjs ../test/release_bundle_test.mjs
       - run: node --test ../test/site_console_test.mjs ../test/measurement_packaging_test.mjs ../test/installer_onboarding_test.mjs ../test/installer_journey_test.mjs ../test/public_claims_test.mjs ../test/identity_callbacks_test.mjs ../test/branding_contract_test.mjs ../test/synthetic_native_contract_test.mjs
       - name: Verify bundled operator authentication
         working-directory: .
@@ -151,7 +151,7 @@ jobs:
 
           Inert automated proof outcome: ${{ steps.launch-proof.outcome }}.
           No masked failure, no claimed customer-app or launch acceptance.
-          Only preview.10 has the user-authorized owner-trial publication exception.
+          Only exact preview.10 and preview.11 have separately user-authorized owner-trial publication exceptions.
           The public site remains on preview.9 until both checked/unchecked owner trials pass.
           Before M2/open preview/Store, blocking automated or recorded clean-machine human proof is required again.
           '@ | Add-Content $env:GITHUB_STEP_SUMMARY
@@ -676,13 +676,17 @@ jobs:
       always() && startsWith(github.ref, 'refs/tags/v') &&
       needs.api.result == 'success' && needs.test-and-build-windows.result == 'success' &&
       needs.universal-native-proof.result == 'success' &&
-      needs.universal-app-launch-evidence.result == 'success' &&
-      (needs.installer-launch-evidence.result == 'success' || github.ref_name == 'v0.1.0-preview.10')
+      (needs.universal-app-launch-evidence.result == 'success' || github.ref_name == 'v0.1.0-preview.11') &&
+      (needs.installer-launch-evidence.result == 'success' || github.ref_name == 'v0.1.0-preview.10' || github.ref_name == 'v0.1.0-preview.11')
     needs: [api, test-and-build-windows, installer-launch-evidence, universal-native-proof, universal-app-launch-evidence]
     runs-on: ubuntu-latest
     permissions:
       contents: write
     steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
       - uses: actions/download-artifact@v4
         with:
           pattern: bloomstep-windows-*
@@ -691,23 +695,47 @@ jobs:
         with:
           name: bloomstep-universal-installer
           path: universal-output
+      - uses: actions/download-artifact@v4
+        with:
+          name: universal-native-x64-NOT-CUSTOMER-ACCEPTANCE
+          path: native-x64
+      - uses: actions/download-artifact@v4
+        with:
+          name: universal-native-arm64-NOT-CUSTOMER-ACCEPTANCE
+          path: native-arm64
+      - uses: actions/download-artifact@v4
+        with:
+          name: genuine-universal-launch-x64-NOT-FULL-OWNER-ACCEPTANCE
+          path: launch-x64
+      - uses: actions/download-artifact@v4
+        with:
+          name: genuine-universal-launch-arm64-NOT-FULL-OWNER-ACCEPTANCE
+          path: launch-arm64
+      - name: Bind publication to one run and exact elevated-guard exception
+        env:
+          GENUINE_RESULT: ${{ needs.universal-app-launch-evidence.result }}
+        run: node tool/release_bundle.mjs . "$GITHUB_SHA" "$GITHUB_REF_NAME" "$GITHUB_RUN_ID" "$GENUINE_RESULT"
       - name: Publish preview (not the authenticated MVP)
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
           title="Bloomstep $GITHUB_REF_NAME - owner trial only"
           notes="Unsigned Windows engineering preview with real broker sign-in; provider availability depends on the configured customer flow. No anonymous or simulated login. This is NOT the complete verified MVP. See docs/status.md for actual evidence, runtime limits and outstanding launch gates. Verify the downloadable SHA-256 before installing."
-          if [ "$GITHUB_REF_NAME" = "v0.1.0-preview.10" ]; then
+          if [ "$GITHUB_REF_NAME" = "v0.1.0-preview.10" ] || [ "$GITHUB_REF_NAME" = "v0.1.0-preview.11" ]; then
             title="Bloomstep $GITHUB_REF_NAME - owner trial only"
             notes="$notes
 
           launch-after-install: not yet verified, pending owner manual trial
+          genuine launch-after-Finish: UNVERIFIED
 
-          Owner trial only; this GitHub prerelease is publicly accessible, not private. No external recruitment. The public site remains on preview.9 until the owner reports both paths pass: checked Finish starts exactly one non-elevated app as the installing user, and unchecked Finish starts no app. Sign-in remains required before the builder. Either failure is a P0 frozen-v1 fix in the next preview. This exception ends after M1; before M2/open preview/Store, blocking automated or recorded clean-machine human launch proof is required again."
+          Owner trial only; this GitHub prerelease is publicly accessible, not private. No external recruitment. The public site remains on preview.9 until the owner reports both paths pass: checked Finish starts exactly one non-elevated app as the installing user, and unchecked Finish starts no app. Sign-in remains required before the builder. Either failure is a P0 frozen-v1 fix in the next preview. Preview.11 has separate explicit authorization only for this manual owner-test candidate: the elevated hosted genuine-launch worker stopped before installation, not a launch pass. No general release exception. Before M2/open preview/Store, blocking automated or recorded clean-machine human launch proof is required again."
           fi
           notes="$notes
 
           Primary Windows download: Bloomstep-${GITHUB_REF_NAME#v}-windows-universal-setup.exe. Self-contained offline installer with native Windows x64/ARM64 routing, including emulated setup processes. No architecture selection or runtime payload download. Per-architecture installers are secondary support assets. SHA-256 records establish byte consistency, not safety or digital signing.
 
           Owner trial candidate, not guaranteed customer-v1 final. No external recruitment. The public website stays on preview.9 until separately agreed owner checked/unchecked launch and ordinary sign-in/full journey pass. Promote these same verified immutable binaries if accepted, not a rebuild. No animation added; illustrated static cards and full garden are retained."
-          gh release create "$GITHUB_REF_NAME" --repo "$GITHUB_REPOSITORY" --prerelease --title "$title" --notes "$notes" universal-output/*.exe universal-output/SHA256-universal.txt universal-output/universal-manifest.json universal-output/payload-manifest-*.json $(find artifacts -name '*.exe' -path '*/release-output/*') $(find artifacts -name 'SHA256-*.txt')
+          notes="$notes
+
+          $(cat release-proof/evidence-notes.md)"
+          gh release create "$GITHUB_REF_NAME" --repo "$GITHUB_REPOSITORY" --prerelease --title "$title" --notes "$notes" universal-output/*.exe universal-output/SHA256-universal.txt universal-output/universal-manifest.json universal-output/payload-manifest-*.json release-proof/*.json release-proof/*.png release-proof/owner-trial-checklist.md $(find artifacts -name '*.exe' -path '*/release-output/*') $(find artifacts -name 'SHA256-*.txt')

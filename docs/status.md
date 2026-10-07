@@ -17,15 +17,19 @@ evidence job failed its elevated-worker guard; this is not app acceptance.
 **Current bounded follow-up: one offline Windows installer.** Universal Inno
 packaging embeds the same-source x64 and ARM64 Release trees and selects only
 the native OS payload, not the setup process or browser architecture. This is
-unreleased source pending exact-head hardware/lifecycle/launch evidence and
-parent review. Preview.10 is not rebuilt or modified; the public site still
+source for exact preview.11, separately authorized for owner-only manual
+testing with genuine launch-after-Finish UNVERIFIED. Native x64/ARM64
+lifecycle/routing proof passes; hosted genuine proof stops before installation
+on elevated workers. Fresh exact-head gates and same-tag-run publication
+provenance remain mandatory. Preview.10 is not rebuilt or modified; the public site still
 points to preview.9. Unsupported/32-bit host rejection is source-contract
 coverage until real hardware evidence exists. Neither source contracts nor
 fixture corruption evidence claim customer installation success or safety.
 
 **launch-after-install: not yet verified, pending owner manual trial**
 
-The user-authorized exception is only the preview.10 owner trial, not M2,
+The user-authorized exceptions are exact preview.10 and separately approved
+preview.11 owner manual trials, not M2,
 open preview or Store readiness. The separate automated evidence job retains
 real failures and sanitized diagnostics; it is not silently skipped or masked.
 Preview.10 was published after approved source merge and required gates as
@@ -37,9 +41,12 @@ passing in clean isolated slots. Either failure is a P0 frozen-v1 fix in the
 next preview. Before M2/open preview/Store, blocking automated or recorded
 clean-machine human launch proof is required again. Improving automated
 desktop/token diagnostics remains a release-pipeline backlog item, not deleted.
-The preview.10 exception does **not** authorize the next universal preview:
-its independent checked/unchecked non-elevated installing-user gate must pass
-or receive separate explicit authorization for recorded clean-machine proof.
+The preview.10 exception did **not** itself authorize the universal preview.
+The owner subsequently explicitly authorized exact preview.11 as an
+UNVERIFIED-launch manual-test candidate only. Its failed evidence remains
+visible; same-run package/native/frame/guard receipts gate publication.
+Later previews again require genuine checked/unchecked proof. No public-site
+promotion or full customer-ready claim follows from publishing this candidate.
 
 **Current developer increment: fresh-consent app reminder-preference observations (preview.8).**
 A separate unchecked/versioned choice is wired into Settings, owner SQLite

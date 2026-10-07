@@ -68,7 +68,7 @@ test('limited-task failures preserve sanitized diagnostics without weakening lau
   assert.match(proof, /if \(\$launches\[0\]\.sid -ne \$sid -or \$launches\[0\]\.elevated\) \{ throw/);
 });
 
-test('owner-trial preview10 alone can publish with a visible failed launch evidence job', () => {
+test('exact owner trials preserve visible failed launch evidence and required native gates', () => {
   const workflow = read('.github/workflows/ci.yml');
   const evidence = workflow.split('  installer-launch-evidence:')[1]?.split('  test-and-build-windows:')[0];
   assert.ok(evidence);
@@ -84,6 +84,9 @@ test('owner-trial preview10 alone can publish with a visible failed launch evide
   assert.match(release, /needs\.api\.result == 'success'/);
   assert.match(release, /needs\.test-and-build-windows\.result == 'success'/);
   assert.match(release, /needs\.installer-launch-evidence\.result == 'success' \|\| github\.ref_name == 'v0\.1\.0-preview\.10'/);
+  assert.match(release, /github\.ref_name == 'v0\.1\.0-preview\.11'/);
+  assert.match(release, /genuine launch-after-Finish: UNVERIFIED/);
+  assert.match(release, /release-proof/);
   assert.match(release, /owner trial only/);
   assert.match(release, /launch-after-install: not yet verified, pending owner manual trial/);
   assert.match(release, /public site remains on preview\.9/);

@@ -7,7 +7,8 @@ preview.9 and standing quality-gated immutable preview releases for subsequent
 app/installer merges. Existing preview.8/preview.9 binaries remain immutable.
 Parent pixel review and mandatory exact-source quality gates still gate this
 candidate. The user-directed frozen-v1 resequence defers the new operational
-pipeline; the narrow preview.10 owner-trial exception is described below.
+pipeline; the exact preview.10 and separately authorized preview.11
+owner-manual-trial exceptions are described below.
 No new release has been published by this increment.
 The separate website-only preview.9 promotion did not itself authorize app
 changes or release/tag mutation. The preview.8 warning/capture evidence below
@@ -102,12 +103,24 @@ native process must still be alive at the end of the ten-second observation
 window with a visible owned app window; a briefly sampled/crashed process is
 not a pass. Ordinary sign-in and full journey still require owner acceptance.
 
-The next preview requires exact-head API/x64/ARM64/customer-quality,
-universal-native proof, actual independent checked/unchecked non-elevated
-installing-user proof, and parent review before ordinary merge/tag/publication.
-The exact preview.10 exception does not extend. If the hosted worker is
-elevated again, preserve its failed guard/diagnostics and report the clean
-human-machine prerequisite; no skip, success fallback or protection change.
+The owner separately authorized **only exact preview.11** as a manual-test
+candidate on 7 October 2026, with genuine launch-after-Finish explicitly
+UNVERIFIED. Exact-head API/x64/ARM64/customer-quality/universal-native gates
+and parent review remain mandatory. This is not an implicit extension of
+preview.10 or a general exception: preview.12 and later require launch proof.
+Publication verifies the selected tag-run package bytes, source/version,
+payload manifests, both actual native lifecycle/frame receipts, and genuine
+launch receipts bound to that SAME package SHA. The preview.11 exception
+accepts only the known elevated interactive worker guard with zero modes,
+not an arbitrary launch failure. Jobs remain visibly failed; no protection,
+installer behavior or token guard changes. Same-source builds may have
+different binary hashes; never mix push/PR/tag-run artifacts.
+
+The GitHub prerelease is publicly accessible, not a private distribution.
+It is intended only for the owner manual checklist, not recruitment or
+customer-ready acceptance. Keep preview.10 immutable and the public pointer
+on preview.9. Only separately accepted checked/unchecked launch and ordinary
+sign-in/full journey can authorize promoting these SAME verified bytes.
 
 Owner checklist: fresh public package/source/checksum readback; native x64
 and ARM64 install (including emulated setup process); Welcome/recipe/garden
