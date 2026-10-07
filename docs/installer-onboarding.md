@@ -53,7 +53,13 @@ genuine build.
 CI universal proof uses disposable actual x64 and ARM64 runners and a native
 MSVC-built x64 console process (not managed PE metadata or a CLR that may
 run natively on ARM), with a source/hash-pinned separate test artifact.
-That process queries native architecture on ARM. Lifecycle proof covers
+That process queries native architecture on ARM with `IsWow64Process2`, and
+actual process architecture with `GetProcessInformation(ProcessMachineTypeInfo)`.
+The former API's process-machine output classifies WOW64 and can be zero for
+x64 emulation; zero must not be interpreted as native ARM execution. Keep it
+separately labeled in receipts. The probe requires native AMD64 machine code
+and excludes managed/ARM64EC builds. Its source is LF-pinned so producer and
+consumer hashes agree across runner Git configurations. Lifecycle proof covers
 owned-window Cancel before
 payload, actual selected installed PE/all-file hash/inventory readback,
 silent/default-off zero receipt, and owned uninstall. A separate isolated

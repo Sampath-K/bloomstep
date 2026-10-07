@@ -127,12 +127,15 @@ test('ARM emulation proof uses a genuine native x64 process, not managed PE meta
   const source = read('tool/fixtures/native_architecture_probe.cpp');
   assert.match(source, /IsWow64Process2/);
   assert.match(source, /sizeof\(void\*\) == 8/);
+  assert.match(source, /GetProcessInformation[\s\S]*ProcessMachineTypeInfo/);
+  assert.match(source, /wow64ProcessMachine/);
   assert.doesNotMatch(source, /System\.|CLR|WindowsIdentity/);
   const workflow = read('.github/workflows/ci.yml');
   assert.match(workflow, /vcvars64\.bat/);
   assert.match(workflow, /native_architecture_probe\.cpp/);
   assert.match(workflow, /native-probe-output/);
   assert.match(workflow, /native-probe-manifest\.json/);
+  assert.match(read('.gitattributes'), /native_architecture_probe\.cpp text eol=lf/);
   assert.doesNotMatch(workflow, /gh release create[^\n]*native-probe/);
 });
 test('actual PowerShell corruption oracle ignores command paths and verifies Welcome Cancel exit (no installer execution)', () => {
