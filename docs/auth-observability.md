@@ -17,7 +17,7 @@ write; no existing account gains consent. The observed stages are:
 
 | Stage | Actual seam | What success establishes |
 | --- | --- | --- |
-| `session_entry` | `SignInScreen._enter`, session diagnostics initialization | Account-local session diagnostics initialized, including restored sessions; not fresh provider authentication or successful Garden UI rendering |
+| `session_entry` | `HabitHome._showGarden`, authenticated session diagnostics initialization | Account-local session diagnostics initialized, including restored sessions; not fresh provider authentication or successful Garden UI rendering. Device-only guests have no auth observations or analytics. |
 | `api_token` | `IdentityService.accessToken`, all production callers in this session | API token obtained and session checkpoint saved, not token acceptance by the API or provider sign-in |
 
 Fresh `signin_succeeded` retains its existing account-consented behavior;
