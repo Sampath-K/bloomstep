@@ -114,6 +114,8 @@ try {
         throw 'A Finish page must not exist; the app opens automatically after install.'
       }
       $words = Test-VisualWords $text
+      if ([OnboardingWizard]::Find($window, 'Back') -ne [IntPtr]::Zero) { throw 'Installer must not offer Back.' }
+      $report.backAbsent = $true
       $now = $captureClock.ElapsedMilliseconds
       if (-not $committed -and $Flow -eq 'oneclick') {
         if ($text.Contains('Select Destination Location')) {
@@ -124,6 +126,8 @@ try {
           $install = [OnboardingWizard]::Find($window, 'Install')
           $browse = [OnboardingWizard]::Find($window, 'Browse...')
           if ($install -eq [IntPtr]::Zero -or $browse -eq [IntPtr]::Zero) { throw 'Native destination Install/Browse controls missing.' }
+          if ([OnboardingWizard]::Find($window, 'Back') -ne [IntPtr]::Zero) { throw 'Destination must not offer Back.' }
+          $report.destinationBackAbsent = $true
           $report.welcomeToDestinationMilliseconds = $now - $welcomeAt
           if ($report.welcomeToDestinationMilliseconds -lt 3500) { throw 'Welcome advanced before about 4 seconds.' }
           $report.destination = Save-CaptureFrame $window 'actual-destination.png'

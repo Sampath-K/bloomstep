@@ -152,6 +152,8 @@ try {
           if ([OnboardingWizard]::Find($window, $caption) -eq [IntPtr]::Zero) { throw "Destination control missing: $caption" }
         }
         if ([OnboardingWizard]::Find($window, 'Next') -ne [IntPtr]::Zero) { throw 'Destination displayed Next instead of Install.' }
+        if ([OnboardingWizard]::Find($window, 'Back') -ne [IntPtr]::Zero) { throw 'Destination must not offer Back.' }
+        $report.destinationBackAbsent = $true
         $frame = Save-CaptureFrame $window 'fixture-destination.png'
         $frame.step = 'destination'
         $root = [Windows.Automation.AutomationElement]::FromHandle($window)

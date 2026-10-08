@@ -42,6 +42,20 @@ test('no Finish page, launch checkbox or optional settings; successful interacti
   assert.doesNotMatch(source, /[^e]MsgBox\('Bloomstep is installed/, '/SUPPRESSMSGBOXES must suppress the elevated-host notice');
 });
 
+test('neither flow can navigate back to an already auto-advanced splash', () => {
+  const source = setup();
+  const page = /procedure CurPageChanged\(CurPageID: Integer\);([\s\S]*?)\nend;/.exec(source)?.[1];
+  assert.ok(page);
+  assert.match(page, /WizardForm\.BackButton\.Visible := False;/);
+  assert.match(page, /WizardForm\.BackButton\.Enabled := False;/);
+  assert.match(source, /function BackButtonClick\(CurPageID: Integer\): Boolean;\s+begin\s+Result := False;\s+end;/);
+  assert.match(read('tool/verify_install_progress.ps1'), /Installer must not offer Back/);
+  for (const path of ['tool/verify_onboarding_wizard.ps1', 'tool/verify_install_progress.ps1']) {
+    assert.match(read(path), /Destination must not offer Back/);
+    assert.match(read(path), /destinationBackAbsent/);
+  }
+});
+
 test('one visual says only Anchor, Action and Celebrate, with accessible native words and original art', () => {
   const progress = visual();
   const captions = [...progress.matchAll(/\.Caption := '([^']*)'/g)].map(match => match[1]);

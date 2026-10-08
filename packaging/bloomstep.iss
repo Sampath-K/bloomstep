@@ -183,12 +183,19 @@ end;
 
 procedure CurPageChanged(CurPageID: Integer);
 begin
+  WizardForm.BackButton.Visible := False;
+  WizardForm.BackButton.Enabled := False;
   if CurPageID = wpSelectDir then
   begin
     WizardForm.NextButton.Visible := True;
     WizardForm.NextButton.Caption := SetupMessage(msgButtonInstall);
   end;
   ShowVisualForPage(CurPageID);
+end;
+
+function BackButtonClick(CurPageID: Integer): Boolean;
+begin
+  Result := False;
 end;
 
 function MeasurementPath(): String;

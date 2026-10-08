@@ -2,6 +2,12 @@
 
 ## Active one-click and zero-click source increment (not yet released)
 
+Zero-click is the user-selected preferred private candidate. One-click is retained
+only for comparison. Neither flow offers Back: the auto-advanced splash is not
+a navigable destination. Cancel remains available. PR28's separate app first-run
+habit-builder invitation is not included in this installer branch; a composed
+installer/app build is still required before claiming that combined journey.
+
 User-directed after testing: the setup steps that each required Next were not
 interesting and had too much text. Both variants below build from the same
 source (`/DInstallFlow=oneclick` default, `/DInstallFlow=zeroclick` experiment).
