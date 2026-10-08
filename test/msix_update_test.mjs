@@ -71,6 +71,8 @@ test('candidate workflow is exact-source gated, signed and not a publishing/migr
   assert.match(validation, /\$source = git rev-parse HEAD/);
   assert.match(validation, /-SourceSha \$source/);
   assert.doesNotMatch(validation, /-SourceSha \$env:GITHUB_SHA/);
+  const fixture = readFileSync(new URL('../tool/verify_msix_packaging.ps1', import.meta.url), 'utf8');
+  assert.match(fixture, /unprovisionedPublisherRejected = 'PASS'[\s\S]*\$global:LASTEXITCODE = 0/);
   assert.match(ci, /verify_msix_packaging\.ps1/);
   assert.doesNotMatch(workflow + builder,
     /gh release|Add-AppxPackage|Import-Certificate|TrustedPeople|Root\\|Start-Process|ForceApplicationShutdown/);

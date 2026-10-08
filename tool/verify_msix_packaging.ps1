@@ -87,6 +87,9 @@ try {
     privateKeyPersisted = $false; installed = $false; appLaunch = 'NOT TESTED'
     automaticApplication = 'NOT TESTED'; dataMigration = 'NOT TESTED'
   } | ConvertTo-Json | Set-Content -LiteralPath (Join-Path $Output 'packaging-proof.json') -Encoding utf8
+  # The last native command intentionally rejected the untrusted certificate.
+  # Only reset its exit status after all expected-rejection assertions pass.
+  $global:LASTEXITCODE = 0
 } finally {
   if (Test-Path -LiteralPath $pfx) { Remove-Item -LiteralPath $pfx }
   $certificate.Dispose()
