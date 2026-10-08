@@ -11,29 +11,25 @@ import 'package:uuid/uuid.dart';
 import 'auth_observations.dart';
 
 class IdentityProfile {
-  const IdentityProfile({this.displayName, this.email, this.provider});
+  const IdentityProfile({this.displayName, this.photoUrl});
   final String? displayName;
-  final String? email;
-  final String? provider;
+  final String? photoUrl;
 
   factory IdentityProfile.fromClaims(Map<String, dynamic> claims) {
     String? text(dynamic value) =>
         value is String && value.trim().isNotEmpty ? value.trim() : null;
-    final emails = claims['emails'];
-    final provider =
-        text(claims['idp']) ??
-        text(claims['identity_provider']) ??
-        text(claims['iss']);
+    final picture = text(claims['picture']);
+    final pictureUri = picture == null ? null : Uri.tryParse(picture);
     return IdentityProfile(
       displayName: text(claims['name']),
-      email:
-          text(claims['email']) ??
-          (emails is List && emails.isNotEmpty ? text(emails.first) : null),
-      provider: switch (provider) {
-        'google.com' || 'https://accounts.google.com' => 'Google',
-        'live.com' || 'https://login.live.com' => 'Microsoft personal account',
-        _ => provider,
-      },
+      photoUrl:
+          pictureUri != null &&
+              pictureUri.scheme == 'https' &&
+              pictureUri.hasAuthority &&
+              pictureUri.host.isNotEmpty &&
+              pictureUri.userInfo.isEmpty
+          ? pictureUri.toString()
+          : null,
     );
   }
 }
@@ -54,9 +50,11 @@ class IdentityService {
   DateTime? _lastObservedAt;
   Future<void> _storageTail = Future<void>.value();
   String? account;
-  IdentityProfile? get profile => hasValidSession
-      ? IdentityProfile.fromClaims(_credential!.idToken.claims.toJson())
-      : null;
+  IdentityProfile? get profile {
+    if (!hasValidSession) return null;
+    return IdentityProfile.fromClaims(_credential!.idToken.claims.toJson());
+  }
+
   DateTime? get sessionExpiresAt => _validatedAt?.add(const Duration(days: 30));
   bool get hasValidSession {
     final now = DateTime.now().toUtc();
