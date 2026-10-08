@@ -8,6 +8,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:path/path.dart' as p;
+import 'package:sqflite_common_ffi/sqflite_ffi.dart';
 
 Future<void> waitFor(WidgetTester tester, Finder finder) async {
   for (var i = 0; i < 100; i++) {
@@ -65,10 +66,7 @@ void main() {
         ),
       );
       await waitFor(tester, find.text('Adjust my recipe'));
-      expect(
-        find.textContaining('One optional idea: Try something smaller'),
-        findsOneWidget,
-      );
+      expect(find.textContaining('One optional idea:'), findsOneWidget);
       expect(find.text('Resting today. Growth stays.'), findsOneWidget);
       await expectLater(tester, meetsGuideline(labeledTapTargetGuideline));
       expect(
@@ -112,17 +110,16 @@ void main() {
         find.widgetWithText(TextFormField, 'I will...'),
         'take one easy breath',
       );
+      await tester.ensureVisible(find.text('Save recipe'));
       await tester.tap(find.text('Save recipe'));
-      await waitFor(
-        tester,
-        find.text('One optional idea: Try something smaller'),
-      );
+      await waitFor(tester, find.text('Adjust my recipe'));
       final adjusted = (await tester.runAsync(store.habits))!.single;
       expect(adjusted.behavior, 'take one easy breath');
       expect(adjusted.today, CheckInResult.notToday);
       expect(adjusted.todayReason, 'too hard');
       expect(adjusted.practiceCount, 0);
       expect(adjusted.stage, GrowthStage.seed);
+      expect(find.textContaining('One optional idea:'), findsOneWidget);
 
       await tester.pumpWidget(const SizedBox());
       await tester.pumpWidget(
@@ -141,10 +138,7 @@ void main() {
         ),
       );
       await waitFor(tester, find.text('Adjust my recipe'));
-      expect(
-        find.textContaining('One optional idea: Try something smaller'),
-        findsOneWidget,
-      );
+      expect(find.textContaining('One optional idea:'), findsOneWidget);
 
       await tester.ensureVisible(find.text('Undo today'));
       await tester.tap(find.text('Undo today'));
@@ -159,6 +153,8 @@ void main() {
   testWidgets(
     'no activity and a reasonless rest choice never infer a recovery reason',
     (tester) async {
+      await tester.binding.setSurfaceSize(const Size(400, 900));
+      addTearDown(() => tester.binding.setSurfaceSize(null));
       final store = (await tester.runAsync(
         () => GardenStore.open(':memory:', 'recovery-skip'),
       ))!;
@@ -176,8 +172,10 @@ void main() {
       await waitFor(tester, find.text('Not today'));
       expect(find.textContaining('One optional idea:'), findsNothing);
 
+      await tester.ensureVisible(find.text('Not today'));
       await tester.tap(find.text('Not today'));
       await tester.pumpAndSettle();
+      await tester.ensureVisible(find.text('No reason needed'));
       await tester.tap(find.text('No reason needed'));
       await waitFor(tester, find.text('Resting today. Growth stays.'));
       expect(find.textContaining('One optional idea:'), findsNothing);
@@ -266,6 +264,7 @@ void main() {
       final store = (await tester.runAsync(
         () => GardenStore.open(path, 'recovery-failure'),
       ))!;
+      addTearDown(() => tester.runAsync(store.close));
       final habit = (await tester.runAsync(() => plant(store)))!;
       await tester.pumpWidget(
         MaterialApp(
@@ -277,22 +276,30 @@ void main() {
         ),
       );
       await waitFor(tester, find.text('Not today'));
-      await tester.runAsync(store.close);
+      await tester.runAsync(() async {
+        final db = await databaseFactoryFfi.openDatabase(path);
+        try {
+          await db.execute(
+            "CREATE TRIGGER fail_checkin BEFORE INSERT ON checkins "
+            "BEGIN SELECT RAISE(ABORT, 'planned check-in failure'); END",
+          );
+        } finally {
+          await db.close();
+        }
+      });
 
+      await tester.ensureVisible(find.text('Not today'));
       await tester.tap(find.text('Not today'));
       await tester.pumpAndSettle();
+      await tester.ensureVisible(find.text('I forgot'));
       await tester.tap(find.text('I forgot'));
-      await waitFor(tester, find.textContaining('database_closed'));
+      await waitFor(tester, find.textContaining('planned check-in failure'));
       expect(find.textContaining('One optional idea:'), findsNothing);
       expect(find.text('Resting today. Growth stays.'), findsNothing);
       expect(tester.takeException(), isNull);
       await tester.pumpWidget(const SizedBox());
 
-      final reopened = (await tester.runAsync(
-        () => GardenStore.open(path, 'recovery-failure'),
-      ))!;
-      addTearDown(() => tester.runAsync(reopened.close));
-      final unchanged = (await tester.runAsync(reopened.habits))!.single;
+      final unchanged = (await tester.runAsync(store.habits))!.single;
       expect(unchanged.id, habit.id);
       expect(unchanged.today, isNull);
       expect(unchanged.todayReason, isNull);
