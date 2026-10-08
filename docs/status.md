@@ -4,15 +4,18 @@
 cloud deployment and native background behavior require integration evidence.
 This ledger is updated with verified outcomes, not inferred from source code.
 
-**Active installer-only UX increment (unreleased, review pending):** replace
-the multi-Next wizard with destination/Browse → Install → Finish. Reuse original
-scenes only during real install, with read-only reduced-motion preference and
-no minimum dwell. Remove all installer observation creation while preserving
-legacy owner-matched cleanup and app consent compatibility. New compiled
-motion/Finish/native lifecycle evidence and parent pixel review are pending;
-the general owner functional report does not close genuine checked/unchecked
-non-elevated launch or full-journey acceptance. Immutable preview.12 is unchanged;
-the separate website promotion branch is not part of this source increment.
+**Composed PR26 private candidate (not merged/released):** user-selected zero-click
+installer retains the Anchor/Action/Celebrate visual for about five seconds,
+uses the default per-user path, offers no Back or Finish, and attempts
+non-elevated automatic launch. One-click remains comparison-only. Installer
+observations remain absent; legacy owner-matched cleanup is preserved.
+PR28 app changes are composed into this source branch: fresh empty device
+gardens invite first-habit creation once without a button click; returning/account
+gardens are untouched. Anchor, Action and Celebration accept visible custom text.
+Saved-habit confirmation previews seed-to-sprout growth with reduced-motion and
+save-failure contracts. Final composed binaries and exact-head native evidence
+remain pending; this source change does not establish genuine provider/launch
+acceptance. Immutable preview.12 and the public website remain unchanged.
 
 **Frozen v1 merged and published for owner trial (PR21):** merge
 `45efbf2da0cb8363675321e5e257d5dd66391f04` is the immutable

@@ -5,6 +5,12 @@ claim. Microsoft/Google federation, provider consent, MFA, customer accounts,
 production Cosmos, Windows notifications/share UI, and population measurements
 are not exercised by it.
 
+The profile UI evidence artifact also contains `picker-*.png`: disposable-device
+first-run auto-invitation, typed inputs, and seed-growth start/middle/final frames.
+These are synthetic widget evidence using the normal home/store/save flow, not
+genuine provider sign-in or installer launch evidence. Reduced-motion and save
+failure paths are regression contracts; native UI/API tests remain a separate gate.
+
 ## Engineering acceptance policy
 
 The approved engineering MVP gate is unattended for non-provider application

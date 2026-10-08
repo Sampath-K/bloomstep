@@ -49,7 +49,8 @@ void main() {
         findsOneWidget,
       );
       expect(find.text('Choose an anchor to continue.'), findsOneWidget);
-      expect(find.byType(TextFormField), findsNothing);
+      expect(find.widgetWithText(TextFormField, 'After I...'), findsOneWidget);
+      await tester.ensureVisible(find.text('pour my morning drink'));
       await tester.tap(find.text('pour my morning drink'));
       await tester.pumpAndSettle();
       expect(
@@ -60,9 +61,11 @@ void main() {
         find.textContaining('After I pour my morning drink'),
         findsOneWidget,
       );
+      await tester.ensureVisible(find.text('take one slow breath'));
       await tester.tap(find.text('take one slow breath'));
       await tester.pumpAndSettle();
       expect(find.text('Step 3 of 3 · Almost there'), findsOneWidget);
+      await tester.ensureVisible(find.text('relax my shoulders and smile'));
       await tester.tap(find.text('relax my shoulders and smile'));
       await tester.pumpAndSettle();
       expect(
@@ -85,6 +88,64 @@ void main() {
       expect(saved?.templateCategory, 'calm');
       expect(saved?.celebrationPracticed, isFalse);
       expect(tester.takeException(), isNull);
+    },
+  );
+
+  testWidgets(
+    'custom values are visible on every step and survive Back and keyboard navigation',
+    (tester) async {
+      RecipeDraft? saved;
+      await openBuilder(tester, onSaved: (draft) => saved = draft);
+      final anchor = find.byKey(const ValueKey('custom-anchor'));
+      expect(anchor, findsOneWidget);
+      await tester.enterText(anchor, '  put my cup away  ');
+      await tester.testTextInput.receiveAction(TextInputAction.next);
+      await tester.pumpAndSettle();
+      final action = find.byKey(const ValueKey('custom-action'));
+      expect(action, findsOneWidget);
+      await tester.enterText(action, '  stretch one finger  ');
+      await tester.testTextInput.receiveAction(TextInputAction.next);
+      await tester.pumpAndSettle();
+      final celebration = find.byKey(const ValueKey('custom-celebration'));
+      await tester.enterText(celebration, '  whisper well done  ');
+      await tester.tap(find.text('Back'));
+      await tester.pumpAndSettle();
+      expect(
+        tester.widget<TextFormField>(action).controller!.text,
+        '  stretch one finger  ',
+      );
+      await tester.tap(find.text('Back'));
+      await tester.pumpAndSettle();
+      expect(
+        tester.widget<TextFormField>(anchor).controller!.text,
+        '  put my cup away  ',
+      );
+      await tester.enterText(anchor, '   ');
+      await tester.pump();
+      expect(
+        tester
+            .widget<FilledButton>(
+              find.widgetWithText(FilledButton, 'Choose a tiny action'),
+            )
+            .enabled,
+        isFalse,
+      );
+      await tester.enterText(anchor, '  put my cup away  ');
+      await tester.pump();
+      await tester.tap(find.text('Choose a tiny action'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Choose a celebration'));
+      await tester.pumpAndSettle();
+      expect(
+        tester.widget<TextFormField>(celebration).controller!.text,
+        '  whisper well done  ',
+      );
+      await tester.tap(find.text('Plant this seed'));
+      await tester.pumpAndSettle();
+      expect(saved?.anchor, 'put my cup away');
+      expect(saved?.behavior, 'stretch one finger');
+      expect(saved?.celebration, 'whisper well done');
+      expect(saved?.templateCategory, isNull);
     },
   );
 
@@ -148,12 +209,17 @@ void main() {
         MaterialApp(
           home: Scaffold(
             body: PlantedRecipeDialog(
-              recipe: RecipeDraft(
-                'Calm',
-                'pour my morning drink',
-                'take one slow breath',
-                'relax my shoulders and smile',
-                'Cosmos',
+              habit: const Habit(
+                id: 'synthetic-saved-seed',
+                aspiration: 'Calm',
+                anchor: 'pour my morning drink',
+                behavior: 'take one slow breath',
+                celebration: 'relax my shoulders and smile',
+                species: 'Cosmos',
+                stage: GrowthStage.seed,
+                status: 'active',
+                practiceCount: 0,
+                recentPractice: 0,
               ),
             ),
           ),

@@ -269,6 +269,30 @@ class GardenStore {
 
   Future<void> close() => _db.close();
 
+  Future<bool> claimFirstHabitInvitation() => _db.transaction((txn) async {
+    if (_account != 'device-guest' ||
+        await _valueWith(txn, _account, 'firstHabitInvitation') != null) {
+      return false;
+    }
+    final existing = await txn.query(
+      'habits',
+      columns: ['id'],
+      where: 'account = ?',
+      whereArgs: [_account],
+      limit: 1,
+    );
+    final eligible =
+        existing.isEmpty &&
+        await _valueWith(txn, _account, 'lastInteraction') == null;
+    await txn.insert('settings', {
+      'account': _account,
+      'key': 'firstHabitInvitation',
+      'value': eligible ? 'shown' : 'not-first-run',
+      'updated': _clock().toUtc().toIso8601String(),
+    });
+    return eligible;
+  });
+
   Future<Habit> plant({
     required String aspiration,
     required String anchor,
@@ -1414,7 +1438,15 @@ class GardenStore {
         'sync_state',
         'deletions',
       ]) {
-        await txn.delete(table, where: 'account = ?', whereArgs: [account]);
+        await txn.delete(
+          table,
+          where: account == 'device-guest' && table == 'settings'
+              ? 'account = ? AND key != ?'
+              : 'account = ?',
+          whereArgs: account == 'device-guest' && table == 'settings'
+              ? [account, 'firstHabitInvitation']
+              : [account],
+        );
       }
     });
   }

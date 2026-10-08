@@ -35,6 +35,25 @@ occurs. A future "Bring them / Keep separate" flow needs explicit consent,
 idempotent local import, rollback and failure tests before enabling it. This
 branch does not release or merge the UX.
 
+## First-habit invitation and planting
+
+After authentication restoration finishes, a genuinely first-run, empty device
+garden automatically opens the existing accessible, dismissible recipe builder.
+An atomic SQLite preference records the invitation before presenting it. Existing
+habits or a previous interaction make a garden ineligible; account gardens never
+auto-open. Dismissal stays remembered across restarts and local habit clearing.
+Authentication initialization and another active route prevent interruption.
+The "Plant a habit" button remains available for later visits and subsequent habits.
+
+Anchor, Action and Celebration each have an always-visible custom text field
+alongside suggestions, with the existing 200-character limit and trimmed,
+nonempty validation. Keyboard Next/Done and Back preserve the current choices;
+Cancel saves nothing. Optional aspiration/species and celebration practice stay
+optional. A successful SQLite save supplies the actual saved habit to "Your seed
+is planted", which shows a 1.4-second seed-to-sprout growth preview. It never
+changes the saved seed stage, blocks continuation, or appears on save failure.
+App or platform reduced motion uses a static sprout with semantic success feedback.
+
 ## Outcome and trust
 
 Help people make one tiny behavior natural and eventually graduate it. The north
@@ -168,7 +187,7 @@ kill switch must be verified before production launch.
 
 | Loop | Approved minimum |
 | --- | --- |
-| Habit | Sign in; primary three-step anchor, tiny-action and celebration picker using the five original recipes; zero required typing; visible progress and live full-recipe preview; Back retains choices; optional custom text/aspiration and three species. Incomplete actions explain why. Celebration practice is optional, never a creation/edit gate. Plant into persistent SQLite, then show a recipe-specific next step and a clear garden continuation. First habit target <90s; first check-in is optional, not creation acceptance. Recommend one habit initially; soft cap three with explicit override. |
+| Habit | Plant without sign-in; first-run empty device garden opens the dismissible three-step anchor, tiny-action and celebration picker once. Five original suggestion recipes and visible custom text at each step; zero required typing; visible progress and live full-recipe preview; Back retains choices; optional aspiration and three species. Incomplete actions explain why. Celebration practice is optional, never a creation/edit gate. Plant into persistent SQLite, then show saved-recipe seed-growth feedback and a clear garden continuation, honoring reduced motion. First habit target <90s; first check-in is optional, not creation acceptance. Recommend one habit initially; soft cap three with explicit override. |
 | Check-in | Did it / Did more / Not today; optional forgot/too hard/anchor absent/motivation reason; no response is no data. Personal celebration within 300ms; persistent client event IDs; one effective result per habit per **local** date; edits and undo append events; sync retries idempotent. |
 | Garden | Five stages: seed, sprout at 3, sapling at 10, budding at 21, bloom at 30 practice days plus score >=4/7. No negative stage changes after rest or corrected data. Permanent Grove after graduation. Deterministic species/plant variation, vector visuals, screen-reader labels and reduced motion. Optional day/night, seasons, decor, pollinators and return celebration, never a penalty. |
 | Reminders | Real Windows local toasts and tray actions; opt-in permission/context; optional autostart; chosen local time, quiet hours default 21:30-07:30; <=1 prompt/habit/day and <=3 notifications/app/day; snooze/fewer/off. Three ignored halves frequency, seven pauses with in-app explanation. Device scheduling, not paid service. Respect OS settings/Focus; never use urgent bypass. Re-evaluate local time/DST/travel. Median of last 14 check-in times after five samples, rounded 15m. |
