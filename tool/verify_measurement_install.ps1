@@ -37,6 +37,10 @@ function Uninstall-PrivacyFixture([string]$Stage) {
   $process = Start-CaptureProcess "$Target\unins000.exe" '/VERYSILENT /SUPPRESSMSGBOXES /NORESTART' $Stage
   Wait-CaptureTree $Stage
   if ($process.ExitCode -ne 0 -or (Test-Path "$Target\bloomstep.exe")) { throw 'Privacy proof owned uninstall failed.' }
+  # unins000.exe hands off to a temporary copy that removes unins000.exe last; never start the next stage before that.
+  $handoff = [Diagnostics.Stopwatch]::StartNew()
+  while ((Test-Path "$Target\unins000.exe") -and $handoff.ElapsedMilliseconds -lt 30000) { Start-Sleep -Milliseconds 200 }
+  if (Test-Path "$Target\unins000.exe") { throw 'Privacy proof uninstall handoff did not finish within 30s.' }
 }
 try {
   Install-PrivacyFixture 'silent-install-no-observations'

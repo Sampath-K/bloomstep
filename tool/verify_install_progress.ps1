@@ -92,6 +92,15 @@ try {
              ([OnboardingWizard]::HasVisibleChildren($window)) $owner $wizardOwners)) { continue }
         if ($committed -and [OnboardingWizard]::ClassName($window) -eq 'TApplication' -and
             -not [OnboardingWizard]::HasVisibleChildren($window) -and -not [OnboardingWizard]::Describe($window)) { continue }
+        # /SUPPRESSMSGBOXES only applies to silent installs; this elevated host must see the exact Start-menu notice.
+        if ($committed -and [OnboardingWizard]::ClassName($window) -eq '#32770' -and
+            [OnboardingWizard]::Describe($window) -eq 'OK | Bloomstep is installed. Open Bloomstep from the Start menu as your normal Windows account.') {
+          if (-not $report.elevatedHostNotice) {
+            $report.elevatedHostNotice = Save-CaptureFrame $window 'actual-elevated-host-notice.png'
+            Invoke-CaptureButton ([OnboardingWizard]::Find($window, 'OK')) 'elevated-host-notice-ok'
+          }
+          continue
+        }
         Save-CaptureStage 'unexpected-install-dialog'
         throw 'Actual installer presented an unexpected owned dialog; no override.'
       }
@@ -126,6 +135,8 @@ try {
           continue
         }
         if (-not $words) { throw 'First actual page was not the Anchor/Action/Celebrate welcome.' }
+        if ([OnboardingWizard]::Find($window, 'Next') -ne [IntPtr]::Zero -and $null -ne $welcomeAt -and
+            ($now - $welcomeAt) -ge 3500) { continue }  # Inno shows the next page's buttons a moment before its surface.
         if ([OnboardingWizard]::Find($window, 'Next') -ne [IntPtr]::Zero -or
             [OnboardingWizard]::Find($window, 'Cancel') -eq [IntPtr]::Zero) {
           throw 'Welcome must show only Cancel and advance on its own.'
