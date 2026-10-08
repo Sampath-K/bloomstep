@@ -10,6 +10,7 @@ import 'rules.dart';
 import 'event_registry.g.dart' as registry;
 import 'measurement_receipt.dart';
 import 'reminder_preference_episode.dart';
+import 'weekly_garden_story.dart';
 
 const _testBuild = bool.fromEnvironment('BLOOMSTEP_TEST_BUILD');
 
@@ -422,7 +423,7 @@ class GardenStore {
     final account = _account;
     final changed = await _db.transaction((txn) async {
       final habit = await _owned(habitId, txn);
-      final day = localDate(now);
+      final day = localDate(now.toLocal());
       final previous = await txn.query(
         'checkins',
         where: 'account = ? AND habitId = ? AND day = ?',
@@ -576,7 +577,7 @@ class GardenStore {
   }
 
   Future<List<Habit>> habits({DateTime? now}) async {
-    final date = now ?? _clock();
+    final date = (now ?? _clock()).toLocal();
     final cutoff = localDate(
       DateTime(
         date.year,
@@ -757,17 +758,115 @@ class GardenStore {
         (now ?? _clock()).toUtc().difference(last) >= const Duration(days: 7);
   }
 
+  Future<bool> weeklyGardenStoryDue({DateTime? now}) async {
+    final localNow = (now ?? _clock()).toLocal();
+    final weekStart = _weekStart(localNow);
+    return await setting('weeklyGardenStorySeenWeek') != localDate(weekStart);
+  }
+
+  Future<WeeklyGardenStory> weeklyGardenStory({DateTime? now}) async {
+    final localNow = (now ?? _clock()).toLocal();
+    final throughDate = DateTime(localNow.year, localNow.month, localNow.day);
+    final weekStart = _weekStart(throughDate);
+    final start = localDate(weekStart);
+    final through = localDate(throughDate);
+    final owner = _account;
+    final generation = _syncGeneration;
+
+    return _db.transaction((txn) async {
+      requireSyncSession(owner, generation);
+      final rows = await txn.query(
+        'habits',
+        where: 'account = ?',
+        whereArgs: [owner],
+        orderBy: 'id ASC',
+      );
+      final stories = <WeeklyHabitStory>[];
+      for (final row in rows) {
+        final habitId = row['id'] as String;
+        final current = await _current(txn, habitId, account: owner);
+        final week = current
+            .where(
+              (entry) =>
+                  (entry['day'] as String).compareTo(start) >= 0 &&
+                  (entry['day'] as String).compareTo(through) <= 0,
+            )
+            .toList();
+        final practiceDays = week
+            .where(
+              (entry) =>
+                  entry['result'] == 'did' || entry['result'] == 'didMore',
+            )
+            .length;
+        const reasonPriority = ['too hard', 'anchor', 'forgot', 'motivation'];
+        final counts = {for (final reason in reasonPriority) reason: 0};
+        for (final entry in week) {
+          final reason = entry['reason'];
+          if (entry['result'] == 'notToday' && counts.containsKey(reason)) {
+            counts[reason as String] = counts[reason]! + 1;
+          }
+        }
+        String? mostCommonReason;
+        var mostCommonCount = 0;
+        for (final reason in reasonPriority) {
+          if (counts[reason]! > mostCommonCount) {
+            mostCommonReason = reason;
+            mostCommonCount = counts[reason]!;
+          }
+        }
+        stories.add(
+          WeeklyHabitStory(
+            id: habitId,
+            aspiration: row['aspiration'] as String,
+            species: row['species'] as String,
+            stage: GrowthStage.values[row['stage'] as int],
+            status: row['status'] as String,
+            practiceDays: practiceDays,
+            suggestion: mostCommonReason == null
+                ? 'Keep what feels easy. If you want to experiment, choose a more specific anchor, a smaller step, or a celebration you enjoy. No change is required.'
+                : recipeDoctor(mostCommonReason),
+          ),
+        );
+      }
+      requireSyncSession(owner, generation);
+      return WeeklyGardenStory(
+        weekStart: start,
+        through: through,
+        habits: List.unmodifiable(stories),
+      );
+    });
+  }
+
+  Future<void> markWeeklyGardenStorySeen(
+    String habitId, {
+    DateTime? now,
+  }) async {
+    final owner = _account;
+    final generation = _syncGeneration;
+    final weekStart = localDate(_weekStart((now ?? _clock()).toLocal()));
+    await _db.transaction((txn) async {
+      requireSyncSession(owner, generation);
+      await _owned(habitId, txn);
+      await txn.insert('settings', {
+        'account': owner,
+        'key': 'weeklyGardenStorySeenWeek',
+        'value': weekStart,
+        'updated': _clock().toUtc().toIso8601String(),
+      }, conflictAlgorithm: ConflictAlgorithm.replace);
+      requireSyncSession(owner, generation);
+    });
+  }
+
+  static DateTime _weekStart(DateTime date) {
+    final localDate = DateTime(date.year, date.month, date.day);
+    return localDate.subtract(Duration(days: localDate.weekday - 1));
+  }
+
   Future<String> weeklyRecommendation(String habitId, {DateTime? now}) async {
     await _owned(habitId, _db);
-    final date = now ?? _clock();
+    final date = (now ?? _clock()).toLocal();
     final end = localDate(date);
-    final start = localDate(
-      DateTime(
-        date.year,
-        date.month,
-        date.day,
-      ).subtract(const Duration(days: 6)),
-    );
+    final start = localDate(_weekStart(date));
     final counts = {'too hard': 0, 'anchor': 0, 'forgot': 0, 'motivation': 0};
     for (final row in await _current(_db, habitId)) {
       if (row['result'] == 'notToday' &&
@@ -1383,6 +1482,7 @@ class GardenStore {
 
   Future<Map<String, Object?>> export() async {
     final data = <String, Object?>{'schemaVersion': 1};
+    data['weeklyGardenStory'] = (await weeklyGardenStory()).toJson();
     final invitations = await setting('invitationState');
     if (invitations != null) {
       final state = jsonDecode(invitations) as Map<String, dynamic>;

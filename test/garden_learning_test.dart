@@ -292,7 +292,10 @@ void main() {
     expect(find.byType(Slider), findsNothing);
     await tester.tap(find.text('Keep my recipe'));
     await settleDatabase(tester);
-    expect(await tester.runAsync(() => store.setting('weeklyLast')), isNotNull);
+    expect(
+      await tester.runAsync(() => store.setting('weeklyGardenStorySeenWeek')),
+      isNotNull,
+    );
     expect(find.textContaining('cooldown'), findsNothing);
     expect((await tester.runAsync(store.export))!['reflections'], hasLength(1));
   });

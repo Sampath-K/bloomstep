@@ -343,7 +343,8 @@ void main() {
       await _waitFor(
         tester,
         find.text('Weekly reflection / Recipe Doctor'),
-        ready: () async => await activeStore!.setting('weeklyLast') != null,
+        ready: () async =>
+            await activeStore!.setting('weeklyGardenStorySeenWeek') != null,
       );
       await syncService().sync();
 
