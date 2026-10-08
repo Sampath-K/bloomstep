@@ -1,10 +1,13 @@
 import 'dart:io';
+import 'dart:ui' as ui;
 
 import 'package:bloomstep/core/garden_store.dart';
 import 'package:bloomstep/core/models.dart';
 import 'package:bloomstep/features/garden/garden_screen.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/rendering.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:path/path.dart' as p;
 
 Future<void> waitFor(WidgetTester tester, Finder finder) async {
   for (var i = 0; i < 100; i++) {
@@ -42,6 +45,7 @@ void main() {
       );
       final semantics = tester.ensureSemantics();
       addTearDown(semantics.dispose);
+      final boundaryKey = GlobalKey();
       await tester.pumpWidget(
         MaterialApp(
           home: MediaQuery(
@@ -49,10 +53,13 @@ void main() {
               disableAnimations: true,
               textScaler: TextScaler.linear(1.5),
             ),
-            child: GardenScreen(
-              store: store,
-              deviceGuest: true,
-              testDisableServices: true,
+            child: RepaintBoundary(
+              key: boundaryKey,
+              child: GardenScreen(
+                store: store,
+                deviceGuest: true,
+                testDisableServices: true,
+              ),
             ),
           ),
         ),
@@ -69,6 +76,23 @@ void main() {
         Duration.zero,
       );
       expect(tester.takeException(), isNull);
+      final screenshotDirectory = Platform.environment['BLOOMSTEP_SCREENSHOTS'];
+      if (screenshotDirectory != null) {
+        await tester.ensureVisible(find.text('Adjust my recipe'));
+        await tester.pumpAndSettle();
+        final boundary =
+            boundaryKey.currentContext!.findRenderObject()!
+                as RenderRepaintBoundary;
+        await tester.runAsync(() async {
+          final image = await boundary.toImage(pixelRatio: 1);
+          final bytes = await image.toByteData(format: ui.ImageByteFormat.png);
+          await Directory(screenshotDirectory).create(recursive: true);
+          await File(
+            p.join(screenshotDirectory, 'recovery-rest-day-400x900.png'),
+          ).writeAsBytes(bytes!.buffer.asUint8List());
+          image.dispose();
+        });
+      }
 
       await tester.ensureVisible(find.text('Adjust my recipe'));
       await tester.tap(find.text('Adjust my recipe'));
