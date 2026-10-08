@@ -5,7 +5,12 @@
 Zero-click is the user-selected preferred private candidate. One-click is retained
 only for comparison. Neither flow offers Back: the auto-advanced splash is not
 a navigable destination. Cancel remains available. PR28's six app commits through
-`2753a6203f97923557f2de669c5f66cd3fdf70a6` are composed into this branch:
+`2753a6203f97923557f2de669c5f66cd3fdf70a6`, plus the rendered custom-field
+label/value overlap correction at exact PR28 head
+`adb51b30da43e0629efd5ee6db5b0d545f625150`, are composed into this branch.
+The final source includes the seven app commits in order:
+`cfa46b75`, `298735c7`, `625ec537`, `67f1bf17`, `dd959648`, `2753a620`,
+`adb51b30`.
 inline profile/device garden, once-only first-run habit-builder invitation,
 custom text on all three steps, and post-save seed growth with reduced motion.
 The composed executable still needs exact-head native evidence; source
