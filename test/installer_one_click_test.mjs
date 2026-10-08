@@ -36,7 +36,8 @@ test('no Finish page, launch checkbox or optional settings; successful interacti
   assert.match(done, /CurStep = ssDone[\s\S]*CanLaunchBloomstep[\s\S]*ExecAsOriginalUser\(ExpandConstant\('\{app\}\\bloomstep\.exe'\), '', '', SW_SHOWNORMAL, ewNoWait, ResultCode\)/);
   assert.match(done, /LaunchAttempted := True/);
   assert.match(done, /Bloomstep automatic launch/);
-  assert.match(source, /IsAdmin[\s\S]*not WizardSilent[\s\S]*MsgBox\('Bloomstep is installed\. Open Bloomstep from the Start menu as your normal Windows account\.'/);
+  assert.match(source, /IsAdmin[\s\S]*not WizardSilent[\s\S]*SuppressibleMsgBox\('Bloomstep is installed\. Open Bloomstep from the Start menu as your normal Windows account\.', mbInformation, MB_OK, IDOK\)/);
+  assert.doesNotMatch(source, /[^e]MsgBox\('Bloomstep is installed/, '/SUPPRESSMSGBOXES must suppress the elevated-host notice');
 });
 
 test('one visual says only Anchor, Action and Celebrate, with accessible native words and original art', () => {

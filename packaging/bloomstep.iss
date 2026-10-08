@@ -233,7 +233,7 @@ begin
     begin
       Log('Bloomstep automatic launch withheld (silent, elevated, non-interactive or suppressed).');
       if InstallationSucceeded and IsAdmin and not WizardSilent then
-        MsgBox('Bloomstep is installed. Open Bloomstep from the Start menu as your normal Windows account.', mbInformation, MB_OK);
+        SuppressibleMsgBox('Bloomstep is installed. Open Bloomstep from the Start menu as your normal Windows account.', mbInformation, MB_OK, IDOK);
     end;
   end;
 end;
