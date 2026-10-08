@@ -6,6 +6,12 @@
     #error Integrity fault injection requires the isolated journey identity, never a public package.
   #endif
 #endif
+#ifndef InstallFlow
+  #define InstallFlow "oneclick"
+#endif
+#if InstallFlow != "oneclick" && InstallFlow != "zeroclick"
+  #error InstallFlow must be oneclick or zeroclick.
+#endif
 #ifndef AppVersion
   #define AppVersion "0.1.0-preview"
 #endif
@@ -47,13 +53,23 @@ DefaultDirName={localappdata}\Programs\Bloomstep
 DefaultGroupName=Bloomstep
 PrivilegesRequired=lowest
 OutputDir=..\release-output
+#if InstallFlow == "zeroclick"
+OutputBaseFilename=Bloomstep-{#AppVersion}-windows-{#AppArch}-zeroclick-setup
+#else
 OutputBaseFilename=Bloomstep-{#AppVersion}-windows-{#AppArch}-setup
+#endif
 Compression=lzma2
 SolidCompression=yes
 WizardStyle=modern
+#if InstallFlow == "zeroclick"
 DisableWelcomePage=yes
-DisableReadyPage=yes
+DisableDirPage=yes
+#else
+DisableWelcomePage=no
 DisableDirPage=no
+#endif
+DisableReadyPage=yes
+DisableFinishedPage=yes
 DisableProgramGroupPage=yes
 WizardImageFile=assets\wizard-garden.bmp
 WizardSmallImageFile=assets\wizard-seed.bmp
@@ -75,8 +91,6 @@ ArchitecturesInstallIn64BitMode=x64compatible
 SelectDirDesc=Choose where Bloomstep will grow.
 SelectDirLabel3=Bloomstep will use this folder. Select Install to begin, Browse to choose another folder, or Cancel to leave without installing.
 SelectDirBrowseLabel=Select Install to begin. To choose a different folder, select Browse.
-FinishedHeadingLabel=Bloomstep is ready
-FinishedLabel=Open Bloomstep to create your first tiny habit.%nLimited unsigned Windows preview. Sign-in required. Opening the app below is optional.
 
 [Files]
 #if AppArch == "universal"
@@ -85,10 +99,8 @@ Source: "{#SourceDirArm64}\*"; DestDir: "{app}"; Flags: ignoreversion recursesub
 #else
 Source: "{#SourceDir}\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs createallsubdirs
 #endif
-Source: "assets\education-seed.bmp"; Flags: dontcopy
-Source: "assets\education-growth.bmp"; Flags: dontcopy
-Source: "assets\education-recipe.bmp"; Flags: dontcopy
-Source: "assets\education-hero.bmp"; Flags: dontcopy
+Source: "assets\welcome-steps.bmp"; Flags: dontcopy
+Source: "assets\welcome-garden.bmp"; Flags: dontcopy
 #ifdef UniversalIntegrityFixture
 Source: "{#IntegrityMarker}"; DestDir: "{app}"; DestName: "integrity-probe.txt"; Flags: ignoreversion nocompression
 #endif
@@ -99,9 +111,6 @@ Type: files; Name: "{app}\measurement-owner.txt"
 [Icons]
 Name: "{group}\Bloomstep"; Filename: "{app}\bloomstep.exe"
 Name: "{group}\Uninstall Bloomstep"; Filename: "{uninstallexe}"
-
-[Run]
-Filename: "{app}\bloomstep.exe"; Description: "Launch Bloomstep and plant your first habit"; Flags: nowait postinstall skipifsilent runasoriginaluser; Check: CanLaunchBloomstep; AfterInstall: MarkBloomstepLaunched
 
 [UninstallDelete]
 Type: files; Name: "{userstartup}\Bloomstep.lnk"
@@ -172,25 +181,14 @@ begin
        (CompareText(ParamStr(I), '/NOCANCEL') = 0) then Result := False;
 end;
 
-procedure MarkBloomstepLaunched();
-begin
-  LaunchAttempted := True;
-end;
-
 procedure CurPageChanged(CurPageID: Integer);
 begin
   if CurPageID = wpSelectDir then
-    WizardForm.NextButton.Caption := SetupMessage(msgButtonInstall);
-  if CurPageID = wpInstalling then StartInstallMotion()
-  else StopInstallMotion();
-  if (CurPageID = wpFinished) and IsAdmin then
   begin
-    WizardForm.FinishedLabel.Caption := WizardForm.FinishedLabel.Caption + #13#10#13#10 +
-      'Automatic launch is unavailable from an elevated installer. Close Setup and open Bloomstep normally from your Windows account.';
-    WizardForm.FinishedLabel.AdjustHeight();
-    WizardForm.RunList.Top := WizardForm.FinishedLabel.Top + WizardForm.FinishedLabel.Height + ScaleY(12);
-    WizardForm.RunList.Height := WizardForm.FinishedPage.Height - WizardForm.RunList.Top - ScaleY(12);
+    WizardForm.NextButton.Visible := True;
+    WizardForm.NextButton.Caption := SetupMessage(msgButtonInstall);
   end;
+  ShowVisualForPage(CurPageID);
 end;
 
 function MeasurementPath(): String;
@@ -198,52 +196,47 @@ begin
   Result := ExpandConstant('{localappdata}\Bloomstep\measurement\installer-receipt.json');
 end;
 
-function AddGardenHero(Parent: TWinControl; Left, Top, Width: Integer): TBitmapImage;
-var
-  Art: TBitmapImage;
-begin
-  ExtractTemporaryFile('education-hero.bmp');
-  Art := TBitmapImage.Create(WizardForm);
-  Art.Parent := Parent;
-  Art.Left := Left;
-  Art.Top := Top;
-  Art.Width := Width;
-  Art.Height := (Width * 260) div 1000;
-  Art.Stretch := True;
-  Art.Bitmap.LoadFromFile(ExpandConstant('{tmp}\education-hero.bmp'));
-  Result := Art;
-end;
-
 procedure InitializeWizard();
 var
   StationFlags: TWindowStationFlags;
   Needed: LongWord;
-  Art: TBitmapImage;
 begin
   if not GetUserObjectInformation(GetProcessWindowStation(), 1, StationFlags, 12, Needed) then
     RaiseException('Windows desktop state could not be verified. Cancel setup and open it normally from your Windows account.');
   InteractiveDesktop := (StationFlags.Flags and 1) <> 0;
   InitializeInstallMotion();
-  WizardForm.WizardBitmapImage2.Visible := False;
-  WizardForm.FinishedHeadingLabel.Left := ScaleX(24);
-  WizardForm.FinishedHeadingLabel.Width := WizardForm.FinishedPage.Width - ScaleX(48);
-  Art := AddGardenHero(WizardForm.FinishedPage, ScaleX(24), ScaleY(60), WizardForm.FinishedHeadingLabel.Width);
-  WizardForm.FinishedLabel.Left := ScaleX(24);
-  WizardForm.FinishedLabel.Top := Art.Top + Art.Height + ScaleY(12);
-  WizardForm.FinishedLabel.Width := WizardForm.FinishedHeadingLabel.Width;
-  WizardForm.FinishedLabel.AdjustHeight();
-  WizardForm.RunList.Left := ScaleX(24);
-  WizardForm.RunList.Width := WizardForm.FinishedHeadingLabel.Width;
-  WizardForm.RunList.Top := WizardForm.FinishedLabel.Top + WizardForm.FinishedLabel.Height + ScaleY(12);
-  WizardForm.RunList.Height := WizardForm.FinishedPage.Height - WizardForm.RunList.Top - ScaleY(12);
 end;
 
 procedure CurStepChanged(CurStep: TSetupStep);
+var
+  ResultCode: Integer;
 begin
-  if CurStep = ssPostInstall then InstallationSucceeded := True;
+  if CurStep = ssPostInstall then
+  begin
+    InstallationSucceeded := True;
+#if InstallFlow == "zeroclick"
+    HoldZeroClickVisual();
+#endif
+  end;
   if CurStep <> ssInstall then StopInstallMotion();
+  if CurStep = ssDone then
+  begin
+    if CanLaunchBloomstep() then
+    begin
+      LaunchAttempted := True;
+      if ExecAsOriginalUser(ExpandConstant('{app}\bloomstep.exe'), '', '', SW_SHOWNORMAL, ewNoWait, ResultCode) then
+        Log('Bloomstep automatic launch started as the original non-elevated user.')
+      else
+        Log('Bloomstep automatic launch failed: ' + SysErrorMessage(ResultCode) + '. Open Bloomstep from the Start menu.');
+    end
+    else
+    begin
+      Log('Bloomstep automatic launch withheld (silent, elevated, non-interactive or suppressed).');
+      if InstallationSucceeded and IsAdmin and not WizardSilent then
+        MsgBox('Bloomstep is installed. Open Bloomstep from the Start menu as your normal Windows account.', mbInformation, MB_OK);
+    end;
+  end;
 end;
-
 procedure CurUninstallStepChanged(CurUninstallStep: TUninstallStep);
 var
   Command: String;

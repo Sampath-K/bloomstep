@@ -131,7 +131,7 @@ jobs:
             installerSha256 = (Get-FileHash $installer).Hash.ToLower()
             reportedProductName = (Get-Item $installer).VersionInfo.ProductName
           } | ConvertTo-Json | Set-Content $manifest -Encoding utf8
-          foreach ($mode in @('checked-launch','unchecked-launch','silent','unattended','cancel','failure','elevated')) {
+          foreach ($mode in @('automatic-launch','silent','unattended','cancel','failure','elevated')) {
             & pwsh -NoProfile -File .\tool\verify_installer_journey.ps1 -Installer $installer -FixtureManifest $manifest -EvidenceDir $evidence -Mode $mode
             if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           }
@@ -539,6 +539,7 @@ jobs:
           @{
             kind = 'bloomstep-offline-universal-v1'; source = $source; version = $version
             installerFile = $installer.Name; installerSha256 = $hash; bytes = $installer.Length
+            installFlow = 'oneclick'
             compiler = $env:BLOOMSTEP_INNO_ENGINE_VERSION
             signatureStatus = (Get-AuthenticodeSignature $installer.FullName).Status.ToString()
             payloadManifests = $payloadHashes
@@ -547,6 +548,22 @@ jobs:
             Copy-Item "artifacts\bloomstep-windows-$arch\release-output\payload-manifest-$arch.json" $output
           }
           Write-Output "Offline universal installer compressed bytes: $($installer.Length)"
+          # Same source and payloads; private zero-click experiment only, never a release asset.
+          $zero = Join-Path $PWD 'universal-zeroclick-output'
+          New-Item -ItemType Directory -Path $zero -Force | Out-Null
+          & "${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe" /Qp /DInstallFlow=zeroclick /DAppArch=universal "/DAppVersion=$version" "/DSourceDirX64=$($roots.x64)" "/DSourceDirArm64=$($roots.arm64)" "/O$zero" packaging\bloomstep.iss
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          $zeroInstaller = Get-Item "$zero\Bloomstep-$version-windows-universal-zeroclick-setup.exe"
+          $zeroHash = (Get-FileHash $zeroInstaller.FullName).Hash.ToLower()
+          "$zeroHash  $($zeroInstaller.Name)" | Set-Content "$zero\SHA256-universal-zeroclick.txt" -Encoding utf8
+          @{
+            kind = 'bloomstep-offline-universal-v1'; source = $source; version = $version
+            installerFile = $zeroInstaller.Name; installerSha256 = $zeroHash; bytes = $zeroInstaller.Length
+            installFlow = 'zeroclick'; distribution = 'PRIVATE EXPERIMENT; not a release asset'
+            compiler = $env:BLOOMSTEP_INNO_ENGINE_VERSION
+            signatureStatus = (Get-AuthenticodeSignature $zeroInstaller.FullName).Status.ToString()
+            payloadManifests = $payloadHashes
+          } | ConvertTo-Json -Depth 4 | Set-Content "$zero\universal-manifest.json" -Encoding utf8
       - name: Compile real native x64 host-query probe, never a release asset
         shell: pwsh
         run: |
@@ -598,6 +615,10 @@ jobs:
           path: universal-output/
       - uses: actions/upload-artifact@v4
         with:
+          name: bloomstep-universal-zeroclick-installer-PRIVATE-EXPERIMENT
+          path: universal-zeroclick-output/
+      - uses: actions/upload-artifact@v4
+        with:
           name: universal-native-host-query-NOT-APP
           path: native-probe-output/
       - uses: actions/upload-artifact@v4
@@ -634,14 +655,19 @@ jobs:
         with:
           name: universal-native-host-query-NOT-APP
           path: native-probe-output
+      - uses: actions/download-artifact@v4
+        with:
+          name: bloomstep-universal-zeroclick-installer-PRIVATE-EXPERIMENT
+          path: universal-zeroclick-output
       - name: Verify offline native routing and disposable installer lifecycle
         shell: pwsh
         run: |
           & .\tool\verify_universal_installer.ps1 -PackageDir (Join-Path $PWD 'universal-output') -ExpectedArch '${{ matrix.arch }}' -EvidenceDir (Join-Path $env:RUNNER_TEMP 'universal-native-evidence')
-      - name: Capture actual real-install motion and Finish without launching the app
+      - name: Capture actual one-click and zero-click installs (no Finish; launch withheld on elevated host)
         shell: pwsh
         run: |
-          & .\tool\verify_install_progress.ps1 -PackageDir (Join-Path $PWD 'universal-output') -EvidenceDir (Join-Path $env:RUNNER_TEMP 'universal-progress-evidence')
+          & .\tool\verify_install_progress.ps1 -PackageDir (Join-Path $PWD 'universal-output') -EvidenceDir (Join-Path $env:RUNNER_TEMP 'universal-progress-evidence\oneclick') -Flow oneclick
+          & .\tool\verify_install_progress.ps1 -PackageDir (Join-Path $PWD 'universal-zeroclick-output') -EvidenceDir (Join-Path $env:RUNNER_TEMP 'universal-progress-evidence\zeroclick') -Flow zeroclick
       - uses: actions/upload-artifact@v4
         if: always()
         with:
@@ -655,7 +681,7 @@ jobs:
           path: ${{ runner.temp }}/universal-native-evidence/
           if-no-files-found: error
   universal-app-launch-evidence:
-    name: 'genuine universal app checked/unchecked launch (${{ matrix.arch }})'
+    name: 'genuine universal app automatic launch (${{ matrix.arch }})'
     needs: universal-installer
     strategy:
       fail-fast: false

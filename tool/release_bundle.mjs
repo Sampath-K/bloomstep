@@ -103,17 +103,17 @@ if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.ur
   }
   const destinationFirst = Object.values(receipt.native).every(proof => proof.entry?.page === 'destination');
   const pageChecklist = destinationFirst ?
-    `- [ ] Destination opens first with the per-user folder/Browse; Install is the only commitment. During real installation original scenes may transition; fast completion is never delayed. Check actual motion/reduced-motion and high-DPI readability separately.\n` +
+    `- [ ] An Anchor / Action / Celebrate picture opens first and moves on by itself after about 4 seconds (also with reduced motion); then the per-user folder/Browse page, where Install is the only click. Check high-DPI readability separately.\n` +
     `- [ ] Cancel before installation leaves no payload. Installer observations are entirely disabled, including silent installs; prior legacy receipts are not new consent.\n` :
     `- [ ] Offline payload install succeeds; Welcome, two illustrated recipe cards, full garden and Back/Cancel remain readable. No animation is included.\n` +
     `- [ ] Cancel before installation leaves no payload or observations. Optional observations remain unchecked/default-off and absent unless explicitly selected.\n`;
   const checklist = `# Owner manual-test checklist — ${tag}\n\n` +
-    `Status: PENDING. Genuine launch-after-Finish remains explicitly UNVERIFIED when the hosted elevated-token guard stops before installation. This is not customer-ready or full acceptance.\n\n` +
+    `Status: PENDING. Genuine automatic launch after install remains explicitly UNVERIFIED when the hosted elevated-token guard stops before installation. This is not customer-ready or full acceptance.\n\n` +
     `Use clean disposable native x64 and ARM64 slots as the ordinary installing user; do not run as administrator or disable protections. Verify exact release filename and SHA-256 first. Unknown source/hash, malware or managed-policy block means STOP. Hash consistency is not safety/signing.\n\n` +
     `- [ ] One primary universal download routes to the native OS without an architecture choice; also exercise x64 process emulation on ARM where available.\n` +
     pageChecklist +
-    `- [ ] Checked Finish exits successfully and starts exactly one native, non-elevated app as the installing user; same process survives at least ten seconds with visible window. Record observed outcome, not an assumption.\n` +
-    `- [ ] In a separate clean slot, unchecked Finish exits successfully and starts no app. Manual Start Menu launch remains possible.\n` +
+    `- [ ] There is no Finish page: after a successful install Setup closes and starts exactly one native, non-elevated app as the installing user; same process survives at least ten seconds with visible window. Record observed outcome, not an assumption.\n` +
+    `- [ ] A silent install starts no app; an elevated (Run as administrator) install starts no app and tells you to open Bloomstep from the Start menu.\n` +
     `- [ ] Ordinary sign-in, tiny routine-linked habit, check-in, celebration and full garden journey work; cancel/exit and keyboard/focus/accessibility remain usable.\n` +
     `- [ ] Record native OS/architecture, package hash, installing-user/elevation confirmation, checked/unchecked outcomes and any failure, with no private identity in shared screenshots.\n\n` +
     `Any launch/journey failure is P0 for a new immutable preview, not mutation of these bytes. No external recruitment or public-pointer change. The site stays preview9 until separately agreed owner trials pass; promote these SAME verified binaries only after separate approval.\n`;

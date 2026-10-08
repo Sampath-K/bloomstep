@@ -51,17 +51,19 @@ try {
   if ((Test-Path $measurement) -or (Test-Path $protocol) -or (Get-Process -Name bloomstep -ErrorAction SilentlyContinue)) {
     throw 'Genuine proof refuses pre-existing product state or processes.'
   }
-  foreach ($mode in @('checked-launch','unchecked-launch')) {
+  foreach ($mode in @('automatic-launch','silent-no-launch')) {
     $target = Join-Path $env:RUNNER_TEMP "Bloomstep-genuine-universal-$mode"
     if (Test-Path $target) { throw 'Genuine proof refuses an existing install target.' }
     $owned.Clear(); $apps.Clear()
     $seen = [Collections.Generic.HashSet[string]]::new()
-    $setup = Start-Process $installer -ArgumentList "/SP- /NORESTART /DIR=`"$target`"" -PassThru
+    $arguments = "/SP- /NORESTART /DIR=`"$target`""
+    if ($mode -eq 'silent-no-launch') { $arguments += ' /VERYSILENT /SUPPRESSMSGBOXES' }
+    $setup = Start-Process $installer -ArgumentList $arguments -PassThru
     [void]$owned.Add($setup.Id)
-    $finished = $false
     $wizardProcess = $null
+    $installClicks = 0
     $deadline = (Get-Date).AddMinutes(3)
-    while (-not $finished -and (Get-Date) -lt $deadline) {
+    while (-not $setup.HasExited -and (Get-Date) -lt $deadline) {
       $processes = Get-CimInstance Win32_Process
       for ($i=0;$i -lt 5;$i++) {
         foreach ($process in $processes) {
@@ -75,47 +77,37 @@ try {
         $text = [OnboardingWizard]::Describe($window)
         if (-not $seen.Add($text)) { continue }
         if ([OnboardingWizard]::ClassName($window) -ne 'TWizardForm') { throw 'Unexpected owned genuine installer dialog; no automatic override.' }
-        $observations = [OnboardingWizard]::Find($window,'Save optional local observations (unchecked by default)')
-        if ($observations -ne [IntPtr]::Zero) {
-          throw 'Installer observation prompt must not exist.'
-        }
-        $finish = [OnboardingWizard]::Find($window,'Finish')
-        if ($finish -ne [IntPtr]::Zero) {
+        if ($null -eq $wizardProcess) {
           $wizardProcess = Get-Process -Id $owner
           [void]$wizardProcess.Handle
-          foreach ($file in $payload.files) {
-            if ((Get-FileHash (Join-Path $target $file.path)).Hash.ToLower() -ne $file.sha256) { throw 'Genuine selected payload hash changed before Finish.' }
-          }
-          $root = [Windows.Automation.AutomationElement]::FromHandle($window)
-          $condition = [Windows.Automation.PropertyCondition]::new([Windows.Automation.AutomationElement]::NameProperty,'Launch Bloomstep and plant your first habit')
-          $launch = $root.FindFirst([Windows.Automation.TreeScope]::Descendants,$condition)
-          if ($null -eq $launch) { throw 'Actual genuine Finish launch checkbox unavailable.' }
-          $toggle = $launch.GetCurrentPattern([Windows.Automation.TogglePattern]::Pattern)
-          if ($toggle.Current.ToggleState -ne [Windows.Automation.ToggleState]::On) { throw 'Actual launch choice is not default checked.' }
-          if ($mode -eq 'unchecked-launch') {
-            $toggle.Toggle()
-            if ($toggle.Current.ToggleState -ne [Windows.Automation.ToggleState]::Off) { throw 'Actual launch choice did not become unchecked.' }
-          }
-          if (-not [OnboardingWizard]::PostMessage($finish,0x00F5,[IntPtr]::Zero,[IntPtr]::Zero)) {
-            throw 'Owned genuine Finish dispatch failed.'
-          }
-          $finished = $true
-          break
         }
-        $next = [OnboardingWizard]::Find($window,'Next >')
-        if ($next -eq [IntPtr]::Zero) { $next = [OnboardingWizard]::Find($window,'Next') }
-        if ($next -eq [IntPtr]::Zero) { $next = [OnboardingWizard]::Find($window,'Install') }
-        if ($next -ne [IntPtr]::Zero -and -not [OnboardingWizard]::PostMessage($next,0x00F5,[IntPtr]::Zero,[IntPtr]::Zero)) {
-          throw 'Owned genuine Next/Install dispatch failed.'
+        if ([OnboardingWizard]::Find($window,'Save optional local observations (unchecked by default)') -ne [IntPtr]::Zero) {
+          throw 'Installer observation prompt must not exist.'
+        }
+        if ([OnboardingWizard]::Find($window,'Finish') -ne [IntPtr]::Zero -or
+            [OnboardingWizard]::Find($window,'Next >') -ne [IntPtr]::Zero -or [OnboardingWizard]::Find($window,'Next') -ne [IntPtr]::Zero) {
+          throw 'Genuine one-click flow must not show Next or a Finish page.'
+        }
+        $install = [OnboardingWizard]::Find($window,'Install')
+        if ($install -ne [IntPtr]::Zero -and $text.Contains('Select Destination Location')) {
+          if ($installClicks -ne 0) { throw 'Install offered more than once.' }
+          if (-not [OnboardingWizard]::PostMessage($install,0x00F5,[IntPtr]::Zero,[IntPtr]::Zero)) {
+            throw 'Owned genuine Install dispatch failed.'
+          }
+          $installClicks++
         }
       }
       Start-Sleep -Milliseconds 200
     }
-    if (-not $finished) { throw 'Genuine interactive journey exceeded bounded deadline.' }
-    if (-not $wizardProcess -or -not $wizardProcess.WaitForExit(30000) -or -not $setup.WaitForExit(30000)) {
-      throw 'Actual genuine wizard/launcher did not exit after Finish within the bounded deadline.'
+    if (-not $setup.HasExited) { throw 'Genuine install exceeded bounded deadline.' }
+    if ($mode -eq 'automatic-launch') {
+      if ($installClicks -ne 1 -or -not $wizardProcess -or -not $wizardProcess.WaitForExit(30000)) {
+        throw 'Genuine one-click journey did not show exactly one Install and exit.'
+      }
     }
-    $wizardExitCode = $wizardProcess.ExitCode
+    foreach ($file in $payload.files) {
+      if ((Get-FileHash (Join-Path $target $file.path)).Hash.ToLower() -ne $file.sha256) { throw 'Genuine selected payload hash mismatch.' }
+    }    $wizardExitCode = if ($wizardProcess) { $wizardProcess.ExitCode } else { $setup.ExitCode }
     $launcherExitCode = $setup.ExitCode
     $observeUntil = (Get-Date).AddSeconds(10)
     do {
@@ -128,7 +120,7 @@ try {
       }
       Start-Sleep -Milliseconds 100
     } while ((Get-Date) -lt $observeUntil)
-    $expectedCount = if ($mode -eq 'checked-launch') {1} else {0}
+    $expectedCount = if ($mode -eq 'automatic-launch') {1} else {0}
     $sameExactTargetAppAlive = $false
     $ownedAppWindowVisible = $false
     if ($apps.Count -eq 1) {
@@ -145,7 +137,7 @@ try {
     }
     Assert-GenuineLaunchOutcome $mode $wizardExitCode $launcherExitCode $apps.Count $sameExactTargetAppAlive $ownedAppWindowVisible
     if (Test-Path $measurement) { throw 'Actual genuine default-off receipt mismatch.' }
-    $report.modes.Add(@{ mode=$mode; launchCount=$apps.Count; wizardExitCode=$wizardExitCode; launcherExitCode=$launcherExitCode;
+    $report.modes.Add(@{ mode=$mode; installClicks=$installClicks; finishPageAbsent=$true; launchCount=$apps.Count; wizardExitCode=$wizardExitCode; launcherExitCode=$launcherExitCode;
       sameExactTargetAppAlive=$sameExactTargetAppAlive; ownedAppWindowVisible=$ownedAppWindowVisible;
       installingUserMatches=if($expectedCount -eq 1){$true}else{$null}; nonElevated=if($expectedCount -eq 1){$true}else{$null};
       observationReceiptAbsent=$true; observationSeconds=10 })
@@ -154,7 +146,7 @@ try {
     if ($uninstall.ExitCode -ne 0 -or (Test-Path "$target\bloomstep.exe") -or (Test-Path $protocol)) { throw 'Genuine owned uninstall failed.' }
     $target = $null
   }
-  $report.outcome = 'PASS actual checked/unchecked genuine app launch only'
+  $report.outcome = 'PASS actual automatic (non-elevated) and silent no-launch genuine app outcome only'
 } catch {
   $report.failure = 'Blocked or failed; see explicit job exception. No launch acceptance inferred.'
   throw

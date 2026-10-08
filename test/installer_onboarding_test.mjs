@@ -8,15 +8,16 @@ import { createHash } from 'node:crypto';
 const read = path => readFileSync(new URL(`../${path}`, import.meta.url), 'utf8');
 const installer = read('packaging/bloomstep.iss');
 
-test('the first native wizard page is destination with one explicit Install commitment', () => {
-  assert.match(installer, /DisableWelcomePage=yes/);
+test('the first native wizard page is the word-only welcome, then destination with one explicit Install commitment', () => {
+  assert.match(installer, /DisableWelcomePage=no/);
   assert.match(installer, /DisableReadyPage=yes/);
   assert.match(installer, /DisableDirPage=no/);
   assert.match(installer, /DisableProgramGroupPage=yes/);
   assert.doesNotMatch(installer, /CreateCustomPage\(/);
   const capture = read('tool/verify_onboarding_wizard.ps1');
-  assert.match(capture, /First observed wizard page was not destination/);
-  assert.match(capture, /expectedOrder = @\('destination'\)/);
+  assert.match(capture, /First observed wizard page was not the Anchor\/Action\/Celebrate welcome/);
+  assert.match(capture, /expectedOrder = @\('welcome', 'destination'\)/);
+  assert.match(capture, /welcomeToDestinationMilliseconds/);
   assert.match(capture, /installerSha256/);
   assert.match(capture, /receiptAbsent/);
   assert.match(capture, /compiledFixture\.installationProhibited/);
@@ -24,14 +25,14 @@ test('the first native wizard page is destination with one explicit Install comm
   assert.match(capture, /Only the exact hash-authorized compile-only onboarding fixture/);
 });
 
-test('installer teaches only during real progress without extra pages or changing security defaults', () => {
+test('installer teaches only with words and pictures, without extra pages or changing security defaults', () => {
   assert.equal((installer.match(/CreateCustomPage\(/g) ?? []).length, 0);
-  assert.match(read('packaging/install-progress.iss'), /routine[\s\S]*tiny[\s\S]*Celebrate/);
-  assert.match(installer, /FinishedLabel=.*sign[ -]in/i);
+  assert.match(read('packaging/install-progress.iss'), /Anchor[\s\S]*Action[\s\S]*Celebrate/);
+  assert.doesNotMatch(installer, /FinishedLabel|FinishedHeadingLabel/);
   assert.match(installer, /PrivilegesRequired=lowest/);
   assert.doesNotMatch(installer, /MeasurementCheckBox|SaveStringToFile/);
   assert.match(read('packaging/install-progress.iss'), /if WizardSilent then Exit/);
-  assert.match(installer, /postinstall skipifsilent runasoriginaluser/);
+  assert.match(installer, /ExecAsOriginalUser/);
   assert.doesNotMatch(installer, /ShellExec|DownloadTemporaryFile|PrivilegesRequired=admin/);
 });
 
@@ -78,10 +79,10 @@ test('full-panel illustrations export actual supported PlantArt and are not scre
     const text = read(source.path).replace(/\r\n/g, '\n');
     assert.equal(createHash('sha256').update(text).digest('hex'), source.sha256);
   }
-  for (const name of ['education-seed', 'education-recipe', 'education-growth', 'education-hero']) {
+  for (const name of ['welcome-steps', 'welcome-garden']) {
     const bmp = readFileSync(new URL(`../packaging/assets/${name}.bmp`, import.meta.url));
     assert.equal(bmp.readInt32LE(18), 1000);
-    assert.equal(bmp.readInt32LE(22), name === 'education-hero' ? 260 : 420);
+    assert.equal(bmp.readInt32LE(22), name === 'welcome-steps' ? 200 : 300);
     assert.match(installer, new RegExp(`assets\\\\${name}\\.bmp`));
   }
 });

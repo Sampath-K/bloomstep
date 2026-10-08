@@ -5,47 +5,46 @@ import { readFileSync } from 'node:fs';
 const read = path => readFileSync(new URL(`../${path}`, import.meta.url), 'utf8');
 const installer = read('packaging/bloomstep.iss');
 
-test('destination-first removes educational steps and all installer observations without changing app consent', () => {
-  assert.match(installer, /DisableWelcomePage=yes/);
+test('one-click flow replaces educational pages with one word-only visual and no installer observations', () => {
+  assert.match(installer, /DisableWelcomePage=no/);
   assert.match(installer, /DisableReadyPage=yes/);
   assert.match(installer, /DisableDirPage=no/);
   assert.match(installer, /DisableProgramGroupPage=yes/);
   assert.match(installer, /UsePreviousAppDir=yes/);
   assert.doesNotMatch(installer, /CreateCustomPage|SaveStringToFile|CoCreateGuid/);
   const progress = read('packaging/install-progress.iss');
-  assert.match(progress, /Not today leaves your growth intact/);
-  assert.match(progress, /familiar routine, try one tiny action\. Celebrate/);
-  assert.match(installer, /Source: "assets\\education-seed.bmp"; Flags: dontcopy/);
-  assert.match(installer, /Source: "assets\\education-growth.bmp"; Flags: dontcopy/);
+  assert.match(progress, /'Anchor'[\s\S]*'Action'[\s\S]*'Celebrate'/);
+  assert.doesNotMatch(progress, /Not today leaves|familiar routine/);
+  assert.match(installer, /Source: "assets\\welcome-steps.bmp"; Flags: dontcopy/);
+  assert.match(installer, /Source: "assets\\welcome-garden.bmp"; Flags: dontcopy/);
   assert.match(progress, /WizardSilent/);
   assert.doesNotMatch(installer, /education_step_view|stepview|education_link_click/);
 });
 
-test('Finish launch is default checked, user-toggleable, successful interactive non-elevated only', () => {
-  const entry = installer.split('[Run]')[1].split('[UninstallDelete]')[0];
-  assert.match(entry, /Description: "Launch Bloomstep and plant your first habit"/);
-  assert.match(entry, /postinstall skipifsilent runasoriginaluser/);
-  assert.match(entry, /Check: CanLaunchBloomstep; AfterInstall: MarkBloomstepLaunched/);
-  assert.doesNotMatch(entry, /unchecked|runascurrentuser|runhidden/);
+test('no Finish page: app opens automatically only after successful interactive non-elevated install', () => {
+  assert.doesNotMatch(installer, /^\[Run\]|postinstall|MarkBloomstepLaunched/m);
   const gate = /function CanLaunchBloomstep\(\): Boolean;([\s\S]*?)end;/.exec(installer)?.[1];
   assert.ok(gate);
   for (const guard of ['InstallationSucceeded', 'not WizardSilent', 'not IsAdmin', 'not LaunchAttempted', 'InteractiveDesktop']) {
     assert.ok(gate.includes(guard), guard);
   }
-  assert.match(installer, /if CurStep = ssPostInstall then InstallationSucceeded := True;/);
-  assert.match(installer, /procedure MarkBloomstepLaunched\(\);[\s\S]*?LaunchAttempted := True;/);
-  assert.match(installer, /procedure CurPageChanged[\s\S]*wpFinished[\s\S]*elevated|procedure CurPageChanged[\s\S]*wpFinished[\s\S]*administrator/);
+  assert.match(installer, /CurStep = ssPostInstall then[\s\S]*InstallationSucceeded := True;/);
+  assert.match(installer, /CurStep = ssDone[\s\S]*CanLaunchBloomstep\(\)[\s\S]*LaunchAttempted := True;[\s\S]*ExecAsOriginalUser/);
+  assert.match(installer, /IsAdmin and not WizardSilent[\s\S]*Open Bloomstep from the Start menu as your normal Windows account/);
   const proof = read('tool/verify_installer_journey.ps1');
-  for (const scenario of ['checked-launch', 'unchecked-launch', 'silent', 'unattended', 'cancel', 'failure', 'elevated']) {
+  for (const scenario of ['automatic-launch', 'silent', 'unattended', 'cancel', 'failure', 'elevated']) {
     assert.ok(proof.includes(scenario), scenario);
   }
+  assert.doesNotMatch(proof, /checked-launch/);
+  assert.match(proof, /A Finish page must not exist/);
+  assert.match(proof, /Exactly one Install click is required/);
   assert.match(proof, /Launch count/);
   assert.match(proof, /Installing user/);
   assert.match(proof, /100, 150, 200/);
   assert.match(proof, /compiledFixture\.installerSha256[\s\S]*Get-FileHash/);
   assert.match(proof, /exact hash-authorized compiled inert journey fixture/);
+  assert.match(read('.github/workflows/ci.yml'), /@\('automatic-launch','silent','unattended','cancel','failure','elevated'\)/);
 });
-
 test('limited-task failures preserve sanitized diagnostics without weakening launch assertions', () => {
   const proof = read('tool/verify_installer_journey.ps1');
   assert.match(proof, /function Write-JourneyWorkerDiagnostic/);

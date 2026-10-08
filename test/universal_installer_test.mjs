@@ -15,7 +15,8 @@ test('universal installer bundles exclusive native OS payloads without bootstrap
   assert.match(source, /function UseX64Payload[\s\S]*Result := ProcessorArchitecture = paX64/);
   assert.match(source, /function UseArm64Payload[\s\S]*Result := ProcessorArchitecture = paArm64/);
   assert.match(source, /PrivilegesRequired=lowest/);
-  assert.match(source, /postinstall skipifsilent runasoriginaluser/);
+  assert.match(source, /ExecAsOriginalUser/);
+  assert.doesNotMatch(source, /postinstall/);
   assert.doesNotMatch(source, /DownloadTemporaryFile|dontverifychecksum|skipifsourcedoesntexist|PrivilegesRequired=admin/);
 });
 test('universal packaging remains required and source-pinned, recovery exception is exact preview12 only', () => {
@@ -171,24 +172,24 @@ test('next universal release requires genuine app launch evidence independently 
   assert.match(proof, /GITHUB_ACTIONS/);
   assert.match(proof, /installerSha256/);
   assert.match(proof, /ProcessTokenProbe\]::Elevated\(\$PID\)/);
-  assert.match(proof, /checked-launch','unchecked-launch/);
+  assert.match(proof, /automatic-launch','silent-no-launch/);
   assert.match(proof, /ProcessTokenProbe\]::Sid/);
   assert.match(proof, /ProcessTokenProbe\]::Elevated\(\$app\.Id\)/);
-  assert.match(proof, /default checked/);
+  assert.match(proof, /must not show Next or a Finish page/);
   assert.doesNotMatch(proof, /continue-on-error|inert-journey-fixture-v1/);
 });
 test('genuine outcome oracle rejects transient apps and unsuccessful installer exits (no app execution)', () => {
   const helper = fileURLToPath(new URL('../tool/universal_integrity_contract.ps1', import.meta.url)).replaceAll("'", "''");
   const script = `$ErrorActionPreference='Stop'; . '${helper}';
-    Assert-GenuineLaunchOutcome 'checked-launch' 0 0 1 $true $true;
-    Assert-GenuineLaunchOutcome 'unchecked-launch' 0 0 0 $false $false;
+    Assert-GenuineLaunchOutcome 'automatic-launch' 0 0 1 $true $true;
+    Assert-GenuineLaunchOutcome 'silent-no-launch' 0 0 0 $false $false;
     foreach ($bad in @(
-      @('checked-launch',0,0,1,$false,$false),
-      @('checked-launch',0,0,1,$true,$false),
-      @('checked-launch',1,0,1,$true,$true),
-      @('checked-launch',0,1,1,$true,$true),
-      @('unchecked-launch',1,0,0,$false,$false),
-      @('unchecked-launch',0,0,1,$true,$true)
+      @('automatic-launch',0,0,1,$false,$false),
+      @('automatic-launch',0,0,1,$true,$false),
+      @('automatic-launch',1,0,1,$true,$true),
+      @('automatic-launch',0,1,1,$true,$true),
+      @('silent-no-launch',1,0,0,$false,$false),
+      @('silent-no-launch',0,0,1,$true,$true)
     )) {
       $rejected = $false;
       try { Assert-GenuineLaunchOutcome @bad } catch { $rejected = $true }

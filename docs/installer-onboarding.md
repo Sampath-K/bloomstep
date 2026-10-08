@@ -1,6 +1,66 @@
 # Installer and customer onboarding contract
 
-## Active destination-first source increment (not yet released)
+## Active one-click and zero-click source increment (not yet released)
+
+User-directed after testing: the setup steps that each required Next were not
+interesting and had too much text. Both variants below build from the same
+source (`/DInstallFlow=oneclick` default, `/DInstallFlow=zeroclick` experiment).
+No release, tag, signing, site promotion or merge is authorized by this work.
+
+**One picture, three words.** One original visual (exported from the app's own
+`PlantArt`, see `education-art-provenance.json`) shows a cup (anchor), a sprout
+(action) and a smile (celebrate) with the native words **Anchor**, **Action**
+and **Celebrate** as the only text, then a plant growing through five stages and
+a garden of five blooms (more anchors, more habits, a bigger garden). The words
+are real native labels so screen readers announce them; the pictures carry no
+baked-in text.
+
+**One-click (default).** The visual shows for 4 seconds with only Cancel, then
+moves on by itself to the destination page (per-user default, Browse). **Install**
+is the only click. There is no Ready page, no Finish page and no launch
+checkbox. After a successful interactive install Setup closes and opens
+Bloomstep as the original, non-elevated installing user (`ExecAsOriginalUser`).
+
+**Zero-click (private experiment).** Double-clicking the installer shows the
+same visual while installing to the default per-user folder with no pages and
+no clicks; the visual is held until about 5 seconds have passed (a requested
+brand hold, not install work), then Bloomstep opens. Upgrades reuse the
+previous folder.
+
+What Windows still forces regardless of the variant:
+
+- SmartScreen and Mark-of-the-Web: an unsigned download from the internet still
+  shows "Windows protected your PC" (More info, then Run anyway only for the
+  exact verified file). This is not bypassed and signing is deferred.
+- no UAC: setup is per-user with `PrivilegesRequired=lowest`; it never asks for
+  elevation. If someone runs it as administrator anyway, the app is not opened
+  elevated; a message asks them to open Bloomstep from the Start menu.
+- Error, disk, close-running-app and cancel dialogs stay visible and actionable.
+  Silent installs never open the app.
+
+**Reduced motion.** With Windows animations off the picture is held still; the
+4-second auto-advance and 5-second hold still apply. A subtle drift is the only
+motion when animations are on.
+
+**Options moved out of setup.** The launch checkbox is gone because the app now
+always opens after an interactive install. Settings already has
+"launch at Windows sign-in"; setup never had shortcut or analytics choices, and
+no new default-on collection is added. Installer observations stay disabled.
+
+**First launch in the app (code evidence only).** A fresh user lands on the
+empty garden ("Your garden is ready to grow") whose primary action is
+**Plant a habit**; returning users keep their per-account garden. This is from
+app code and tests, not an installed-app observation; a separate session owns
+the sign-in/profile change on that screen.
+
+**Evidence and honest gaps.** Disposable CI captures the actual compiled
+welcome, destination, installing frames, timings, DPI and installer SHA-256 for
+both variants. Hosted CI runners are elevated, so automatic launch is
+withheld there by design: genuine non-elevated automatic launch is UNVERIFIED.
+144 DPI is uncovered unless actually observed. x64 hosted runners report the
+static (reduced-motion) preference, which is not motion evidence.
+
+## Earlier destination-first source increment (superseded)
 
 User-directed follow-up after immutable preview.12: destination/Browse is the
 only preinstall decision, retaining the per-user default and upgrade location.

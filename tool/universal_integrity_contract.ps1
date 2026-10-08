@@ -19,14 +19,14 @@ function Test-BloomstepInnoProductName([string]$ProductName,
 
 function Assert-GenuineLaunchOutcome([string]$Mode, [int]$WizardExitCode, [int]$LauncherExitCode,
     [int]$LaunchCount, [bool]$SameAppAlive, [bool]$VisibleOwnedWindow) {
-  if ($Mode -notin @('checked-launch','unchecked-launch') -or $WizardExitCode -ne 0 -or $LauncherExitCode -ne 0) {
-    throw 'Genuine checked/unchecked proof requires successful actual wizard and launcher exit0.'
+  if ($Mode -notin @('automatic-launch','silent-no-launch') -or $WizardExitCode -ne 0 -or $LauncherExitCode -ne 0) {
+    throw 'Genuine automatic/silent proof requires successful actual wizard and launcher exit0.'
   }
-  if ($Mode -eq 'checked-launch') {
+  if ($Mode -eq 'automatic-launch') {
     if ($LaunchCount -ne 1 -or -not $SameAppAlive -or -not $VisibleOwnedWindow) {
-      throw 'Genuine checked app must survive the observation window with one exact-target process and visible owned window.'
+      throw 'Genuine automatically launched app must survive the observation window with one exact-target process and visible owned window.'
     }
   } elseif ($LaunchCount -ne 0 -or $SameAppAlive -or $VisibleOwnedWindow) {
-    throw 'Genuine unchecked Finish must produce no app process or window.'
+    throw 'Genuine silent install must produce no app process or window.'
   }
 }

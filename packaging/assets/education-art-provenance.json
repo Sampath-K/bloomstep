@@ -3,11 +3,11 @@
   "kind": "authored-illustrations-not-installer-screenshots",
   "sourceNormalization": "UTF-8 text with LF line endings",
   "renderer": "Flutter PlantArt, supported seed/sprout/sapling/budding/bloom; original vector recipe icons",
-  "textEquivalents": "Native wizard labels describe the stages, sample recipes and garden; no text baked into these illustrations.",
+  "textEquivalents": "Native wizard labels Anchor, Action and Celebrate name the three steps; no text baked into these illustrations.",
   "sources": [
     {
       "path": "tool/installer_art_export_test.dart",
-      "sha256": "c051400ac36f45f2ff2944c9dad1fea8524348e130f0ba64eae340d9ab89e400"
+      "sha256": "51395c5ec32f6e36b8c35c86ddc9fa0bfe7787d12e787e2c44f48edc2525987c"
     },
     {
       "path": "lib/features/garden/plant_art.dart",
@@ -20,28 +20,16 @@
   ],
   "assets": [
     {
-      "file": "education-seed.bmp",
+      "file": "welcome-steps.bmp",
       "width": 1000,
-      "height": 420,
-      "sha256": "9b134583d4136099993ffa6e612df431aab0cb47085c2cd955d1ff1d787e919b"
+      "height": 200,
+      "sha256": "a2bf78a4f8358795198a6ca0809b4891919f6c09902a549c2c5bd9565410ddbb"
     },
     {
-      "file": "education-recipe.bmp",
+      "file": "welcome-garden.bmp",
       "width": 1000,
-      "height": 420,
-      "sha256": "1e751d5d42f5400d820b6e33426e3a60e1e6b1dff7f9870282d1972b421ed2d4"
-    },
-    {
-      "file": "education-growth.bmp",
-      "width": 1000,
-      "height": 420,
-      "sha256": "c79e1cac4814a16516522b01e0c817c004555197d91aeec0c20ccd361e61c92e"
-    },
-    {
-      "file": "education-hero.bmp",
-      "width": 1000,
-      "height": 260,
-      "sha256": "12882a41226dd4ad30d1f87e74a0454b2da237cbf2e3695f75873ffd44f587c9"
+      "height": 300,
+      "sha256": "1beef1aba02f80b21c755515e97b49293486fd6dbe153f64f93f7728578734d1"
     }
   ]
 }

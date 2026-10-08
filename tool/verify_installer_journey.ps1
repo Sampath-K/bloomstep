@@ -2,8 +2,8 @@ param(
   [Parameter(Mandatory=$true)][string]$Installer,
   [Parameter(Mandatory=$true)][string]$FixtureManifest,
   [Parameter(Mandatory=$true)][string]$EvidenceDir,
-  [ValidateSet('checked-launch','unchecked-launch','silent','unattended','cancel','failure','elevated')]
-  [string]$Mode = 'checked-launch',
+  [ValidateSet('automatic-launch','silent','unattended','cancel','failure','elevated')]
+  [string]$Mode = 'automatic-launch',
   [switch]$Worker
 )
 $ErrorActionPreference = 'Stop'
@@ -107,7 +107,7 @@ $owned = [Collections.Generic.HashSet[int]]::new()
 $states = [Collections.Generic.List[object]]::new()
 $seen = [Collections.Generic.HashSet[string]]::new()
 $finished = $Mode -eq 'silent'
-$checked = $null
+$installClicks = 0
 $deadline = (Get-Date).AddMinutes(2)
 $shell = New-Object -ComObject WScript.Shell
 try {
@@ -153,6 +153,12 @@ try {
           $finished = $true
           break
         }
+        if ($Mode -eq 'elevated' -and $text.Contains('Open Bloomstep from the Start menu as your normal Windows account')) {
+          $ok = [OnboardingWizard]::Find($window, 'OK')
+          if ($ok -eq [IntPtr]::Zero) { throw 'Elevated guidance lacks OK.' }
+          [void][OnboardingWizard]::PostMessage($ok, 0x00F5, [IntPtr]::Zero, [IntPtr]::Zero)
+          continue
+        }
         throw "Unexpected owned dialog: $text"
       }
       $checkbox = [OnboardingWizard]::Find($window, 'Save optional local observations (unchecked by default)')
@@ -174,53 +180,28 @@ try {
         $finished = $true
         break
       }
-      $finish = [OnboardingWizard]::Find($window, 'Finish')
-      if ($finish -ne [IntPtr]::Zero) {
-        $root = [Windows.Automation.AutomationElement]::FromHandle($window)
-        $condition = [Windows.Automation.PropertyCondition]::new(
-          [Windows.Automation.AutomationElement]::NameProperty, 'Launch Bloomstep and plant your first habit')
-        $launch = $root.FindFirst([Windows.Automation.TreeScope]::Descendants, $condition)
-        if ($Mode -in @('elevated','unattended')) {
-          if ($null -ne $launch) { throw 'Elevated/unattended installer offered a launch checkbox.' }
-        } else {
-          if ($text.Contains('Installing') -or $text.Contains('Extracting files')) { continue }
-          if ($null -eq $launch) { throw 'Launch choice was not visibly available.' }
-          $pattern = $launch.GetCurrentPattern([Windows.Automation.TogglePattern]::Pattern)
-          if ($pattern.Current.ToggleState -ne [Windows.Automation.ToggleState]::On) { throw 'Launch choice not default checked.' }
-          $checked = $true
-          if ($Mode -eq 'unchecked-launch') {
-            if ([OnboardingWizard]::GetForegroundWindow() -ne $window -and
-                -not [OnboardingWizard]::SetForegroundWindow($window)) { throw 'Owned Finish focus failed.' }
-            $launch.SetFocus()
-            $shell.SendKeys(' ')
-            Start-Sleep -Milliseconds 200
-            if ($pattern.Current.ToggleState -ne [Windows.Automation.ToggleState]::Off) { throw 'Keyboard uncheck did not suppress launch choice.' }
-            $checked = $false
-          }
-        }
-        [void][OnboardingWizard]::SendMessage($finish, 0x00F5, [IntPtr]::Zero, [IntPtr]::Zero)
-        $finished = $true
-        break
+      if ([OnboardingWizard]::Find($window, 'Finish') -ne [IntPtr]::Zero -or $text.Contains('Completing the')) {
+        throw 'A Finish page must not exist; the app opens automatically after install.'
       }
-      $next = [OnboardingWizard]::Find($window, 'Next')
-      if ($next -eq [IntPtr]::Zero) { $next = [OnboardingWizard]::Find($window, 'Next >') }
-      if ($next -ne [IntPtr]::Zero) {
-        if ([OnboardingWizard]::GetForegroundWindow() -ne $window -and
-            -not [OnboardingWizard]::SetForegroundWindow($window)) { throw 'Owned Next focus failed.' }
-        $shell.SendKeys('%n')
-      } else {
-        $install = [OnboardingWizard]::Find($window, 'Install')
-        if ($install -eq [IntPtr]::Zero) { throw "Unexpected wizard state: $text" }
+      if ([OnboardingWizard]::Find($window, 'Next') -ne [IntPtr]::Zero -or
+          [OnboardingWizard]::Find($window, 'Next >') -ne [IntPtr]::Zero) {
+        throw "No page may require Next: $text"
+      }
+      $install = [OnboardingWizard]::Find($window, 'Install')
+      if ($install -ne [IntPtr]::Zero -and $text.Contains('Select Destination Location')) {
+        if ($installClicks -ne 0) { throw 'Install offered more than once.' }
         [void][OnboardingWizard]::SendMessage($install, 0x00F5, [IntPtr]::Zero, [IntPtr]::Zero)
-      }
-      Start-Sleep -Milliseconds 400
+        $installClicks++
+      }      Start-Sleep -Milliseconds 400
     }
     Start-Sleep -Milliseconds 200
+    if ($Mode -notin @('failure','cancel') -and $setup.HasExited) { $finished = $true }
   }
   if (-not $finished) { throw "Inert $Mode fixture exceeded bounded deadline." }
   Start-Sleep -Seconds 2
   $launches = if (Test-Path $privateProof) { @(Get-Content $privateProof | ForEach-Object { $_ | ConvertFrom-Json }) } else { @() }
-  $expected = if ($Mode -eq 'checked-launch') { 1 } else { 0 }
+  if ($Mode -notin @('silent','cancel','failure') -and $installClicks -ne 1) { throw 'Exactly one Install click is required.' }
+  $expected = if ($Mode -eq 'automatic-launch') { 1 } else { 0 }
   if ($launches.Count -ne $expected) { throw "Launch count mismatch: expected $expected, got $($launches.Count)." }
   if ($expected -eq 1) {
     $sid = [Security.Principal.WindowsIdentity]::GetCurrent().User.Value
@@ -232,7 +213,7 @@ try {
     schemaVersion = 1; sourceRevision = $authorization.sourceRevision; mode = $Mode; fixture = $true
     payload = 'Inert launch-token/count probe, not Bloomstep app or a public release'; customerData = $false
     installerSha256 = (Get-FileHash $Installer).Hash.ToLower(); launchCount = $launches.Count
-    launchChoice = $checked; installingUserMatches = if ($expected -eq 1) { $true } else { $null }; launchedElevated = $false
+    installClicks = $installClicks; finishPageAbsent = $true; launchChoice = 'automatic-after-install'; installingUserMatches = if ($expected -eq 1) { $true } else { $null }; launchedElevated = $false
     observationReceiptAbsent = $true; requestedOsScales = $requestedScales; measuredOsScales = $actualScales
     uncoveredOsScales = @($requestedScales | Where-Object { $_ -notin $actualScales })
     screenReaderAcceptance = 'UNKNOWN; UIA/keyboard evidence is not a Narrator acceptance claim'

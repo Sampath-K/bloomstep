@@ -7,10 +7,11 @@ import { spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 
 const read = path => readFileSync(new URL(`../${path}`, import.meta.url), 'utf8');
-test('destination is the sole preinstall decision and Install commits, with native Browse/error/cancel behavior', () => {
+test('welcome auto-advances to destination, the sole preinstall decision, and Install commits with native Browse/error/cancel', () => {
   const setup = read('packaging/bloomstep.iss');
-  assert.match(setup, /DisableWelcomePage=yes/);
+  assert.match(setup, /#if InstallFlow == "zeroclick"[\s\S]*DisableWelcomePage=yes[\s\S]*#else[\s\S]*DisableWelcomePage=no/);
   assert.match(setup, /DisableReadyPage=yes/);
+  assert.match(setup, /DisableFinishedPage=yes/);
   assert.match(setup, /DisableDirPage=no/);
   assert.match(setup, /DefaultDirName=\{localappdata\}\\Programs\\Bloomstep/);
   assert.match(setup, /UsePreviousAppDir=yes/);
@@ -18,47 +19,31 @@ test('destination is the sole preinstall decision and Install commits, with nati
   assert.match(setup, /^SelectDirBrowseLabel=.*Install.*Browse/m);
   assert.match(read('tool/verify_onboarding_wizard.ps1'), /defaultDirectoryMatches = \$true/);
   assert.doesNotMatch(setup, /CreateCustomPage\(|MeasurementCheckBox|MeasurementEvent|WriteMeasurement|SaveStringToFile/);
-  assert.match(setup, /FinishedHeadingLabel=Bloomstep is ready/);
-  assert.match(setup, /Open Bloomstep to create your first tiny habit/);
+  assert.doesNotMatch(setup, /FinishedHeadingLabel|postinstall|^\[Run\]/m);
   assert.match(setup, /PrivilegesRequired=lowest/);
-  assert.match(setup, /postinstall skipifsilent runasoriginaluser/);
+  assert.match(setup, /ExecAsOriginalUser/);
 });
-test('three existing scenes use supported native timer and read-only Windows reduced-motion preference without dwell', () => {
+test('one visual uses supported native timer and read-only reduced-motion preference; zero-click waits only by pumping', () => {
   const setup = read('packaging/bloomstep.iss');
   assert.match(setup, /#include "install-progress\.iss"/);
   const progress = read('packaging/install-progress.iss');
   assert.match(progress, /SetTimer@user32\.dll/);
   assert.match(progress, /KillTimer@user32\.dll/);
-  assert.match(progress, /CreateCallback\(@ProgressTimerTick\)/);
+  assert.match(progress, /CreateCallback\(@VisualTimerTick\)/);
   // The current online help describes newer setup engines. CI uses Inno6.7.1.
   assert.match(progress, /Callback: LongWord\): UINT_PTR/);
   assert.doesNotMatch(progress, /NativeInt/);
   assert.match(progress, /SystemParametersInfoW@user32\.dll/);
   assert.match(progress, /\$1042/);
-  assert.match(progress, /Elapsed div 600/);
-  assert.match(progress, /if Scene > 2 then Scene := 2/);
   assert.match(progress, /WizardSilent/);
-  assert.match(progress, /ssPostInstall|StopInstallMotion/);
+  assert.match(progress, /StopInstallMotion/);
   assert.match(progress, /MotionAllowed := False/);
   assert.match(progress, /DeinitializeSetup/);
-  assert.doesNotMatch(setup + progress, /Sleep\(|while.*Scene|WebView|DownloadTemporaryFile|SPI_SET/);
-  for (const name of ['education-seed.bmp', 'education-recipe.bmp', 'education-growth.bmp']) {
-    assert.ok(progress.includes(name));
-  }
-});
-test('short installs advance three panels without dwell or repeated flashing; fast completion remains immediate', () => {
-  const progress = read('packaging/install-progress.iss');
-  const interval = Number(progress.match(/Scene := Elapsed div (\d+);/)?.[1]);
-  assert.equal(interval, 600);
-  assert.match(progress, /if Scene > 2 then Scene := 2/);
-  const sceneAt = elapsed => Math.min(Math.floor(elapsed / interval), 2);
-  assert.deepEqual([0, 599, 600, 1199, 1200, 1500, 2100, 60000].map(sceneAt),
-    [0, 0, 1, 1, 2, 2, 2, 2]);
-  assert.doesNotMatch(progress, /Scene :=.*mod 3|Sleep\(|while.*Scene/);
-  assert.match(progress, /not SystemParametersInfo[\s\S]*ShowProgressScene\(0\)/);
-  assert.match(read('tool/installer_scene_contract.ps1'), /expectedIntervalMilliseconds = 600/);
-});
-test('installer never creates or adopts receipt consent; legacy owner-matched uninstall and app compatibility remain', () => {
+  const withoutHold = progress.replace(/procedure HoldZeroClickVisual[\s\S]*?\nend;/, '');
+  assert.doesNotMatch(setup + withoutHold, /Sleep\(/);
+  assert.doesNotMatch(setup + progress, /WebView|DownloadTemporaryFile|SPI_SET|education-/);
+  for (const name of ['welcome-steps.bmp', 'welcome-garden.bmp']) assert.ok(progress.includes(name));
+});test('installer never creates or adopts receipt consent; legacy owner-matched uninstall and app compatibility remain', () => {
   const setup = read('packaging/bloomstep.iss');
   assert.doesNotMatch(setup, /SaveStringToFile|CoCreateGuid|GetSystemTime|install_completed|MeasurementStarted/);
   assert.match(setup, /\[InstallDelete\][\s\S]*measurement-owner\.txt/);
@@ -67,82 +52,20 @@ test('installer never creates or adopts receipt consent; legacy owner-matched un
   assert.match(setup, /DeleteFile\(Filename\)/);
   assert.match(setup, /installer-receipt\.json/);
 });
-test('actual proof measures transitions/finish/no dwell, never treats equivalent static source as motion evidence', () => {
+test('actual proof measures welcome, Install, absent Finish and timer stop; static art is never motion evidence', () => {
   const proof = read('tool/verify_install_progress.ps1');
   assert.match(proof, /GITHUB_ACTIONS/);
   assert.match(proof, /installerSha256/);
   assert.match(proof, /GetDpiForWindow/);
   assert.match(proof, /elapsedMilliseconds/);
-  assert.match(proof, /actual-finish/);
-  assert.match(proof, /actual-progress/);
-  assert.match(proof, /sceneFrames/);
-  assert.match(proof, /finishObserved/);
-  assert.match(proof, /timerStopped/);
-  assert.match(proof, /timerStopped = -not \$body\.Contains\('Bloomstep progress timer disposal failed'\)/);
+  assert.match(proof, /actual-welcome/);
+  assert.match(proof, /actual-installing/);
+  assert.match(proof, /expectedArtworkSha256/);
+  assert.match(proof, /A Finish page must not exist/);
+  assert.match(proof, /timerStopped = -not \$body\.Contains\('Bloomstep visual timer disposal failed'\)/);
+  assert.match(proof, /Not motion evidence/);
+  assert.match(read('packaging/install-progress.iss'), /visual identity=anchor-action-celebrate-garden/);
 });
-
-test('real progress receipts identify distinct artwork/captions/times and explicitly absent transitions',
-  { skip: process.platform !== 'win32' }, () => {
-    const contract = fileURLToPath(new URL('../tool/installer_scene_contract.ps1', import.meta.url));
-    const quote = value => `'${value.replaceAll("'", "''")}'`;
-    const script = `
-      $ErrorActionPreference = 'Stop'
-      . ${quote(contract)}
-      $catalog = @(Get-InstallSceneCatalog)
-      if ($catalog.Count -ne 3 -or @($catalog.id | Sort-Object -Unique).Count -ne 3 -or
-          @($catalog.artwork | Sort-Object -Unique).Count -ne 3 -or
-          @($catalog.caption | Sort-Object -Unique).Count -ne 3) {
-        throw 'Scenes must identify three distinct panels, not moving highlights.'
-      }
-      # Exact run37627423101 short-install observation; later scenes are absent.
-      $short = Get-InstallSceneCoverage @(
-        @{ scene = 0; elapsedMilliseconds = 257 },
-        @{ scene = 0; elapsedMilliseconds = 1273 }
-      )
-      if ($short.allThreeScenesObserved -or $short.orderedTransitionsObserved -or
-          @($short.absentSceneIds).Count -ne 2 -or $short.transitions.Count -ne 1) {
-        throw 'Short actual installation must not be called complete scene evidence.'
-      }
-      $complete = Get-InstallSceneCoverage @(
-        @{ scene = 0; elapsedMilliseconds = 200 },
-        @{ scene = 1; elapsedMilliseconds = 3210 },
-        @{ scene = 2; elapsedMilliseconds = 6280 }
-      )
-      if (-not $complete.allThreeScenesObserved -or -not $complete.orderedTransitionsObserved -or
-          $complete.transitions[1].firstObservedMilliseconds -ne 3210) {
-        throw 'Observed scene transitions must retain actual capture timestamps.'
-      }
-      $wrongOrder = Get-InstallSceneCoverage @(
-        @{ scene = 0; elapsedMilliseconds = 200 },
-        @{ scene = 2; elapsedMilliseconds = 6280 },
-        @{ scene = 1; elapsedMilliseconds = 9300 }
-      )
-      if ($wrongOrder.orderedTransitionsObserved) { throw 'Wrong order accepted.' }
-      foreach ($invalid in @(
-        @{ scene = 3; elapsedMilliseconds = 10 },
-        @{ scene = 0; elapsedMilliseconds = -1 },
-        @{ scene = '0'; elapsedMilliseconds = 10 },
-        @{ scene = 0 }
-      )) {
-        $rejected = $false
-        try { Get-InstallSceneCoverage @($invalid) | Out-Null } catch { $rejected = $true }
-        if (-not $rejected) { throw 'Malformed capture accepted.' }
-      }
-      $empty = Get-InstallSceneCoverage @()
-      if ($empty.allThreeScenesObserved -or $empty.absentSceneIds.Count -ne 3) {
-        throw 'Empty capture accepted.'
-      }
-    `;
-    const result = spawnSync('pwsh', ['-NoProfile', '-Command', script],
-      { encoding: 'utf8', timeout: 15000, windowsHide: true });
-    assert.equal(result.status, 0, result.stderr || result.stdout || String(result.error));
-    const proof = read('tool/verify_install_progress.ps1');
-    assert.match(proof, /sceneId/);
-    assert.match(proof, /expectedArtworkSha256/);
-    assert.match(proof, /sceneCoverage = Get-InstallSceneCoverage/);
-    assert.match(read('packaging/install-progress.iss'), /scene identity=[\s\S]*elapsedMilliseconds=/);
-  });
-
 test('owned capture success/timeout/cleanup write exact stage and process exit state without an installer',
   { skip: process.platform !== 'win32' }, () => {
     const directory = mkdtempSync(join(tmpdir(), 'bloomstep-benign-capture-wait-'));

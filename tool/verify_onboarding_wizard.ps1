@@ -108,18 +108,38 @@ $receipt = Join-Path $env:LOCALAPPDATA 'Bloomstep\measurement\installer-receipt.
 if ((Test-Path $target) -or (Test-Path $receipt)) { throw 'Capture refuses existing installation/receipt state.' }
 $states = [Collections.Generic.List[object]]::new()
 $report = @{ sourceRevision = $compiledFixture.sourceRevision; installerSha256 = $compiledFixture.installerSha256;
-  expectedOrder = @('destination'); states = $states; installed = $false; outcome = 'running' }
+  expectedOrder = @('welcome', 'destination'); states = $states; installed = $false; outcome = 'running' }
 try {
   $setup = Start-CaptureProcess $Installer '/SP- /NORESTART' 'destination-fixture'
   $observed = $false
   $cancelled = $false
+  $welcomeAt = $null
   $deadline = $captureClock.ElapsedMilliseconds + 40000
   while (-not $cancelled -and $captureClock.ElapsedMilliseconds -lt $deadline) {
     Update-CaptureTree
     foreach ($window in Get-CaptureWindows) {
       $text = [OnboardingWizard]::Describe($window)
-      if (-not $observed -and [OnboardingWizard]::ClassName($window) -eq 'TWizardForm') {
-        if (-not $text.Contains('Select Destination Location')) { throw 'First observed wizard page was not destination.' }
+      if ($null -eq $welcomeAt -and [OnboardingWizard]::ClassName($window) -eq 'TWizardForm') {
+        if ($text -notmatch '(^| \| )Anchor( \| |$)' -or $text -notmatch '(^| \| )Action( \| |$)' -or
+            $text -notmatch '(^| \| )Celebrate( \| |$)' -or $text.Contains('Select Destination Location')) {
+          throw 'First observed wizard page was not the Anchor/Action/Celebrate welcome.'
+        }
+        if ([OnboardingWizard]::Find($window, 'Next') -ne [IntPtr]::Zero -or
+            [OnboardingWizard]::Find($window, 'Back') -ne [IntPtr]::Zero -or
+            [OnboardingWizard]::Find($window, 'Cancel') -eq [IntPtr]::Zero) {
+          throw 'Welcome must offer only Cancel; it advances on its own.'
+        }
+        $welcomeAt = $captureClock.ElapsedMilliseconds
+        $frame = Save-CaptureFrame $window 'fixture-welcome.png'
+        $frame.step = 'welcome'
+        $frame.visibleWords = @('Anchor', 'Action', 'Celebrate')
+        $states.Add($frame)
+        continue
+      }
+      if (-not $observed -and $null -ne $welcomeAt -and [OnboardingWizard]::ClassName($window) -eq 'TWizardForm' -and
+          $text.Contains('Select Destination Location')) {
+        $report.welcomeToDestinationMilliseconds = $captureClock.ElapsedMilliseconds - $welcomeAt
+        if ($report.welcomeToDestinationMilliseconds -lt 3500) { throw 'Welcome advanced before about 4 seconds.' }
         if ($text -match 'click Next|select Next') { throw 'Destination hint still instructs Next instead of Install.' }
         if ([OnboardingWizard]::Find($window, $target) -eq [IntPtr]::Zero) {
           throw 'Native destination did not preserve the current per-user default.'
@@ -158,7 +178,7 @@ try {
   $report.receiptAbsent = $true
   $report.targetAbsent = $true
   $report.cancelExit = $setup.ExitCode
-  $report.outcome = 'actual-destination-and-Cancel; Install never selected'
+  $report.outcome = 'actual-welcome-auto-advance-destination-and-Cancel; Install never selected'
   $report.keyboardNavigation = 'UNKNOWN; original native Install/Browse/Cancel controls and UIA names captured, not keyboard or Narrator acceptance'
 } catch {
   $report.outcome = 'FAIL; actual destination evidence incomplete'
