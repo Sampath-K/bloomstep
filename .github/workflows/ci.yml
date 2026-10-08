@@ -269,6 +269,7 @@ jobs:
           path: |
             ${{ runner.temp }}/bloomstep-profile-evidence/profile-*.png
             ${{ runner.temp }}/bloomstep-profile-evidence/picker-*.png
+            ${{ runner.temp }}/bloomstep-profile-evidence/first-habit-*.png
           if-no-files-found: error
       - name: Verify production-mode test-auth and adapter gates
         run: flutter test test/test_auth_release_contract_test.dart --reporter expanded --concurrency 1 --timeout 60s
