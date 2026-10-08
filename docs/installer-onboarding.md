@@ -4,9 +4,12 @@
 
 Zero-click is the user-selected preferred private candidate. One-click is retained
 only for comparison. Neither flow offers Back: the auto-advanced splash is not
-a navigable destination. Cancel remains available. PR28's separate app first-run
-habit-builder invitation is not included in this installer branch; a composed
-installer/app build is still required before claiming that combined journey.
+a navigable destination. Cancel remains available. PR28's six app commits through
+`2753a6203f97923557f2de669c5f66cd3fdf70a6` are composed into this branch:
+inline profile/device garden, once-only first-run habit-builder invitation,
+custom text on all three steps, and post-save seed growth with reduced motion.
+The composed executable still needs exact-head native evidence; source
+composition does not establish genuine automatic launch or account acceptance.
 
 User-directed after testing: the setup steps that each required Next were not
 interesting and had too much text. Both variants below build from the same
