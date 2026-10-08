@@ -30,6 +30,13 @@ void main() {
         ),
       );
       expect(find.text('Your seed is planted'), findsOneWidget);
+      expect(
+        tester.getRect(find.byType(SeedGrowthPreview)).top,
+        greaterThanOrEqualTo(
+          tester.getRect(find.text('Your seed is planted')).bottom,
+        ),
+        reason: 'The scaled final plant must not paint over the dialog title.',
+      );
       expect(find.byKey(const ValueKey('growth-seed')), findsOneWidget);
       final start = tester
           .widget<Opacity>(find.byKey(const ValueKey('growth-sprout-opacity')))
