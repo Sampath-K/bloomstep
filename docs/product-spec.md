@@ -13,6 +13,10 @@ Signed-out users can save into `device-guest.sqlite`, scoped to the installing O
 user, with analytics disabled and no cloud sync. This is a local device garden,
 not a fabricated authenticated identity. It is not encrypted account storage;
 anyone with access to the same OS user can see that device garden.
+Legacy installers' separately opted-in, expiring local receipts may still record
+the first rendered signed-out sign-in affordance as `signin_view`; this is not
+guest/account analytics, authentication success or automatic account linking.
+No receipt means no measurement. The receipt can be cleared in profile Settings.
 
 Sign-in keeps the configured Microsoft personal/Google/other hosted choices in
 the trusted system browser. Signed-in status and any name/email/provider come

@@ -96,6 +96,16 @@ class _HabitHomeState extends State<HabitHome> {
     if (mounted) setState(() => error = message);
   }
 
+  Future<void> _observeProfile() async {
+    try {
+      await widget.measurement?.observe('signin_view');
+    } catch (_) {
+      _writeError(
+        'Optional local sign-in-view observation failed. No server data was sent; planting and sign-in still work. Clear the installer receipt in profile Settings to stop observation.',
+      );
+    }
+  }
+
   Future<void> _restore() async {
     try {
       final restored = await identity.restore();
@@ -287,7 +297,10 @@ class _HabitHomeState extends State<HabitHome> {
       testDisableServices: widget.testOpenStore != null,
       invitationInbox: accountGarden ? widget.invitationInbox : null,
       diagnostics: diagnostics,
-      installerMeasurement: accountGarden ? widget.measurement : null,
+      installerMeasurement: widget.measurement,
+      onProfileShown: accountGarden || widget.measurement == null
+          ? null
+          : () => unawaited(_observeProfile()),
       onSignedOut: (warning) =>
           _signedOut(warning, authCleanupFailed: warning != null),
       profileBuilder: (signOut, manage) => ProfileSection(
