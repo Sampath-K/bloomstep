@@ -59,7 +59,6 @@ void main() {
             store.checkIn(habit.id, CheckInResult.notToday, reason: 'too hard'),
       );
       final semantics = tester.ensureSemantics();
-      addTearDown(semantics.dispose);
       final boundaryKey = GlobalKey();
       await tester.pumpWidget(
         MaterialApp(
@@ -162,6 +161,7 @@ void main() {
       expect(find.textContaining('One optional idea:'), findsNothing);
       expect((await tester.runAsync(store.habits))!.single.todayReason, isNull);
       expect(tester.takeException(), isNull);
+      semantics.dispose();
       await tester.pumpWidget(const SizedBox());
     },
   );
@@ -272,26 +272,16 @@ void main() {
   testWidgets(
     'failed check-in save shows the existing error and no recovery content',
     (tester) async {
-      final root = await Directory.systemTemp.createTemp(
-        'bloomstep-recovery-failure-',
-      );
-      addTearDown(() => root.delete(recursive: true));
+      final root = (await tester.runAsync(
+        () => Directory.systemTemp.createTemp('bloomstep-recovery-failure-'),
+      ))!;
+      addTearDown(() => tester.runAsync(() => root.delete(recursive: true)));
       final path = '${root.path}${Platform.pathSeparator}garden.sqlite';
-      final store = (await tester.runAsync(
+      final setupStore = (await tester.runAsync(
         () => GardenStore.open(path, 'recovery-failure'),
       ))!;
-      addTearDown(() => tester.runAsync(store.close));
-      final habit = (await tester.runAsync(() => plant(store)))!;
-      await tester.pumpWidget(
-        MaterialApp(
-          home: GardenScreen(
-            store: store,
-            deviceGuest: true,
-            testDisableServices: true,
-          ),
-        ),
-      );
-      await waitFor(tester, find.text('Not today'));
+      final habit = (await tester.runAsync(() => plant(setupStore)))!;
+      await tester.runAsync(setupStore.close);
       await tester.runAsync(() async {
         final db = await databaseFactoryFfi.openDatabase(path);
         try {
@@ -303,6 +293,20 @@ void main() {
           await db.close();
         }
       });
+      final store = (await tester.runAsync(
+        () => GardenStore.open(path, 'recovery-failure'),
+      ))!;
+      addTearDown(() => tester.runAsync(store.close));
+      await tester.pumpWidget(
+        MaterialApp(
+          home: GardenScreen(
+            store: store,
+            deviceGuest: true,
+            testDisableServices: true,
+          ),
+        ),
+      );
+      await waitFor(tester, find.text('Not today'));
 
       await tester.ensureVisible(find.text('Not today'));
       await tester.tap(find.text('Not today'));
