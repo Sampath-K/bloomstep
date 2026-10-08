@@ -346,7 +346,7 @@ jobs:
           name: bloomstep-v1-compiled-flutter-ui-${{ matrix.arch }}-SYNTHETIC
           path: ${{ runner.temp }}/bloomstep-v1-compiled-flutter-ui/
           if-no-files-found: error
-      - name: Build real sign-in-gated release
+      - name: Build real provider-backed release
         env:
           OIDC_ISSUER: ${{ vars.OIDC_ISSUER }}
           OIDC_CLIENT_ID: ${{ vars.OIDC_CLIENT_ID }}

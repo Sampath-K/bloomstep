@@ -152,9 +152,16 @@ population inputs.
 The current production path emits `session_started` and fresh verified
 `signin_succeeded` through `SessionEvents` only under existing analytics consent.
 Restored sessions do not manufacture fresh sign-in successes. The habit-first
-profile no longer emits the obsolete separate-screen installer `signin_view`
-observation; historical receipts retain their original consent boundary. Device
-gardens have no analytics or session observations. `SessionDiagnostics`
+profile preserves the legacy installer `signin_view` receipt only when the
+signed-out inline sign-in affordance actually renders. Its existing meaning is
+surface exposure, not authentication success: the old screen emitted it before
+sign-in, and the installer disclosure covers first launch/sign-in view.
+It requires an unexpired explicitly opted-in receipt and matching install owner,
+is deduplicated, remains local and needs separate account analytics consent plus
+explicit linking before sync. No receipt means no observation or manufactured
+receipt; authenticated restoration emits no sign-in view. Profile Settings can
+clear the receipt while signed out. Device gardens have no account analytics or
+session observations. `SessionDiagnostics`
 records consented, capped error-kind/source/session metadata without exception
 text or stacks; it is not a provider-stage collector. Latest main `4513438`
 adds guarded, account-consented session-entry/API-token observations through

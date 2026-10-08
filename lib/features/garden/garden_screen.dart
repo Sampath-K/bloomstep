@@ -48,6 +48,7 @@ class GardenScreen extends StatefulWidget {
     this.testDisableServices = false,
     this.profileBuilder,
     this.onSignedOut,
+    this.onProfileShown,
   });
   final GardenStore store;
   final IdentityService? identity;
@@ -65,6 +66,7 @@ class GardenScreen extends StatefulWidget {
   final Widget Function(Future<void> Function() signOut, VoidCallback manage)?
   profileBuilder;
   final Future<void> Function(String? warning)? onSignedOut;
+  final VoidCallback? onProfileShown;
   @override
   State<GardenScreen> createState() => _GardenScreenState();
 }
@@ -85,6 +87,7 @@ class _GardenScreenState extends State<GardenScreen> {
   String syncStatus = 'Local garden';
   bool syncing = false;
   bool closing = false;
+  bool profileShown = false;
   Timer? syncTimer;
   Timer? configExpiryTimer;
   DesktopReminders? reminders;
@@ -260,6 +263,12 @@ class _GardenScreenState extends State<GardenScreen> {
           pausedReminders = paused;
           loading = false;
         });
+        if (!profileShown && widget.profileBuilder != null) {
+          profileShown = true;
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            if (mounted) widget.onProfileShown?.call();
+          });
+        }
       }
     } catch (e) {
       if (mounted) {

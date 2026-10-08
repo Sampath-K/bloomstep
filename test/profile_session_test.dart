@@ -1,11 +1,14 @@
 import 'dart:async';
+import 'dart:convert';
 import 'dart:io';
 import 'dart:ui' as ui;
 
 import 'package:bloomstep/app/bloomstep_app.dart';
 import 'package:bloomstep/app/theme.dart';
 import 'package:bloomstep/core/garden_store.dart';
+import 'package:bloomstep/core/measurement_receipt.dart';
 import 'package:bloomstep/services/identity.dart';
+import 'package:bloomstep/services/installer_measurement.dart';
 import 'package:bloomstep/services/auth_observations.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
@@ -71,6 +74,110 @@ Future<void> _ready(WidgetTester tester, Finder finder) async {
 }
 
 void main() {
+  for (final scenario in [
+    'no receipt',
+    'consented guest',
+    'restored account',
+  ]) {
+    testWidgets('legacy view consent: $scenario', (tester) async {
+      final root = (await tester.runAsync(
+        () => Directory.systemTemp.createTemp('bloomstep-profile-'),
+      ))!;
+      addTearDown(() => tester.runAsync(() => root.delete(recursive: true)));
+      final collector = (await tester.runAsync(
+        () async => InstallerMeasurement(
+          root.path,
+          ownerId: '00000000-0000-4000-8000-000000000001',
+        ),
+      ))!;
+      if (scenario != 'no receipt') {
+        await tester.runAsync(() async {
+          final now = DateTime.now().toUtc();
+          await File(collector.path).writeAsString(
+            jsonEncode({
+              'schemaVersion': 1,
+              'source': 'installer',
+              'consentedAt': now
+                  .subtract(const Duration(minutes: 2))
+                  .toIso8601String(),
+              'events': [
+                {
+                  'id': '00000000-0000-4000-8000-000000000001',
+                  'name': 'installer_started',
+                  'ts': now
+                      .subtract(const Duration(minutes: 2))
+                      .toIso8601String(),
+                },
+                {
+                  'id': '00000000-0000-4000-8000-000000000002',
+                  'name': 'install_completed',
+                  'ts': now
+                      .subtract(const Duration(minutes: 1))
+                      .toIso8601String(),
+                },
+              ],
+            }),
+          );
+          await collector.observe('first_launch');
+        });
+      }
+      await tester.pumpWidget(
+        MaterialApp(
+          home: HabitHome(
+            measurement: collector,
+            testIdentity: _SyntheticIdentity()
+              ..restoreOffline = scenario == 'restored account',
+            testOpenStore: (account) =>
+                GardenStore.open(p.join(root.path, '$account.sqlite'), account),
+          ),
+        ),
+      );
+      await _ready(
+        tester,
+        find.text(
+          scenario == 'restored account' ? 'Signed in' : 'Not signed in',
+        ),
+      );
+      MeasurementReceipt? receipt;
+      for (var i = 0; i < 100; i++) {
+        await tester.runAsync(
+          () => Future<void>.delayed(const Duration(milliseconds: 20)),
+        );
+        await tester.pump();
+        receipt = await tester.runAsync<MeasurementReceipt?>(() async {
+          final file = File(collector.path);
+          return await file.exists()
+              ? MeasurementReceipt.parse(await file.readAsString())
+              : null;
+        });
+        if (scenario == 'consented guest' &&
+            receipt?.events.any((event) => event.name == 'signin_view') ==
+                true) {
+          break;
+        }
+        if (scenario != 'consented guest' && i >= 10) break;
+      }
+      if (scenario == 'no receipt') {
+        expect(receipt, isNull);
+        expect(
+          await tester.runAsync(() => File(collector.path).exists()),
+          isFalse,
+        );
+      } else {
+        expect(receipt!.events.map((event) => event.name), [
+          'installer_started',
+          'install_completed',
+          'first_launch',
+          if (scenario == 'consented guest') 'signin_view',
+        ]);
+      }
+      await tester.pumpWidget(const SizedBox());
+      await tester.runAsync(
+        () => Future<void>.delayed(const Duration(milliseconds: 150)),
+      );
+    });
+  }
+
   testWidgets('guest planting is primary even without configured identity', (
     tester,
   ) async {
