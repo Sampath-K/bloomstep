@@ -67,6 +67,7 @@ class _HabitHomeState extends State<HabitHome> {
   AuthObservations? observations;
   bool busy = true;
   bool accountGarden = false;
+  bool autoInviteFirstHabit = false;
   bool pendingAuthCleanup = false;
   Future<void>? returningToGuest;
   String? error;
@@ -135,6 +136,7 @@ class _HabitHomeState extends State<HabitHome> {
     );
     SessionDiagnostics? nextDiagnostics;
     AuthObservations? nextObservations;
+    var inviteFirstHabit = false;
     try {
       if (authenticated) {
         nextDiagnostics = SessionDiagnostics(next, onWriteError: _writeError);
@@ -144,6 +146,7 @@ class _HabitHomeState extends State<HabitHome> {
         });
       } else {
         await next.setSetting('analytics', 'false');
+        inviteFirstHabit = await next.claimFirstHabitInvitation();
       }
     } catch (_) {
       nextObservations?.close();
@@ -166,6 +169,7 @@ class _HabitHomeState extends State<HabitHome> {
     setState(() {
       store = next;
       accountGarden = authenticated;
+      autoInviteFirstHabit = inviteFirstHabit;
       diagnostics = nextDiagnostics;
       observations = nextObservations;
       identity.observations = nextObservations;
@@ -294,6 +298,8 @@ class _HabitHomeState extends State<HabitHome> {
       store: current,
       identity: accountGarden ? identity : null,
       deviceGuest: !accountGarden,
+      autoInviteFirstHabit: autoInviteFirstHabit,
+      firstHabitInvitationReady: !busy,
       testDisableServices: widget.testOpenStore != null,
       invitationInbox: accountGarden ? widget.invitationInbox : null,
       diagnostics: diagnostics,

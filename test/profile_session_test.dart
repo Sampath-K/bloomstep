@@ -10,6 +10,7 @@ import 'package:bloomstep/core/measurement_receipt.dart';
 import 'package:bloomstep/services/identity.dart';
 import 'package:bloomstep/services/installer_measurement.dart';
 import 'package:bloomstep/services/auth_observations.dart';
+import 'package:bloomstep/features/garden/recipe_builder.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
 import 'package:flutter/services.dart';
@@ -68,7 +69,28 @@ Future<void> _ready(WidgetTester tester, Finder finder) async {
       () => Future<void>.delayed(const Duration(milliseconds: 30)),
     );
     await tester.pump(const Duration(milliseconds: 30));
-    if (finder.evaluate().isNotEmpty) return;
+    if ((finder.toString().contains('Not signed in') ||
+            finder.toString().contains('Sign in with Microsoft or Google')) &&
+        find.byType(RecipeBuilder).evaluate().isNotEmpty &&
+        find.text('Cancel').evaluate().isNotEmpty) {
+      await tester.tap(find.text('Cancel'));
+      await tester.pumpAndSettle();
+    }
+    if (finder.evaluate().isNotEmpty) {
+      if ((finder.toString().contains('Not signed in') ||
+              finder.toString().contains('Sign in with Microsoft or Google')) &&
+          find.text('Complete sign-in in your browser').evaluate().isNotEmpty) {
+        continue;
+      }
+      await tester.pumpAndSettle();
+      if ((finder.toString().contains('Not signed in') ||
+              finder.toString().contains('Sign in with Microsoft or Google')) &&
+          find.byType(RecipeBuilder).evaluate().isNotEmpty) {
+        await tester.tap(find.text('Cancel'));
+        await tester.pumpAndSettle();
+      }
+      return;
+    }
   }
   fail('Timed out waiting for $finder');
 }
@@ -215,10 +237,13 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.text('Sign in securely'), findsNothing);
     expect(find.text('pour my morning drink'), findsOneWidget);
+    await tester.ensureVisible(find.text('pour my morning drink'));
     await tester.tap(find.text('pour my morning drink'));
     await tester.pumpAndSettle();
+    await tester.ensureVisible(find.text('take one slow breath'));
     await tester.tap(find.text('take one slow breath'));
     await tester.pumpAndSettle();
+    await tester.ensureVisible(find.text('relax my shoulders and smile'));
     await tester.tap(find.text('relax my shoulders and smile'));
     await tester.pumpAndSettle();
     await tester.ensureVisible(find.text('I practiced my celebration'));

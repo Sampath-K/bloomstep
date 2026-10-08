@@ -657,17 +657,17 @@ Future<void> _plant(
   if (captureBoundary != null) {
     await _captureBuilderFrame(tester, captureBoundary, 'picker-1-anchor');
   }
+  await tester.ensureVisible(find.text('pour my morning drink'));
   await tester.tap(find.text('pour my morning drink'));
   await tester.pumpAndSettle();
   if (captureBoundary != null) {
     await _captureBuilderFrame(tester, captureBoundary, 'picker-2-action');
   }
   if (behavior == null) {
+    await tester.ensureVisible(find.text('take one slow breath'));
     await tester.tap(find.text('take one slow breath'));
   } else {
-    await tester.ensureVisible(find.text('Make it my own (optional)'));
-    await tester.tap(find.text('Make it my own (optional)'));
-    await tester.pumpAndSettle();
+    await tester.ensureVisible(find.widgetWithText(TextFormField, 'I will...'));
     await tester.enterText(
       find.widgetWithText(TextFormField, 'I will...'),
       behavior,

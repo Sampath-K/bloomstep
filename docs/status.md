@@ -4,6 +4,13 @@
 cloud deployment and native background behavior require integration evidence.
 This ledger is updated with verified outcomes, not inferred from source code.
 
+**Isolated PR28 habit-first follow-up (not merged/released):** fresh empty device
+gardens invite first-habit creation once without a button click; returning/account
+gardens are untouched. Anchor, Action and Celebration accept visible custom text.
+Saved-habit confirmation previews seed-to-sprout growth with reduced-motion and
+save-failure contracts. Installer composition and exact-head native gates remain
+separate; this source change does not establish genuine provider/launch acceptance.
+
 **Frozen v1 merged and published for owner trial (PR21):** merge
 `45efbf2da0cb8363675321e5e257d5dd66391f04` is the immutable
 `v0.1.0-preview.10` source. Real

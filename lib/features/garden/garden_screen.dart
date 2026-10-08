@@ -49,6 +49,8 @@ class GardenScreen extends StatefulWidget {
     this.profileBuilder,
     this.onSignedOut,
     this.onProfileShown,
+    this.autoInviteFirstHabit = false,
+    this.firstHabitInvitationReady = true,
   });
   final GardenStore store;
   final IdentityService? identity;
@@ -67,6 +69,8 @@ class GardenScreen extends StatefulWidget {
   profileBuilder;
   final Future<void> Function(String? warning)? onSignedOut;
   final VoidCallback? onProfileShown;
+  final bool autoInviteFirstHabit;
+  final bool firstHabitInvitationReady;
   @override
   State<GardenScreen> createState() => _GardenScreenState();
 }
@@ -88,6 +92,8 @@ class _GardenScreenState extends State<GardenScreen> {
   bool syncing = false;
   bool closing = false;
   bool profileShown = false;
+  bool firstHabitInvited = false;
+  bool invitationScheduled = false;
   Timer? syncTimer;
   Timer? configExpiryTimer;
   DesktopReminders? reminders;
@@ -145,6 +151,44 @@ class _GardenScreenState extends State<GardenScreen> {
       (Object e) => debugPrint('Reminder cleanup failed: $e'),
     );
     super.dispose();
+  }
+
+  @override
+  void didUpdateWidget(GardenScreen oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    _scheduleFirstHabit();
+  }
+
+  void _scheduleFirstHabit() {
+    if (loading ||
+        !widget.deviceGuest ||
+        !widget.autoInviteFirstHabit ||
+        !widget.firstHabitInvitationReady ||
+        habits.isNotEmpty ||
+        firstHabitInvited ||
+        invitationScheduled ||
+        closing ||
+        working) {
+      return;
+    }
+    invitationScheduled = true;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      invitationScheduled = false;
+      if (!mounted ||
+          loading ||
+          closing ||
+          working ||
+          firstHabitInvited ||
+          habits.isNotEmpty ||
+          !widget.deviceGuest ||
+          !widget.autoInviteFirstHabit ||
+          !widget.firstHabitInvitationReady ||
+          ModalRoute.of(context)?.isCurrent != true) {
+        return;
+      }
+      firstHabitInvited = true;
+      unawaited(_plant());
+    });
   }
 
   Future<void> _foregroundOpening() async {
@@ -263,6 +307,7 @@ class _GardenScreenState extends State<GardenScreen> {
           pausedReminders = paused;
           loading = false;
         });
+        _scheduleFirstHabit();
         if (!profileShown && widget.profileBuilder != null) {
           profileShown = true;
           WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -314,8 +359,9 @@ class _GardenScreenState extends State<GardenScreen> {
       builder: (_) => RecipeBuilder(habit: prefill),
     );
     if (recipe == null || !mounted || closing || working) return;
+    Habit? planted;
     await _act(() async {
-      await widget.store.plant(
+      planted = await widget.store.plant(
         aspiration: recipe.aspiration,
         anchor: recipe.anchor,
         behavior: recipe.behavior,
@@ -325,10 +371,11 @@ class _GardenScreenState extends State<GardenScreen> {
         celebrationPracticed: recipe.celebrationPracticed,
       );
     });
-    if (!mounted || closing || error != null) return;
+    if (!mounted || closing || error != null || planted == null) return;
     await showDialog<void>(
       context: context,
-      builder: (_) => PlantedRecipeDialog(recipe: recipe),
+      builder: (_) =>
+          PlantedRecipeDialog(habit: planted!, reducedMotion: reducedMotion),
     );
   }
 
