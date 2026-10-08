@@ -1,12 +1,16 @@
 import 'dart:async';
 import 'dart:io';
+import 'dart:ui' as ui;
 
+import 'package:bloomstep/app/theme.dart';
 import 'package:bloomstep/app/bloomstep_app.dart';
 import 'package:bloomstep/core/garden_store.dart';
 import 'package:bloomstep/features/garden/garden_screen.dart';
 import 'package:bloomstep/features/garden/recipe_builder.dart';
 import 'package:bloomstep/services/identity.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/rendering.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:path/path.dart' as p;
 
@@ -42,24 +46,73 @@ void main() {
   testWidgets('app waits for restoration and presents first empty guest once', (
     tester,
   ) async {
+    await tester.binding.setSurfaceSize(const Size(1200, 920));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
     final root = (await tester.runAsync(
       () => Directory.systemTemp.createTemp('bloomstep-first-habit-'),
     ))!;
     addTearDown(() => tester.runAsync(() => root.delete(recursive: true)));
     final identity = _RestoringIdentity();
-    Future<GardenStore> open(String account) =>
-        GardenStore.open(p.join(root.path, '$account.sqlite'), account);
+    final openRequested = Completer<void>();
+    final delayedOpen = Completer<GardenStore>();
+    final screenshotKey = GlobalKey();
+    if (Platform.isWindows) {
+      await tester.runAsync(() async {
+        final font = await File(r'C:\Windows\Fonts\segoeui.ttf').readAsBytes();
+        await (FontLoader(
+          'Segoe UI',
+        )..addFont(Future.value(ByteData.sublistView(font)))).load();
+        final icons = await File(
+          p.join(
+            File(Platform.resolvedExecutable).parent.parent.parent.path,
+            'material_fonts',
+            'MaterialIcons-Regular.otf',
+          ),
+        ).readAsBytes();
+        await (FontLoader(
+          'MaterialIcons',
+        )..addFont(Future.value(ByteData.sublistView(icons)))).load();
+      });
+    }
+    Future<GardenStore> open(String account) {
+      if (!openRequested.isCompleted) {
+        openRequested.complete();
+        return delayedOpen.future;
+      }
+      return GardenStore.open(p.join(root.path, '$account.sqlite'), account);
+    }
+
     await tester.pumpWidget(
-      MaterialApp(
-        home: HabitHome(testIdentity: identity, testOpenStore: open),
+      RepaintBoundary(
+        key: screenshotKey,
+        child: MaterialApp(
+          debugShowCheckedModeBanner: false,
+          theme: BloomstepTheme.light(),
+          home: HabitHome(testIdentity: identity, testOpenStore: open),
+        ),
       ),
     );
     await tester.pump();
     expect(find.byType(RecipeBuilder), findsNothing);
     identity.restored.complete(false);
+    await openRequested.future;
+    await tester.pump();
+    expect(find.byType(RecipeBuilder), findsNothing);
+    delayedOpen.complete(
+      (await tester.runAsync(
+        () => GardenStore.open(
+          p.join(root.path, '${HabitHome.guestAccount}.sqlite'),
+          HabitHome.guestAccount,
+        ),
+      ))!,
+    );
     await ready(tester, find.byType(RecipeBuilder));
+    expect(find.text('Plant one tiny step'), findsOneWidget);
+    await captureFirstHabitScreen(tester, screenshotKey);
     await tester.tap(find.text('Cancel'));
     await tester.pumpAndSettle();
+    expect(find.byType(RecipeBuilder), findsNothing);
+    expect(find.text('Plant a habit'), findsOneWidget);
     await tester.pumpWidget(const SizedBox());
     await tester.runAsync(
       () => Future<void>.delayed(const Duration(milliseconds: 100)),
@@ -294,5 +347,24 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.byType(RecipeBuilder), findsNothing);
     await tester.pumpWidget(const SizedBox());
+  });
+}
+
+Future<void> captureFirstHabitScreen(WidgetTester tester, GlobalKey key) async {
+  final output = Platform.environment['BLOOMSTEP_SCREENSHOTS'];
+  if (output == null) return;
+  await tester.pumpAndSettle();
+  final boundary =
+      key.currentContext!.findRenderObject()! as RenderRepaintBoundary;
+  await tester.runAsync(() async {
+    final image = await boundary.toImage(pixelRatio: 1);
+    try {
+      final bytes = await image.toByteData(format: ui.ImageByteFormat.png);
+      await Directory(output).create(recursive: true);
+      await File(p.join(output, 'first-habit-auto-open.png'))
+          .writeAsBytes(bytes!.buffer.asUint8List());
+    } finally {
+      image.dispose();
+    }
   });
 }

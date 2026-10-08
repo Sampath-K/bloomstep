@@ -331,7 +331,10 @@ void main() {
     await tester.tap(find.text('Sign in with Microsoft or Google'));
     await _ready(tester, find.text('Synthetic Garden Tester'));
     expect(find.text('Signed in'), findsOneWidget);
-    expect(find.text('synthetic@example.invalid'), findsOneWidget);
+    expect(find.textContaining('synthetic@example.invalid'), findsNothing);
+    expect(find.textContaining('Google'), findsNothing);
+    expect(find.textContaining('unknown'), findsNothing);
+    expect(find.text('ST'), findsOneWidget);
     expect(find.text('Did it'), findsNothing);
     expect(find.textContaining('kept separate'), findsOneWidget);
     expect(find.byType(BackButton), findsNothing);
