@@ -109,6 +109,8 @@ try {
       if (-not $committed -and $Flow -eq 'oneclick') {
         if ($text.Contains('Select Destination Location')) {
           if ($null -eq $welcomeAt) { throw 'First actual page was not the Anchor/Action/Celebrate welcome.' }
+          if ([OnboardingWizard]::Find($window, 'Install') -eq [IntPtr]::Zero -and
+              [OnboardingWizard]::Find($window, 'Next') -ne [IntPtr]::Zero) { continue }
           if ($text -match 'click Next|select Next') { throw 'Destination hint still instructs Next instead of Install.' }
           $install = [OnboardingWizard]::Find($window, 'Install')
           $browse = [OnboardingWizard]::Find($window, 'Browse...')

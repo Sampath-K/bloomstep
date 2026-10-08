@@ -138,6 +138,9 @@ try {
       }
       if (-not $observed -and $null -ne $welcomeAt -and [OnboardingWizard]::ClassName($window) -eq 'TWizardForm' -and
           $text.Contains('Select Destination Location')) {
+        # The page text can appear a moment before Inno relabels the primary button; observe the settled page.
+        if ([OnboardingWizard]::Find($window, 'Install') -eq [IntPtr]::Zero -and
+            [OnboardingWizard]::Find($window, 'Next') -ne [IntPtr]::Zero) { continue }
         $report.welcomeToDestinationMilliseconds = $captureClock.ElapsedMilliseconds - $welcomeAt
         if ($report.welcomeToDestinationMilliseconds -lt 3500) { throw 'Welcome advanced before about 4 seconds.' }
         if ($text -match 'click Next|select Next') { throw 'Destination hint still instructs Next instead of Install.' }
