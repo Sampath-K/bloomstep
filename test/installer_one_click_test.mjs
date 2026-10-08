@@ -8,6 +8,16 @@ const setup = () => read('packaging/bloomstep.iss');
 const visual = () => read('packaging/install-progress.iss');
 const section = (source, name) => source.split(`[${name}]`)[1]?.split(/\n\[/)[0] ?? '';
 
+test('Defender-blocked private candidate is withdrawn, not treated as a reputation warning', () => {
+  const docs = read('docs/installer-onboarding.md');
+  assert.match(docs, /WITHDRAWN: Defender-blocked private candidate/);
+  assert.match(docs, /Behavior:Win32\/DefenseEvasion\.A!ml/);
+  assert.match(docs, /b58ba7fc3f39d66c7d3afc9022cbbeec2036fb58c0677940e20f1b036e4e2be5/);
+  assert.match(docs, /Do not download, restore, distribute, or run/);
+  assert.match(docs, /partial-install state is unknown/);
+  assert.match(docs, /not established as a false positive/);
+});
+
 test('one source compiles exactly two flows: one-click default and zero-click experiment', () => {
   const source = setup();
   assert.match(source, /#ifndef InstallFlow\s+#define InstallFlow "oneclick"\s+#endif/);

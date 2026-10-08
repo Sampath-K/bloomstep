@@ -1,0 +1,49 @@
+name: Withdrawn installer security evidence
+on:
+  push:
+    paths:
+      - '.github/workflows/installer-security.yml'
+      - 'tool/verify_installer_security.ps1'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  actions: read
+
+jobs:
+  defender-static-capability:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Download exact withdrawn candidate on disposable host
+        uses: actions/download-artifact@v4
+        with:
+          name: bloomstep-universal-zeroclick-installer-PRIVATE-EXPERIMENT
+          run-id: 37815203643
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          path: ${{ runner.temp }}\security-input\candidate
+      - name: Download exact x64 payload
+        uses: actions/download-artifact@v4
+        with:
+          name: bloomstep-windows-x64
+          run-id: 37815203643
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          path: ${{ runner.temp }}\security-input\payload-x64
+      - name: Download exact ARM64 payload
+        uses: actions/download-artifact@v4
+        with:
+          name: bloomstep-windows-arm64
+          run-id: 37815203643
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          path: ${{ runner.temp }}\security-input\payload-arm64
+      - name: Fail closed on unavailable Defender or detections; no execution
+        shell: pwsh
+        run: |
+          & .\tool\verify_installer_security.ps1 -CandidateDir "${{ runner.temp }}\security-input" -EvidenceDir "${{ runner.temp }}\security-evidence"
+      - name: Preserve security capability and scan receipt even on failure
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: withdrawn-installer-defender-receipt-NOT-ACCEPTANCE
+          path: ${{ runner.temp }}\security-evidence
+          if-no-files-found: warn

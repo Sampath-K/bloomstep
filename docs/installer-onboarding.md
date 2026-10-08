@@ -1,5 +1,33 @@
 # Installer and customer onboarding contract
 
+## WITHDRAWN: Defender-blocked private candidate
+
+On 9 October 2026 Windows Defender reported the severe threat
+`Behavior:Win32/DefenseEvasion.A!ml` and successfully quarantined private
+zero-click candidate SHA-256
+`b58ba7fc3f39d66c7d3afc9022cbbeec2036fb58c0677940e20f1b036e4e2be5`
+from source `3cd29f0b635e5fdce2a2f9ade939024416216401`, artifact
+`11568545878` in run `37815203643`.
+
+**Do not download, restore, distribute, or run this candidate.** This is a
+malware/behavior detection, not an unknown-reputation warning. Do not use
+Keep anyway, Run anyway, exclusions, protection changes, or quarantine
+restoration. It is not established as a false positive.
+
+Defender attributed events to an Inno temporary installer process before
+quarantine; partial-install state is unknown. The presence of an existing
+installed executable/protocol is not evidence that the attempted installation
+completed. Preserve existing customer installation and data; no cleanup,
+uninstall, or retry on that machine is authorized by this incident.
+
+Earlier installation-only CI and hash consistency do not establish a clean
+security outcome. A disposable hosted security gate scans the exact candidate
+and payloads only when Defender protection is enabled, preserving its versions,
+scan outcome and detections. Missing protection or detections fail closed.
+Even a clean static scan does not override the observed local behavior
+quarantine or establish non-elevated launch acceptance. No vendor sample
+submission or third-party binary upload is authorized.
+
 ## Active one-click and zero-click source increment (not yet released)
 
 Zero-click is the user-selected preferred private candidate. One-click is retained
