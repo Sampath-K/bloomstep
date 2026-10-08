@@ -10,6 +10,7 @@ import 'package:url_launcher/url_launcher.dart';
 import '../../core/garden_store.dart';
 import '../../core/models.dart';
 import '../../core/rules.dart';
+import '../../core/weekly_garden_story.dart';
 import '../../services/identity.dart';
 import '../../services/sync_service.dart';
 import '../../services/desktop_reminders.dart';
@@ -285,7 +286,7 @@ class _GardenScreenState extends State<GardenScreen> {
     try {
       final data = await widget.store.habits();
       final reduce = await widget.store.setting('reducedMotion') == 'true';
-      final weekly = await widget.store.weeklyReflectionDue();
+      final weekly = await widget.store.weeklyGardenStoryDue();
       final dates = <String, DateTime?>{};
       final paused = <String>{};
       for (final habit in data) {
@@ -629,7 +630,17 @@ class _GardenScreenState extends State<GardenScreen> {
   }
 
   Future<void> _weeklyReflection(Habit habit) async {
-    final recommendation = await widget.store.weeklyRecommendation(habit.id);
+    late final WeeklyHabitStory selectedStory;
+    late final WeeklyGardenStory story;
+    try {
+      story = await widget.store.weeklyGardenStory();
+      selectedStory = story.habits.singleWhere((entry) => entry.id == habit.id);
+    } catch (e) {
+      if (mounted) {
+        setState(() => error = 'The weekly garden story could not be read: $e');
+      }
+      return;
+    }
     if (!mounted) return;
     final choice = await showDialog<String>(
       context: context,
@@ -642,16 +653,40 @@ class _GardenScreenState extends State<GardenScreen> {
               mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
+                Text(
+                  'Local week: ${story.weekStart} through ${story.through}',
+                  style: Theme.of(context).textTheme.titleSmall,
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  '${story.practiceDays} ${story.practiceDays == 1 ? 'tiny step' : 'tiny steps'} across '
+                  '${story.habits.length} ${story.habits.length == 1 ? 'habit' : 'habits'}. '
+                  '${story.evergreenCount} ${story.evergreenCount == 1 ? 'habit is' : 'habits are'} in your evergreen Grove.',
+                ),
+                const SizedBox(height: 12),
+                for (final entry in story.habits)
+                  Padding(
+                    padding: const EdgeInsets.only(bottom: 8),
+                    child: Text(
+                      '${entry.aspiration}: ${entry.practiceDays} practice '
+                      '${entry.practiceDays == 1 ? 'day' : 'days'} · ${entry.species} · '
+                      '${entry.isEvergreen ? 'Evergreen Grove' : entry.stage.name}',
+                    ),
+                  ),
+                const SizedBox(height: 12),
                 Text(habit.recipe),
                 const SizedBox(height: 12),
                 const Text(
                   'Under 60 seconds: What made starting easier this week? Does your anchor happen reliably? Does your celebration feel good?',
                 ),
                 const SizedBox(height: 12),
-                Text(recommendation),
+                Text('An optional next step for ${habit.aspiration}:'),
+                const SizedBox(height: 4),
+                Text(selectedStory.suggestion),
                 const SizedBox(height: 12),
                 const Text(
-                  'Recipe Doctor uses your recorded reasons from the last seven days, not AI. You choose whether to change anything. This does not change your naturalness score or graduation criteria.',
+                  'The suggestion is deterministic and uses only saved reasons from this local week; no AI or analytics event is involved. '
+                  'Opening this recap does not sync data. Your garden remains under its existing account sync and export settings.',
                 ),
               ],
             ),
@@ -674,16 +709,31 @@ class _GardenScreenState extends State<GardenScreen> {
       ),
     );
     if (choice == null) return;
-    await _act(() => widget.store.completeWeeklyReflection(habit.id));
-    if (choice == 'edit' && error == null && mounted && await _edit(habit)) {
-      await widget.store.track(
-        'recipe_doctor_applied',
-        properties: {
-          'habitId': habit.id,
-          'localDay': localDate(_now()),
-          'platform': GardenStore.telemetryPlatform,
-        },
-      );
+    if (!await _markWeeklyGardenStorySeen(habit.id)) return;
+    if (choice == 'edit' && mounted) {
+      await _edit(habit);
+    }
+  }
+
+  Future<bool> _markWeeklyGardenStorySeen(String habitId) async {
+    if (working) return false;
+    setState(() {
+      working = true;
+      error = null;
+    });
+    try {
+      await widget.store.markWeeklyGardenStorySeen(habitId);
+      await _load();
+      return mounted && error == null;
+    } catch (e) {
+      if (mounted) {
+        setState(
+          () => error = 'The weekly garden story could not be saved: $e',
+        );
+      }
+      return false;
+    } finally {
+      if (mounted) setState(() => working = false);
     }
   }
 
