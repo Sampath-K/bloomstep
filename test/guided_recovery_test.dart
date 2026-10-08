@@ -1,11 +1,13 @@
 import 'dart:io';
 import 'dart:ui' as ui;
 
+import 'package:bloomstep/app/theme.dart';
 import 'package:bloomstep/core/garden_store.dart';
 import 'package:bloomstep/core/models.dart';
 import 'package:bloomstep/features/garden/garden_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:path/path.dart' as p;
 import 'package:sqflite_common_ffi/sqflite_ffi.dart';
@@ -39,6 +41,18 @@ void main() {
       addTearDown(() => tester.runAsync(store.close));
       await tester.binding.setSurfaceSize(const Size(400, 900));
       addTearDown(() => tester.binding.setSurfaceSize(null));
+      await (FontLoader(
+        'MaterialIcons',
+      )..addFont(rootBundle.load('fonts/MaterialIcons-Regular.otf'))).load();
+      if (Platform.isWindows) {
+        await tester.runAsync(() async {
+          final font = await File(r'C:\Windows\Fonts\segoeui.ttf')
+              .readAsBytes();
+          await (FontLoader(
+            'Segoe UI',
+          )..addFont(Future.value(ByteData.sublistView(font)))).load();
+        });
+      }
       final habit = (await tester.runAsync(() => plant(store)))!;
       await tester.runAsync(
         () =>
@@ -49,6 +63,8 @@ void main() {
       final boundaryKey = GlobalKey();
       await tester.pumpWidget(
         MaterialApp(
+          debugShowCheckedModeBanner: false,
+          theme: BloomstepTheme.light(),
           home: MediaQuery(
             data: MediaQueryData(
               disableAnimations: true,
