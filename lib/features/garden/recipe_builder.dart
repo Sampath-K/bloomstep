@@ -46,9 +46,10 @@ class PlantedRecipeDialog extends StatelessWidget {
           children: [
             Center(
               child: SizedBox(
-                width: 180,
-                height: 150,
-                child: Center(
+                width: 192,
+                height: 192,
+                child: Align(
+                  alignment: Alignment.bottomCenter,
                   child: Transform.scale(
                     scale: 2,
                     alignment: Alignment.bottomCenter,
