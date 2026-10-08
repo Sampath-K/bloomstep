@@ -9,7 +9,7 @@ import { fileURLToPath } from 'node:url';
 const read = path => readFileSync(new URL(`../${path}`, import.meta.url), 'utf8');
 test('welcome auto-advances to destination, the sole preinstall decision, and Install commits with native Browse/error/cancel', () => {
   const setup = read('packaging/bloomstep.iss');
-  assert.match(setup, /#if InstallFlow == "zeroclick"[\s\S]*DisableWelcomePage=yes[\s\S]*#else[\s\S]*DisableWelcomePage=no/);
+  assert.match(setup, /DisableWelcomePage=no\s+#if InstallFlow == "zeroclick"\s+DisableDirPage=yes/);
   assert.match(setup, /DisableReadyPage=yes/);
   assert.match(setup, /DisableFinishedPage=yes/);
   assert.match(setup, /DisableDirPage=no/);

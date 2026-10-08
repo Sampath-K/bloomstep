@@ -10,7 +10,11 @@ function GetTickCount64(): Int64;
   external 'GetTickCount64@kernel32.dll stdcall';
 
 const
+#if InstallFlow == "zeroclick"
+  WelcomeAdvanceMilliseconds = 0;
+#else
   WelcomeAdvanceMilliseconds = 4000;
+#endif
   ZeroClickVisualMilliseconds = 5000;
 
 type
@@ -192,12 +196,10 @@ begin
   StepWords[2] := 'Celebrate';
   ExtractTemporaryFile('welcome-steps.bmp');
   ExtractTemporaryFile('welcome-garden.bmp');
-#if InstallFlow != "zeroclick"
   WizardForm.WizardBitmapImage.Visible := False;
   WizardForm.WelcomeLabel1.Visible := False;
   WizardForm.WelcomeLabel2.Visible := False;
   BuildVisual(0, WizardForm.WelcomePage, ScaleY(24), WizardForm.WelcomePage.Height - ScaleY(36));
-#endif
   WizardForm.FilenameLabel.Visible := False;
   Top := WizardForm.ProgressGauge.Top + WizardForm.ProgressGauge.Height + ScaleY(10);
   BuildVisual(1, WizardForm.InstallingPage, Top, WizardForm.InstallingPage.Height - Top - ScaleY(4));

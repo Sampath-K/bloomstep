@@ -61,11 +61,11 @@ OutputBaseFilename=Bloomstep-{#AppVersion}-windows-{#AppArch}-setup
 Compression=lzma2
 SolidCompression=yes
 WizardStyle=modern
+; Interactive Inno Setup always shows one pre-install page; it carries the Bloomstep visual in both flows.
+DisableWelcomePage=no
 #if InstallFlow == "zeroclick"
-DisableWelcomePage=yes
 DisableDirPage=yes
 #else
-DisableWelcomePage=no
 DisableDirPage=no
 #endif
 DisableReadyPage=yes

@@ -12,7 +12,9 @@ test('one source compiles exactly two flows: one-click default and zero-click ex
   const source = setup();
   assert.match(source, /#ifndef InstallFlow\s+#define InstallFlow "oneclick"\s+#endif/);
   assert.match(source, /#if InstallFlow != "oneclick" && InstallFlow != "zeroclick"\s+#error/);
-  assert.match(source, /#if InstallFlow == "zeroclick"\s+DisableWelcomePage=yes\s+DisableDirPage=yes\s+#else\s+DisableWelcomePage=no\s+DisableDirPage=no\s+#endif/);
+  // Inno always shows one pre-install page when not silent; zero-click owns it as the visual and never shows a generic welcome.
+  assert.match(source, /DisableWelcomePage=no\s+#if InstallFlow == "zeroclick"\s+DisableDirPage=yes\s+#else\s+DisableDirPage=no\s+#endif/);
+  assert.doesNotMatch(source, /DisableWelcomePage=yes/);
   assert.match(source, /DisableReadyPage=yes/);
   assert.match(source, /DisableFinishedPage=yes/);
   assert.match(source, /DisableProgramGroupPage=yes/);
@@ -69,8 +71,12 @@ test('one visual says only Anchor, Action and Celebrate, with accessible native 
 
 test('welcome auto-advances after 4s even with reduced motion; zero-click holds one visual about 5s while installing', () => {
   const progress = visual();
-  assert.match(progress, /WelcomeAdvanceMilliseconds = 4000;/);
+  assert.match(progress, /#if InstallFlow == "zeroclick"\s+WelcomeAdvanceMilliseconds = 0;\s+#else\s+WelcomeAdvanceMilliseconds = 4000;\s+#endif/);
   assert.match(progress, /ZeroClickVisualMilliseconds = 5000;/);
+  const init = /procedure InitializeInstallMotion\(\);([\s\S]*?)\nend;/.exec(progress)?.[1];
+  assert.ok(init);
+  assert.doesNotMatch(init, /#if/, 'both flows build the welcome visual; the timer must never touch unbuilt art');
+  assert.match(init, /WelcomeLabel1\.Visible := False[\s\S]*BuildVisual\(0, WizardForm\.WelcomePage/);
   assert.match(progress, /WizardForm\.NextButton\.OnClick\(WizardForm\.NextButton\)/);
   assert.match(progress, /CurPageID = wpWelcome[\s\S]*NextButton\.Visible := False[\s\S]*BackButton\.Visible := False/);
   assert.doesNotMatch(progress, /CancelButton\.Visible := False|CancelButton\.Enabled := False/);

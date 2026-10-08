@@ -25,7 +25,9 @@ Bloomstep as the original, non-elevated installing user (`ExecAsOriginalUser`).
 same visual while installing to the default per-user folder with no pages and
 no clicks; the visual is held until about 5 seconds have passed (a requested
 brand hold, not install work), then Bloomstep opens. Upgrades reuse the
-previous folder.
+previous folder. Interactive Inno Setup always shows one pre-install page; the
+zero-click build puts the same visual on it and advances on the first timer
+tick without a click, so the generic Inno welcome text never appears.
 
 What Windows still forces regardless of the variant:
 

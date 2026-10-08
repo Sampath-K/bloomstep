@@ -151,7 +151,19 @@ try {
         continue
       }
       if ($text.Contains('Select Destination Location')) { throw 'Zero-click must not show a destination page.' }
+      if ($text -match 'Setup Wizard|Click Next') {
+        Save-CaptureFrame $window 'unexpected-generic-welcome.png' | Out-Null
+        throw 'Zero-click showed the generic Inno welcome instead of the Bloomstep visual.'
+      }
       if (-not $words) { continue }
+      if (-not $committed -and -not $text.Contains('Installing')) {
+        # Inno's mandatory pre-install page carries the same visual and advances on the first timer tick.
+        if ($null -eq $report.zeroClickPreInstallFrame) {
+          $report.zeroClickPreInstallFrame = Save-CaptureFrame $window 'actual-preinstall-visual.png'
+          $report.zeroClickPreInstallFrame.elapsedMilliseconds = $now
+        }
+        continue
+      }
       if (-not $committed) {
         $committed = $true
         $installStartedAt = $now
@@ -191,6 +203,9 @@ try {
     $hold = [regex]::Match($body, 'Bloomstep zero-click visual held until (\d+) ms')
     if (-not $hold.Success -or [int]$hold.Groups[1].Value -lt 5000) { throw 'Zero-click visual hold log missing or short.' }
     $report.visualHoldMilliseconds = [int]$hold.Groups[1].Value
+    $advance = [regex]::Match($body, 'Bloomstep welcome auto-advanced after (\d+) ms')
+    if (-not $advance.Success -or [int]$advance.Groups[1].Value -gt 1000) { throw 'Zero-click pre-install visual did not advance on its own promptly.' }
+    $report.zeroClickPreInstallAdvanceMilliseconds = [int]$advance.Groups[1].Value
   }
   if ($body.Contains('Bloomstep automatic launch started')) {
     throw 'Suppressed/elevated CI host must withhold automatic launch.'
