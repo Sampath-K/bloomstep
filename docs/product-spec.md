@@ -48,7 +48,8 @@ The "Plant a habit" button remains available for later visits and subsequent hab
 Anchor, Action and Celebration each have an always-visible custom text field
 alongside suggestions, with the existing 200-character limit and trimmed,
 nonempty validation. Keyboard Next/Done and Back preserve the current choices;
-Cancel saves nothing. Optional aspiration/species and celebration practice stay
+labels stay above typed values even during focus/value transitions. Cancel saves
+nothing. Optional aspiration/species and celebration practice stay
 optional. A successful SQLite save supplies the actual saved habit to "Your seed
 is planted", which shows a 1.4-second seed-to-sprout growth preview. It never
 changes the saved seed stage, blocks continuation, or appears on save failure.

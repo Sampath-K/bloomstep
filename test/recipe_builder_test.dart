@@ -114,6 +114,7 @@ void main() {
         tester.widget<TextFormField>(action).controller!.text,
         '  stretch one finger  ',
       );
+
       await tester.tap(find.text('Back'));
       await tester.pumpAndSettle();
       expect(
@@ -148,6 +149,69 @@ void main() {
       expect(saved?.templateCategory, isNull);
     },
   );
+
+  for (final variant in [
+    (name: 'desktop', size: const Size(1200, 920), scale: 1.0),
+    (name: 'compact', size: const Size(420, 820), scale: 1.0),
+    (name: 'large text', size: const Size(420, 820), scale: 1.5),
+  ]) {
+    testWidgets('custom labels never overlap typed values (${variant.name})', (
+      tester,
+    ) async {
+      await tester.binding.setSurfaceSize(variant.size);
+      addTearDown(() => tester.binding.setSurfaceSize(null));
+      await openBuilder(tester, textScale: variant.scale);
+      for (final input in [
+        (
+          key: 'custom-anchor',
+          label: 'After I...',
+          value: 'put my cup away',
+          next: 'Choose a tiny action',
+        ),
+        (
+          key: 'custom-action',
+          label: 'I will...',
+          value: 'stretch one finger',
+          next: 'Choose a celebration',
+        ),
+        (
+          key: 'custom-celebration',
+          label: 'Then I celebrate by...',
+          value: 'whisper well done',
+          next: 'Cancel',
+        ),
+      ]) {
+        final field = find.byKey(ValueKey(input.key));
+        await tester.ensureVisible(field);
+        await tester.enterText(field, input.value);
+        for (final duration in [
+          Duration.zero,
+          const Duration(milliseconds: 75),
+          const Duration(milliseconds: 300),
+        ]) {
+          await tester.pump(duration);
+          final label = find.descendant(
+            of: field,
+            matching: find.text(input.label),
+          );
+          final editor = find.descendant(
+            of: field,
+            matching: find.byType(EditableText),
+          );
+          expect(
+            tester.getRect(label).bottom,
+            lessThanOrEqualTo(tester.getRect(editor).top),
+            reason:
+                '${input.label} must stay above text, including transitions',
+          );
+          expect(tester.takeException(), isNull);
+        }
+        await tester.tap(find.text(input.next));
+        await tester.pumpAndSettle();
+      }
+      expect(find.byType(RecipeBuilder), findsNothing);
+    });
+  }
 
   testWidgets(
     'Back retains choices and an incomplete recipe explains its disabled action',
