@@ -44,6 +44,10 @@ class GardenScreen extends StatefulWidget {
     this.installerMeasurement,
     this.testExportPathSelector,
     this.clock,
+    this.deviceGuest = false,
+    this.testDisableServices = false,
+    this.profileBuilder,
+    this.onSignedOut,
   });
   final GardenStore store;
   final IdentityService? identity;
@@ -56,6 +60,11 @@ class GardenScreen extends StatefulWidget {
   final InstallerMeasurement? installerMeasurement;
   final Future<String?> Function()? testExportPathSelector;
   final DateTime Function()? clock;
+  final bool deviceGuest;
+  final bool testDisableServices;
+  final Widget Function(Future<void> Function() signOut, VoidCallback manage)?
+  profileBuilder;
+  final Future<void> Function(String? warning)? onSignedOut;
   @override
   State<GardenScreen> createState() => _GardenScreenState();
 }
@@ -88,16 +97,19 @@ class _GardenScreenState extends State<GardenScreen> {
   void initState() {
     super.initState();
     if (!_testBuild &&
-        (widget.clock != null || widget.testExportPathSelector != null)) {
+        (widget.clock != null ||
+            widget.testExportPathSelector != null ||
+            widget.testDisableServices)) {
       throw StateError(
         'Test-only garden adapters are unavailable in release builds.',
       );
     }
-    invitations =
-        widget.invitationService ??
-        (widget.identity == null
-            ? null
-            : InvitationService(widget.store, identity: widget.identity));
+    invitations = widget.testDisableServices
+        ? null
+        : widget.invitationService ??
+              (widget.identity == null
+                  ? null
+                  : InvitationService(widget.store, identity: widget.identity));
     widget.invitationInbox?.addListener(_inboxChanged);
     _inboxChanged();
     if (invitations != null) unawaited(_loadInvitationCache());
@@ -105,7 +117,8 @@ class _GardenScreenState extends State<GardenScreen> {
       if (mounted) unawaited(_foregroundOpening());
     });
     _load();
-    if (widget.identity != null || widget.reminderGateway != null) {
+    if (!widget.testDisableServices &&
+        (widget.identity != null || widget.reminderGateway != null)) {
       reminders = DesktopReminders(widget.store, _load, (message) {
         if (mounted) setState(() => error = message);
       }, gateway: widget.reminderGateway);
@@ -114,7 +127,7 @@ class _GardenScreenState extends State<GardenScreen> {
       });
       _refreshConfig();
     }
-    if (widget.identity != null) {
+    if (widget.identity != null && !widget.testDisableServices) {
       _sync();
       syncTimer = Timer.periodic(const Duration(minutes: 5), (_) => _sync());
     }
@@ -1080,20 +1093,25 @@ class _GardenScreenState extends State<GardenScreen> {
                       'Off by default. Counts, up to 10 observed Dart/Flutter errors and 10 account-session/token attempts per session; fixed stage/outcome/category and elapsed time only. No message/stack, credentials, habit text, email or feedback. Pre-sign-in failures and provider choice are not captured. Native/process deaths are not captured; no crash-free claim. Turning off clears local queued events; previously synced events follow account deletion and retention rules.',
                     ),
                     value: analytics,
-                    onChanged: (v) async {
-                      await _act(() async {
-                        await widget.store.setSetting('analytics', '$v');
-                        await widget.diagnostics?.consentChanged();
-                        if (!v) await widget.installerMeasurement?.clear();
-                      });
-                      analytics =
-                          await widget.store.setting('analytics') == 'true';
-                      reminderObservation = await widget.store
-                          .reminderObservationOptedIn();
-                      if (context.mounted) {
-                        update(() => analyticsWarning = error);
-                      }
-                    },
+                    onChanged: widget.deviceGuest
+                        ? null
+                        : (v) async {
+                            await _act(() async {
+                              await widget.store.setSetting('analytics', '$v');
+                              await widget.diagnostics?.consentChanged();
+                              if (!v) {
+                                await widget.installerMeasurement?.clear();
+                              }
+                            });
+                            analytics =
+                                await widget.store.setting('analytics') ==
+                                'true';
+                            reminderObservation = await widget.store
+                                .reminderObservationOptedIn();
+                            if (context.mounted) {
+                              update(() => analyticsWarning = error);
+                            }
+                          },
                   ),
                   if (analyticsWarning != null)
                     SelectableText('Product-event choice: $analyticsWarning'),
@@ -1323,46 +1341,14 @@ class _GardenScreenState extends State<GardenScreen> {
                         });
                         if (context.mounted && mounted && error == null) {
                           Navigator.pop(context);
-                          Navigator.pop(this.context);
+                          if (widget.onSignedOut != null) {
+                            await widget.onSignedOut!(null);
+                          } else if (mounted) {
+                            Navigator.of(this.context)
+                                .popUntil((route) => route.isFirst);
+                          }
                         } else {
                           closing = false;
-                        }
-                      },
-                    ),
-                  if (widget.identity != null)
-                    ListTile(
-                      title: const Text('Sign out'),
-                      subtitle: const Text(
-                        'Clears this account garden from this device. Export any unsynced work first.',
-                      ),
-                      leading: const Icon(Icons.logout),
-                      onTap: () async {
-                        if (!await _confirm(
-                          'Sign out?',
-                          'Unsynced data will be removed from this device. Export it first if needed.',
-                          'Sign out',
-                        )) {
-                          return;
-                        }
-                        await _act(() async {
-                          closing = true;
-                          while (syncing) {
-                            await Future<void>.delayed(
-                              const Duration(milliseconds: 50),
-                            );
-                          }
-                          await reminders?.disable(explicitChoice: false);
-                          await widget.store.deleteLocalAccount();
-                          if (pendingInvitation != null) {
-                            await _clearCurrentInvitation(
-                              pendingInvitation!.code,
-                            );
-                          }
-                          await widget.identity!.signOut();
-                        });
-                        if (context.mounted && mounted && error == null) {
-                          Navigator.pop(context);
-                          Navigator.pop(this.context);
                         }
                       },
                     ),
@@ -1385,6 +1371,54 @@ class _GardenScreenState extends State<GardenScreen> {
         ),
       ),
     );
+  }
+
+  Future<void> _signOut() async {
+    if (working || closing || widget.identity == null) return;
+    if (!await _confirm(
+      'Sign out?',
+      'Unsynced account data will be removed from this device. Export it in Settings first if needed. Your separate device garden is unchanged.',
+      'Sign out',
+    )) {
+      return;
+    }
+    if (!mounted) return;
+    setState(() {
+      working = true;
+      closing = true;
+      error = null;
+    });
+    syncTimer?.cancel();
+    String? warning;
+    try {
+      while (syncing) {
+        await Future<void>.delayed(const Duration(milliseconds: 50));
+      }
+      await reminders?.disable(explicitChoice: false);
+      await widget.store.deleteLocalAccount();
+      if (pendingInvitation != null) {
+        await _clearCurrentInvitation(pendingInvitation!.code);
+      }
+      try {
+        await widget.identity!.signOut();
+      } catch (e) {
+        warning =
+            'Signed out of this session, but saved authentication could not be cleared: $e. Try again before sharing this device.';
+      }
+      if (widget.onSignedOut != null) {
+        await widget.onSignedOut!(warning);
+      } else if (mounted) {
+        Navigator.of(context).popUntil((route) => route.isFirst);
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          error = 'Sign-out cleanup did not complete: $e';
+          working = false;
+          closing = false;
+        });
+      }
+    }
   }
 
   Future<void> _checkUpdates() async {
@@ -1503,6 +1537,7 @@ class _GardenScreenState extends State<GardenScreen> {
     final theme = Theme.of(context);
     return Scaffold(
       appBar: AppBar(
+        automaticallyImplyLeading: false,
         title: const Text('Bloomstep'),
         actions: [
           IconButton(
@@ -1515,11 +1550,12 @@ class _GardenScreenState extends State<GardenScreen> {
             onPressed: working ? null : _voice,
             icon: const Icon(Icons.chat_bubble_outline),
           ),
-          IconButton(
-            tooltip: 'Settings and privacy',
-            onPressed: working ? null : _settings,
-            icon: const Icon(Icons.settings_outlined),
-          ),
+          if (widget.profileBuilder == null)
+            IconButton(
+              tooltip: 'Settings and privacy',
+              onPressed: working ? null : _settings,
+              icon: const Icon(Icons.settings_outlined),
+            ),
         ],
       ),
       body: loading
@@ -1532,6 +1568,12 @@ class _GardenScreenState extends State<GardenScreen> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
+                      if (widget.profileBuilder != null) ...[
+                        widget.profileBuilder!(_signOut, () {
+                          if (!working && !closing) unawaited(_settings());
+                        }),
+                        const SizedBox(height: 16),
+                      ],
                       Text(
                         'A little is enough.',
                         style: theme.textTheme.displaySmall,

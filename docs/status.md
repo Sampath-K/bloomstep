@@ -462,7 +462,9 @@ identified PIDs gracefully, never kill a process name.
 Developer Mode stays **off by user choice**. Use GitHub CI ARM64 builds, download
 artifacts and launch locally. A separate CI-only `tool/preview.dart` profile target
 is labeled synthetic, uses its own temporary SQLite store and never authenticates,
-syncs, or enters release installers. Normal `lib/main.dart` is always sign-in gated.
+syncs, or enters release installers. The habit-first profile branch replaces the
+normal sign-in gate with a separate device-only guest garden (no sync/analytics);
+account gardens still require a valid provider session. This is not fake login.
 The preview rejects release mode. Native captures use its Flutter repaint boundary,
 not desktop capture, so other applications and login screens cannot leak.
 

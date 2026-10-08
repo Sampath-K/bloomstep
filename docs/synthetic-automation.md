@@ -151,8 +151,10 @@ population inputs.
 
 The current production path emits `session_started` and fresh verified
 `signin_succeeded` through `SessionEvents` only under existing analytics consent.
-Restored sessions do not manufacture fresh sign-in successes. Optional installer
-`signin_view` observation has its own consent boundary. `SessionDiagnostics`
+Restored sessions do not manufacture fresh sign-in successes. The habit-first
+profile no longer emits the obsolete separate-screen installer `signin_view`
+observation; historical receipts retain their original consent boundary. Device
+gardens have no analytics or session observations. `SessionDiagnostics`
 records consented, capped error-kind/source/session metadata without exception
 text or stacks; it is not a provider-stage collector. Latest main `4513438`
 adds guarded, account-consented session-entry/API-token observations through

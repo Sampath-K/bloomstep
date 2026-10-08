@@ -47,9 +47,16 @@ class _SessionBoundaryState extends State<SessionBoundary>
       if (!_checkpointing && widget.onCheckpoint != null) {
         unawaited(_checkpoint());
       }
+
       return;
     }
     _reject();
+  }
+
+  @override
+  void didUpdateWidget(SessionBoundary oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    _check();
   }
 
   Future<void> _checkpoint() async {
