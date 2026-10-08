@@ -98,7 +98,7 @@ void main() {
         find.byKey(const ValueKey('custom-anchor')),
         'put my synthetic mug down',
       );
-      await tester.pump();
+      await tester.pumpAndSettle();
       await capture('1-custom-anchor-SYNTHETIC');
       await tester.ensureVisible(find.text('pour my morning drink'));
       await tester.tap(find.text('pour my morning drink'));
@@ -108,7 +108,7 @@ void main() {
         find.byKey(const ValueKey('custom-action')),
         'stretch one synthetic finger',
       );
-      await tester.pump();
+      await tester.pumpAndSettle();
       await capture('2-custom-action-SYNTHETIC');
       await tester.ensureVisible(find.text('take one slow breath'));
       await tester.tap(find.text('take one slow breath'));
@@ -118,7 +118,7 @@ void main() {
         find.byKey(const ValueKey('custom-celebration')),
         'say a quiet synthetic hooray',
       );
-      await tester.pump();
+      await tester.pumpAndSettle();
       await capture('3-custom-celebration-SYNTHETIC');
       await tester.ensureVisible(find.text('relax my shoulders and smile'));
       await tester.tap(find.text('relax my shoulders and smile'));

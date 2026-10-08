@@ -395,6 +395,7 @@ class _RecipeBuilderState extends State<RecipeBuilder> {
                     : TextInputAction.done,
                 decoration: InputDecoration(
                   labelText: labels[step],
+                  floatingLabelBehavior: FloatingLabelBehavior.always,
                   hintText: 'Type your own or choose a suggestion below',
                 ),
                 onFieldSubmitted: (_) => _next(),
