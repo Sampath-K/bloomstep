@@ -55,6 +55,29 @@ is planted", which shows a 1.4-second seed-to-sprout growth preview. It never
 changes the saved seed stage, blocks continuation, or appears on save failure.
 App or platform reduced motion uses a static sprout with semantic success feedback.
 
+### Optional recovery after an explicit rest check-in
+
+An active habit may show one passive, same-day recovery suggestion only after
+the user explicitly records "Not today" and selects a reason. The suggestion
+uses the existing local Recipe Doctor copy and offers the existing editable
+recipe flow; it never changes a recipe unless the user saves it. The current
+check-in reason comes from the latest effective row for that habit, local day,
+and active garden owner. No new schema, analytics, account linking, or
+notification is introduced.
+
+| Situation | Behavior |
+| --- | --- |
+| First run, empty garden | No recovery suggestion; first-habit invitation and planting remain unchanged. |
+| Returning user, no check-in, or a quiet/missed day | Do not infer a miss or show recovery content. |
+| Active habit marked "Not today" with an explicit reason | Show one optional, non-shaming reason-specific idea and an accessible "Adjust my recipe" action. Ignore is always valid. |
+| "Not today" with "No reason needed", or canceled reason dialog | Keep the ordinary rest/no-change behavior; show no inferred advice and save nothing on cancel. |
+| "Did it", "Did more", or graduated habit | Keep existing check-in/celebration behavior; show no recovery suggestion. |
+| Reopen on the same local day | Reconstruct the same single suggestion from the durable owner-scoped check-in; no duplicate prompt or event. A new day hides it; Undo removes it. |
+| Check-in save fails | Surface the existing error; keep the previous state and do not reveal a recovery suggestion. |
+| Recipe edit save fails | Surface the existing error; keep the previous recipe and leave the optional suggestion available. |
+| Guest/account switch | Read only the active garden's records. No reason or suggestion crosses owners. |
+| Keyboard, screen reader, large text, reduced motion | Keep the suggestion inline and motion-free, with readable text and a labeled, operable edit button. |
+
 ## Outcome and trust
 
 Help people make one tiny behavior natural and eventually graduate it. The north

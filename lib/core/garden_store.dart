@@ -617,6 +617,7 @@ class GardenStore {
           today: today.isEmpty
               ? null
               : CheckInResult.values.byName(today.single['result'] as String),
+          todayReason: today.isEmpty ? null : today.single['reason'] as String?,
           lastReason: reasons.isEmpty
               ? null
               : reasons.last['reason'] as String?,

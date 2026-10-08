@@ -264,14 +264,15 @@ jobs:
         env:
           BLOOMSTEP_SCREENSHOTS: ${{ runner.temp }}/bloomstep-profile-evidence
         run: flutter test --reporter expanded --concurrency 1 --timeout 60s --dart-define=BLOOMSTEP_TEST_BUILD=true
-      - name: Preserve profile UI evidence (synthetic identity, not provider acceptance)
+      - name: Preserve profile and recovery UI evidence (synthetic, not provider acceptance)
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: profile-ui-synthetic-evidence-${{ matrix.arch }}
+          name: profile-and-recovery-ui-synthetic-evidence-${{ matrix.arch }}
           path: |
             ${{ runner.temp }}/bloomstep-profile-evidence/profile-*.png
             ${{ runner.temp }}/bloomstep-profile-evidence/picker-*.png
+            ${{ runner.temp }}/bloomstep-profile-evidence/recovery-*.png
           if-no-files-found: error
       - name: Verify production-mode test-auth and adapter gates
         run: flutter test test/test_auth_release_contract_test.dart --reporter expanded --concurrency 1 --timeout 60s

@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import 'package:bloomstep/core/garden_store.dart';
 import 'package:bloomstep/core/models.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -88,6 +90,78 @@ void main() {
     await store.switchAccount('account-a');
     expect((await store.habits()).single.id, habit.id);
   });
+
+  test(
+    'current-day recovery reason survives reopen and stays local to its owner',
+    () async {
+      final root = await Directory.systemTemp.createTemp('bloomstep-recovery-');
+      addTearDown(() => root.delete(recursive: true));
+      final path = '${root.path}${Platform.pathSeparator}garden.sqlite';
+      final date = DateTime(2026, 10, 4, 12);
+      GardenStore? persistent;
+      addTearDown(() async => persistent?.close());
+      final initial = await GardenStore.open(
+        path,
+        'account-a',
+        clock: () => date,
+      );
+      persistent = initial;
+      final habit = await initial.plant(
+        aspiration: 'Calm',
+        anchor: 'pour my coffee',
+        behavior: 'take one slow breath',
+        celebration: 'smile',
+        species: 'Cosmos',
+      );
+      await initial.checkIn(
+        habit.id,
+        CheckInResult.notToday,
+        reason: 'too hard',
+        now: date,
+      );
+      await initial.checkIn(
+        habit.id,
+        CheckInResult.notToday,
+        reason: 'anchor',
+        now: date,
+      );
+      final eventCount = await initial.eventCount();
+      await initial.checkIn(
+        habit.id,
+        CheckInResult.notToday,
+        reason: 'anchor',
+        now: date,
+      );
+      expect(await initial.eventCount(), eventCount);
+      expect((await initial.habits(now: date)).single.todayReason, 'anchor');
+      expect(
+        (await initial.habits(now: date.add(const Duration(days: 1))))
+            .single
+            .todayReason,
+        isNull,
+      );
+
+      await initial.close();
+      final reopened = await GardenStore.open(
+        path,
+        'account-a',
+        clock: () => date,
+      );
+      persistent = reopened;
+      expect((await reopened.habits(now: date)).single.todayReason, 'anchor');
+      await reopened.switchAccount('account-b');
+      expect(await reopened.habits(now: date), isEmpty);
+      await reopened.switchAccount('account-a');
+      expect((await reopened.habits(now: date)).single.todayReason, 'anchor');
+
+      await reopened.undo(habit.id, now: date);
+      final undone = (await reopened.habits(now: date)).single;
+      expect(undone.today, isNull);
+      expect(undone.todayReason, isNull);
+      expect(undone.practiceCount, 0);
+      expect(undone.stage, GrowthStage.seed);
+    },
+  );
 
   test('export and deletion cover all private local records', () async {
     final habit = await plant();
