@@ -59,7 +59,10 @@ void main() {
         find.textContaining('An optional next step for Calm'),
         findsOneWidget,
       );
-      expect(find.textContaining('no AI or analytics event'), findsOneWidget);
+      expect(
+        find.textContaining('Recipe Doctor is a deterministic suggestion'),
+        findsOneWidget,
+      );
       expect(tester.takeException(), isNull);
 
       await tester.tap(find.text('Keep my recipe'));

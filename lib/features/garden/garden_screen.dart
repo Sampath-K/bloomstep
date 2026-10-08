@@ -685,7 +685,8 @@ class _GardenScreenState extends State<GardenScreen> {
                 Text(selectedStory.suggestion),
                 const SizedBox(height: 12),
                 const Text(
-                  'The suggestion is deterministic and uses only saved reasons from this local week; no AI or analytics event is involved. '
+                  'Recipe Doctor is a deterministic suggestion based on this local week’s saved reasons. '
+                  'It never changes your recipe automatically. '
                   'Opening this recap does not sync data. Your garden remains under its existing account sync and export settings.',
                 ),
               ],
