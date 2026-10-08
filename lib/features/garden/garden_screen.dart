@@ -1982,6 +1982,49 @@ class _GardenScreenState extends State<GardenScreen> {
                                             ),
                                           ],
                                         ),
+                                      if (habit.status != 'graduated' &&
+                                          habit.today ==
+                                              CheckInResult.notToday &&
+                                          habit.todayReason != null) ...[
+                                        const SizedBox(height: 8),
+                                        Container(
+                                          width: double.infinity,
+                                          padding: const EdgeInsets.all(12),
+                                          decoration: BoxDecoration(
+                                            color: theme
+                                                .colorScheme
+                                                .surfaceContainerLow,
+                                            borderRadius: BorderRadius.circular(
+                                              12,
+                                            ),
+                                          ),
+                                          child: Column(
+                                            crossAxisAlignment:
+                                                CrossAxisAlignment.start,
+                                            children: [
+                                              Text(
+                                                'One optional idea: ${recipeDoctor(habit.todayReason!)}',
+                                              ),
+                                              Align(
+                                                alignment: Alignment.centerLeft,
+                                                child: TextButton.icon(
+                                                  onPressed: working
+                                                      ? null
+                                                      : () => unawaited(
+                                                          _edit(habit),
+                                                        ),
+                                                  icon: const Icon(
+                                                    Icons.edit_outlined,
+                                                  ),
+                                                  label: const Text(
+                                                    'Adjust my recipe',
+                                                  ),
+                                                ),
+                                              ),
+                                            ],
+                                          ),
+                                        ),
+                                      ],
                                       if (pausedReminders.contains(
                                         habit.id,
                                       )) ...[
