@@ -30,5 +30,5 @@ account ID, email, provider, token, or record ID.
 | Read/write failure | Do not show fabricated success. Show a visible recap read/save error and leave the seen-week state unchanged when persistence fails. |
 | Reduced motion/accessibility | Recap adds no motion. Growth stage, practice count, Grove membership, date range, and suggestion are ordinary readable text. |
 | Duplicate/corrected records | Resolve to the existing effective record for each habit/local date; only positive `did`/`didMore` dates count, so same-day edits cannot inflate the recap. |
-| Timezone/week boundary | Convert check-in timestamps to local time before assigning their stored date. Use calendar dates (Monday–Sunday), not elapsed 24-hour windows, so week edges remain meaningful across UTC offsets and daylight-saving changes. |
+| Timezone/week boundary | Convert check-in timestamps and habit-state read clocks to local time before assigning or looking up their date, including UTC test clocks. Use calendar dates (Monday–Sunday), not elapsed 24-hour windows, so week edges remain meaningful across UTC offsets and daylight-saving changes. |
 | Export privacy | Keep the new computed summary free of owner/provider identifiers and secrets. The existing export still contains its established raw account-scoped records and warnings. |

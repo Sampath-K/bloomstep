@@ -577,7 +577,7 @@ class GardenStore {
   }
 
   Future<List<Habit>> habits({DateTime? now}) async {
-    final date = now ?? _clock();
+    final date = (now ?? _clock()).toLocal();
     final cutoff = localDate(
       DateTime(
         date.year,

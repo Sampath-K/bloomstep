@@ -13,6 +13,33 @@ Future<Habit> plant(GardenStore store, String aspiration) => store.plant(
 );
 
 void main() {
+  test(
+    'UTC clocks use the same local day for check-ins and habit state',
+    () async {
+      for (final hour in [0, 23]) {
+        final localNow = DateTime(2026, 10, 5, hour, 30);
+        final store = await GardenStore.open(
+          ':memory:',
+          'story-utc-$hour',
+          clock: () => localNow.toUtc(),
+        );
+        addTearDown(store.close);
+        final habit = await plant(store, 'Calm');
+
+        await store.checkIn(habit.id, CheckInResult.didMore);
+
+        final current = (await store.habits()).single;
+        expect(current.today, CheckInResult.didMore);
+        expect(current.recentPractice, 1);
+        expect((await store.weeklyGardenStory()).practiceDays, 1);
+        expect(
+          ((await store.export())['checkins'] as List).single,
+          containsPair('day', localDate(localNow)),
+        );
+      }
+    },
+  );
+
   test('empty recap uses Monday through today in the local calendar', () async {
     final store = await GardenStore.open(':memory:', 'story-empty');
     addTearDown(store.close);
