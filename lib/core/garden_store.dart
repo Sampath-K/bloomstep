@@ -779,7 +779,7 @@ class GardenStore {
         'habits',
         where: 'account = ?',
         whereArgs: [owner],
-        orderBy: 'updated ASC',
+        orderBy: 'id ASC',
       );
       final stories = <WeeklyHabitStory>[];
       for (final row in rows) {

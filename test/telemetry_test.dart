@@ -356,6 +356,10 @@ void main() {
     await store.close();
     store = await GardenStore.open(path, 'legacy');
     expect(await events(store), isEmpty);
+    expect(
+      (await store.weeklyGardenStory(now: DateTime(2026, 10, 4))).habits,
+      isEmpty,
+    );
     final exported = (await store.export())['events'] as List;
     expect(exported, hasLength(4));
     expect(
