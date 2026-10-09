@@ -2,6 +2,7 @@ import { loadOperatorAuth, operatorRequest } from './operator-auth.mjs';
 import { reminderPreferencePanels } from './reminder-panels.mjs';
 import { loadWebsite } from './website-panels.mjs';
 import { loadAarrr } from './aarrr-panels.mjs';
+import { loadExperiments } from './experiment-panels.mjs';
 const groups = [
   ['activationRetention', 'Activation / returning activity', [
     ['signins', 'Sign-ins'], ['recipesCreated', 'Recipes created'],
@@ -467,6 +468,18 @@ function initialize() {
     } finally { element('website-metrics').disabled = false; }
   });
 
+  element('experiment-status').addEventListener('click', async () => {
+    const output = element('experiment-report'), expStatus = element('experiment-admin-status');
+    output.replaceChildren(); expStatus.textContent = 'Loading private experiment status...';
+    element('experiment-status').disabled = true;
+    try {
+      await loadExperiments(output, request);
+      expStatus.textContent = 'Visit-level page tests only; separate from account AARRR and website event counts. No live efficacy claim.';
+    } catch (error) {
+      output.replaceChildren();
+      expStatus.textContent = `Experiment status unavailable: ${error.message} No substitute status displayed.`;
+    } finally { element('experiment-status').disabled = false; }
+  });
   function clear() {
     for (const controller of pending) controller.abort();
     ++sessionGeneration;
@@ -474,6 +487,7 @@ function initialize() {
     panel.replaceChildren(); element('measurement').replaceChildren();
     element('aarrr-report').replaceChildren();
     element('website-funnel').replaceChildren(); element('website-admin-status').textContent = '';
+    element('experiment-report').replaceChildren(); element('experiment-admin-status').textContent = '';
     element('daily-counts').textContent = ''; status.textContent = '';
     cursor = null; cursorSeen.clear(); next.disabled = true;
     return cleared;

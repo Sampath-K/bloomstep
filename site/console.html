@@ -50,7 +50,13 @@
       <p id="website-admin-status" role="status"></p>
       <div id="website-funnel"></div>
     </section>
-    <div id="feedback"></div>
+    <section aria-labelledby="experiment-title">
+      <h2 id="experiment-title">Page experiments / guarded loop</h2>
+      <p class="small">Consented-visit page tests, separate from accounts and website event counts. Interim arm counts are withheld; winners ship only by reviewed draft PR.</p>
+      <button id="experiment-status" type="button">Load experiment status and history</button>
+      <p id="experiment-admin-status" role="status"></p>
+      <div id="experiment-report"></div>
+    </section>    <div id="feedback"></div>
     <details><summary>Detailed goals, worker health and compatibility metrics</summary><div id="measurement"></div></details>
     <details><summary>UTC daily counts and suppression</summary><pre id="daily-counts"></pre></details>
   </main>

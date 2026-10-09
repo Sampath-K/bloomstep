@@ -117,7 +117,7 @@ const server = createServer(async (incoming, response) => {
   if (path === '/index.html') { response.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' }); response.end(servedIndex); return; }
   const file = path === '/assets/customer.js' ? join(bundleDir, 'customer.js') : resolve(siteDir, '.' + path);
   if (relative(siteDir, file).startsWith('..') && !file.startsWith(bundleDir) || !existsSync(file)) { response.writeHead(404); response.end(); return; }
-  const types = /** @type {Record<string,string>} */ ({ '.js': 'text/javascript', '.css': 'text/css', '.png': 'image/png', '.svg': 'image/svg+xml', '.json': 'application/json' });
+  const types = /** @type {Record<string,string>} */ ({ '.js': 'text/javascript', '.mjs': 'text/javascript', '.css': 'text/css', '.png': 'image/png', '.svg': 'image/svg+xml', '.json': 'application/json' });
   response.writeHead(200, { 'Content-Type': types[extname(file)] ?? 'application/octet-stream' });
   response.end(await readFile(file));
 });
@@ -309,7 +309,7 @@ try {
 
   let simulated1;
   await scenario('persist: simulated cohort (known 20% vs 30%) through public HTTP; restart reload keeps counts', async () => {
-    simulated1 = await simulate(first, 1000, { control: 0.20, candidate: 0.30 }, 3 * 86400000);
+    simulated1 = await simulate(first, 2000, { control: 0.20, candidate: 0.30 }, 3 * 86400000);
     await store.close();
     store = await FileBackedCosmosContainer.openExisting(storePath);
     const counts = await read(`counts:${first.experimentId}`);
@@ -414,10 +414,38 @@ try {
     return { auditActions: actions, concluded: report.concluded.map((/** @type {any} */ row) => ({ key: row.key, decision: row.decision })) };
   });
 
+  await scenario('private console: experiment status/guardrails/history panel renders the real persisted admin report over HTTP', async () => {
+    const page = await browser.newPage();
+    await page.setViewport({ width: 1280, height: 1400, deviceScaleFactor: 1 });
+    await page.goto(origin + '/console.css', { waitUntil: 'load' });
+    await page.setContent('<!doctype html><html data-theme="dark"><head><link rel="stylesheet" href="/console.css"></head><body><main>' +
+      '<h2>Page experiments / guarded loop</h2><div id="experiment-report"></div></main></body></html>', { waitUntil: 'load' });
+    const shown = await page.evaluate(async (/** @type {string} */ token) => {
+      const { loadExperiments } = await import('/experiment-panels.mjs');
+      const request = async (/** @type {string} */ path) => {
+        const response = await fetch(path, { headers: { 'x-acceptance-token': token } });
+        if (!response.ok) throw Error(`HTTP ${response.status}`);
+        return response.json();
+      };
+      const data = await loadExperiments(document.getElementById('experiment-report'), request);
+      return { text: document.getElementById('experiment-report')?.textContent ?? '', concluded: data.concluded.length };
+    }, tokens.admin);
+    assert.equal(shown.concluded, 3);
+    for (const expected of ['Isolated acceptance store (synthetic, not customers)', 'Kill switch: Engaged', 'Candidate promoted (build-time artifact only)',
+      'Rolled back: pre-registered harm look', 'isolated_acceptance_only', 'harm-only interim looks']) assert.ok(shown.text.includes(expected), expected);
+    const path = join(shots, 'console-experiment-history.png');
+    await page.screenshot({ path, fullPage: true });
+    screenshots['console-experiment-history'] = createHash('sha256').update(await readFile(path)).digest('hex');
+    const unauthorized = await page.evaluate(async () => (await fetch('/api/team/experiments')).status);
+    assert.equal(unauthorized, 401);
+    await page.close();
+    return { renderedFrom: 'GET /api/team/experiments (persisted isolated store)', concluded: shown.concluded, unauthorizedStatus: unauthorized };
+  });
+
   // ---------- receipt (server-verifiable) ----------
   const sources = /** @type {Record<string,string>} */ ({});
   for (const file of ['api/src/experiment-policy.mjs', 'api/src/experiments.mjs', 'api/src/functions.mjs', 'api/src/website-funnel.mjs',
-    'site/customer.mjs', 'site/experiment-client.mjs', 'site/index.html', 'site/build.mjs', 'site/experiment-promotions.json', 'tool/experiment_acceptance.mjs']) {
+    'site/customer.mjs', 'site/experiment-client.mjs', 'site/experiment-panels.mjs', 'site/console.mjs', 'site/console.html', 'site/index.html', 'site/build.mjs', 'site/experiment-promotions.json', 'tool/experiment_acceptance.mjs']) {
     sources[file] = createHash('sha256').update(await readFile(join(root, file))).digest('hex');
   }
   const receipt = {
