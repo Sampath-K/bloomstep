@@ -52,6 +52,15 @@ Writes `acceptance-receipt.json` (hash printed as `RECEIPT`), `acceptance-gate-c
 `acceptance-report-export.json`, `candidate-promotions.isolated.json` and screenshots. Exit code is nonzero on any
 failure.
 
+Screenshot evidence is arm-bound: for each catalog surface (`download-heading`, `hero-cta-label`,
+`hero-note-position`) the runner opens fresh consented visits until the deterministic assignment yields the intended
+arm, asserts the visible copy (or note order) and `data-experiment-arm` with the changed element in the viewport, then
+saves `<surface>-<arm>.png` plus `<surface>-<arm>-region.png`. Control and candidate hashes must differ; the receipt's
+`screenshotEvidence` records target, visible text, arm and hashes. Console evidence loads the real `console.html`
+with `theme.css`, `console.css` and bundled `console.js`, renders the persisted report through the shared
+`loadExperimentStatus` loader used in production, and captures `console-experiment-{empty,history,audit-keyboard,
+mobile-390,mobile-320,light,error}.png` (error = HTTP 503 clears stale output; no page errors allowed).
+
 Honest input labeling: the foundation caps synthetic ingestion at 100 lifetime events, below the 50-per-step
 publication floor, so the tool (a) proves real HTTP synthetic ingestion is blocked as `insufficient_data`, then
 (b) prioritizes from a separately labeled `__website_acceptance_fixture` partition. Visit outcomes for the
