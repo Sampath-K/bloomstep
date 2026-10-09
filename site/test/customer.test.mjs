@@ -98,7 +98,8 @@ test('website panel separates event conversion and receipt cohorts, rejects subs
     steps: [{ from: 'landing_view', to: 'primary_cta_click', rate: .5, reason: null }],
     linked: { minimumContributors: 50, definition: 'Linked opt-in accounts.', stages: { install_completed: null }, steps: [] } };
   const panels = websitePanels(data);
-  assert.equal(panels.length, 2);
+  assert.equal(panels.length, 3);
+  assert.match(panels[2].rows[0].value, /Unavailable \/ not instrumented/);
   assert.match(panels[0].rows.find(row => row.label.includes('event conversion')).value, /50.0%/);
   assert.match(panels[1].rows[0].value, /Insufficient data/);
   data.stages.primary_cta_click = 49;

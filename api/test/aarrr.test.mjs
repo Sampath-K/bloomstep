@@ -156,3 +156,34 @@ test('seven-day deadline respects microseconds and observation cutoff equality',
   const cutoff = group('cutoff', 50, user => [event(user, 'signin_succeeded', '2026-09-08T00:00:00Z')]);
   assert.equal(summarize(cutoff).funnel.transitions[0].pendingAccounts, 50);
 });
+
+test('local cohort date, not UTC event date, determines exact-day retention with explicit cutoff limit', () => {
+  const rows = group('local', 50, user => [
+    event(user, 'signin_succeeded', '2026-09-01T22:00:00Z'),
+    event(user, 'recipe_created', '2026-09-01T22:30:00Z', { habitId, localDay: '2026-09-02' }),
+    event(user, 'first_checkin', '2026-09-01T23:00:00Z', { habitId, localDay: '2026-09-02', result: 'didMore' }),
+    event(user, 'checkin', '2026-09-02T23:00:00Z', { habitId, localDay: '2026-09-03', result: 'did' }),
+  ]);
+  const report = summarize(rows);
+  assert.equal(report.retention.cohorts[0].cohortDay, '2026-09-02');
+  assert.equal(report.retention.cohorts[0].d1.targetDay, '2026-09-03');
+  assert.equal(report.retention.cohorts[0].d1.rate, 1);
+  assert.match(report.retention.definition, /timezone\/offset.*unavailable/);
+  assert.equal(aarrrSummary(rows, '2026-09-01', '2026-09-02', '2026-09-03')
+    .retention.cohorts[0].d1.status, 'pending');
+});
+
+test('missing saved metadata, click proxies and reserved purchase events cannot create activation or revenue', () => {
+  const rows = group('proxies', 50, user => [
+    signin(user),
+    event(user, 'recipe_created', '2026-09-01T11:00:00Z'),
+    event(user, 'first_checkin', '2026-09-01T12:00:00Z', { result: 'did', localDay: '2026-09-01' }),
+    event(user, 'download_click', '2026-09-01T13:00:00Z'),
+    event(user, 'purchase', '2026-09-01T14:00:00Z'),
+  ]);
+  const report = summarize(rows);
+  assert.deepEqual(report.funnel.stages.map(stage => stage.accounts), [50, null, null]);
+  assert.equal(report.retention.cohorts.length, 0);
+  assert.equal(report.revenue.status, 'unsupported');
+  assert.equal(report.revenue.value, null);
+});
