@@ -2,6 +2,7 @@ import { createHash, randomUUID } from 'node:crypto';
 import { isAdmin, syncSchema, replySchema, newerRecipe, newerSetting } from './contracts.mjs';
 import { aggregateEvents, previewLimits, feedbackQuerySchema, metricsQuerySchema, decodeCursor } from './engagement.mjs';
 import { dashboardSummaries, addDays } from './dashboards.mjs';
+import { aarrrSummary } from './aarrr.mjs';
 import { goalMetrics } from './goals.mjs';
 import { supportReceiptSchema, supportMetrics } from './support.mjs';
 import { reminderPreferenceCohorts } from './reminder-cohorts.mjs';
@@ -638,7 +639,8 @@ export function createHandlers({ container, authenticate, authenticateAggregate 
       { id: typeof row.id === 'string' && row.id.startsWith('voice:') ? row.id.slice(6) : row.id }));
     const endDay = new Date(end.getTime() - 86400000).toISOString().slice(0, 10);
     return { jsonBody: { ...aggregateEvents(resources, startDay, endDay),
-      dashboards: dashboardSummaries(resources, addDays(startDay, -1), addDays(endDay, -1), clock().toISOString().slice(0, 10)),
+      dashboards: { ...dashboardSummaries(resources, addDays(startDay, -1), addDays(endDay, -1), clock().toISOString().slice(0, 10)),
+        aarrr: aarrrSummary(resources, addDays(startDay, -1), addDays(endDay, -1), clock().toISOString().slice(0, 10)) },
       goalMetrics: goalMetrics(resources, addDays(startDay, -1), addDays(endDay, -1), clock().toISOString().slice(0, 10)),
       supportMetrics: supportMetrics(supportRows, addDays(startDay, -1), addDays(endDay, -1), clock().toISOString()),
       reminderPreferenceCohorts: reminderPreferenceCohorts(resources.map(row => ({ userId: row.userId, record: row.record })), addDays(startDay, -1), addDays(endDay, -1), clock().toISOString()),

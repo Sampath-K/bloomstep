@@ -1,6 +1,7 @@
 import { loadOperatorAuth, operatorRequest } from './operator-auth.mjs';
 import { reminderPreferencePanels } from './reminder-panels.mjs';
 import { websitePanels } from './website-panels.mjs';
+import { renderAarrr } from './aarrr-panels.mjs';
 const groups = [
   ['activationRetention', 'Activation / returning activity', [
     ['signins', 'Sign-ins'], ['recipesCreated', 'Recipes created'],
@@ -408,10 +409,13 @@ function initialize() {
   element('metrics').addEventListener('click', async () => {
     status.textContent = 'Loading consent-safe aggregate counts...';
     element('measurement').replaceChildren();
+    element('aarrr-report').replaceChildren();
+    element('metrics').disabled = true;
     try {
       const days = Number(element('metric-days').value);
       if (!Number.isInteger(days) || days < 1 || days > 30) throw new Error('Choose 1-30 UTC days.');
       const data = await request(`/api/team/metrics?days=${days}`);
+      renderAarrr(element('aarrr-report'), data.dashboards?.aarrr);
       const cards = [
         ...goalPanels(data),
         ...supportPanels(data),
@@ -442,7 +446,10 @@ function initialize() {
       element('daily-counts').textContent = JSON.stringify({ persistedDailyWorker: data.dailySnapshots.days,
         rawCompatibilityDailyCounts: data.daily }, null, 2);
       status.textContent = `Persisted worker history covers ${data.dailySnapshots.startDay} through ${data.dailySnapshots.endDay}; its latest completed-day panels require an available stored snapshot. Separately labelled on-demand dashboards cover ${data.dashboards.startDay} through ${data.dashboards.endDay}; raw compatibility counts include today. Private support uses server receipt/first committed operator reply facts, not product-event consent, customer-read proof or an all-feedback census. Business-day calendar remains unavailable. No daily unique-user/retention/median rollup is inferred. Cohorts below ${data.minimumCohort} are suppressed, not zero. Experiment remains off; crash-free rate is unavailable. Worker deployment and token execution need independent live verification.`;
-    } catch (error) { status.textContent = error.message; }
+    } catch (error) {
+      element('aarrr-report').replaceChildren();
+      status.textContent = `Measurement unavailable: ${error.message} No prior or substitute counts displayed.`;
+    } finally { element('metrics').disabled = false; }
   });
 
   element('website-metrics').addEventListener('click', async () => {
@@ -469,6 +476,7 @@ function initialize() {
     ++sessionGeneration;
     const cleared = auth?.clear();
     panel.replaceChildren(); element('measurement').replaceChildren();
+    element('aarrr-report').replaceChildren();
     element('website-funnel').replaceChildren(); element('website-admin-status').textContent = '';
     element('daily-counts').textContent = ''; status.textContent = '';
     cursor = null; cursorSeen.clear(); next.disabled = true;
