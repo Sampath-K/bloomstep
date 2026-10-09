@@ -1,5 +1,11 @@
 # Consent-scoped observation contracts
 
+For the additive private AARRR overview, exact account-only denominators,
+privacy/completeness boundaries and isolated HTTP/disk/render acceptance,
+see [aarrr-dashboard.md](aarrr-dashboard.md). Anonymous acquisition remains
+a separate event-count unit; no automatic browser-to-account journey is
+inferred.
+
 This source is instrumentation, not proof of users, a complete funnel, a
 crash-free population or a completed experiment. Verified `v0.1.0-preview.3`
 contains these controls; preview.2 predates receipt import.

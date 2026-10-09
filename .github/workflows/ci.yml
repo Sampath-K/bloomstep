@@ -84,6 +84,19 @@ jobs:
           npm --prefix site ci
           node --test site/test/*.test.mjs
           npm --prefix site run build
+      - name: Verify isolated AARRR HTTP persistence and rendered report
+        working-directory: .
+        env:
+          CHROME_PATH: /usr/bin/google-chrome
+          EVIDENCE_DIR: ${{ runner.temp }}/aarrr-dashboard
+        run: node site/verify-aarrr.mjs
+      - name: Preserve isolated AARRR screenshots and source receipts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: aarrr-dashboard-isolated-NOT-CUSTOMER-ACCEPTANCE
+          path: ${{ runner.temp }}/aarrr-dashboard/
+          if-no-files-found: warn
   installer-launch-evidence:
     name: 'launch-after-install: UNVERIFIED (preview gap, owner manual trial pending)'
     if: github.event_name != 'workflow_dispatch' || (!inputs.verify_aggregates && !inputs.verify_spend_guard && !inputs.verify_edge_warning)
