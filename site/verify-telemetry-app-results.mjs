@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { readFile, writeFile } from 'node:fs/promises';
+import { readFile, writeFile, readdir } from 'node:fs/promises';
 import { createHash } from 'node:crypto';
 import { join } from 'node:path';
 import { linkedWebFunnel } from '../api/src/website-funnel.mjs';
@@ -28,7 +28,10 @@ assert.equal(linked.stages.signin_succeeded, null, 'Missing installer chain must
 const summary = dashboardSummaries(rows, start, end, end);
 assert.equal(summary.funnel.stages.first_checkin.users, null, 'One synthetic account must not defeat publication threshold.');
 const sourceHashes = {};
-for (const path of ['lib/core/garden_store.dart', 'lib/core/measurement_receipt.dart', 'lib/services/sync_service.dart',
+const lib = fileURLToPath(new URL('../lib/', import.meta.url));
+const dartModules = (await readdir(lib, { recursive: true })).filter(name => name.endsWith('.dart'))
+  .map(name => 'lib/' + name.replaceAll('\\', '/'));
+for (const path of [...dartModules,
   'test/telemetry_http_test.dart', 'integration_test/support/local_test_api.dart', 'integration_test/support/test_only_app.dart',
   'api/src/backend.mjs', 'api/src/dashboards.mjs', 'site/verify-telemetry-app-results.mjs', 'tool/verify_telemetry.ps1']) {
   sourceHashes[path] = createHash('sha256').update(await readFile(new URL('../' + path, import.meta.url))).digest('hex');
@@ -45,5 +48,6 @@ for (const name of ['telemetry-receipt.json', 'computed-reports.json', 'website-
 await writeFile(join(dir, 'functional-acceptance.json'), JSON.stringify({ schemaVersion: 1, passed: true,
   kind: 'isolated-synthetic-functional-acceptance', customerAcceptance: false, installerExecuted: false,
   sourceRevision: execFileSync('git', ['rev-parse', 'HEAD'], { cwd: fileURLToPath(new URL('../', import.meta.url)), encoding: 'utf8' }).trim(),
+  sourceDirty: execFileSync('git', ['status', '--porcelain'], { cwd: fileURLToPath(new URL('../', import.meta.url)), encoding: 'utf8' }).trim() !== '',
   artifacts, sourceHashes, cleanupVerified: true }, null, 2), { flag: 'wx' });
 process.stdout.write('Independent app persisted-event report assertions passed; missing installation remains unknown.\n');
