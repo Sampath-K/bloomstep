@@ -1,7 +1,7 @@
 import { loadOperatorAuth, operatorRequest } from './operator-auth.mjs';
 import { reminderPreferencePanels } from './reminder-panels.mjs';
 import { websitePanels } from './website-panels.mjs';
-import { renderAarrr } from './aarrr-panels.mjs';
+import { loadAarrr } from './aarrr-panels.mjs';
 const groups = [
   ['activationRetention', 'Activation / returning activity', [
     ['signins', 'Sign-ins'], ['recipesCreated', 'Recipes created'],
@@ -414,8 +414,7 @@ function initialize() {
     try {
       const days = Number(element('metric-days').value);
       if (!Number.isInteger(days) || days < 1 || days > 30) throw new Error('Choose 1-30 UTC days.');
-      const data = await request(`/api/team/metrics?days=${days}`);
-      renderAarrr(element('aarrr-report'), data.dashboards?.aarrr);
+      const data = await loadAarrr(element('aarrr-report'), request, days);
       const cards = [
         ...goalPanels(data),
         ...supportPanels(data),

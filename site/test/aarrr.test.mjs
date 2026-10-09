@@ -1,15 +1,43 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { aarrrPanels } from '../aarrr-panels.mjs';
-import { aarrrSummary } from '../../api/src/aarrr.mjs';
-
-const empty = () => aarrrSummary([], '2026-09-01', '2026-09-07', '2026-09-08');
+import { aarrrPanels, loadAarrr } from '../aarrr-panels.mjs';
+const empty = () => ({
+  schemaVersion: 1, unit: 'consented_account', minimumContributors: 50,
+  startDay: '2026-09-01', endDay: '2026-09-07', observedThrough: '2026-09-08',
+  coverage: 'Partial observations, not a population watermark.',
+  acquisition: { status: 'unsupported', accountAttributionRate: null, definition: 'Separate anonymous event counts.' },
+  funnel: {
+    stages: ['signin_succeeded', 'recipe_created', 'first_checkin'].map(name => ({ name, accounts: null, status: 'unknown' })),
+    transitions: [['signin_succeeded', 'recipe_created'], ['recipe_created', 'first_checkin']].map(([from, to]) => ({
+      from, to, horizonDays: 7, eligibleAccounts: null, convertedAccounts: null, laggedAccounts: null,
+      pendingAccounts: null, censoredAccounts: null, rate: null, status: 'unknown',
+    })),
+    definition: 'Ordered account observations; missing stages are never abandonment.',
+  },
+  retention: { cohorts: [], cohortStartDay: '2026-08-02', definition: 'Effective exact local-day practice.' },
+  referral: {
+    initiated: { accounts: null, status: 'unknown' }, linkOpened: { accounts: null, status: 'unknown' },
+    accepted: { accounts: null, status: 'unknown' }, sent: { accounts: null, status: 'unsupported' },
+    referredActivation: { accounts: null, status: 'unsupported' }, definition: 'Distinct observations, not one linked funnel.',
+  },
+  revenue: { status: 'unsupported', value: null, definition: 'No payment evidence.' },
+  experiment: { eligible: false, reason: 'No verified exposures; historical experiment OFF.' },
+});
 test('empty overview labels unknown and unsupported, never fabricated revenue or conversions', () => {
   const panels = aarrrPanels(empty());
   assert.equal(panels.overview.length, 5);
   assert.match(panels.overview[1].value, /Unknown/);
   assert.match(panels.overview[4].value, /Not implemented/);
   assert.match(panels.details.map(panel => panel.definition).join(' '), /never abandonment/);
+});
+
+test('shared production loader clears stale output on invalid input or failed/partial pipeline', async () => {
+  let cleared = 0;
+  const output = { replaceChildren() { cleared++; } };
+  await assert.rejects(loadAarrr(output, async () => { throw Error('HTTP 503'); }, 7), /503/);
+  assert.equal(cleared, 2);
+  await assert.rejects(loadAarrr(output, async () => ({ dashboards: {} }), 7), /Invalid/);
+  await assert.rejects(loadAarrr(output, async () => { throw Error('must not request'); }, 31), /1-30/);
 });
 test('incomplete, negative, stale-shape and impossible rate responses fail closed', () => {
   for (const mutate of [

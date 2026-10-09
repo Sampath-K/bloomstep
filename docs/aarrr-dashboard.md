@@ -87,16 +87,23 @@ restart must produce cumulative **150 / 100 / 50**, seven-day activation
 September 1 cohort, not 50/100 or 50/150. D30 is pending and revenue null.
 Erasing the fifty activated owners via the real account-delete handler,
 then reopening disk, must produce **100 / 50 / unknown** and no eligible
-retention cohort. Missing worker snapshots stay unavailable.
+retention cohort. The same test first erases their saved habits through real
+sync deletions, verifies **150 / 50 / unknown**, and replays old offline
+records without reviving erased habit evidence. After retry, persisted raw
+documents must contain exactly 400 events, 100 habits and 150 check-ins.
+Missing worker snapshots stay unavailable.
 
-The browser runner reads the authenticated real HTTP report and uses the
+The browser runner reads the authenticated real HTTP report through the same
+`loadAarrr` orchestration used by the production Load button (with an isolated
+HTTP requester, not a production authentication bypass), and uses the
 production renderer in the private console shell, explicitly marked
 **ISOLATED SYNTHETIC FIXTURE PREVIEW**. Screenshots cover populated/empty,
 keyboard drilldowns, 390/320px mobile, dark/light and cleared error states.
 The actual production Load button is also exercised without a configured
 identity: it must clear prior fixture data and label failure. This is not
 a bypass of production operator authentication or evidence of live identity
-acceptance. An independently injected pipeline outage returns HTTP 503.
+acceptance. An independently injected pipeline outage returns HTTP 503 and
+the shared production loader clears stale output before rethrowing.
 `aarrr-receipt.json` records source SHA-256 hashes, exact oracle, checks and
 these limits without private tokens or raw garden data.
 
@@ -106,7 +113,10 @@ boundaries/cutoff equality, historical right censoring, complementary
 suppression, undo, local/UTC cohort boundaries and malformed windows.
 
 Existing API/site regression commands remain `npm --prefix api test --silent`
-and `npm --prefix site test --silent`. Build regenerates ignored assets and
+and `npm --prefix site test --silent`. The existing API CI job also runs the
+browser acceptance after bundling and uploads explicitly isolated screenshots
+and source receipts; this introduces no deployment step.
+Build regenerates ignored assets and
 normalizes generated customer download blocks; those outputs are not evidence
 of deployment or authorization to promote any release.
 

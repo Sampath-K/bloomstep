@@ -27,7 +27,8 @@ export async function createAarrrFixture() {
     catch { throw new ServiceError(401, 'Invalid isolated fixture signature.'); }
     if (typeof payload.sub !== 'string' || !/^synthetic-(?:admin|account-\d{3})$/.test(payload.sub) ||
         payload.scp !== 'Garden.ReadWrite') throw new ServiceError(401, 'Synthetic fixture subjects only.');
-    return { userId: accountKey(issuer, payload.sub), roles: payload.sub === 'synthetic-admin' ? ['Bloomstep.Admin'] : [] };
+    return { userId: accountKey(issuer, payload.sub), roles: payload.sub === 'synthetic-admin' ? ['Bloomstep.Admin'] : [],
+      scopes: ['Garden.ReadWrite'] };
   };
   const handlers = createHandlers({ container: () => container, authenticate,
     clock: () => new Date(observedAt), environment: () => ({ BLOOMSTEP_INVITATIONS_DISABLED: 'true' }) });

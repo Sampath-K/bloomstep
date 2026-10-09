@@ -14,7 +14,8 @@ const checks = [];
 try {
   assert.equal((await fetch(fixture.url + '/healthz')).status, 200);
   browser = await puppeteer.launch({ executablePath: process.env.CHROME_PATH ??
-    'C:\\Program Files (x86)\\Microsoft\\Edge\\Application\\msedge.exe', headless: true });
+    'C:\\Program Files (x86)\\Microsoft\\Edge\\Application\\msedge.exe', headless: true,
+    args: process.platform === 'linux' ? ['--no-sandbox'] : [] });
   const page = await browser.newPage();
   const errors = [];
   page.on('pageerror', error => errors.push(error.message));
@@ -23,11 +24,13 @@ try {
   assert.equal(await page.evaluate(() => document.documentElement.dataset.theme), 'dark');
   assert.match(await page.$eval('#aarrr-report', node => node.textContent), /No private measurements loaded/);
   const load = async () => page.evaluate(async token => {
-    const response = await fetch('/api/team/metrics?days=14', { headers: { 'X-Bloomstep-Authorization': `Bearer ${token}` } });
-    if (!response.ok) throw Error(`Fixture pipeline ${response.status}`);
-    const data = await response.json();
-    const { renderAarrr } = await import('/aarrr-panels.mjs');
-    renderAarrr(document.getElementById('aarrr-report'), data.dashboards.aarrr, { fixture: true });
+    const { loadAarrr } = await import('/aarrr-panels.mjs');
+    const request = async path => {
+      const response = await fetch(path, { headers: { 'X-Bloomstep-Authorization': `Bearer ${token}` } });
+      if (!response.ok) throw Error(`Fixture pipeline ${response.status}`);
+      return response.json();
+    };
+    const data = await loadAarrr(document.getElementById('aarrr-report'), request, 14, { fixture: true });
     return data.dashboards.aarrr;
   }, fixture.adminToken);
   await load();
@@ -66,17 +69,23 @@ try {
   checks.push('390/320px no horizontal overflow; explicit light theme preserved');
   fixture.failPipeline(true);
   assert.equal((await fixture.request('/api/team/metrics?days=14')).status, 503);
+  await assert.rejects(load(), /Fixture pipeline 503/);
+  assert.equal(await page.$eval('#aarrr-report', node => node.children.length), 0);
+  checks.push('Shared production loader consumes real authenticated HTTP 503 and clears stale report before rethrow; no zero fallback');
+  fixture.failPipeline(false);
+  await load();
   // Exercise the production console's actual failure/clear path without bypassing operator auth.
   await page.click('#metrics');
   await page.waitForFunction(() => document.getElementById('admin-status').textContent.includes('Measurement unavailable'));
   assert.equal(await page.$eval('#aarrr-report', node => node.children.length), 0);
   assert.match(await page.$eval('#admin-status', node => node.textContent), /No prior or substitute counts/);
   await page.screenshot({ path: join(output, 'aarrr-error.png'), fullPage: true });
-  checks.push('Real pipeline returns 503; actual production Load button without configured operator identity clears old fixture report and labels failure (no auth bypass)');
+  checks.push('Actual production Load button without configured operator identity clears old fixture report and labels failure (no auth bypass)');
   assert.deepEqual(errors, []);
   const sources = {};
   for (const path of ['api/src/aarrr.mjs', 'api/src/backend.mjs', 'site/aarrr-panels.mjs',
-    'site/console.mjs', 'site/console.html', 'site/console.css', 'api/test/support/aarrr-fixture.mjs', 'site/verify-aarrr.mjs']) {
+    'site/console.mjs', 'site/console.html', 'site/console.css', 'api/test/support/aarrr-fixture.mjs',
+    'api/test/aarrr.test.mjs', 'api/test/aarrr-http.test.mjs', 'site/test/aarrr.test.mjs', 'site/verify-aarrr.mjs']) {
     sources[path] = createHash('sha256').update(await readFile(new URL(`../${path}`, import.meta.url))).digest('hex');
   }
   await writeFile(join(output, 'aarrr-receipt.json'), JSON.stringify({

@@ -146,3 +146,16 @@ export function renderAarrr(container, data, { fixture = false } = {}) {
   }
   container.replaceChildren(fragment);
 }
+
+export async function loadAarrr(container, request, days, options = {}) {
+  container.replaceChildren();
+  try {
+    if (!Number.isInteger(days) || days < 1 || days > 30) throw Error('Choose 1-30 UTC days.');
+    const data = await request(`/api/team/metrics?days=${days}`);
+    renderAarrr(container, data?.dashboards?.aarrr, options);
+    return data;
+  } catch (error) {
+    container.replaceChildren();
+    throw error;
+  }
+}

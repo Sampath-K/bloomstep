@@ -18,6 +18,9 @@ test('real HTTP sync -> restartable disk -> admin report -> renderer projection 
     assert.equal((await fixture.request('/api/sync', token, 'POST', payload)).status, 200, 'retry is idempotent');
     await fixture.restartStore();
     const persisted = JSON.parse(await readFile(fixture.databasePath, 'utf8'));
+    assert.equal(persisted.documents.filter(row => row.type === 'events').length, 400, 'real persisted event union is exact after retry');
+    assert.equal(persisted.documents.filter(row => row.type === 'habits').length, 100);
+    assert.equal(persisted.documents.filter(row => row.type === 'checkins').length, 150);
     const disk = JSON.stringify(persisted);
     assert.match(disk, /first_checkin/);
     assert.doesNotMatch(disk, /Bearer|synthetic-admin/);
@@ -33,6 +36,16 @@ test('real HTTP sync -> restartable disk -> admin report -> renderer projection 
     assert.equal(report.revenue.value, null);
     assert.equal(aarrrPanels(report).overview[1].value, '50.0%');
     assert.equal(data.dailySnapshots.days.at(-1).status, 'unavailable', 'no worker snapshot substituted');
+    for (const { token, payload } of fixture.subjects.slice(0, 50)) {
+      const deletion = { habits: [], checkins: [], reflections: [], voice: [], events: [],
+        deletions: [{ id: payload.habits[0].id, type: 'habits', recordId: payload.habits[0].id, ts: '2026-09-14T12:00:00Z' }] };
+      assert.equal((await fixture.request('/api/sync', token, 'POST', deletion)).status, 200);
+    }
+    assert.equal((await fixture.request('/api/sync', token, 'POST', payload)).status, 200, 'offline replay cannot revive erased habit evidence');
+    await fixture.restartStore();
+    const habitDeleted = await (await fixture.request('/api/team/metrics?days=14')).json();
+    assert.deepEqual(habitDeleted.dashboards.aarrr.funnel.stages.map(stage => stage.accounts), [150, 50, null]);
+    assert.equal(habitDeleted.dashboards.aarrr.retention.cohorts.length, 0);
     for (const { token } of fixture.subjects.slice(0, 50)) {
       assert.equal((await fixture.request('/api/account', token, 'DELETE')).status, 204);
     }
