@@ -2,6 +2,22 @@ import { z } from 'zod';
 import { isAdmin } from './contracts.mjs';
 import { ServiceError } from './backend.mjs';
 import { normalizedEvents, addDays, timestampKey } from './dashboards.mjs';
+import { createHash } from 'node:crypto';
+import { attributionFields, touchNames } from './website-attribution.mjs';
+
+const touchSchema = z.strictObject({
+  source: z.enum(attributionFields.source),
+  referrerDomain: z.enum(attributionFields.referrerDomain),
+  campaignSource: z.enum(attributionFields.campaignSource),
+  campaignMedium: z.enum(attributionFields.campaignMedium),
+  campaignName: z.enum(attributionFields.campaignName),
+});
+const attributionKey = z.string().refine(key => {
+  const [touch, stage, field, value, extra] = key.split(':');
+  return extra === undefined && touchNames.includes(touch) && stages.includes(stage) &&
+    Object.hasOwn(attributionFields, field) &&
+    attributionFields[/** @type {keyof typeof attributionFields} */ (field)].includes(value);
+});
 
 const stages = ['landing_view', 'primary_cta_click', 'download_click'];
 const sources = ['search', 'referral', 'direct', 'campaign', 'unknown'];
@@ -12,6 +28,8 @@ const budgetSchema = z.object({
   accepted: z.number().int().min(0).max(10000), minute: z.number().int().min(0),
   minuteCount: z.number().int().min(0).max(30), reads: z.number().int().min(0).max(30),
   readDay: z.union([z.literal(''), z.iso.date()]), ttl: z.literal(-1), _etag: z.string(),
+  recent: z.array(z.strictObject({ key: z.string().regex(/^[a-f0-9]{64}$/),
+    content: z.string().regex(/^[a-f0-9]{64}$/), expires: z.number().int().min(0) })).max(180).optional(),
 });
 const daySchema = z.object({
   id: z.iso.date(), day: z.iso.date(), userId: z.enum(['__website_counts','__website_synthetic']),
@@ -19,7 +37,12 @@ const daySchema = z.object({
   counts: z.record(z.string().regex(/^(?:landing_view|primary_cta_click|download_click):(?:search|referral|direct|campaign|unknown):(?:arm64|x64|unknown)$/),
     z.number().int().min(1).max(400)),
   accepted: z.number().int().min(1).max(400), ttl: z.number().int().min(1).max(90 * 86400), _etag: z.string(),
-}).refine(day => day.id === day.day && Object.values(day.counts).reduce((sum, count) => sum + count, 0) === day.accepted);
+  attributionCounts: z.record(attributionKey, z.number().int().min(1).max(400)).optional(),
+}).refine(day => day.id === day.day && Object.values(day.counts).reduce((sum, count) => sum + count, 0) === day.accepted)
+  .refine(day => touchNames.every(touch => stages.every(stage => Object.keys(attributionFields).every(field =>
+    Object.entries(day.attributionCounts ?? {}).filter(([key]) => key.startsWith(`${touch}:${stage}:${field}:`))
+      .reduce((sum, [, count]) => sum + count, 0) <=
+    Object.entries(day.counts).filter(([key]) => key.startsWith(`${stage}:`)).reduce((sum, [, count]) => sum + count, 0)))));
 const schema = z.strictObject({
   channel: z.literal('web'),
   event: z.enum(['landing_view', 'primary_cta_click', 'download_click']),
@@ -27,12 +50,16 @@ const schema = z.strictObject({
   architecture: z.enum(['arm64', 'x64', 'unknown']),
   eventId: z.uuid(),
   synthetic: z.boolean(),
+  observedAt: z.iso.datetime({ precision: 3 }).optional(),
+  attribution: z.strictObject({ firstTouch: touchSchema, lastTouch: touchSchema }).optional(),
   utm: z.strictObject({
     utm_source: z.string().regex(/^[a-zA-Z0-9_-]{1,48}$/).optional(),
     utm_medium: z.string().regex(/^[a-zA-Z0-9_-]{1,48}$/).optional(),
     utm_campaign: z.string().regex(/^[a-zA-Z0-9_-]{1,48}$/).optional(),
   }).optional(),
-}).refine(value => value.event === 'download_click' || value.architecture === 'unknown');
+}).refine(value => value.event === 'download_click' || value.architecture === 'unknown')
+  .refine(value => !value.attribution || value.observedAt !== undefined &&
+    value.source === value.attribution.lastTouch.source);
 
 /** @param {unknown} value */
 export function validateWebPayload(value) {
@@ -40,8 +67,8 @@ export function validateWebPayload(value) {
   if (!result.success) throw new ServiceError(400, 'Invalid website observation.');
   return result.data;
 }
-/** @typedef {{ counts: Record<string, number>, accepted: number }} DayCounts */
-/** @typedef {{id:string,userId:string,type:string,schemaVersion:1,accepted:number,minute:number,minuteCount:number,reads:number,readDay:string,ttl:number,_etag?:string}} WebBudget */
+/** @typedef {{ counts: Record<string, number>, accepted: number, attributionCounts?:Record<string,number> }} DayCounts */
+/** @typedef {{id:string,userId:string,type:string,schemaVersion:1,accepted:number,minute:number,minuteCount:number,reads:number,readDay:string,ttl:number,_etag?:string,recent?:{key:string,content:string,expires:number}[]}} WebBudget */
 /** @typedef {DayCounts & {id:string,userId:string,type:string,day:string,schemaVersion:1,ttl:number,_etag?:string}} WebDay */
 /** @param {{days:Record<string,DayCounts>} | null} document @param {string} startDay @param {string} endDay */
 export function summarizeWebCounts(document, startDay, endDay) {
@@ -60,7 +87,21 @@ export function summarizeWebCounts(document, startDay, endDay) {
    * @param {Record<string,number|null>} values */
   const suppress = values => Object.values(values).some(value => value !== null && value < 50) ?
     Object.fromEntries(Object.keys(values).map(key => [key, null])) : values;
+  const acquisition = Object.fromEntries(touchNames.map(touch => [touch,
+    Object.fromEntries(stages.map(stage => [stage, Object.fromEntries(Object.entries(attributionFields).map(([field, values]) => {
+      const totals = Object.fromEntries(values.map(value => {
+        // Read only selected UTC dates, never lifetime or outside-window cells.
+        const observed = daily.flatMap(row => {
+          const count = document?.days[row.day]?.attributionCounts?.[`${touch}:${stage}:${field}:${value}`];
+          return count === undefined ? [] : [count];
+        });
+        return [value, observed.length ? observed.reduce((a, b) => a + b, 0) : null];
+      }));
+      return [field, suppress(totals)];
+    }))]))]));
   return { schemaVersion: 1, channel: 'web', reservedChannels: ['store'], startDay, endDay,
+    acquisition: { schemaVersion: 1, scope: 'consented_page_epoch', ...acquisition,
+      definition: 'Allowlisted marginal event counts only. First/last touch refer to this consented page, not unique visitors or cross-visit attribution. Unknown is explicit; legacy events have no attributable cells. All cells in a marginal dimension are withheld if any observed cell is below 50; no daily drilldown or account linkage.' },
     stages: suppress(totals),
     sources: suppress(Object.fromEntries(sources.map(source => [source, total(key => key.split(':')[0] === 'landing_view' && key.split(':')[1] === source)]))),
     architectures: suppress(Object.fromEntries(architectures.map(arch => [arch, total(key => key.split(':')[0] === 'download_click' && key.split(':')[2] === arch)]))),
@@ -71,7 +112,7 @@ export function summarizeWebCounts(document, startDay, endDay) {
       return { from, to, rate: publishable ? numerator / denominator : null, reason: publishable ? null : 'events_below_50' };
     }),
     daily: daily.map(row => ({ day: row.day, counts: null })),
-    definition: 'Anonymous UTC daily event counts, not unique visitors. Event conversion — not unique visitors; repeat visits and bots may be counted. Ratios may exceed 100% and do not imply same-person transitions or successful file transfers. Stages need 50 events; small dimensions are suppressed together and daily drilldown is withheld to avoid subtractable cells. Missing/opted-out observations are unknown. Transient deduplication is not exact-once across hosts. Synthetic observations are excluded.' };
+    definition: 'Anonymous UTC daily event counts, not unique visitors. Event conversion — not unique visitors; repeat visits and bots may be counted. Ratios may exceed 100% and do not imply same-person transitions or successful file transfers. Stages need 50 events; small dimensions are suppressed together and daily drilldown is withheld to avoid subtractable cells. Missing/opted-out observations are unknown. Timestamped retries deduplicate transactionally for five minutes across hosts; legacy retries only deduplicate in-process. Synthetic observations are excluded.' };
 }
 
 /** @param {{userId:string,record:unknown}[]} rows @param {string} startDay @param {string} endDay */
@@ -179,8 +220,13 @@ export function createWebsiteHandlers({ container, authenticate, authenticatePro
     try { parsed = JSON.parse(raw); } catch { throw new ServiceError(400, 'Invalid JSON.'); }
     const value = validateWebPayload(parsed);
     const now = clock().getTime(), key = `${value.synthetic}:${value.eventId}`;
+    if (value.observedAt && (now - Date.parse(value.observedAt) >= 300000 || Date.parse(value.observedAt) - now > 60000)) {
+      throw new ServiceError(400, 'Observation time is outside the five-minute retry window.');
+    }
     for (const [id, saved] of seen) if (saved.expires <= now) seen.delete(id);
-    const content = JSON.stringify([value.event, value.source, value.architecture]);
+    const content = JSON.stringify([value.event, value.source, value.architecture, value.observedAt ?? null,
+      value.attribution ? touchNames.map(touch => Object.keys(attributionFields).map(field =>
+        value.attribution?.[/** @type {'firstTouch'|'lastTouch'} */ (touch)][/** @type {keyof typeof attributionFields} */ (field)])) : null]);
     const prior = seen.get(key);
     if (prior && prior.content !== content) throw new ServiceError(400, 'Observation retry ID reused for a different event.');
     if (prior) return { status: 204 };
@@ -192,6 +238,16 @@ export function createWebsiteHandlers({ container, authenticate, authenticatePro
     if (parsedBudget && !parsedBudget.success) throw new ServiceError(503, 'Website budget is invalid; no count substituted.');
     const old = parsedBudget?.success ? parsedBudget.data : null;
     const doc = structuredClone(document(old, userId));
+    const hash = (/** @type {string} */ text) => createHash('sha256').update(text).digest('hex');
+    const retryKey = hash(key), retryContent = hash(content);
+    const recent = (doc.recent ?? []).filter(row => row.expires > now);
+    const retry = value.observedAt ? recent.find(row => row.key === retryKey) : undefined;
+    if (retry && retry.content !== retryContent) throw new ServiceError(400, 'Observation retry ID reused for a different event.');
+    if (retry) return { status: 204 };
+    if (value.observedAt) {
+      if (recent.length >= 180) throw new ServiceError(429, 'Website retry ledger cap reached.');
+      doc.recent = [...recent, { key: retryKey, content: retryContent, expires: Date.parse(value.observedAt) + 300000 }];
+    }
     const { resource: dayResource } = await container().item(day, userId).read();
     const parsedDay = dayResource == null ? null : daySchema.safeParse(dayResource);
     if (parsedDay && !parsedDay.success) throw new ServiceError(503, 'Website daily aggregate is invalid.');
@@ -206,6 +262,17 @@ export function createWebsiteHandlers({ container, authenticate, authenticatePro
         doc.minute === minute && doc.minuteCount >= 30) throw new ServiceError(429, 'Website daily/lifetime/minute cap reached.');
     const dimension = `${value.event}:${value.source}:${value.architecture}`;
     daily.counts[dimension] = (daily.counts[dimension] ?? 0) + 1; daily.accepted++;
+    if (value.attribution) {
+      daily.attributionCounts ??= {};
+      for (const touch of ['firstTouch', 'lastTouch']) {
+        for (const field of Object.keys(attributionFields)) {
+          /** @type {string} */
+          const label = value.attribution[/** @type {'firstTouch'|'lastTouch'} */ (touch)][/** @type {keyof typeof attributionFields} */ (field)];
+          const dimension = `${touch}:${value.event}:${field}:${label}`;
+          daily.attributionCounts[dimension] = (daily.attributionCounts[dimension] ?? 0) + 1;
+        }
+      }
+    }
     doc.accepted++;
     doc.minuteCount = doc.minute === minute ? doc.minuteCount + 1 : 1; doc.minute = minute;
     daily.ttl = Math.max(1, Math.floor((Date.parse(addDays(day, 90)) - now) / 1000));
@@ -232,15 +299,19 @@ export function createWebsiteHandlers({ container, authenticate, authenticatePro
     if (parsedBudget && !parsedBudget.success) throw new ServiceError(503, 'Website budget is invalid; no count substituted.');
     const old = parsedBudget?.success ? parsedBudget.data : null;
     const doc = structuredClone(document(old, userId)), endDay = clock().toISOString().slice(0, 10);
+    if (doc.recent) doc.recent = doc.recent.filter(row => row.expires > clock().getTime());
     if (doc.readDay !== endDay) { doc.reads = 0; doc.readDay = endDay; }
     if (doc.reads >= 30) throw new ServiceError(429, 'Website admin daily read cap reached.');
     doc.reads++; await save(doc, old);
     const startDay = addDays(endDay, 1 - days);
     const { resources: daily } = await container().items.query({
-      query: 'SELECT TOP 31 c.day, c.counts, c.accepted FROM c WHERE c.type = "website_daily" AND c.day >= @start AND c.day <= @end',
+      query: 'SELECT TOP 31 c.id, c.userId, c.type, c.schemaVersion, c.day, c.counts, c.attributionCounts, c.accepted, c.ttl, c._etag FROM c WHERE c.type = "website_daily" AND c.day >= @start AND c.day <= @end',
       parameters: [{ name: '@start', value: startDay }, { name: '@end', value: endDay }],
     }, { partitionKey: userId }).fetchAll();
     if (daily.length > 30) throw new ServiceError(429, 'Website daily aggregate scan cap reached.');
+    for (const row of daily) {
+      if (!daySchema.safeParse(row).success) throw new ServiceError(503, 'Website report aggregate is invalid.');
+    }
     const anonymous = summarizeWebCounts({ days: Object.fromEntries(daily.map(row => [row.day, row])) }, startDay, endDay);
     if (synthetic) return { jsonBody: { ...anonymous, synthetic: true, linked: null } };
     const { resources: accounts } = await container().items.query({
