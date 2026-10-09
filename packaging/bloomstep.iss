@@ -51,9 +51,10 @@ OutputBaseFilename=Bloomstep-{#AppVersion}-windows-{#AppArch}-setup
 Compression=lzma2
 SolidCompression=yes
 WizardStyle=modern
-DisableWelcomePage=no
-DisableDirPage=no
+DisableWelcomePage=yes
+DisableDirPage=yes
 DisableReadyPage=no
+DisableReadyMemo=yes
 DisableFinishedPage=no
 DisableProgramGroupPage=yes
 WizardImageFile=assets\wizard-garden.bmp
@@ -91,7 +92,7 @@ Source: "{#IntegrityMarker}"; DestDir: "{app}"; DestName: "integrity-probe.txt";
 #endif
 
 [Run]
-Filename: "{app}\bloomstep.exe"; Description: "Launch Bloomstep"; Flags: postinstall unchecked skipifsilent runasoriginaluser; Check: CanLaunchBloomstep
+Filename: "{app}\bloomstep.exe"; Description: "Launch Bloomstep"; Flags: postinstall skipifsilent runasoriginaluser; Check: CanLaunchBloomstep
 
 [InstallDelete]
 Type: files; Name: "{app}\measurement-owner.txt"

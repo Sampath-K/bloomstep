@@ -31,12 +31,16 @@ Even a clean static scan does not override the observed local behavior
 quarantine or establish non-elevated launch acceptance. No vendor sample
 submission or third-party binary upload is authorized.
 
-## Active standard wizard redesign (unpublished, not security accepted)
+## Active native one-click correction (unpublished, not security accepted)
 
-The owner-directed conventional design supersedes both autonomous variants.
-Welcome and destination require **Next**, Ready requires **Install**, and Finish
-offers an explicit **Launch Bloomstep** checkbox that is **unchecked by default**.
-Back and Cancel use normal native navigation. There are no timer callbacks,
+The owner rejected extra Next screens in the conventional baseline. The corrected
+source shows one visible native **Ready** page with the same branded value-prop
+art and **Install**, uses the default per-user location (existing installs retain
+their folder), then progress and Finish. **Launch Bloomstep** is **checked by
+default** on Finish and the user can freely untick it before selecting Finish.
+No destination choice is required; standard settings disable Welcome, directory
+and program-group pages and the Ready memo. Cancel remains native.
+There are no timer callbacks,
 automatic page advances/clicks, hidden/minimized windows, artificial holds or
 custom message pumps. Original Anchor/Action/Celebrate artwork remains static.
 The source continues per-user `PrivilegesRequired=lowest`, offline native
@@ -54,6 +58,18 @@ owner supplies it, those jobs remain queued, not passing. See
 [owner VM preparation, runner registration and teardown](defender-test-vm.md).
 Hosted workers compile only; installer execution, native screenshots, lifecycle
 and privacy proofs are explicitly withheld there and routed to the protected VM.
+
+### Owner-reported clean baseline, not replacement acceptance
+
+The owner reported running exact baseline source
+`922da673552c3a6534d1a563d1e23521aff17e65` installer SHA-256
+`0ef50e8f261adc55eaa05cd28c9a5368af6be859411e9b8a98feaf46902c1db8`
+on their ARM64 machine: installation succeeded with Defender real-time and
+behavior protection enabled and no detections in the preceding hour.
+This is one owner-reported host observation, not independently inspected event
+receipts, protected-VM acceptance, provider/full-journey or launch-token proof.
+It does not transfer to the new one-click bytes or invalidate the older
+zero-click withdrawal. No agent retry on that machine was performed.
 
 PR28's six app commits through
 `2753a6203f97923557f2de669c5f66cd3fdf70a6`, plus the rendered custom-field

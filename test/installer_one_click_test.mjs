@@ -13,9 +13,10 @@ test('Defender-blocked private candidate remains withdrawn, not a reputation war
 
 test('obsolete autonomous variants are replaced by a standard native wizard', () => {
   const setup = read('packaging/bloomstep.iss');
-  for (const page of ['Welcome', 'Dir', 'Ready', 'Finished']) {
+  for (const page of ['Ready', 'Finished']) {
     assert.match(setup, new RegExp(`Disable${page}Page=no`));
   }
+  for (const page of ['Welcome', 'Dir']) assert.match(setup, new RegExp(`Disable${page}Page=yes`));
   assert.match(setup, /DefaultDirName=\{localappdata\}\\Programs\\Bloomstep/);
   assert.match(setup, /PrivilegesRequired=lowest/);
   assert.match(setup, /UsePreviousAppDir=yes/);
@@ -24,15 +25,16 @@ test('obsolete autonomous variants are replaced by a standard native wizard', ()
     /SetTimer|KillTimer|CreateCallback|PeekMessage|DispatchMessage|OnClick|Sleep\(/);
 });
 
-test('launch is an explicit default-off native Finish choice with original-user guards', () => {
+test('launch is a default-checked toggleable native Finish choice with original-user guards', () => {
   const setup = read('packaging/bloomstep.iss');
   const run = setup.split('[Run]')[1]?.split(/\n\[/)[0];
   assert.ok(run);
   assert.match(run, /Filename: "\{app\}\\bloomstep.exe"/);
   assert.match(run, /Description: "Launch Bloomstep"/);
-  for (const flag of ['postinstall', 'unchecked', 'skipifsilent', 'runasoriginaluser']) {
+  for (const flag of ['postinstall', 'skipifsilent', 'runasoriginaluser']) {
     assert.match(run, new RegExp(`\\b${flag}\\b`));
   }
+  assert.doesNotMatch(run, /\bunchecked\b/);
   assert.match(run, /Check: CanLaunchBloomstep/);
   const gate = /function CanLaunchBloomstep\(\): Boolean;([\s\S]*?)\nend;/.exec(setup)?.[1];
   assert.ok(gate);

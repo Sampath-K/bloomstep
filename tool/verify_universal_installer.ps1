@@ -164,7 +164,7 @@ try {
       [void][OnboardingWizard]::GetWindowThreadProcessId($window,[ref]$owner)
       if (-not $owned.Contains([int]$owner)) { continue }
       $text = [OnboardingWizard]::Describe($window)
-      if (-not $cancelRequested -and $text.Contains('Welcome to Bloomstep')) {
+      if (-not $cancelRequested -and (Get-StandardWizardStage $window) -eq 'ready') {
         $wizardProcess = Get-Process -Id $owner
         [void]$wizardProcess.Handle
         $ownedProcesses[[int]$owner] = $wizardProcess
@@ -181,12 +181,12 @@ try {
         try {
           if (-not [OnboardingWizard]::PrintWindow($window,$dc,2)) { throw 'Owned universal Welcome capture failed.' }
         } finally { $graphics.ReleaseHdc($dc) }
-        $frame = Join-Path $EvidenceDir 'actual-universal-welcome.png'
+        $frame = Join-Path $EvidenceDir 'actual-universal-ready.png'
         try { $bitmap.Save($frame,[Drawing.Imaging.ImageFormat]::Png) }
         finally { $graphics.Dispose(); $bitmap.Dispose() }
         $report.entry = @{
-          page = 'welcome'
-          file = 'actual-universal-welcome.png'; sha256 = (Get-FileHash $frame).Hash.ToLower()
+          page = 'ready'
+          file = 'actual-universal-ready.png'; sha256 = (Get-FileHash $frame).Hash.ToLower()
           width = $width; height = $height; actualDpi = [OnboardingWizard]::GetDpiForWindow($window)
           scope = 'Actual compiled universal package on isolated CI host; Cancel only, not app acceptance'
         }

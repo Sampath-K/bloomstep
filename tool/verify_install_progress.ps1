@@ -32,7 +32,7 @@ $trustedApplicationProxies = @{}
 $report = [ordered]@{
   kind = 'actual-compiled-standard-install-visual-not-app-acceptance'
   source = $manifest.source; installerFile = $manifest.installerFile; installerSha256 = $manifest.installerSha256
-  proofAutomation = 'Explicit disposable test-driver Next/Install/Finish; not customer automatic behavior'
+  proofAutomation = 'Explicit disposable test-driver Install/Finish; no Next or customer automatic behavior'
   installed = $false; journey = $journey; visualFrames = $frames; outcome = 'UNVERIFIED'; cleanupVerified = $false
   staticArtwork = $true; motionAcceptance = 'Static artwork only. Not motion evidence.'
   expectedArtworkSha256 = @{

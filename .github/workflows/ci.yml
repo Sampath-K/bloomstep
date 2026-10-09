@@ -617,7 +617,7 @@ jobs:
           @{
             kind = 'bloomstep-offline-universal-v1'; source = $source; version = $version
             installerFile = $installer.Name; installerSha256 = $hash; bytes = $installer.Length
-            installFlow = 'standard'; distribution = 'UNPUBLISHED; protected behavior and owner acceptance pending'
+            installFlow = 'oneclick-native'; distribution = 'UNPUBLISHED; protected behavior and owner acceptance pending'
             compiler = $env:BLOOMSTEP_INNO_ENGINE_VERSION
             signatureStatus = (Get-AuthenticodeSignature $installer.FullName).Status.ToString()
             payloadManifests = $payloadHashes

@@ -53,7 +53,7 @@ $report = [ordered]@{
   schemaVersion = 2; sourceRevision = $compiledFixture.sourceRevision; installerSha256 = $hash
   mode = $Mode; fixture = $true; customerData = $false; outcome = 'UNVERIFIED'
   payload = 'Inert launch-token/count probe, not Bloomstep app or a public release'
-  proofAutomation = 'Explicit Next/Install/Finish test-driver input; no customer automatic behavior claim'
+  proofAutomation = 'Explicit Install/Finish test-driver input; no Next or customer automatic behavior claim'
   requestedOsScales = $requestedScales; states = $states; journey = $journey
   tokenElevated = $admin; userInteractive = [Environment]::UserInteractive
   screenReaderAcceptance = 'UNKNOWN; captures are not Narrator acceptance'

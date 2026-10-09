@@ -103,14 +103,14 @@ if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.ur
   }
   const destinationFirst = Object.values(receipt.native).every(proof => proof.entry?.page === 'destination');
   const pageChecklist =
-    `- [ ] Static Anchor / Action / Celebrate Welcome requires Next, destination requires Next, Ready requires Install, and Finish offers Launch Bloomstep unchecked by default. Check high-DPI readability separately.\n` +
+    `- [ ] One static Anchor / Action / Celebrate Ready page requires Install, uses the default per-user location, then shows progress and Finish with Launch Bloomstep checked by default and freely untickable. Check high-DPI readability separately.\n` +
     `- [ ] Cancel before installation leaves no payload. Installer observations are entirely disabled, including silent installs; prior legacy receipts are not new consent.\n`;
   const checklist = `# Owner manual-test checklist — ${tag}\n\n` +
     `Status: PENDING. Protected genuine checked/unchecked launch remains explicitly UNVERIFIED until the disposable standard-user Defender-enabled VM gate passes. This is not customer-ready or full acceptance.\n\n` +
     `Use clean disposable native x64 and ARM64 slots as the ordinary installing user; do not run as administrator or disable protections. Verify exact release filename and SHA-256 first. Unknown source/hash, malware or managed-policy block means STOP. Hash consistency is not safety/signing.\n\n` +
     `- [ ] One primary universal download routes to the native OS without an architecture choice; also exercise x64 process emulation on ARM where available.\n` +
     pageChecklist +
-    `- [ ] Finish defaults to no launch. Explicit checked Launch Bloomstep starts exactly one native, non-elevated app as the installing user; same process survives at least ten seconds with visible window. Unchecked Finish starts none. Record observed outcome, not an assumption.\n` +
+    `- [ ] Finish defaults checked. Leaving Launch Bloomstep checked starts exactly one native, non-elevated app as the installing user; same process survives at least ten seconds with visible window. Explicitly unticking before Finish starts none. Record observed outcome, not an assumption.\n` +
     `- [ ] Silent, suppressed and elevated installs start no app. No elevation or protection override is authorized for testing.\n` +
     `- [ ] Ordinary sign-in, tiny routine-linked habit, check-in, celebration and full garden journey work; cancel/exit and keyboard/focus/accessibility remain usable.\n` +
     `- [ ] Record native OS/architecture, package hash, installing-user/elevation confirmation, checked/unchecked outcomes and any failure, with no private identity in shared screenshots.\n\n` +

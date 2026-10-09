@@ -163,48 +163,28 @@ $receipt = Join-Path $env:LOCALAPPDATA 'Bloomstep\measurement\installer-receipt.
 if ((Test-Path $target) -or (Test-Path $receipt)) { throw 'Capture refuses existing installation/receipt state.' }
 $states = [Collections.Generic.List[object]]::new()
 $report = @{ sourceRevision = $compiledFixture.sourceRevision; installerSha256 = $compiledFixture.installerSha256;
-  expectedOrder = @('welcome', 'destination'); states = $states; installed = $false; outcome = 'running';
-  proofAutomation = 'Explicit test-driver Next then Cancel; not customer automatic behavior' }
+  expectedOrder = @('ready'); states = $states; installed = $false; outcome = 'running';
+  proofAutomation = 'Explicit test-driver Cancel only; Install never selected' }
 try {
   $setup = Start-CaptureProcess $Installer '/SP- /NORESTART' 'destination-fixture'
   $observed = $false
   $cancelled = $false
-  $welcomeAt = $null
   $deadline = $captureClock.ElapsedMilliseconds + 40000
   while (-not $cancelled -and $captureClock.ElapsedMilliseconds -lt $deadline) {
     Update-CaptureTree
     foreach ($window in Get-CaptureWindows) {
       $text = [OnboardingWizard]::Describe($window)
-      if ($null -eq $welcomeAt -and [OnboardingWizard]::ClassName($window) -eq 'TWizardForm') {
-        if ((Get-StandardWizardStage $window) -ne 'welcome') {
-          throw 'First observed wizard page was not the standard Welcome.'
+      if (-not $observed -and [OnboardingWizard]::ClassName($window) -eq 'TWizardForm') {
+        if ((Get-StandardWizardStage $window) -ne 'ready') {
+          throw 'First observed wizard page was not the one-click Ready.'
         }
-        $next = [OnboardingWizard]::Find($window, 'Next >')
-        if ($next -eq [IntPtr]::Zero) { $next = [OnboardingWizard]::Find($window, 'Next') }
-        if ($next -eq [IntPtr]::Zero -or [OnboardingWizard]::Find($window, 'Cancel') -eq [IntPtr]::Zero) {
-          throw 'Standard Welcome must offer native Next and Cancel.'
+        foreach ($caption in @('Install', 'Cancel')) {
+          if ([OnboardingWizard]::Find($window, $caption) -eq [IntPtr]::Zero) { throw "Ready control missing: $caption" }
         }
-        $welcomeAt = $captureClock.ElapsedMilliseconds
-        $frame = Save-CaptureFrame $window 'fixture-welcome.png'
-        $frame.step = 'welcome'
-        $states.Add($frame)
-        Invoke-CaptureButton $next 'welcome-next-test-driver'
-        continue
-      }
-      if (-not $observed -and $null -ne $welcomeAt -and [OnboardingWizard]::ClassName($window) -eq 'TWizardForm' -and
-          $text.Contains('Select Destination Location')) {
-        if ([OnboardingWizard]::Find($window, $target) -eq [IntPtr]::Zero) {
-          throw 'Native destination did not preserve the current per-user default.'
-        }
-        $report.defaultDirectoryMatches = $true
-        foreach ($caption in @('Back', 'Browse...', 'Cancel')) {
-          if ([OnboardingWizard]::Find($window, $caption) -eq [IntPtr]::Zero) { throw "Destination control missing: $caption" }
-        }
-        if ([OnboardingWizard]::Find($window, 'Next >') -eq [IntPtr]::Zero -and
-            [OnboardingWizard]::Find($window, 'Next') -eq [IntPtr]::Zero) { throw 'Native destination Next missing.' }
-        $report.destinationBackPresent = $true
-        $frame = Save-CaptureFrame $window 'fixture-destination.png'
-        $frame.step = 'destination'
+        if ([OnboardingWizard]::Find($window, 'Next >') -ne [IntPtr]::Zero -or
+            [OnboardingWizard]::Find($window, 'Next') -ne [IntPtr]::Zero) { throw 'One-click Ready unexpectedly offers Next.' }
+        $frame = Save-CaptureFrame $window 'fixture-ready.png'
+        $frame.step = 'ready'
         $root = [Windows.Automation.AutomationElement]::FromHandle($window)
         $controls = $root.FindAll([Windows.Automation.TreeScope]::Descendants, [Windows.Automation.Condition]::TrueCondition)
         $frame.accessibility = @($controls | ForEach-Object {
@@ -232,8 +212,8 @@ try {
   $report.receiptAbsent = $true
   $report.targetAbsent = $true
   $report.cancelExit = $setup.ExitCode
-  $report.outcome = 'actual-standard-Welcome-Next-destination-Cancel; Install never selected'
-  $report.keyboardNavigation = 'UNKNOWN; native Next/Back/Browse/Cancel controls and UIA names captured, not keyboard or Narrator acceptance'
+  $report.outcome = 'actual-one-click-Ready-Cancel; Install never selected'
+  $report.keyboardNavigation = 'UNKNOWN; native Install/Cancel controls and UIA names captured, not keyboard or Narrator acceptance'
 } catch {
   $report.outcome = 'FAIL; actual destination evidence incomplete'
   Save-CaptureStage 'destination-proof-failed'

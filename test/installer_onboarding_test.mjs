@@ -8,17 +8,17 @@ import { createHash } from 'node:crypto';
 const read = path => readFileSync(new URL(`../${path}`, import.meta.url), 'utf8');
 const installer = read('packaging/bloomstep.iss');
 
-test('the first native wizard page is Welcome, followed by explicit Next to destination', () => {
-  assert.match(installer, /DisableWelcomePage=no/);
+test('the only preinstall page is native Ready with art and Install', () => {
+  assert.match(installer, /DisableWelcomePage=yes/);
   assert.match(installer, /DisableReadyPage=no/);
-  assert.match(installer, /DisableDirPage=no/);
+  assert.match(installer, /DisableDirPage=yes/);
   assert.match(installer, /DisableProgramGroupPage=yes/);
   assert.doesNotMatch(installer, /CreateCustomPage\(/);
   const capture = read('tool/verify_onboarding_wizard.ps1');
-  assert.match(capture, /First observed wizard page was not the standard Welcome/);
-  assert.match(capture, /expectedOrder = @\('welcome', 'destination'\)/);
-  assert.match(capture, /welcome-next-test-driver/);
-  assert.match(capture, /destinationBackPresent/);
+  assert.match(capture, /First observed wizard page was not the one-click Ready/);
+  assert.match(capture, /expectedOrder = @\('ready'\)/);
+  assert.match(capture, /Install never selected/);
+  assert.doesNotMatch(capture, /welcome-next-test-driver/);
   assert.match(capture, /installerSha256/);
   assert.match(capture, /receiptAbsent/);
   assert.match(capture, /compiledFixture\.installationProhibited/);
@@ -33,7 +33,7 @@ test('installer teaches only with words and pictures, without extra pages or cha
   assert.match(installer, /PrivilegesRequired=lowest/);
   assert.doesNotMatch(installer, /MeasurementCheckBox|SaveStringToFile/);
   assert.match(read('packaging/install-progress.iss'), /if WizardSilent then Exit/);
-  assert.match(installer, /postinstall unchecked skipifsilent runasoriginaluser/);
+  assert.match(installer, /postinstall skipifsilent runasoriginaluser/);
   assert.doesNotMatch(installer, /ShellExec|DownloadTemporaryFile|PrivilegesRequired=admin/);
 });
 

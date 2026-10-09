@@ -6,14 +6,18 @@ This ledger is updated with verified outcomes, not inferred from source code.
 
 **PR26 security hold and standard wizard redesign (draft, unpublished):** previous
 zero-click bytes are withdrawn after severe Defender behavior quarantine.
-The owner-directed replacement uses static Anchor/Action/Celebrate art and
-visible user-driven Welcome, destination, Ready and Finish pages, native Back,
-and an unchecked **Launch Bloomstep** checkbox. No automatic navigation,
+The owner-directed correction preserves static Anchor/Action/Celebrate art but
+removes extra Next pages: one visible native Ready page with Install, default
+per-user location, progress, then Finish with a default-checked, freely toggleable
+**Launch Bloomstep** checkbox. No automatic navigation,
 forced launch, timers or artificial holds. This design is not proof of the
 detection cause or a clean security outcome. Protected genuine/fixture launch
 jobs require an owner-prepared disposable non-admin interactive Hyper-V VM with
 Defender real-time and behavior protection already enabled, optionally registered
 as an ephemeral `defender-interactive` runner. Without it they remain queued.
+The owner reports baseline922da67/hash0ef50e8f installed on ARM64 with real-time
+and behavior protection enabled and no detections in the preceding hour. This
+bounded owner observation is not protected-VM acceptance or evidence for new bytes.
 See [the exact owner VM steps](defender-test-vm.md). Installer
 observations remain absent; legacy owner-matched cleanup is preserved.
 PR28 app changes are composed into this source branch: fresh empty device

@@ -53,7 +53,7 @@ try {
   if ((Test-Path $measurement) -or (Test-Path $protocol) -or (Get-Process -Name bloomstep -ErrorAction SilentlyContinue)) {
     throw 'Genuine proof refuses pre-existing product state or processes.'
   }
-  $report.proofAutomation = 'Explicit disposable test-driver Next/Install/Finish and launch selection; no customer automatic behavior claim'
+  $report.proofAutomation = 'Explicit disposable test-driver Install/Finish and launch deselection; no Next or customer automatic behavior claim'
   $protection = Start-ProtectedInstallerProof $installer $manifest.installerSha256 $EvidenceDir
   foreach ($mode in @('checked-launch','unchecked-launch','silent-no-launch')) {
     Assert-InstallerProtectionUnchanged $protection

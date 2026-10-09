@@ -3,12 +3,16 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 const read = path => readFileSync(new URL(`../${path}`, import.meta.url), 'utf8');
 
-test('standard user-driven setup replaces autonomous flows', () => {
+test('one native Install commitment replaces extra Next screens without autonomous navigation', () => {
   const setup = read('packaging/bloomstep.iss');
-  for (const page of ['Welcome', 'Dir', 'Ready', 'Finished']) {
-    assert.match(setup, new RegExp(`Disable${page}Page=no`));
-  }
-  assert.match(setup, /\[Run\][\s\S]*Description: "Launch Bloomstep"[\s\S]*postinstall[\s\S]*unchecked[\s\S]*skipifsilent/);
+  assert.match(setup, /DisableWelcomePage=yes/);
+  assert.match(setup, /DisableDirPage=yes/);
+  assert.match(setup, /DisableReadyPage=no/);
+  assert.match(setup, /DisableReadyMemo=yes/);
+  assert.match(setup, /DisableFinishedPage=no/);
+  assert.match(setup, /\[Run\][\s\S]*Description: "Launch Bloomstep"[\s\S]*postinstall[\s\S]*skipifsilent/);
+  assert.doesNotMatch(setup, /postinstall unchecked/);
+  assert.match(read('packaging/install-progress.iss'), /WizardForm\.ReadyPage/);
   assert.match(setup, /PrivilegesRequired=lowest/);
   assert.doesNotMatch(setup, /InstallFlow|HoldZeroClickVisual|ExecAsOriginalUser|BackButtonClick|NextButton\.OnClick|SetTimer|CreateCallback|PeekMessage|DispatchMessage/);
   assert.doesNotMatch(read('packaging/install-progress.iss'), /SetTimer|CreateCallback|PeekMessage|DispatchMessage|OnClick|Sleep\(/);

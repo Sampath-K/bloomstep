@@ -6,16 +6,16 @@ import { spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 
 const read = path => readFileSync(new URL(`../${path}`, import.meta.url), 'utf8');
-test('standard Welcome and destination Next lead to native Ready Install and Finish', () => {
+test('one native Ready Install commitment leads to progress and Finish', () => {
   const setup = read('packaging/bloomstep.iss');
-  assert.match(setup, /DisableWelcomePage=no/);
+  assert.match(setup, /DisableWelcomePage=yes/);
   assert.match(setup, /DisableReadyPage=no/);
   assert.match(setup, /DisableFinishedPage=no/);
-  assert.match(setup, /DisableDirPage=no/);
+  assert.match(setup, /DisableDirPage=yes/);
   assert.match(setup, /DefaultDirName=\{localappdata\}\\Programs\\Bloomstep/);
   assert.match(setup, /UsePreviousAppDir=yes/);
   assert.doesNotMatch(setup, /msgButtonInstall|NextButton\.Caption/);
-  assert.match(read('tool/verify_onboarding_wizard.ps1'), /defaultDirectoryMatches = \$true/);
+  assert.match(read('tool/verify_onboarding_wizard.ps1'), /expectedOrder = @\('ready'\)/);
   assert.doesNotMatch(setup, /CreateCustomPage\(|MeasurementCheckBox|MeasurementEvent|WriteMeasurement|SaveStringToFile/);
   assert.match(setup, /^\[Run\]/m);
   assert.match(setup, /PrivilegesRequired=lowest/);

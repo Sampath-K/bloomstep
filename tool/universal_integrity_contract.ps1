@@ -35,7 +35,7 @@ function New-StandardWizardJourney {
   @{
     stages = [Collections.Generic.List[string]]::new()
     nextClicks = 0; installClicks = 0; finishClicks = 0
-    launchDefaultUnchecked = $null; launchSelected = $false
+    launchDefaultChecked = $null; launchSelected = $false
   }
 }
 
@@ -56,7 +56,7 @@ function Invoke-StandardWizardStep([IntPtr]$Window, [hashtable]$Journey, [bool]$
     if ($Journey.stages[$Journey.stages.Count - 1] -ne $stage) { throw 'Native wizard unexpectedly returned to an earlier page.' }
     return $stage
   }
-  $expected = @('welcome','destination','ready','installing','finish')
+  $expected = @('ready','installing','finish')
   if ($Journey.stages.Count -ge $expected.Count -or $stage -ne $expected[$Journey.stages.Count]) {
     throw "Native wizard page skipped or auto-advanced: $stage"
   }
@@ -70,18 +70,18 @@ function Invoke-StandardWizardStep([IntPtr]$Window, [hashtable]$Journey, [bool]$
   if ($button -eq [IntPtr]::Zero) { throw "Native $stage button missing: $caption" }
   if ($stage -eq 'finish') {
     $choice = [OnboardingWizard]::LaunchChoiceState($Window)
-    if ($choice -eq 1) { throw 'Launch Bloomstep must be unchecked by default.' }
+    if ($choice -eq 0) { throw 'Launch Bloomstep must be checked by default.' }
     if ($choice -eq -1 -and $CheckLaunch) { throw 'Explicit Launch Bloomstep choice unavailable on checked proof.' }
-    $Journey.launchDefaultUnchecked = if ($choice -eq 0) { $true } else { $null }
-    if ($CheckLaunch) {
+    $Journey.launchDefaultChecked = if ($choice -eq 1) { $true } else { $null }
+    if (-not $CheckLaunch -and $choice -eq 1) {
       [OnboardingWizard]::ToggleLaunchChoice($Window)
       $deadline = (Get-Date).AddSeconds(2)
-      while ([OnboardingWizard]::LaunchChoiceState($Window) -ne 1 -and (Get-Date) -lt $deadline) {
+      while ([OnboardingWizard]::LaunchChoiceState($Window) -ne 0 -and (Get-Date) -lt $deadline) {
         Start-Sleep -Milliseconds 50
       }
-      if ([OnboardingWizard]::LaunchChoiceState($Window) -ne 1) { throw 'Explicit Launch Bloomstep selection was not verified.' }
-      $Journey.launchSelected = $true
+      if ([OnboardingWizard]::LaunchChoiceState($Window) -ne 0) { throw 'Explicit Launch Bloomstep deselection was not verified.' }
     }
+    $Journey.launchSelected = $CheckLaunch;
   }
   # Test-driver input on the disposable desktop, not automatic customer setup behavior.
   if (-not [OnboardingWizard]::PostMessage($button, 0x00F5, [IntPtr]::Zero, [IntPtr]::Zero)) {
@@ -94,12 +94,12 @@ function Invoke-StandardWizardStep([IntPtr]$Window, [hashtable]$Journey, [bool]$
 }
 
 function Assert-StandardWizardJourney([hashtable]$Journey, [bool]$CheckLaunch = $false, [bool]$ChoiceRequired = $true) {
-  if (($Journey.stages -join ',') -ne 'welcome,destination,ready,installing,finish' -or
-      $Journey.nextClicks -ne 2 -or $Journey.installClicks -ne 1 -or $Journey.finishClicks -ne 1) {
-    throw 'Standard proof requires Welcome, destination, Ready, Installing, Finish and explicit test-driver clicks.'
+  if (($Journey.stages -join ',') -ne 'ready,installing,finish' -or
+      $Journey.nextClicks -ne 0 -or $Journey.installClicks -ne 1 -or $Journey.finishClicks -ne 1) {
+    throw 'One-click proof requires Ready, Installing, Finish and explicit test-driver Install/Finish clicks.'
   }
-  if (($ChoiceRequired -and $Journey.launchDefaultUnchecked -ne $true) -or $Journey.launchSelected -ne $CheckLaunch) {
-    throw 'Native default-off launch choice proof mismatch.'
+  if (($ChoiceRequired -and $Journey.launchDefaultChecked -ne $true) -or $Journey.launchSelected -ne $CheckLaunch) {
+    throw 'Native default-checked toggleable launch choice proof mismatch.'
   }
 }
 

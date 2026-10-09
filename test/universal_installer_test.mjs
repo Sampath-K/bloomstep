@@ -14,7 +14,7 @@ test('universal installer bundles exclusive native OS payloads without bootstrap
   assert.match(source, /function UseX64Payload[\s\S]*Result := ProcessorArchitecture = paX64/);
   assert.match(source, /function UseArm64Payload[\s\S]*Result := ProcessorArchitecture = paArm64/);
   assert.match(source, /PrivilegesRequired=lowest/);
-  assert.match(source, /postinstall unchecked skipifsilent runasoriginaluser/);
+  assert.match(source, /postinstall skipifsilent runasoriginaluser/);
   assert.doesNotMatch(source, /ExecAsOriginalUser/);
   assert.doesNotMatch(source, /DownloadTemporaryFile|dontverifychecksum|skipifsourcedoesntexist|PrivilegesRequired=admin/);
 });
@@ -210,13 +210,13 @@ test('genuine outcome oracle rejects transient apps and unsuccessful installer e
   assert.match(proof, /wizardExitCode/);
 });
 
-test('standard wizard driver verifies each explicit action and default-off launch state without an installer', () => {
+test('one-click wizard driver verifies Install/Finish and freely toggleable default-checked launch without an installer', () => {
   const helper = fileURLToPath(new URL('../tool/universal_integrity_contract.ps1', import.meta.url)).replaceAll("'", "''");
   const script = `$ErrorActionPreference='Stop'; . '${helper}';
     Add-Type @'
 using System;
 public static class OnboardingWizard {
-  public static int Choice = 0;
+  public static int Choice = 1;
   public static string Describe(IntPtr h) {
     return new [] { "", "Welcome", "Select Destination Location", "Ready to Install", "Installing", "Completing" }[(int)h];
   }
@@ -231,16 +231,16 @@ public static class OnboardingWizard {
 }
 '@
     foreach ($checked in @($false,$true)) {
-      [OnboardingWizard]::Choice = 0;
+      [OnboardingWizard]::Choice = 1;
       $journey = New-StandardWizardJourney;
-      foreach ($page in 1..5) {
+      foreach ($page in 3..5) {
         Invoke-StandardWizardStep ([IntPtr]$page) $journey $checked | Out-Null;
         Invoke-StandardWizardStep ([IntPtr]$page) $journey $checked | Out-Null;
       }
       Assert-StandardWizardJourney $journey $checked;
       if ($journey.launchSelected -ne $checked) { throw 'Choice mismatch' }
     }
-    foreach ($pages in @(@(2),@(1,3),@(1,2,3,5),@(1,2,1))) {
+    foreach ($pages in @(@(2),@(1,3),@(3,5),@(3,4,3))) {
       $rejected = $false;
       try {
         $journey = New-StandardWizardJourney;
@@ -248,14 +248,14 @@ public static class OnboardingWizard {
       } catch { $rejected=$true }
       if (-not $rejected) { throw 'Skipped or reversed page accepted' }
     }
-    foreach ($choice in @(1,-1)) {
+    foreach ($choice in @(0,-1)) {
       [OnboardingWizard]::Choice = $choice;
       $rejected = $false;
       try {
         $journey = New-StandardWizardJourney;
-        foreach ($page in 1..5) { Invoke-StandardWizardStep ([IntPtr]$page) $journey $true | Out-Null }
+        foreach ($page in 3..5) { Invoke-StandardWizardStep ([IntPtr]$page) $journey $true | Out-Null }
       } catch { $rejected=$true }
-      if (-not $rejected) { throw 'Default-on or missing explicit checkbox accepted' }
+      if (-not $rejected) { throw 'Default-off or missing explicit checkbox accepted' }
     }
     'PASS'`;
   assert.match(execFileSync('pwsh', ['-NoProfile', '-NonInteractive', '-Command', script], { encoding: 'utf8' }), /PASS/);
