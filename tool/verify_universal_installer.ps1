@@ -26,6 +26,7 @@ if ($manifest.payloadManifests.$ExpectedArch -ne
   throw 'Selected payload manifest hash mismatch.'
 }
 New-Item -ItemType Directory -Path $EvidenceDir -Force | Out-Null
+$protection = Start-ProtectedInstallerProof $installer $manifest.installerSha256 $EvidenceDir
 $probe = Join-Path $PWD 'native-probe-output\native-host-x64-probe.exe'
 $probeManifest = Get-Content (Join-Path $PWD 'native-probe-output\native-probe-manifest.json') -Raw | ConvertFrom-Json
 if ($probeManifest.kind -ne 'native-x64-host-query-probe-v1' -or $probeManifest.source -ne $source -or
@@ -108,6 +109,7 @@ function Update-NativeOwnedProcesses {
   }
 }
 function Invoke-NativeProcess([string]$Stage, [string]$File, [string]$Arguments, [int]$TimeoutSeconds = 120) {
+  Assert-InstallerProtectionUnchanged $protection
   if ($TimeoutSeconds -lt 1 -or $TimeoutSeconds -gt 120) { throw 'Native process timeout must be 1 through 120 seconds.' }
   $invocation = "$([IO.Path]::GetFileName($File)) $Arguments"
   foreach ($privatePath in @($env:RUNNER_TEMP,$env:LOCALAPPDATA,$env:USERPROFILE)) {
@@ -162,29 +164,29 @@ try {
       [void][OnboardingWizard]::GetWindowThreadProcessId($window,[ref]$owner)
       if (-not $owned.Contains([int]$owner)) { continue }
       $text = [OnboardingWizard]::Describe($window)
-      if (-not $cancelRequested -and $text -match 'Select Destination Location') {
+      if (-not $cancelRequested -and $text.Contains('Welcome to Bloomstep')) {
         $wizardProcess = Get-Process -Id $owner
         [void]$wizardProcess.Handle
         $ownedProcesses[[int]$owner] = $wizardProcess
         $wizardProcessId = [int]$owner
         Start-Sleep -Milliseconds 300
         $rectangle = [OnboardingWizard+Rect]::new()
-        if (-not [OnboardingWizard]::GetWindowRect($window,[ref]$rectangle)) { throw 'Owned destination bounds unavailable.' }
+        if (-not [OnboardingWizard]::GetWindowRect($window,[ref]$rectangle)) { throw 'Owned Welcome bounds unavailable.' }
         $width = $rectangle.Right - $rectangle.Left
         $height = $rectangle.Bottom - $rectangle.Top
-        if ($width -lt 100 -or $height -lt 100) { throw 'Owned destination bounds invalid.' }
+        if ($width -lt 100 -or $height -lt 100) { throw 'Owned Welcome bounds invalid.' }
         $bitmap = [Drawing.Bitmap]::new($width,$height)
         $graphics = [Drawing.Graphics]::FromImage($bitmap)
         $dc = $graphics.GetHdc()
         try {
-          if (-not [OnboardingWizard]::PrintWindow($window,$dc,2)) { throw 'Owned universal destination capture failed.' }
+          if (-not [OnboardingWizard]::PrintWindow($window,$dc,2)) { throw 'Owned universal Welcome capture failed.' }
         } finally { $graphics.ReleaseHdc($dc) }
-        $frame = Join-Path $EvidenceDir 'actual-universal-destination.png'
+        $frame = Join-Path $EvidenceDir 'actual-universal-welcome.png'
         try { $bitmap.Save($frame,[Drawing.Imaging.ImageFormat]::Png) }
         finally { $graphics.Dispose(); $bitmap.Dispose() }
         $report.entry = @{
-          page = 'destination'
-          file = 'actual-universal-destination.png'; sha256 = (Get-FileHash $frame).Hash.ToLower()
+          page = 'welcome'
+          file = 'actual-universal-welcome.png'; sha256 = (Get-FileHash $frame).Hash.ToLower()
           width = $width; height = $height; actualDpi = [OnboardingWizard]::GetDpiForWindow($window)
           scope = 'Actual compiled universal package on isolated CI host; Cancel only, not app acceptance'
         }
@@ -263,6 +265,8 @@ try {
   }
   $faultLog = Join-Path $env:RUNNER_TEMP 'Bloomstep-universal-corrupt-private.log'
   $report.corruptionLogFile = [IO.Path]::GetFileName($faultLog)
+  & "$PSScriptRoot\setup_defender_test_vm.ps1" -Mode ScanCandidate -Installer $faultExe `
+    -ExpectedSha256 (Get-FileHash $faultExe).Hash.ToLower() -EvidenceDir (Join-Path $EvidenceDir 'fault-fixture-scan')
   $failed = Invoke-NativeProcess 'corrupt' $faultExe "/VERYSILENT /SUPPRESSMSGBOXES /NORESTART /DIR=`"$corruptTarget`" /LOG=`"$faultLog`""
   $checksumErrors = if (Test-Path $faultLog) { @(Get-EmbeddedChecksumErrors (Get-Content $faultLog)) } else { @() }
   $remainingFiles = if (Test-Path $corruptTarget) { @(Get-ChildItem $corruptTarget -Recurse -File -Force) } else { @() }
@@ -274,6 +278,7 @@ try {
   $report.checksumErrorLines = $checksumErrors
   $report.corruptMarkerAndPayloadAbsent = $true
   $report.corruptExitCode = $failed.ExitCode
+  Assert-InstallerProtectionUnchanged $protection
   $report.outcome = 'success'
 } catch {
   $report.outcome = 'failure'
@@ -284,6 +289,7 @@ try {
   foreach ($process in $ownedProcesses.Values) {
     if (-not $process.HasExited) { Stop-Process -Id $process.Id -Force }
   }
+  Assert-InstallerProtectionUnchanged $protection
   if (Test-Path "$target\unins000.exe") {
     $cleanup = Invoke-NativeProcess 'cleanup-uninstall' "$target\unins000.exe" '/VERYSILENT /SUPPRESSMSGBOXES /NORESTART'
     if ($cleanup.ExitCode -ne 0) {

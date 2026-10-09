@@ -4,13 +4,11 @@ import { readFileSync } from 'node:fs';
 
 const read = path => readFileSync(new URL(`../${path}`, import.meta.url), 'utf8');
 
-test('disposable Defender gate scans the quarantined exact artifact, never rebuilds or executes it', () => {
+test('historical capability gate now refuses withdrawn candidate access before artifact download', () => {
   const workflow = read('.github/workflows/installer-security.yml');
   assert.match(workflow, /runs-on: windows-latest/);
-  assert.match(workflow, /run-id: 37815203643/);
-  assert.match(workflow, /bloomstep-universal-zeroclick-installer-PRIVATE-EXPERIMENT/);
-  assert.match(workflow, /bloomstep-windows-x64/);
-  assert.match(workflow, /bloomstep-windows-arm64/);
+  assert.match(workflow, /throw 'Withdrawn candidate access is disabled/);
+  assert.doesNotMatch(workflow, /download-artifact|run-id:|push:/);
   assert.match(workflow, /if: always\(\)/);
   assert.doesNotMatch(workflow, /ISCC|flutter build|release:|gh release/);
 });

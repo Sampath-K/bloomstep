@@ -6,12 +6,6 @@
     #error Integrity fault injection requires the isolated journey identity, never a public package.
   #endif
 #endif
-#ifndef InstallFlow
-  #define InstallFlow "oneclick"
-#endif
-#if InstallFlow != "oneclick" && InstallFlow != "zeroclick"
-  #error InstallFlow must be oneclick or zeroclick.
-#endif
 #ifndef AppVersion
   #define AppVersion "0.1.0-preview"
 #endif
@@ -53,23 +47,14 @@ DefaultDirName={localappdata}\Programs\Bloomstep
 DefaultGroupName=Bloomstep
 PrivilegesRequired=lowest
 OutputDir=..\release-output
-#if InstallFlow == "zeroclick"
-OutputBaseFilename=Bloomstep-{#AppVersion}-windows-{#AppArch}-zeroclick-setup
-#else
 OutputBaseFilename=Bloomstep-{#AppVersion}-windows-{#AppArch}-setup
-#endif
 Compression=lzma2
 SolidCompression=yes
 WizardStyle=modern
-; Interactive Inno Setup always shows one pre-install page; it carries the Bloomstep visual in both flows.
 DisableWelcomePage=no
-#if InstallFlow == "zeroclick"
-DisableDirPage=yes
-#else
 DisableDirPage=no
-#endif
-DisableReadyPage=yes
-DisableFinishedPage=yes
+DisableReadyPage=no
+DisableFinishedPage=no
 DisableProgramGroupPage=yes
 WizardImageFile=assets\wizard-garden.bmp
 WizardSmallImageFile=assets\wizard-seed.bmp
@@ -89,8 +74,8 @@ ArchitecturesInstallIn64BitMode=x64compatible
 
 [Messages]
 SelectDirDesc=Choose where Bloomstep will grow.
-SelectDirLabel3=Bloomstep will use this folder. Select Install to begin, Browse to choose another folder, or Cancel to leave without installing.
-SelectDirBrowseLabel=Select Install to begin. To choose a different folder, select Browse.
+SelectDirLabel3=Bloomstep will use this folder. Select Next to review installation, Browse to choose another folder, or Cancel to leave without installing.
+SelectDirBrowseLabel=To continue, select Next. To choose a different folder, select Browse.
 
 [Files]
 #if AppArch == "universal"
@@ -104,6 +89,9 @@ Source: "assets\welcome-garden.bmp"; Flags: dontcopy
 #ifdef UniversalIntegrityFixture
 Source: "{#IntegrityMarker}"; DestDir: "{app}"; DestName: "integrity-probe.txt"; Flags: ignoreversion nocompression
 #endif
+
+[Run]
+Filename: "{app}\bloomstep.exe"; Description: "Launch Bloomstep"; Flags: postinstall unchecked skipifsilent runasoriginaluser; Check: CanLaunchBloomstep
 
 [InstallDelete]
 Type: files; Name: "{app}\measurement-owner.txt"
@@ -167,7 +155,7 @@ function GetUserObjectInformation(Handle: THandle; Index: Integer;
   external 'GetUserObjectInformationW@user32.dll stdcall';
 
 var
-  InstallationSucceeded, LaunchAttempted, InteractiveDesktop: Boolean;
+  InstallationSucceeded, InteractiveDesktop: Boolean;
 
 #include "install-progress.iss"
 
@@ -175,7 +163,7 @@ function CanLaunchBloomstep(): Boolean;
 var
   I: Integer;
 begin
-  Result := InstallationSucceeded and not WizardSilent and not IsAdmin and not LaunchAttempted and InteractiveDesktop;
+  Result := InstallationSucceeded and not WizardSilent and not IsAdmin and InteractiveDesktop;
   for I := 1 to ParamCount do
     if (CompareText(ParamStr(I), '/SUPPRESSMSGBOXES') = 0) or
        (CompareText(ParamStr(I), '/NOCANCEL') = 0) then Result := False;
@@ -183,19 +171,7 @@ end;
 
 procedure CurPageChanged(CurPageID: Integer);
 begin
-  WizardForm.BackButton.Visible := False;
-  WizardForm.BackButton.Enabled := False;
-  if CurPageID = wpSelectDir then
-  begin
-    WizardForm.NextButton.Visible := True;
-    WizardForm.NextButton.Caption := SetupMessage(msgButtonInstall);
-  end;
   ShowVisualForPage(CurPageID);
-end;
-
-function BackButtonClick(CurPageID: Integer): Boolean;
-begin
-  Result := False;
 end;
 
 function MeasurementPath(): String;
@@ -215,34 +191,9 @@ begin
 end;
 
 procedure CurStepChanged(CurStep: TSetupStep);
-var
-  ResultCode: Integer;
 begin
   if CurStep = ssPostInstall then
-  begin
     InstallationSucceeded := True;
-#if InstallFlow == "zeroclick"
-    HoldZeroClickVisual();
-#endif
-  end;
-  if CurStep <> ssInstall then StopInstallMotion();
-  if CurStep = ssDone then
-  begin
-    if CanLaunchBloomstep() then
-    begin
-      LaunchAttempted := True;
-      if ExecAsOriginalUser(ExpandConstant('{app}\bloomstep.exe'), '', '', SW_SHOWNORMAL, ewNoWait, ResultCode) then
-        Log('Bloomstep automatic launch started as the original non-elevated user.')
-      else
-        Log('Bloomstep automatic launch failed: ' + SysErrorMessage(ResultCode) + '. Open Bloomstep from the Start menu.');
-    end
-    else
-    begin
-      Log('Bloomstep automatic launch withheld (silent, elevated, non-interactive or suppressed).');
-      if InstallationSucceeded and IsAdmin and not WizardSilent then
-        SuppressibleMsgBox('Bloomstep is installed. Open Bloomstep from the Start menu as your normal Windows account.', mbInformation, MB_OK, IDOK);
-    end;
-  end;
 end;
 procedure CurUninstallStepChanged(CurUninstallStep: TUninstallStep);
 var

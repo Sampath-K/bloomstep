@@ -25,11 +25,15 @@ if (-not $LoadHelpersOnly) {
 }
 Add-Type -AssemblyName System.Drawing
 Add-Type -AssemblyName UIAutomationClient, UIAutomationTypes
-Add-Type @'
+Add-Type -AssemblyName Accessibility
+Add-Type -CompilerOptions '/nowarn:1701' -ReferencedAssemblies @(
+  [Accessibility.IAccessible].Assembly.Location, (Join-Path $PSHOME 'ref\System.Collections.dll')
+) @'
 using System;
 using System.Collections.Generic;
 using System.Runtime.InteropServices;
 using System.Text;
+using Accessibility;
 public static class OnboardingWizard {
   delegate bool EnumProc(IntPtr h, IntPtr p);
   [DllImport("user32.dll")] static extern bool EnumWindows(EnumProc p, IntPtr x);
@@ -47,6 +51,55 @@ public static class OnboardingWizard {
   [DllImport("user32.dll")] public static extern uint GetDpiForWindow(IntPtr h);
   [DllImport("user32.dll")] public static extern bool SetForegroundWindow(IntPtr h);
   [DllImport("user32.dll")] public static extern IntPtr GetForegroundWindow();
+  [DllImport("user32.dll")] static extern bool ScreenToClient(IntPtr h, ref Point point);
+  public struct Point { public int X, Y; }
+  [DllImport("oleacc.dll")] static extern int AccessibleObjectFromWindow(
+    IntPtr h, uint id, ref Guid iid, [MarshalAs(UnmanagedType.Interface)] out IAccessible accessible);
+  static IntPtr LaunchListHandle(IntPtr owner) {
+    IntPtr list = IntPtr.Zero;
+    EnumChildWindows(owner, (h,p) => {
+      if (IsWindowVisible(h) && ClassName(h).Contains("CheckListBox")) list = h;
+      return true;
+    }, IntPtr.Zero);
+    return list;
+  }
+  static IAccessible LaunchList(IntPtr owner) {
+    var list = LaunchListHandle(owner);
+    if (list == IntPtr.Zero) return null;
+    var iid = new Guid("618736E0-3C3D-11CF-810C-00AA00389B71");
+    IAccessible accessible;
+    if (AccessibleObjectFromWindow(list, 0xFFFFFFFC, ref iid, out accessible) != 0 || accessible == null)
+      throw new InvalidOperationException("Native launch checklist accessibility unavailable; no inferred checkbox state.");
+    return accessible;
+  }
+  static int LaunchChild(IAccessible accessible) {
+    for (int child = 1; child <= accessible.accChildCount; child++) {
+      if (accessible.get_accName(child) == "Launch Bloomstep") return child;
+    }
+    throw new InvalidOperationException("Exact Launch Bloomstep accessibility item unavailable.");
+  }
+  public static int LaunchChoiceState(IntPtr owner) {
+    var accessible = LaunchList(owner);
+    if (accessible == null) return -1;
+    int state = Convert.ToInt32(accessible.get_accState(LaunchChild(accessible)));
+    if ((state & (1 | 0x8000)) != 0) throw new InvalidOperationException("Launch choice disabled or invisible.");
+    return (state & 0x10) != 0 ? 1 : 0;
+  }
+  public static void ToggleLaunchChoice(IntPtr owner) {
+    var accessible = LaunchList(owner);
+    if (accessible == null) throw new InvalidOperationException("Native launch choice unavailable.");
+    // Inno's MSAA checklist exposes state but intentionally has no default action.
+    int left, top, width, height;
+    accessible.accLocation(out left, out top, out width, out height, LaunchChild(accessible));
+    if (width < 16 || height < 1) throw new InvalidOperationException("Native launch choice bounds unavailable.");
+    var point = new Point { X = left + 8, Y = top + height / 2 };
+    var list = LaunchListHandle(owner);
+    if (!ScreenToClient(list, ref point)) throw new InvalidOperationException("Launch choice client bounds unavailable.");
+    var coordinates = new IntPtr((point.Y << 16) | (point.X & 0xFFFF));
+    if (!PostMessage(list, 0x0201, new IntPtr(1), coordinates) ||
+        !PostMessage(list, 0x0202, IntPtr.Zero, coordinates))
+      throw new InvalidOperationException("Owned launch checkbox click dispatch failed.");
+  }
   public struct Rect { public int Left, Top, Right, Bottom; }
   public static string ClassName(IntPtr h) {
     var b = new StringBuilder(256); GetClassName(h,b,b.Capacity); return b.ToString();
@@ -99,6 +152,8 @@ public static class OnboardingWizard {
 if ($LoadHelpersOnly) { return }
 if ($env:GITHUB_ACTIONS -ne 'true') { throw 'Native fixture capture is restricted to disposable CI.' }
 New-Item -ItemType Directory -Path $EvidenceDir -Force | Out-Null
+. "$PSScriptRoot\universal_integrity_contract.ps1"
+$protection = Start-ProtectedInstallerProof $Installer $compiledFixture.installerSha256 $EvidenceDir
 . "$PSScriptRoot\installer_owned_capture.ps1" -Installer $Installer -EvidenceDir $EvidenceDir
 if (-not [OnboardingWizard]::SetProcessDpiAwarenessContext([IntPtr](-4))) {
   throw 'Capture process could not use per-monitor DPI coordinates.'
@@ -108,7 +163,8 @@ $receipt = Join-Path $env:LOCALAPPDATA 'Bloomstep\measurement\installer-receipt.
 if ((Test-Path $target) -or (Test-Path $receipt)) { throw 'Capture refuses existing installation/receipt state.' }
 $states = [Collections.Generic.List[object]]::new()
 $report = @{ sourceRevision = $compiledFixture.sourceRevision; installerSha256 = $compiledFixture.installerSha256;
-  expectedOrder = @('welcome', 'destination'); states = $states; installed = $false; outcome = 'running' }
+  expectedOrder = @('welcome', 'destination'); states = $states; installed = $false; outcome = 'running';
+  proofAutomation = 'Explicit test-driver Next then Cancel; not customer automatic behavior' }
 try {
   $setup = Start-CaptureProcess $Installer '/SP- /NORESTART' 'destination-fixture'
   $observed = $false
@@ -120,40 +176,33 @@ try {
     foreach ($window in Get-CaptureWindows) {
       $text = [OnboardingWizard]::Describe($window)
       if ($null -eq $welcomeAt -and [OnboardingWizard]::ClassName($window) -eq 'TWizardForm') {
-        if ($text -notmatch '(^| \| )Anchor( \| |$)' -or $text -notmatch '(^| \| )Action( \| |$)' -or
-            $text -notmatch '(^| \| )Celebrate( \| |$)' -or $text.Contains('Select Destination Location')) {
-          throw 'First observed wizard page was not the Anchor/Action/Celebrate welcome.'
+        if ((Get-StandardWizardStage $window) -ne 'welcome') {
+          throw 'First observed wizard page was not the standard Welcome.'
         }
-        if ([OnboardingWizard]::Find($window, 'Next') -ne [IntPtr]::Zero -or
-            [OnboardingWizard]::Find($window, 'Back') -ne [IntPtr]::Zero -or
-            [OnboardingWizard]::Find($window, 'Cancel') -eq [IntPtr]::Zero) {
-          throw 'Welcome must offer only Cancel; it advances on its own.'
+        $next = [OnboardingWizard]::Find($window, 'Next >')
+        if ($next -eq [IntPtr]::Zero) { $next = [OnboardingWizard]::Find($window, 'Next') }
+        if ($next -eq [IntPtr]::Zero -or [OnboardingWizard]::Find($window, 'Cancel') -eq [IntPtr]::Zero) {
+          throw 'Standard Welcome must offer native Next and Cancel.'
         }
         $welcomeAt = $captureClock.ElapsedMilliseconds
         $frame = Save-CaptureFrame $window 'fixture-welcome.png'
         $frame.step = 'welcome'
-        $frame.visibleWords = @('Anchor', 'Action', 'Celebrate')
         $states.Add($frame)
+        Invoke-CaptureButton $next 'welcome-next-test-driver'
         continue
       }
       if (-not $observed -and $null -ne $welcomeAt -and [OnboardingWizard]::ClassName($window) -eq 'TWizardForm' -and
           $text.Contains('Select Destination Location')) {
-        # The page text can appear a moment before Inno relabels the primary button; observe the settled page.
-        if ([OnboardingWizard]::Find($window, 'Install') -eq [IntPtr]::Zero -and
-            [OnboardingWizard]::Find($window, 'Next') -ne [IntPtr]::Zero) { continue }
-        $report.welcomeToDestinationMilliseconds = $captureClock.ElapsedMilliseconds - $welcomeAt
-        if ($report.welcomeToDestinationMilliseconds -lt 3500) { throw 'Welcome advanced before about 4 seconds.' }
-        if ($text -match 'click Next|select Next') { throw 'Destination hint still instructs Next instead of Install.' }
         if ([OnboardingWizard]::Find($window, $target) -eq [IntPtr]::Zero) {
           throw 'Native destination did not preserve the current per-user default.'
         }
         $report.defaultDirectoryMatches = $true
-        foreach ($caption in @('Install', 'Browse...', 'Cancel')) {
+        foreach ($caption in @('Back', 'Browse...', 'Cancel')) {
           if ([OnboardingWizard]::Find($window, $caption) -eq [IntPtr]::Zero) { throw "Destination control missing: $caption" }
         }
-        if ([OnboardingWizard]::Find($window, 'Next') -ne [IntPtr]::Zero) { throw 'Destination displayed Next instead of Install.' }
-        if ([OnboardingWizard]::Find($window, 'Back') -ne [IntPtr]::Zero) { throw 'Destination must not offer Back.' }
-        $report.destinationBackAbsent = $true
+        if ([OnboardingWizard]::Find($window, 'Next >') -eq [IntPtr]::Zero -and
+            [OnboardingWizard]::Find($window, 'Next') -eq [IntPtr]::Zero) { throw 'Native destination Next missing.' }
+        $report.destinationBackPresent = $true
         $frame = Save-CaptureFrame $window 'fixture-destination.png'
         $frame.step = 'destination'
         $root = [Windows.Automation.AutomationElement]::FromHandle($window)
@@ -183,13 +232,16 @@ try {
   $report.receiptAbsent = $true
   $report.targetAbsent = $true
   $report.cancelExit = $setup.ExitCode
-  $report.outcome = 'actual-welcome-auto-advance-destination-and-Cancel; Install never selected'
-  $report.keyboardNavigation = 'UNKNOWN; original native Install/Browse/Cancel controls and UIA names captured, not keyboard or Narrator acceptance'
+  $report.outcome = 'actual-standard-Welcome-Next-destination-Cancel; Install never selected'
+  $report.keyboardNavigation = 'UNKNOWN; native Next/Back/Browse/Cancel controls and UIA names captured, not keyboard or Narrator acceptance'
 } catch {
   $report.outcome = 'FAIL; actual destination evidence incomplete'
   Save-CaptureStage 'destination-proof-failed'
   throw
 } finally {
   try { Stop-CaptureTree }
-  finally { $report | ConvertTo-Json -Depth 10 | Set-Content (Join-Path $EvidenceDir 'fixture-wizard-proof.json') -Encoding utf8 }
+  finally {
+    $report | ConvertTo-Json -Depth 10 | Set-Content (Join-Path $EvidenceDir 'fixture-wizard-proof.json') -Encoding utf8
+    Assert-InstallerProtectionUnchanged $protection
+  }
 }

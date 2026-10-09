@@ -2,236 +2,175 @@ param(
   [Parameter(Mandatory=$true)][string]$Installer,
   [Parameter(Mandatory=$true)][string]$FixtureManifest,
   [Parameter(Mandatory=$true)][string]$EvidenceDir,
-  [ValidateSet('automatic-launch','silent','unattended','cancel','failure','elevated')]
-  [string]$Mode = 'automatic-launch',
-  [switch]$Worker
+  [ValidateSet('checked-launch','unchecked-launch','silent','unattended','cancel','failure','elevated')]
+  [string]$Mode = 'unchecked-launch'
 )
 $ErrorActionPreference = 'Stop'
-function Write-JourneyWorkerDiagnostic {
-  param([string]$Stage, [System.Management.Automation.ErrorRecord]$Failure)
-  $identity = [Security.Principal.WindowsIdentity]::GetCurrent()
-  $tokenElevated = ([Security.Principal.WindowsPrincipal]$identity).IsInRole(
-    [Security.Principal.WindowsBuiltInRole]::Administrator)
-  @{
-    schemaVersion = 1; mode = $Mode; stage = $Stage
-    sessionId = (Get-Process -Id $PID).SessionId
-    userInteractive = [Environment]::UserInteractive; tokenElevated = $tokenElevated
-    desktopAvailability = 'UNKNOWN: session and UserInteractive do not establish GUI availability'
-    errorType = if ($Failure) { $Failure.Exception.GetType().FullName } else { $null }
-    errorLine = if ($Failure) { $Failure.InvocationInfo.ScriptLineNumber } else { $null }
-    errorCategory = if ($Failure) { $Failure.CategoryInfo.Category.ToString() } else { $null }
-  } | ConvertTo-Json | Set-Content (Join-Path $EvidenceDir "$Mode-worker-diagnostic.json") -Encoding utf8
+if ($env:GITHUB_ACTIONS -ne 'true' -or $env:BLOOMSTEP_ISOLATED_JOURNEY_FIXTURE -ne 'true' -or
+    $env:BLOOMSTEP_DISPOSABLE_VM -ne 'true') {
+  throw 'This proof runs only on an explicitly authorized disposable CI host with an inert fixture, never the local host.'
 }
-trap {
-  $originalFailure = $_
-  if ($Worker) { Write-JourneyWorkerDiagnostic -Stage 'failed' -Failure $originalFailure }
-  throw $originalFailure
-}
-if ($Worker) { Write-JourneyWorkerDiagnostic -Stage 'starting' }
-if ($env:BLOOMSTEP_ISOLATED_JOURNEY_FIXTURE -ne 'true' -and -not $Worker) {
-  throw 'This proof runs only on a disposable CI host with an inert fixture, never a customer installer.'
-}
-$requestedScales = @(100, 150, 200)
 New-Item -ItemType Directory -Path $EvidenceDir -Force | Out-Null
+. "$PSScriptRoot\universal_integrity_contract.ps1"
 $compiledFixture = Get-Content $FixtureManifest -Raw | ConvertFrom-Json
+$hash = (Get-FileHash $Installer).Hash.ToLower()
 if ($compiledFixture.kind -ne 'inert-journey-fixture-v1' -or
     $compiledFixture.fixtureAppId -ne 'A6690692-4D92-475A-9EAC-1AD867AB0635' -or
     $compiledFixture.payloadSource -ne 'tool/fixtures/installer_launch_probe.cs' -or
+    $compiledFixture.sourceRevision -ne (git rev-parse HEAD) -or
     $compiledFixture.installerFile -ne [IO.Path]::GetFileName($Installer) -or
-    $compiledFixture.installerSha256 -ne (Get-FileHash $Installer).Hash.ToLower() -or
+    $compiledFixture.installerSha256 -ne $hash -or
     -not ([IO.Path]::GetFileName($Installer) -eq 'Bloomstep-0.0.0-contract-windows-x64-setup.exe' -or
       ([IO.Path]::GetFileName($Installer) -eq 'Bloomstep-0.0.0-contract-windows-universal-setup.exe' -and
         $compiledFixture.fixtureArch -eq 'universal'))) {
   throw 'Only the exact hash-authorized compiled inert journey fixture may be installed by this proof.'
 }
-$authority = Join-Path $EvidenceDir 'fixture-authority.json'
-if (-not $Worker) {
-  @{ sourceRevision = $compiledFixture.sourceRevision; installerSha256 = (Get-FileHash $Installer).Hash.ToLower() } |
-    ConvertTo-Json | Set-Content $authority -Encoding utf8
-}
-$authorization = Get-Content $authority -Raw | ConvertFrom-Json
-if ($authorization.installerSha256 -ne (Get-FileHash $Installer).Hash.ToLower()) { throw 'Fixture hash authorization changed.' }
 $admin = ([Security.Principal.WindowsPrincipal][Security.Principal.WindowsIdentity]::GetCurrent()).IsInRole(
   [Security.Principal.WindowsBuiltInRole]::Administrator)
-if ($admin -and $Mode -ne 'elevated' -and -not $Worker) {
-  # A supported limited interactive task tests the actual installing-user token.
-  $taskName = 'Bloomstep-Journey-Proof-' + [Guid]::NewGuid().ToString()
-  $arguments = "-NoProfile -File `"$PSCommandPath`" -Installer `"$Installer`" -FixtureManifest `"$FixtureManifest`" -EvidenceDir `"$EvidenceDir`" -Mode $Mode -Worker"
-  $action = New-ScheduledTaskAction -Execute (Get-Process -Id $PID).Path -Argument $arguments
-  $principal = New-ScheduledTaskPrincipal -UserId ([Security.Principal.WindowsIdentity]::GetCurrent().Name) -LogonType Interactive -RunLevel Limited
-  try {
-    Register-ScheduledTask -TaskName $taskName -Action $action -Principal $principal | Out-Null
-    $startedAt = Get-Date
-    Start-ScheduledTask -TaskName $taskName
-    $deadline = (Get-Date).AddMinutes(3)
-    do {
-      Start-Sleep -Seconds 1
-      $info = Get-ScheduledTaskInfo -TaskName $taskName
-    } while ((-not (Test-Path (Join-Path $EvidenceDir "$Mode.json"))) -and
-      ($info.LastRunTime -lt $startedAt -or $info.LastTaskResult -eq 267009) -and (Get-Date) -lt $deadline)
-    $result = Join-Path $EvidenceDir "$Mode.json"
-    $task = Get-ScheduledTask -TaskName $taskName
-    @{
-      schemaVersion = 1; mode = $Mode; taskState = $task.State.ToString()
-      lastTaskResult = $info.LastTaskResult; lastRunTime = $info.LastRunTime.ToUniversalTime().ToString('o')
-      waitedUntilDeadline = (Get-Date) -ge $deadline
-      outcomePresent = Test-Path $result
-      workerDiagnosticPresent = Test-Path (Join-Path $EvidenceDir "$Mode-worker-diagnostic.json")
-      classification = 'UNKNOWN: inspect worker stage/error; task completion alone does not establish installer or launch success'
-    } | ConvertTo-Json | Set-Content (Join-Path $EvidenceDir "$Mode-task-diagnostic.json") -Encoding utf8
-    if (-not (Test-Path $result)) {
-      throw "Limited interactive task produced no $Mode evidence; desktop/token availability is not established. Task result: $($info.LastTaskResult)"
-    }
-    return
-  } finally { Unregister-ScheduledTask -TaskName $taskName -Confirm:$false }
-}
-if ($Mode -ne 'elevated' -and $admin) { throw 'Normal launch proof must have an actual non-elevated token.' }
-if ($Mode -eq 'elevated' -and -not $admin) { throw 'Elevated no-launch branch needs an actual elevated CI token.' }
+if ($Mode -ne 'elevated' -and $admin) { throw 'Normal launch proof must have an actual non-elevated token. No installer started.' }
+if ($Mode -eq 'elevated' -and -not $admin) { throw 'Elevated no-launch branch needs an actual elevated CI token. No self-elevation.' }
+if (-not [Environment]::UserInteractive) { throw 'An actual interactive disposable desktop is required.' }
 & "$PSScriptRoot\verify_onboarding_wizard.ps1" -Installer $Installer -EvidenceDir $EvidenceDir -LoadHelpersOnly
-if ($Worker) { Write-JourneyWorkerDiagnostic -Stage 'helpers-loaded' }
 if (-not [OnboardingWizard]::SetProcessDpiAwarenessContext([IntPtr](-4))) {
   throw 'Per-monitor physical capture coordinates unavailable.'
 }
-$target = Join-Path $env:TEMP ('Bloomstep-Inert-Journey-' + [Guid]::NewGuid())
+$target = Join-Path $EvidenceDir ('Bloomstep-Inert-Journey-' + [Guid]::NewGuid())
 $receipt = Join-Path $env:LOCALAPPDATA 'Bloomstep\measurement\installer-receipt.json'
-if ((Test-Path $target) -or (Test-Path $receipt)) { throw 'Fixture proof requires absent target and receipt.' }
+$protocol = 'Registry::HKEY_CURRENT_USER\Software\Classes\bloomstep\shell\open\command'
+if ((Test-Path $target) -or (Test-Path $receipt) -or (Test-Path $protocol)) {
+  throw 'Fixture proof requires absent target, protocol and receipt.'
+}
 $privateProof = Join-Path $target 'launch-proof-private.jsonl'
 $options = "/SP- /NORESTART /DIR=`"$target`""
 if ($Mode -eq 'silent') { $options += ' /VERYSILENT /SUPPRESSMSGBOXES' }
 if ($Mode -eq 'unattended') { $options += ' /SUPPRESSMSGBOXES' }
 if ($Mode -eq 'failure') { $options += ' /FORCEFIXTUREFAILURE' }
-$setup = Start-Process -FilePath $Installer -ArgumentList $options -PassThru
-if ($Worker) { Write-JourneyWorkerDiagnostic -Stage 'installer-started' }
-$owned = [Collections.Generic.HashSet[int]]::new()
-[void]$owned.Add($setup.Id)
+$requestedScales = @(100, 150, 200)
 $states = [Collections.Generic.List[object]]::new()
-$seen = [Collections.Generic.HashSet[string]]::new()
-$finished = $Mode -eq 'silent'
-$installClicks = 0
-$deadline = (Get-Date).AddMinutes(2)
-$shell = New-Object -ComObject WScript.Shell
+$owned = [Collections.Generic.HashSet[int]]::new()
+$journey = New-StandardWizardJourney
+$report = [ordered]@{
+  schemaVersion = 2; sourceRevision = $compiledFixture.sourceRevision; installerSha256 = $hash
+  mode = $Mode; fixture = $true; customerData = $false; outcome = 'UNVERIFIED'
+  payload = 'Inert launch-token/count probe, not Bloomstep app or a public release'
+  proofAutomation = 'Explicit Next/Install/Finish test-driver input; no customer automatic behavior claim'
+  requestedOsScales = $requestedScales; states = $states; journey = $journey
+  tokenElevated = $admin; userInteractive = [Environment]::UserInteractive
+  screenReaderAcceptance = 'UNKNOWN; captures are not Narrator acceptance'
+}
+$protection = Start-ProtectedInstallerProof $Installer $compiledFixture.installerSha256 $EvidenceDir
+$setup = $null
 try {
-  if ($Mode -eq 'silent') {
-    if (-not $setup.WaitForExit(60000) -or $setup.ExitCode -ne 0) { throw 'Inert silent fixture did not complete.' }
-  }
-  while (-not $finished -and (Get-Date) -lt $deadline) {
+  $setup = Start-Process -FilePath $Installer -ArgumentList $options -PassThru
+  [void]$setup.Handle
+  [void]$owned.Add($setup.Id)
+  $seen = [Collections.Generic.HashSet[string]]::new()
+  $finished = $false
+  $failureObserved = $false
+  $deadline = (Get-Date).AddMinutes(2)
+  while ((Get-Date) -lt $deadline) {
     $processes = Get-CimInstance Win32_Process
     for ($i = 0; $i -lt 4; $i++) {
       foreach ($process in $processes) {
         if ($owned.Contains([int]$process.ParentProcessId)) { [void]$owned.Add([int]$process.ProcessId) }
       }
     }
+    $active = @($owned | Where-Object { Get-Process -Id $_ -ErrorAction SilentlyContinue })
+    if ($setup.HasExited -and $active.Count -eq 0) { $finished = $true; break }
     foreach ($window in [OnboardingWizard]::Windows()) {
       [uint32]$owner = 0
       [void][OnboardingWizard]::GetWindowThreadProcessId($window, [ref]$owner)
       if (-not $owned.Contains([int]$owner)) { continue }
       $text = [OnboardingWizard]::Describe($window)
-      if (-not $seen.Add($text)) { continue }
-      $rectangle = New-Object OnboardingWizard+Rect
-      if (-not [OnboardingWizard]::GetWindowRect($window, [ref]$rectangle)) { throw 'Owned bounds unavailable.' }
-      $width = $rectangle.Right - $rectangle.Left
-      $height = $rectangle.Bottom - $rectangle.Top
-      $bitmap = [Drawing.Bitmap]::new($width, $height)
-      $graphics = [Drawing.Graphics]::FromImage($bitmap)
-      $dc = $graphics.GetHdc()
-      try {
-        if (-not [OnboardingWizard]::PrintWindow($window, $dc, 2)) { throw 'Owned fixture capture failed.' }
-      } finally { $graphics.ReleaseHdc($dc) }
-      $image = "$Mode-$($states.Count).png"
-      try { $bitmap.Save((Join-Path $EvidenceDir $image), [Drawing.Imaging.ImageFormat]::Png) }
-      finally { $graphics.Dispose(); $bitmap.Dispose() }
-      $states.Add(@{ caption = $text; image = $image; dpi = [OnboardingWizard]::GetDpiForWindow($window);
-        width = $width; height = $height; screenshotSha256 = (Get-FileHash (Join-Path $EvidenceDir $image)).Hash.ToLower() })
-      if ($Mode -eq 'failure' -and $text.Contains('Isolated fixture installation failure')) {
-        $finished = $true
-        break
+      $class = [OnboardingWizard]::ClassName($window)
+      if ($class -eq 'TApplication' -and -not $text -and -not [OnboardingWizard]::HasVisibleChildren($window)) { continue }
+      if ($seen.Add($text)) {
+        $rectangle = [OnboardingWizard+Rect]::new()
+        if (-not [OnboardingWizard]::GetWindowRect($window, [ref]$rectangle)) { throw 'Owned bounds unavailable.' }
+        $width = $rectangle.Right - $rectangle.Left; $height = $rectangle.Bottom - $rectangle.Top
+        $bitmap = [Drawing.Bitmap]::new($width, $height)
+        $graphics = [Drawing.Graphics]::FromImage($bitmap)
+        try {
+          $dc = $graphics.GetHdc()
+          try { if (-not [OnboardingWizard]::PrintWindow($window, $dc, 2)) { throw 'Owned fixture capture failed.' } }
+          finally { $graphics.ReleaseHdc($dc) }
+          $image = "$Mode-$($states.Count).png"
+          $bitmap.Save((Join-Path $EvidenceDir $image), [Drawing.Imaging.ImageFormat]::Png)
+        } finally { $graphics.Dispose(); $bitmap.Dispose() }
+        $states.Add(@{ image = $image; dpi = [OnboardingWizard]::GetDpiForWindow($window);
+          width = $width; height = $height; screenshotSha256 = (Get-FileHash (Join-Path $EvidenceDir $image)).Hash.ToLower() })
       }
-      if ([OnboardingWizard]::ClassName($window) -ne 'TWizardForm') {
-        if ($Mode -eq 'failure' -and $text.Contains('Isolated fixture installation failure')) {
-          $ok = [OnboardingWizard]::Find($window, 'OK')
-          if ($ok -ne [IntPtr]::Zero) { [void][OnboardingWizard]::SendMessage($ok, 0x00F5, [IntPtr]::Zero, [IntPtr]::Zero) }
-          $finished = $true
-          break
-        }
-        if ($Mode -eq 'elevated' -and $text.Contains('Open Bloomstep from the Start menu as your normal Windows account')) {
-          $ok = [OnboardingWizard]::Find($window, 'OK')
-          if ($ok -eq [IntPtr]::Zero) { throw 'Elevated guidance lacks OK.' }
-          [void][OnboardingWizard]::PostMessage($ok, 0x00F5, [IntPtr]::Zero, [IntPtr]::Zero)
-          continue
-        }
-        throw "Unexpected owned dialog: $text"
+      if ($class -ne 'TWizardForm') {
+        $caption = if ($Mode -eq 'cancel' -and $text -match 'Exit Setup|Setup is not complete|If you exit now') { 'Yes' }
+          elseif ($Mode -eq 'failure' -and $text.Contains('Isolated fixture installation failure')) {
+            $failureObserved = $true; 'OK'
+          } else { throw 'Unexpected owned fixture dialog; no override.' }
+        $button = [OnboardingWizard]::Find($window, $caption)
+        if ($button -eq [IntPtr]::Zero) { throw 'Owned fixture modal control unavailable.' }
+        [void][OnboardingWizard]::PostMessage($button, 0x00F5, [IntPtr]::Zero, [IntPtr]::Zero)
+        continue
       }
-      $checkbox = [OnboardingWizard]::Find($window, 'Save optional local observations (unchecked by default)')
-      if ($checkbox -ne [IntPtr]::Zero) {
-        throw 'Installer observation prompt must not exist.'
-      }
-      if ($Mode -eq 'cancel') {
+      if ($Mode -eq 'failure' -and $text.Contains('Isolated fixture installation failure')) { $failureObserved = $true }
+      if ($Mode -eq 'silent') { throw 'Silent fixture unexpectedly displayed a wizard.' }
+      if ($text.Contains('Save optional local observations')) { throw 'Installer observation prompt must not exist.' }
+      if ($Mode -eq 'cancel' -or $failureObserved) {
         $cancel = [OnboardingWizard]::Find($window, 'Cancel')
         if ($cancel -eq [IntPtr]::Zero) { throw 'Native Cancel unavailable.' }
-        if (-not [OnboardingWizard]::PostMessage($cancel, 0x00F5, [IntPtr]::Zero, [IntPtr]::Zero)) { throw 'Owned Cancel dispatch failed.' }
-        Start-Sleep -Milliseconds 200
-        foreach ($confirmation in [OnboardingWizard]::Windows()) {
-          [uint32]$confirmationOwner = 0
-          [void][OnboardingWizard]::GetWindowThreadProcessId($confirmation, [ref]$confirmationOwner)
-          if (-not $owned.Contains([int]$confirmationOwner)) { continue }
-          $yes = [OnboardingWizard]::Find($confirmation, 'Yes')
-          if ($yes -ne [IntPtr]::Zero -and -not [OnboardingWizard]::PostMessage($yes, 0x00F5, [IntPtr]::Zero, [IntPtr]::Zero)) { throw 'Owned Cancel confirmation dispatch failed.' }
-        }
-        $finished = $true
-        break
+        [void][OnboardingWizard]::PostMessage($cancel, 0x00F5, [IntPtr]::Zero, [IntPtr]::Zero)
+        continue
       }
-      if ([OnboardingWizard]::Find($window, 'Finish') -ne [IntPtr]::Zero -or $text.Contains('Completing the')) {
-        throw 'A Finish page must not exist; the app opens automatically after install.'
-      }
-      if ([OnboardingWizard]::Find($window, 'Next') -ne [IntPtr]::Zero -or
-          [OnboardingWizard]::Find($window, 'Next >') -ne [IntPtr]::Zero) {
-        throw "No page may require Next: $text"
-      }
-      $install = [OnboardingWizard]::Find($window, 'Install')
-      if ($install -ne [IntPtr]::Zero -and $text.Contains('Select Destination Location')) {
-        if ($installClicks -ne 0) { throw 'Install offered more than once.' }
-        [void][OnboardingWizard]::SendMessage($install, 0x00F5, [IntPtr]::Zero, [IntPtr]::Zero)
-        $installClicks++
-      }      Start-Sleep -Milliseconds 400
+      [void](Invoke-StandardWizardStep $window $journey ($Mode -eq 'checked-launch'))
     }
-    Start-Sleep -Milliseconds 200
-    if ($Mode -notin @('failure','cancel') -and $setup.HasExited) { $finished = $true }
+    Start-Sleep -Milliseconds 100
   }
   if (-not $finished) { throw "Inert $Mode fixture exceeded bounded deadline." }
+  if ($Mode -eq 'cancel') { Assert-WelcomeCancelExit $setup.ExitCode }
+  elseif ($Mode -eq 'failure') {
+    if (-not $failureObserved -or $setup.ExitCode -eq 0) { throw 'Fixture failure was not observed with a failed exit.' }
+  } else {
+    if ($setup.ExitCode -ne 0) { throw 'Inert fixture did not exit successfully.' }
+    if ($Mode -ne 'silent') {
+      Assert-StandardWizardJourney $journey ($Mode -eq 'checked-launch') ($Mode -notin @('unattended','elevated'))
+    }
+  }
   Start-Sleep -Seconds 2
   $launches = if (Test-Path $privateProof) { @(Get-Content $privateProof | ForEach-Object { $_ | ConvertFrom-Json }) } else { @() }
-  if ($Mode -notin @('silent','cancel','failure') -and $installClicks -ne 1) { throw 'Exactly one Install click is required.' }
-  $expected = if ($Mode -eq 'automatic-launch') { 1 } else { 0 }
+  $expected = if ($Mode -eq 'checked-launch') { 1 } else { 0 }
   if ($launches.Count -ne $expected) { throw "Launch count mismatch: expected $expected, got $($launches.Count)." }
   if ($expected -eq 1) {
     $sid = [Security.Principal.WindowsIdentity]::GetCurrent().User.Value
     if ($launches[0].sid -ne $sid -or $launches[0].elevated) { throw 'Installing user or non-elevated launch token mismatch.' }
   }
   if (Test-Path $receipt) { throw 'Default-off fixture manufactured an observation.' }
+  if ($Mode -in @('cancel','failure') -and (Test-Path "$target\bloomstep.exe")) {
+    throw 'Canceled or failed fixture installed a payload.'
+  }
   $actualScales = @($states | ForEach-Object { [int]($_.dpi * 100 / 96) } | Sort-Object -Unique)
-  @{
-    schemaVersion = 1; sourceRevision = $authorization.sourceRevision; mode = $Mode; fixture = $true
-    payload = 'Inert launch-token/count probe, not Bloomstep app or a public release'; customerData = $false
-    installerSha256 = (Get-FileHash $Installer).Hash.ToLower(); launchCount = $launches.Count
-    installClicks = $installClicks; finishPageAbsent = $true; launchChoice = 'automatic-after-install'; installingUserMatches = if ($expected -eq 1) { $true } else { $null }; launchedElevated = $false
-    observationReceiptAbsent = $true; requestedOsScales = $requestedScales; measuredOsScales = $actualScales
-    uncoveredOsScales = @($requestedScales | Where-Object { $_ -notin $actualScales })
-    screenReaderAcceptance = 'UNKNOWN; UIA/keyboard evidence is not a Narrator acceptance claim'
-    states = $states
-  } | ConvertTo-Json -Depth 8 | Set-Content (Join-Path $EvidenceDir "$Mode.json") -Encoding utf8
-  if ($Worker) { Write-JourneyWorkerDiagnostic -Stage 'verified' }
+  $report.launchCount = $launches.Count
+  $report.installingUserMatches = if ($expected -eq 1) { $true } else { $null }
+  $report.launchedElevated = if ($expected -eq 1) { $false } else { $null }
+  $report.observationReceiptAbsent = $true
+  $report.measuredOsScales = $actualScales
+  $report.uncoveredOsScales = @($requestedScales | Where-Object { $_ -notin $actualScales })
+  Assert-InstallerProtectionUnchanged $protection
+  $report.outcome = 'PASS inert standard wizard branch only; genuine app acceptance withheld'
+} catch {
+  $report.outcome = 'FAIL'
+  $report.errorType = $_.Exception.GetType().FullName
+  $report.errorLine = $_.InvocationInfo.ScriptLineNumber
+  throw
 } finally {
-  foreach ($window in [OnboardingWizard]::Windows()) {
-    [uint32]$owner = 0
-    [void][OnboardingWizard]::GetWindowThreadProcessId($window, [ref]$owner)
-    if ($owned.Contains([int]$owner)) { [void][OnboardingWizard]::PostMessage($window, 0x0010, [IntPtr]::Zero, [IntPtr]::Zero) }
+  try {
+    foreach ($id in $owned) { if (Get-Process -Id $id -ErrorAction SilentlyContinue) { Stop-Process -Id $id } }
+    Assert-InstallerProtectionUnchanged $protection
+    if (Test-Path (Join-Path $target 'unins000.exe')) {
+      $uninstall = Start-Process (Join-Path $target 'unins000.exe') -ArgumentList '/VERYSILENT /SUPPRESSMSGBOXES /NORESTART' -PassThru
+      if (-not $uninstall.WaitForExit(30000)) { Stop-Process -Id $uninstall.Id; throw 'Fixture cleanup exceeded deadline.' }
+      if ($uninstall.ExitCode -ne 0 -or (Test-Path $protocol)) { throw 'Fixture owned cleanup failed.' }
+    }
+    if (Test-Path $target) { Remove-Item -LiteralPath $target -Recurse -Force }
+  } finally {
+    $report | ConvertTo-Json -Depth 8 | Set-Content (Join-Path $EvidenceDir "$Mode.json") -Encoding utf8
+    Assert-InstallerProtectionUnchanged $protection
   }
-  Start-Sleep -Milliseconds 300
-  foreach ($id in $owned) {
-    if (Get-Process -Id $id -ErrorAction SilentlyContinue) { Stop-Process -Id $id }
-  }
-  if (Test-Path (Join-Path $target 'unins000.exe')) {
-    Start-Process (Join-Path $target 'unins000.exe') -ArgumentList '/VERYSILENT /SUPPRESSMSGBOXES /NORESTART' -Wait
-  }
-  if (Test-Path $target) { Remove-Item -LiteralPath $target -Recurse -Force }
 }

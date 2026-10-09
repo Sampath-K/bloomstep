@@ -21,18 +21,41 @@ completed. Preserve existing customer installation and data; no cleanup,
 uninstall, or retry on that machine is authorized by this incident.
 
 Earlier installation-only CI and hash consistency do not establish a clean
-security outcome. A disposable hosted security gate scans the exact candidate
-and payloads only when Defender protection is enabled, preserving its versions,
-scan outcome and detections. Missing protection or detections fail closed.
+security outcome. The historical hosted security gate failed closed because
+real-time and behavior protection were unavailable (run `37859130228`, receipt
+`11585685771`). That workflow is now retired and explicitly refuses further
+withdrawn-binary access; historical source/receipts are retained. The new standard
+candidate's VM gate verifies enabled protection and exact hashes, preserving
+versions, scan outcomes and detections. Missing protection or detections fail closed.
 Even a clean static scan does not override the observed local behavior
 quarantine or establish non-elevated launch acceptance. No vendor sample
 submission or third-party binary upload is authorized.
 
-## Active one-click and zero-click source increment (not yet released)
+## Active standard wizard redesign (unpublished, not security accepted)
 
-Zero-click is the user-selected preferred private candidate. One-click is retained
-only for comparison. Neither flow offers Back: the auto-advanced splash is not
-a navigable destination. Cancel remains available. PR28's six app commits through
+The owner-directed conventional design supersedes both autonomous variants.
+Welcome and destination require **Next**, Ready requires **Install**, and Finish
+offers an explicit **Launch Bloomstep** checkbox that is **unchecked by default**.
+Back and Cancel use normal native navigation. There are no timer callbacks,
+automatic page advances/clicks, hidden/minimized windows, artificial holds or
+custom message pumps. Original Anchor/Action/Celebrate artwork remains static.
+The source continues per-user `PrivilegesRequired=lowest`, offline native
+architecture routing and absent/zero installer observations. Checked launch is
+withheld for silent, elevated, suppressed or non-interactive contexts.
+
+This is a legitimate design change, **not an established Defender remediation**.
+The possible link between zero-click behavior and detection remains an untested
+hypothesis. The new build is CI-only and unpublished. Old candidate withdrawal
+remains in force; no owner-machine execution, merge, release/tag or site promotion.
+
+Launch-after-install and genuine-app evidence require the protected disposable
+standard-user interactive VM runner labelled `defender-interactive`. Until the
+owner supplies it, those jobs remain queued, not passing. See
+[owner VM preparation, runner registration and teardown](defender-test-vm.md).
+Hosted workers compile only; installer execution, native screenshots, lifecycle
+and privacy proofs are explicitly withheld there and routed to the protected VM.
+
+PR28's six app commits through
 `2753a6203f97923557f2de669c5f66cd3fdf70a6`, plus the rendered custom-field
 label/value overlap correction at exact PR28 head
 `adb51b30da43e0629efd5ee6db5b0d545f625150`, are composed into this branch.
@@ -42,7 +65,9 @@ The final source includes the seven app commits in order:
 inline profile/device garden, once-only first-run habit-builder invitation,
 custom text on all three steps, and post-save seed growth with reduced motion.
 The composed executable still needs exact-head native evidence; source
-composition does not establish genuine automatic launch or account acceptance.
+composition does not establish genuine launch or account acceptance.
+
+## Historical autonomous designs (superseded; not instructions)
 
 User-directed after testing: the setup steps that each required Next were not
 interesting and had too much text. Both variants below build from the same
@@ -71,7 +96,7 @@ previous folder. Interactive Inno Setup always shows one pre-install page; the
 zero-click build puts the same visual on it and advances on the first timer
 tick without a click, so the generic Inno welcome text never appears.
 
-What Windows still forces regardless of the variant:
+Historical behavior and limitations (the standard redesign above is authoritative):
 
 - SmartScreen and Mark-of-the-Web: an unsigned download from the internet still
   shows "Windows protected your PC" (More info, then Run anyway only for the

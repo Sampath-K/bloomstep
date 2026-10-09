@@ -5,7 +5,8 @@ param(
 )
 $ErrorActionPreference = 'Stop'
 . "$PSScriptRoot\universal_integrity_contract.ps1"
-if ($env:GITHUB_ACTIONS -ne 'true' -or $env:BLOOMSTEP_UNIVERSAL_APP_PROOF -ne 'true' -or -not $env:RUNNER_TEMP) {
+if ($env:GITHUB_ACTIONS -ne 'true' -or $env:BLOOMSTEP_UNIVERSAL_APP_PROOF -ne 'true' -or
+    $env:BLOOMSTEP_DISPOSABLE_VM -ne 'true') {
   throw 'Genuine universal app launch proof is restricted to explicitly authorized disposable CI.'
 }
 New-Item -ItemType Directory -Path $EvidenceDir -Force | Out-Null
@@ -19,6 +20,7 @@ $setup = $null
 $owned = [Collections.Generic.HashSet[int]]::new()
 $apps = [Collections.Generic.HashSet[int]]::new()
 $target = $null
+$protection = $null
 try {
   $manifest = Get-Content (Join-Path $PackageDir 'universal-manifest.json') -Raw | ConvertFrom-Json
   $installer = Join-Path $PackageDir $manifest.installerFile
@@ -51,31 +53,54 @@ try {
   if ((Test-Path $measurement) -or (Test-Path $protocol) -or (Get-Process -Name bloomstep -ErrorAction SilentlyContinue)) {
     throw 'Genuine proof refuses pre-existing product state or processes.'
   }
-  foreach ($mode in @('automatic-launch','silent-no-launch')) {
-    $target = Join-Path $env:RUNNER_TEMP "Bloomstep-genuine-universal-$mode"
+  $report.proofAutomation = 'Explicit disposable test-driver Next/Install/Finish and launch selection; no customer automatic behavior claim'
+  $protection = Start-ProtectedInstallerProof $installer $manifest.installerSha256 $EvidenceDir
+  foreach ($mode in @('checked-launch','unchecked-launch','silent-no-launch')) {
+    Assert-InstallerProtectionUnchanged $protection
+    $target = Join-Path $EvidenceDir "Bloomstep-genuine-universal-$mode"
     if (Test-Path $target) { throw 'Genuine proof refuses an existing install target.' }
     $owned.Clear(); $apps.Clear()
-    $seen = [Collections.Generic.HashSet[string]]::new()
+    $journey = New-StandardWizardJourney
     $arguments = "/SP- /NORESTART /DIR=`"$target`""
     if ($mode -eq 'silent-no-launch') { $arguments += ' /VERYSILENT /SUPPRESSMSGBOXES' }
     $setup = Start-Process $installer -ArgumentList $arguments -PassThru
+    [void]$setup.Handle
     [void]$owned.Add($setup.Id)
     $wizardProcess = $null
-    $installClicks = 0
+    $completed = $false
     $deadline = (Get-Date).AddMinutes(3)
-    while (-not $setup.HasExited -and (Get-Date) -lt $deadline) {
+    while (-not $completed -and (Get-Date) -lt $deadline) {
       $processes = Get-CimInstance Win32_Process
       for ($i=0;$i -lt 5;$i++) {
         foreach ($process in $processes) {
           if ($owned.Contains([int]$process.ParentProcessId)) { [void]$owned.Add([int]$process.ProcessId) }
         }
       }
+      foreach ($app in @(Get-Process -Name bloomstep -ErrorAction SilentlyContinue)) {
+        if ($app.Path -ne "$target\bloomstep.exe" -or $mode -ne 'checked-launch' -or $journey.finishClicks -ne 1) {
+          throw 'Genuine app started without explicit checked Finish or outside the owned target.'
+        }
+        [void]$apps.Add($app.Id)
+        if ([ProcessTokenProbe]::Sid($app.Id) -ne $installingSid -or [ProcessTokenProbe]::Elevated($app.Id)) {
+          throw 'Actual genuine app installing-user or non-elevated token mismatch.'
+        }
+      }
+      if ($setup.HasExited) {
+        if ($mode -eq 'silent-no-launch' -and
+            @($owned | Where-Object { Get-Process -Id $_ -ErrorAction SilentlyContinue }).Count -eq 0) {
+          $completed = $true; break
+        }
+        if ($mode -ne 'silent-no-launch' -and $journey.finishClicks -eq 1 -and
+            $wizardProcess -and $wizardProcess.HasExited) { $completed = $true; break }
+      }
       foreach ($window in [OnboardingWizard]::Windows()) {
         [uint32]$owner = 0
         [void][OnboardingWizard]::GetWindowThreadProcessId($window,[ref]$owner)
         if (-not $owned.Contains([int]$owner)) { continue }
+        if ($apps.Contains([int]$owner)) { continue }
         $text = [OnboardingWizard]::Describe($window)
-        if (-not $seen.Add($text)) { continue }
+        if ([OnboardingWizard]::ClassName($window) -eq 'TApplication' -and
+            -not $text -and -not [OnboardingWizard]::HasVisibleChildren($window)) { continue }
         if ([OnboardingWizard]::ClassName($window) -ne 'TWizardForm') { throw 'Unexpected owned genuine installer dialog; no automatic override.' }
         if ($null -eq $wizardProcess) {
           $wizardProcess = Get-Process -Id $owner
@@ -84,30 +109,19 @@ try {
         if ([OnboardingWizard]::Find($window,'Save optional local observations (unchecked by default)') -ne [IntPtr]::Zero) {
           throw 'Installer observation prompt must not exist.'
         }
-        if ([OnboardingWizard]::Find($window,'Finish') -ne [IntPtr]::Zero -or
-            [OnboardingWizard]::Find($window,'Next >') -ne [IntPtr]::Zero -or [OnboardingWizard]::Find($window,'Next') -ne [IntPtr]::Zero) {
-          throw 'Genuine one-click flow must not show Next or a Finish page.'
-        }
-        $install = [OnboardingWizard]::Find($window,'Install')
-        if ($install -ne [IntPtr]::Zero -and $text.Contains('Select Destination Location')) {
-          if ($installClicks -ne 0) { throw 'Install offered more than once.' }
-          if (-not [OnboardingWizard]::PostMessage($install,0x00F5,[IntPtr]::Zero,[IntPtr]::Zero)) {
-            throw 'Owned genuine Install dispatch failed.'
-          }
-          $installClicks++
-        }
+        if ($mode -eq 'silent-no-launch') { throw 'Silent genuine install unexpectedly displayed a wizard.' }
+        [void](Invoke-StandardWizardStep $window $journey ($mode -eq 'checked-launch'))
       }
       Start-Sleep -Milliseconds 200
     }
-    if (-not $setup.HasExited) { throw 'Genuine install exceeded bounded deadline.' }
-    if ($mode -eq 'automatic-launch') {
-      if ($installClicks -ne 1 -or -not $wizardProcess -or -not $wizardProcess.WaitForExit(30000)) {
-        throw 'Genuine one-click journey did not show exactly one Install and exit.'
-      }
+    if (-not $completed) { throw 'Genuine install exceeded bounded deadline.' }
+    if ($mode -ne 'silent-no-launch') {
+      Assert-StandardWizardJourney $journey ($mode -eq 'checked-launch')
     }
     foreach ($file in $payload.files) {
       if ((Get-FileHash (Join-Path $target $file.path)).Hash.ToLower() -ne $file.sha256) { throw 'Genuine selected payload hash mismatch.' }
-    }    $wizardExitCode = if ($wizardProcess) { $wizardProcess.ExitCode } else { $setup.ExitCode }
+    }
+    $wizardExitCode = if ($wizardProcess) { $wizardProcess.ExitCode } else { $setup.ExitCode }
     $launcherExitCode = $setup.ExitCode
     $observeUntil = (Get-Date).AddSeconds(10)
     do {
@@ -120,7 +134,7 @@ try {
       }
       Start-Sleep -Milliseconds 100
     } while ((Get-Date) -lt $observeUntil)
-    $expectedCount = if ($mode -eq 'automatic-launch') {1} else {0}
+    $expectedCount = if ($mode -eq 'checked-launch') {1} else {0}
     $sameExactTargetAppAlive = $false
     $ownedAppWindowVisible = $false
     if ($apps.Count -eq 1) {
@@ -137,23 +151,35 @@ try {
     }
     Assert-GenuineLaunchOutcome $mode $wizardExitCode $launcherExitCode $apps.Count $sameExactTargetAppAlive $ownedAppWindowVisible
     if (Test-Path $measurement) { throw 'Actual genuine default-off receipt mismatch.' }
-    $report.modes.Add(@{ mode=$mode; installClicks=$installClicks; finishPageAbsent=$true; launchCount=$apps.Count; wizardExitCode=$wizardExitCode; launcherExitCode=$launcherExitCode;
+    $report.modes.Add(@{ mode=$mode; journey=$journey; launchCount=$apps.Count; wizardExitCode=$wizardExitCode; launcherExitCode=$launcherExitCode;
       sameExactTargetAppAlive=$sameExactTargetAppAlive; ownedAppWindowVisible=$ownedAppWindowVisible;
       installingUserMatches=if($expectedCount -eq 1){$true}else{$null}; nonElevated=if($expectedCount -eq 1){$true}else{$null};
       observationReceiptAbsent=$true; observationSeconds=10 })
     foreach ($id in $apps) { if (Get-Process -Id $id -ErrorAction SilentlyContinue) { Stop-Process -Id $id } }
-    $uninstall = Start-Process "$target\unins000.exe" -ArgumentList '/VERYSILENT /SUPPRESSMSGBOXES /NORESTART' -Wait -PassThru
+    Assert-InstallerProtectionUnchanged $protection
+    $uninstall = Start-Process "$target\unins000.exe" -ArgumentList '/VERYSILENT /SUPPRESSMSGBOXES /NORESTART' -PassThru
+    if (-not $uninstall.WaitForExit(30000)) { Stop-Process -Id $uninstall.Id; throw 'Genuine uninstall exceeded deadline.' }
     if ($uninstall.ExitCode -ne 0 -or (Test-Path "$target\bloomstep.exe") -or (Test-Path $protocol)) { throw 'Genuine owned uninstall failed.' }
+    if (Test-Path $target) { Remove-Item -LiteralPath $target -Recurse -Force }
+    Assert-InstallerProtectionUnchanged $protection
     $target = $null
   }
-  $report.outcome = 'PASS actual automatic (non-elevated) and silent no-launch genuine app outcome only'
+  $report.outcome = 'PASS genuine checked (same-user non-elevated), unchecked and silent app outcomes only'
 } catch {
   $report.failure = 'Blocked or failed; see explicit job exception. No launch acceptance inferred.'
   throw
 } finally {
-  foreach ($id in @($owned) + @($apps)) { if (Get-Process -Id $id -ErrorAction SilentlyContinue) { Stop-Process -Id $id -Force } }
-  if ($target -and (Test-Path "$target\unins000.exe")) {
-    Start-Process "$target\unins000.exe" -ArgumentList '/VERYSILENT /SUPPRESSMSGBOXES /NORESTART' -Wait
+  try {
+    foreach ($id in @($owned) + @($apps)) { if (Get-Process -Id $id -ErrorAction SilentlyContinue) { Stop-Process -Id $id -Force } }
+    if ($protection) { Assert-InstallerProtectionUnchanged $protection }
+    if ($target -and (Test-Path "$target\unins000.exe")) {
+      $cleanup = Start-Process "$target\unins000.exe" -ArgumentList '/VERYSILENT /SUPPRESSMSGBOXES /NORESTART' -PassThru
+      if (-not $cleanup.WaitForExit(30000)) { Stop-Process -Id $cleanup.Id; throw 'Genuine cleanup exceeded deadline.' }
+      if ($cleanup.ExitCode -ne 0) { throw 'Genuine cleanup failed.' }
+      if (Test-Path $target) { Remove-Item -LiteralPath $target -Recurse -Force }
+    }
+  } finally {
+    $report | ConvertTo-Json -Depth 6 | Set-Content (Join-Path $EvidenceDir 'genuine-universal-app-launch-receipt.json') -Encoding utf8
+    if ($protection) { Assert-InstallerProtectionUnchanged $protection }
   }
-  $report | ConvertTo-Json -Depth 6 | Set-Content (Join-Path $EvidenceDir 'genuine-universal-app-launch-receipt.json') -Encoding utf8
 }
