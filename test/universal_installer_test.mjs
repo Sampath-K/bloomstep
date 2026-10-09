@@ -261,9 +261,9 @@ public static class OnboardingWizard {
   assert.match(execFileSync('pwsh', ['-NoProfile', '-NonInteractive', '-Command', script], { encoding: 'utf8' }), /PASS/);
 });
 
-test('owned PowerShell proof scripts parse and native accessibility helpers compile without installation', () => {
+test('owned PowerShell proof scripts parse on every CI platform', () => {
   const scripts = ['verify_onboarding_wizard', 'verify_install_progress', 'verify_installer_journey',
-    'verify_universal_app_launch', 'universal_integrity_contract'];
+    'verify_universal_app_launch', 'universal_integrity_contract', 'setup_defender_test_vm', 'verify_universal_installer'];
   const paths = scripts.map(name => `'${fileURLToPath(new URL(`../tool/${name}.ps1`, import.meta.url)).replaceAll("'", "''")}'`);
   const script = `$ErrorActionPreference='Stop';
     foreach ($file in @(${paths.join(',')})) {
@@ -271,10 +271,16 @@ test('owned PowerShell proof scripts parse and native accessibility helpers comp
       [System.Management.Automation.Language.Parser]::ParseFile($file,[ref]$tokens,[ref]$errors) | Out-Null;
       if ($errors.Count -ne 0) { throw ($errors | Out-String) }
     }
-    & ${paths[0]} -Installer 'never-executed' -EvidenceDir '.' -LoadHelpersOnly;
     'PASS'`;
   assert.match(execFileSync('pwsh', ['-NoProfile', '-NonInteractive', '-Command', script], { encoding: 'utf8' }), /PASS/);
 });
+
+test('Windows native accessibility helpers compile without installer execution',
+  { skip: process.platform !== 'win32' }, () => {
+    const helper = fileURLToPath(new URL('../tool/verify_onboarding_wizard.ps1', import.meta.url)).replaceAll("'", "''");
+    const script = `$ErrorActionPreference='Stop'; & '${helper}' -Installer 'never-executed' -EvidenceDir '.' -LoadHelpersOnly; 'PASS'`;
+    assert.match(execFileSync('pwsh', ['-NoProfile', '-NonInteractive', '-Command', script], { encoding: 'utf8' }), /PASS/);
+  });
 
 test('Defender proof refuses new detections or changed protection and preserves sanitized receipt (mocked, no installer)', () => {
   const helper = fileURLToPath(new URL('../tool/universal_integrity_contract.ps1', import.meta.url)).replaceAll("'", "''");

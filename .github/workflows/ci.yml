@@ -279,6 +279,8 @@ jobs:
           cache-dependency-path: api/package-lock.json
       - name: Install isolated test API dependencies
         run: npm ci --prefix api --ignore-scripts
+      - name: Verify native installer helpers without executing an installer
+        run: node --test test/universal_installer_test.mjs test/installer_standard_flow_test.mjs test/installer_security_gate_test.mjs
       - name: Run isolated Windows UI and API acceptance
         id: synthetic-integration
         timeout-minutes: 20
