@@ -126,6 +126,18 @@ jobs:
           name: funnel-composed-isolated-NOT-CUSTOMER-ACCEPTANCE
           path: ${{ runner.temp }}/funnel-composed/
           if-no-files-found: warn
+      - name: Verify read-only loopback console preview and real load buttons
+        shell: pwsh
+        run: |
+          $env:PREVIEW_EVIDENCE_DIR = Join-Path $env:RUNNER_TEMP 'console-preview'
+          node --test tool/console_preview.test.mjs
+      - name: Preserve local synthetic console preview screenshots
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: console-preview-isolated-NOT-CUSTOMERS
+          path: ${{ runner.temp }}/console-preview/
+          if-no-files-found: warn
   installer-launch-evidence:
     name: 'launch-after-install: UNVERIFIED (preview gap, owner manual trial pending)'
     if: github.event_name != 'workflow_dispatch' || (!inputs.verify_aggregates && !inputs.verify_spend_guard && !inputs.verify_edge_warning)

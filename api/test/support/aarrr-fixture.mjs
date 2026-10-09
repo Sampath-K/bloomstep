@@ -14,7 +14,7 @@ const audience = 'isolated-aarrr-fixture';
 const observedAt = '2026-09-15T00:00:00Z';
 
 // This disposable loopback harness is never registered in production Functions.
-export async function createAarrrFixture() {
+export async function createAarrrFixture({ port = 0, configure = () => new Map() } = {}) {
   const root = await mkdtemp(join(tmpdir(), 'bloomstep-it-'));
   const databasePath = join(root, 'aarrr.json'), key = randomBytes(32);
   let container = await FileBackedCosmosContainer.openFresh(databasePath);
@@ -35,6 +35,13 @@ export async function createAarrrFixture() {
     clock: () => new Date(observedAt), environment: () => ({ BLOOMSTEP_INVITATIONS_DISABLED: 'true' }) });
   let webNow = new Date(observedAt);
   const website = createWebsiteHandlers({ container: () => container, authenticate, clock: () => webNow });
+  let extensions;
+  try { extensions = await configure({ container: () => container, authenticate, sign }); }
+  catch (error) {
+    await container.close();
+    await rm(root, { recursive: true, force: true });
+    throw error;
+  }
   const staticFiles = new Map([
     ['/console.html', ['../../../site/console.html', 'text/html']],
     ['/console.css', ['../../../site/console.css', 'text/css']],
@@ -47,11 +54,28 @@ export async function createAarrrFixture() {
     ['/operator-config.json', ['../../../site/operator-config.json', 'application/json']],
     ['/assets/bloomstep-icon.png', ['../../../site/assets/bloomstep-icon.png', 'image/png']],
   ]);
-  let unavailable = false;
+  let unavailable = false, readOnly = false;
   const server = createServer(async (incoming, response) => {
     const path = new URL(incoming.url, 'http://127.0.0.1').pathname;
     const headers = { 'Cache-Control': 'no-store', 'X-Content-Type-Options': 'nosniff' };
     try {
+      if (incoming.headers.host !== `127.0.0.1:${server.address().port}` ||
+          (incoming.headers.origin && incoming.headers.origin !== url)) {
+        throw new ServiceError(403, 'Loopback fixture origin required.');
+      }
+      if (readOnly && path.startsWith('/api/') &&
+          (incoming.method !== 'GET' || !['/api/team/metrics', '/api/team/website', '/api/team/experiments'].includes(path))) {
+        throw new ServiceError(403, 'Local preview permits report reads only.');
+      }
+      const extension = extensions.get(`${incoming.method} ${path}`);
+      if (extension) {
+        const result = await extension({ headers: new Headers(incoming.headers),
+          method: incoming.method, url: `${url}${incoming.url}`,
+          query: new URLSearchParams(new URL(incoming.url, url).search) });
+        response.writeHead(result.status ?? 200, { ...headers, 'Content-Type': result.contentType ?? 'application/json' });
+        response.end(result.body ?? JSON.stringify(result.jsonBody));
+        return;
+      }
       const asset = staticFiles.get(path);
       if (asset && incoming.method === 'GET') {
         response.writeHead(200, { ...headers, 'Content-Type': asset[1] });
@@ -81,7 +105,13 @@ export async function createAarrrFixture() {
       response.end(JSON.stringify({ error: error instanceof ServiceError ? error.message : 'Isolated fixture failed.' }));
     }
   });
-  await new Promise((resolve, reject) => { server.once('error', reject); server.listen(0, '127.0.0.1', resolve); });
+  try {
+    await new Promise((resolve, reject) => { server.once('error', reject); server.listen(port, '127.0.0.1', resolve); });
+  } catch (error) {
+    await container.close();
+    await rm(root, { recursive: true, force: true });
+    throw error;
+  }
   const url = `http://127.0.0.1:${server.address().port}`;
   const adminToken = await sign('synthetic-admin');
   const subjects = [];
@@ -91,8 +121,9 @@ export async function createAarrrFixture() {
     ...(body === undefined ? {} : { body: JSON.stringify(body) }),
   });
   return {
-    url, databasePath, request, adminToken, subjects,
+    url, databasePath, request, adminToken, subjects, address: server.address(),
     failPipeline(value) { unavailable = value; },
+    restrictToReports() { readOnly = true; },
     async seedWebsite(attribution) {
       let index = 0;
       for (const [stageIndex, stage] of ['landing_view', 'primary_cta_click', 'download_click'].entries()) {

@@ -52,6 +52,42 @@ Writes `acceptance-receipt.json` (hash printed as `RECEIPT`), `acceptance-gate-c
 `acceptance-report-export.json`, `candidate-promotions.isolated.json` and screenshots. Exit code is nonzero on any
 failure.
 
+### Click-through local console preview
+
+From the repository root, with the existing API and site dependencies installed:
+
+```powershell
+node tool\console_preview.mjs --port 8787
+```
+
+Open **http://127.0.0.1:8787/console.html** once the command prints it (initial build and fixture seeding take
+about 15 seconds). Click **Load private AARRR overview**, **Load website funnel**, and **Load experiment status and
+history**. No sign-in is needed. The default 14-day account window yields the fixed September 2026
+150/100/50 account oracle; the website window contains 50 events per stage with search/referrer/newsletter
+campaign drilldowns. The experiment panel shows synthetic promote, rollback and kill history.
+
+The page is prominently labeled **Local synthetic preview — not customers**. All data lives in a disposable
+local file-backed store; no production API or billable resource is used. The experiment aggregate fixtures are
+display samples evaluated by the actual isolated handlers, not observed visit exposures or efficacy evidence.
+Changing the time-window controls can intentionally produce unknown/suppressed views.
+
+The server binds only `127.0.0.1`, rejects foreign Host/Origin headers, and stays attached until **Ctrl+C**
+(which deletes its disposable store). `--port` can select another port. An occupied port fails explicitly.
+The preview-only bundle substitutes local authentication; its per-run signing key and automatically refreshed
+short-lived synthetic admin tokens are never accepted by production authentication. Normal site builds and
+Azure Functions contain no preview auth endpoint or switch. Only the preview's read-only report requests use
+this transport; sign-in and deployment configuration remain unchanged.
+
+Browser/auth isolation verification (Edge installed, or `CHROME_PATH` set to a Chromium browser):
+
+```powershell
+node --test tool\console_preview.test.mjs
+```
+
+This checks actual load-button clicks, exact counts, campaign drilldowns, audit keyboard interaction,
+mobile overflow, clear/reload, production token rejection and loopback binding. It saves screenshots and a
+source/hash receipt under `%TEMP%\bloomstep-console-preview-evidence` (override with `PREVIEW_EVIDENCE_DIR`).
+
 Screenshot evidence is arm-bound: for each catalog surface (`download-heading`, `hero-cta-label`,
 `hero-note-position`) the runner opens fresh consented visits until the deterministic assignment yields the intended
 arm, asserts the visible copy (or note order) and `data-experiment-arm` with the changed element in the viewport, then
