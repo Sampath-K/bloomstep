@@ -307,6 +307,11 @@ jobs:
           cache-dependency-path: api/package-lock.json
       - name: Install isolated test API dependencies
         run: npm ci --prefix api --ignore-scripts
+      - name: Build customer site assets served by the isolated telemetry test API
+        run: |
+          npm ci --prefix site
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          npm --prefix site run build
       - run: flutter pub get
       - run: flutter analyze
       - run: flutter test --reporter expanded --concurrency 1 --timeout 60s --dart-define=BLOOMSTEP_TEST_BUILD=true
