@@ -2,6 +2,10 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { execFileSync } from 'node:child_process';
 
+// Public routes answer without storage: production experiments are OFF (200 disabled config), bodies need JSON.
+const publicStatus = /** @type {Record<string, number>} */ ({ 'web/events': 400, 'web/experiments': 200,
+  'web/experiments/exposure': 400, 'web/experiments/outcome': 400, 'web/experiments/forget': 400 });
+
 test('actual ESM entrypoint registers only host-valid routes and guarded handlers', () => {
   const script = `
     import azureFunctions from '@azure/functions';
@@ -20,11 +24,11 @@ test('actual ESM entrypoint registers only host-valid routes and guarded handler
   const results = JSON.parse(execFileSync(process.execPath, ['--input-type=module', '-e', script], {
     cwd: new URL('../', import.meta.url), encoding: 'utf8',
   }));
-  assert.equal(results.length, 13);
+  assert.equal(results.length, 21);
   for (const entry of results) {
     // Mirrors ScriptHost.ValidateHttpFunction: prefix check precedes host api prefix.
     assert.equal(/^(admin|runtime)/i.test(entry.route.replace(/^\/+|\/+$/g, '')), false, entry.route);
-    assert.equal(entry.status, entry.route === 'web/events' ? 400 : entry.route.startsWith('internal/') ? 401 : 503);
+    assert.equal(entry.status, publicStatus[entry.route] ?? (entry.route.startsWith('internal/') ? 401 : 503), entry.route);
     assert.equal(entry.cache, 'no-store');
     assert.equal(entry.authLevel, 'anonymous');
   }
@@ -34,6 +38,8 @@ test('actual ESM entrypoint registers only host-valid routes and guarded handler
     'internal/operational-pause',
     'team/operational-resume',
     'web/events', 'team/website', 'internal/website-proof',
+    'web/experiments', 'web/experiments/exposure', 'web/experiments/outcome', 'web/experiments/forget',
+    'internal/experiments/tick', 'team/experiments', 'team/experiments/kill', 'team/experiments/acceptance',
   ]);
 });
 
@@ -52,7 +58,7 @@ test('configured entrypoint rejects platform-only auth on every served handler b
     for (const entry of registrations) {
       for (const headers of [{}, { Authorization:'Bearer platform-token', 'x-ms-client-principal':'platform-principal' }]) {
         const response = await entry.handler(new HttpRequest({ url:'https://example.invalid/api/' + entry.route, method:entry.methods[0], headers }), { error() {} });
-        results.push({route:entry.route,status:response.status,error:response.jsonBody.error});
+        results.push({route:entry.route,status:response.status,error:response.jsonBody?.error});
       }
     }
     console.log(JSON.stringify(results));
@@ -60,9 +66,9 @@ test('configured entrypoint rejects platform-only auth on every served handler b
   const results = JSON.parse(execFileSync(process.execPath, ['--input-type=module', '-e', script], {
     cwd: new URL('../', import.meta.url), encoding: 'utf8', timeout: 30000,
   }));
-  assert.equal(results.length, 26);
+  assert.equal(results.length, 42);
   for (const entry of results) {
-    assert.equal(entry.status, entry.route === 'web/events' ? 400 : 401, entry.route);
-    assert.equal(entry.error, entry.route === 'web/events' ? 'JSON required.' : 'Sign in required.');
+    assert.equal(entry.status, publicStatus[entry.route] ?? 401, entry.route);
+    assert.equal(entry.error, entry.route === 'web/experiments' ? undefined : publicStatus[entry.route] ? 'JSON required.' : 'Sign in required.', entry.route);
   }
 });

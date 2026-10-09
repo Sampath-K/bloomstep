@@ -1,5 +1,6 @@
 import { parseInvitation, nativeInvitationUrl } from './invitation-landing.mjs';
 import { validateReceipt } from './measurement.mjs';
+import { createExperimentClient } from './experiment-client.mjs';
 
 const campaignFields = ['utm_source', 'utm_medium', 'utm_campaign'];
 const campaignValue = /^[a-zA-Z0-9_-]{1,48}$/;
@@ -64,14 +65,35 @@ function initializeCustomer() {
     });
   };
   if (blocked()) { consent.disabled = true; status.textContent = 'Privacy signal honoured: no website observations are sent.'; }
+  const experiments = createExperimentClient({ document, fetchJson: async (path, body) => {
+    if (blocked()) throw Error('Privacy signal honoured.');
+    const response = await fetch(path, { method: body ? 'POST' : 'GET', headers: body ? { 'Content-Type': 'application/json' } : {},
+      body: body ? JSON.stringify(body) : undefined, credentials: 'omit', referrerPolicy: 'no-referrer', cache: 'no-store',
+      signal: AbortSignal.timeout(4000), keepalive: !!body });
+    if (!response.ok) throw Error('Experiment service unavailable.');
+    return response.status === 204 ? null : response.json();
+  } });
+  const experimentOutcome = event => {
+    if (!consent.checked || blocked()) return;
+    void experiments.outcome(event).catch(() => {});
+  };
   consent.addEventListener('change', () => {
     if (blocked()) { consent.checked = false; status.textContent = 'Privacy signal honoured: no website observations are sent.'; return; }
     status.textContent = consent.checked ? 'Optional daily website counts active for this visit only.' : 'Website measurement is off. Earlier anonymous counts cannot be individually identified.';
-    if (consent.checked) record('landing_view');
+    if (consent.checked) {
+      record('landing_view');
+      void experiments.start().then(state => { document.documentElement.dataset.experimentArm = state.arm ?? 'none'; })
+        .catch(() => { document.documentElement.dataset.experimentArm = 'error'; });
+    } else {
+      void experiments.stop().then(deleted => { if (deleted) status.textContent += ' This visit\'s page-test record was deleted.'; }).catch(() => {
+        status.textContent += ' Page-test deletion could not be confirmed; it expires automatically.';
+      });
+      delete document.documentElement.dataset.experimentArm;
+    }
   });
-  document.getElementById('primary-cta').addEventListener('click', () => record('primary_cta_click'));
+  document.getElementById('primary-cta').addEventListener('click', () => { record('primary_cta_click'); experimentOutcome('primary_cta_click'); });
   for (const link of document.querySelectorAll('[data-download]')) {
-    link.addEventListener('click', () => record('download_click', link.dataset.download));
+    link.addEventListener('click', () => { record('download_click', link.dataset.download); experimentOutcome('download_click'); });
   }
   // Coarse CPU guidance is used for display only, never sent as a visitor attribute.
   if (!document.querySelector('[data-universal-download]') && navigator.userAgentData?.getHighEntropyValues) {

@@ -184,6 +184,9 @@ export class FileBackedCosmosContainer {
       rows = rows.filter(row => row.type === 'events' &&
         (!parameters['@start'] || row.record?.ts >= parameters['@start']) &&
         (!parameters['@end'] || row.record?.ts < parameters['@end']));
+    } else if (query.includes('c.type = "website_daily"')) {
+      rows = rows.filter(row => row.type === 'website_daily' &&
+        (!parameters['@start'] || row.day >= parameters['@start']) && (!parameters['@end'] || row.day <= parameters['@end']));
     } else if (query.includes('c.type = "account"')) {
       rows = rows.filter(row => row.type === 'account');
     } else if (query.includes('c.type = "aggregate"')) {
