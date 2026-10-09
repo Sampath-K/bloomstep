@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { createHash, randomBytes, randomUUID } from 'node:crypto';
-import { mkdtemp, readFile, writeFile, mkdir, rm, access } from 'node:fs/promises';
+import { mkdtemp, readFile, writeFile, mkdir, rm, access, readdir } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -194,8 +194,10 @@ try {
   const saved = await readFile(databasePath);
   assert.doesNotMatch(saved.toString(), /private|secret|eventId|observedAt|utm_|127\.0\.0\.1/);
   const sourceHashes = {};
-  for (const path of ['site/customer.mjs', 'site/assets/customer.js', 'site/index.html', 'site/verify-telemetry.mjs',
-    'api/src/website-funnel.mjs', 'api/src/website-attribution.mjs', 'api/test/support/local_api_server.mjs',
+  const apiModules = (await readdir(join(root, 'api', 'src'))).filter(name => name.endsWith('.mjs')).map(name => `api/src/${name}`);
+  for (const path of ['site/customer.mjs', 'site/measurement.mjs', 'site/invitation-landing.mjs',
+    'site/assets/customer.js', 'site/index.html', 'site/verify-telemetry.mjs',
+    ...apiModules, 'api/test/support/local_api_server.mjs',
     'api/test/support/file_backed_cosmos.mjs']) sourceHashes[path] = hash(await readFile(join(root, path)));
   await writeFile(join(output, 'computed-reports.json'), JSON.stringify(reports, null, 2), { flag: 'wx' });
   await server.close(); server = null;
@@ -205,6 +207,7 @@ try {
   await writeFile(receiptPath, JSON.stringify({ schemaVersion: 1, kind: 'isolated-synthetic-telemetry-acceptance',
     customerAcceptance: false, installerExecuted: false, passed: true, cleanupVerified,
     sourceRevision: execFileSync('git', ['rev-parse', 'HEAD'], { cwd: root, encoding: 'utf8' }).trim(),
+    sourceDirty: execFileSync('git', ['status', '--porcelain'], { cwd: root, encoding: 'utf8' }).trim() !== '',
     sourceHashes, persistedCollectorSha256: hash(saved), reportsSha256: hash(JSON.stringify(reports, null, 2)),
     scenarios, stages: result.stages, steps: result.steps, websiteReceiptSha256: hash(websiteReceipt) }, null, 2), { flag: 'wx' });
   process.stdout.write('Telemetry browser/HTTP persisted-readback acceptance passed (synthetic, not customer/installer acceptance).\n');
