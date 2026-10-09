@@ -2,3 +2,5 @@ api/src/event_registry.g.mjs text eol=lf
 api/src/event_registry.g.d.mts text eol=lf
 lib/core/event_registry.g.dart text eol=lf
 tool/fixtures/native_architecture_probe.cpp text eol=lf
+site/index.html text eol=lf
+site/releases/index.html text eol=lf

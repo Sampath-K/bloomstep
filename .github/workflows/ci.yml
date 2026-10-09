@@ -300,11 +300,6 @@ jobs:
           $machine = [BitConverter]::ToUInt16($dart, [BitConverter]::ToInt32($dart, 60) + 4)
           if ($machine -ne 0xaa64) { throw 'Flutter bootstrap did not provide ARM64 Dart.' }
           Add-Content $env:GITHUB_PATH "$sdk\bin"
-      - run: flutter pub get
-      - run: flutter analyze
-      - run: flutter test --reporter expanded --concurrency 1 --timeout 60s --dart-define=BLOOMSTEP_TEST_BUILD=true
-      - name: Verify production-mode test-auth and adapter gates
-        run: flutter test test/test_auth_release_contract_test.dart --reporter expanded --concurrency 1 --timeout 60s
       - uses: actions/setup-node@v4
         with:
           node-version: 22
@@ -312,6 +307,11 @@ jobs:
           cache-dependency-path: api/package-lock.json
       - name: Install isolated test API dependencies
         run: npm ci --prefix api --ignore-scripts
+      - run: flutter pub get
+      - run: flutter analyze
+      - run: flutter test --reporter expanded --concurrency 1 --timeout 60s --dart-define=BLOOMSTEP_TEST_BUILD=true
+      - name: Verify production-mode test-auth and adapter gates
+        run: flutter test test/test_auth_release_contract_test.dart --reporter expanded --concurrency 1 --timeout 60s
       - name: Run isolated Windows UI and API acceptance
         id: synthetic-integration
         timeout-minutes: 20

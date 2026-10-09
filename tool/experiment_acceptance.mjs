@@ -456,7 +456,7 @@ try {
       note: 'Website observations forced to __website_synthetic; prioritization volume from a labeled __website_acceptance_fixture partition (foundation synthetic cap 100 lifetime < 50/step floor); experiments in __experiments_isolated; temp file-backed store deleted after run. No real customer data exists or is claimed.' },
     scenarios, screenshots, sources,
     http: counters.http, externalRequestsBlocked: counters.blockedExternal,
-    costs: { paidServices: [], newBillableResources: [] },
+    costs: { declaration: 'run_dependencies_only', paidServices: [], newBillableResources: [], actualHostingBill: 'not_measured' },
     limitations: [
       'Synthetic acceptance only: no live traffic, no customer cohort, no real efficacy claim. Production experiments remain OFF.',
       'Unit is a consented per-visit page-memory code; reloads/new tabs are new units, so results are not person-level causal claims.',

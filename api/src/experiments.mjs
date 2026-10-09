@@ -26,7 +26,11 @@ export const receiptSchema = z.object({
   policyVersion: z.string(), policyHash: z.string().regex(/^[a-f0-9]{64}$/),
   segregation: z.object({ environment: z.literal('isolated'), productionDocuments: z.literal(0), syntheticOnly: z.literal(true) }),
   scenarios: z.array(z.object({ name: z.string(), passed: z.literal(true) })).min(6),
-  costs: z.object({ paidServices: z.array(z.never()).length(0), newBillableResources: z.array(z.never()).length(0) }),
+  // Declares only what this isolated run depends on; it is not a statement about the actual hosting bill.
+  costs: z.object({
+    declaration: z.literal('run_dependencies_only'), paidServices: z.array(z.never()).length(0),
+    newBillableResources: z.array(z.never()).length(0), actualHostingBill: z.literal('not_measured'),
+  }),
 });
 
 /** @returns {{exposed:number,converted:{primary_cta_click:number,download_click:number},errors:number}} */

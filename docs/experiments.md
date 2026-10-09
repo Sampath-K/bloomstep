@@ -56,7 +56,8 @@ Honest input labeling: the foundation caps synthetic ingestion at 100 lifetime e
 publication floor, so the tool (a) proves real HTTP synthetic ingestion is blocked as `insufficient_data`, then
 (b) prioritizes from a separately labeled `__website_acceptance_fixture` partition. Visit outcomes for the
 statistical scenarios are simulated with known rates through the public HTTP endpoints. None of this is customer
-data, and no paid or billable resource is used.
+data. The run calls no paid service and provisions no new billable resource; the actual hosting bill is not
+measured (receipts record `actualHostingBill: "not_measured"`).
 
 ## Composed funnel acceptance (one command)
 
@@ -67,7 +68,7 @@ node tool/funnel_acceptance.mjs --out <fresh dir>
 Runs three separately named stages against the exact clean HEAD: `telemetry-validation`
 (`tool/verify_telemetry.ps1`), `aarrr-validation` (`site/verify-aarrr.mjs`) and `experiment-loop-validation`
 (`tool/experiment_acceptance.mjs`). Each stage's receipt is independently re-checked (source revision, isolated
-synthetic labeling, account oracle 150/100/50, experiment segregation and `activeCounts:null`, zero cost) and the
+synthetic labeling, account oracle 150/100/50, experiment segregation and `activeCounts:null`, no paid-service/new-billable-resource dependency, hosting bill `not_measured`) and the
 tool writes `composed-receipt.json` with source/evidence hashes, exiting nonzero on any failure or dirty tracked
 source. CI runs it in the `funnel-composed-acceptance` job. The native installer is explicitly excluded: the PR26
 zero-click candidate was Defender-quarantined and withdrawn, so install/launch remains unvalidated.
@@ -84,7 +85,7 @@ reviewed draft PR edits `site/experiment-promotions.json`, which `site/build.mjs
 2. Set app settings `BLOOMSTEP_EXPERIMENTS_PRODUCTION=enabled` and
    `BLOOMSTEP_EXPERIMENTS_ACCEPTANCE_SHA256=<receipt hash>`.
 3. An admin POSTs the receipt to `/api/team/experiments/acceptance`; the server parses it against a fixed schema
-   (isolated, synthetic-only, ≥6 passing scenarios, zero costs, matching policy hash) and recomputes the hash.
+   (isolated, synthetic-only, ≥6 passing scenarios, no paid-service/new-billable dependency with bill `not_measured`, matching policy hash) and recomputes the hash.
 4. Update the `#experiment-disclosure` paragraph in `site/index.html`, which currently says page tests are off.
 5. The daily aggregates workflow already calls the tick; while disabled it returns `status: disabled`.
 

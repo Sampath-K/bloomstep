@@ -145,7 +145,7 @@ test('production is OFF by default: config disabled, tick no-op, writes rejected
 test('production gate requires deployment hash + server-verified receipt for this exact policy', async () => {
   const receipt = { schemaVersion: 1, kind: 'bloomstep-experiment-isolated-acceptance', result: 'passed', policyVersion: 'x', policyHash: await policyHash(),
     segregation: { environment: 'isolated', productionDocuments: 0, syntheticOnly: true },
-    scenarios: Array.from({ length: 6 }, (_, index) => ({ name: `s${index}`, passed: true })), costs: { paidServices: [], newBillableResources: [] } };
+    scenarios: Array.from({ length: 6 }, (_, index) => ({ name: `s${index}`, passed: true })), costs: { declaration: 'run_dependencies_only', paidServices: [], newBillableResources: [], actualHostingBill: 'not_measured' } };
   const hash = await sha256Hex(canonicalJson(receipt));
   const h = await harness({ environment: 'production', settings: () => ({ production: 'enabled', acceptanceSha256: hash }) });
   try {

@@ -83,7 +83,7 @@ const checks = {
     const failures = [];
     const seg = receipt.segregation ?? {};
     if (receipt.result !== 'passed' || seg.environment !== 'isolated' || seg.productionDocuments !== 0 || seg.syntheticOnly !== true) failures.push('experiment segregation');
-    if (receipt.costs?.paidServices?.length !== 0 || receipt.costs?.newBillableResources?.length !== 0) failures.push('paid/billable dependency recorded');
+    if (receipt.costs?.paidServices?.length !== 0 || receipt.costs?.newBillableResources?.length !== 0 || receipt.costs?.actualHostingBill !== 'not_measured') failures.push('paid/billable dependency recorded');
     if (!receipt.scenarios?.every((/** @type {any} */ row) => row.passed === true) || receipt.scenarios.length < 12) failures.push('experiment scenarios');
     if (gate.tamperedStatus !== 409 || gate.verifiedStatus !== 200) failures.push('server receipt verification');
     if (report.environment !== 'isolated' || report.activeCounts !== null) failures.push('report environment/withholding');
@@ -132,7 +132,7 @@ const receipt = {
     liveTraffic: 'No live customer traffic or production efficacy claim; production experiments remain OFF.',
     unsupported: ['sent/referral activation', 'payment/revenue', 'experiment exposure completeness for AARRR eligibility'],
   },
-  costs: { paidServices: [], newBillableResources: [] },
+  costs: { declaration: 'run_dependencies_only', paidServices: [], newBillableResources: [], actualHostingBill: 'not_measured' },
   sources,
 };
 const text = JSON.stringify(receipt, null, 2) + '\n';
