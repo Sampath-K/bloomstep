@@ -18,7 +18,8 @@ await mkdir(out, { recursive: true });
 
 const git = (/** @type {string[]} */ args) => execFileSync('git', args, { cwd: root, encoding: 'utf8' }).trim();
 const sha256 = (/** @type {Buffer|string} */ data) => createHash('sha256').update(data).digest('hex');
-const tracked = () => git(['status', '--porcelain', '--untracked-files=no']);
+// Windows checkouts rewrite CRLF on site build; only content changes count as source modification.
+const tracked = () => git(['diff', '--ignore-cr-at-eol', '--stat', 'HEAD']);
 const revision = git(['rev-parse', 'HEAD']);
 const dirtyAtStart = tracked();
 const shell = process.platform === 'win32' ? (existsSync('C:\\Program Files\\PowerShell\\7\\pwsh.exe') ? 'pwsh' : 'powershell') : 'pwsh';
