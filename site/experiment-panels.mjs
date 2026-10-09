@@ -42,13 +42,17 @@ export function renderExperiments(container, data) {
   const fragment = document.createDocumentFragment();
   for (const panel of experimentPanels(data)) {
     const card = document.createElement(panel.collapsed ? 'details' : 'article');
+    card.className = 'experiment-card';
     const title = document.createElement(panel.collapsed ? 'summary' : 'h3');
     title.textContent = panel.title;
-    const description = document.createElement('p'); description.textContent = panel.definition;
-    card.append(title, description);
+    const description = document.createElement('p'); description.className = 'small'; description.textContent = panel.definition;
+    const list = document.createElement('dl'); list.className = 'metric-list';
     for (const row of panel.rows) {
-      const line = document.createElement('p'); line.textContent = `${row.label}: ${row.value}`; card.append(line);
+      const term = document.createElement('dt'); term.textContent = row.label;
+      const value = document.createElement('dd'); value.textContent = row.value;
+      list.append(term, value);
     }
+    card.append(title, description, list);
     fragment.append(card);
   }
   container.replaceChildren(fragment);
@@ -63,5 +67,19 @@ export async function loadExperiments(container, request) {
   } catch (error) {
     container.replaceChildren();
     throw error;
+  }
+}
+
+/** Console orchestration shared by production and acceptance: status line, render, and fail-closed clearing. */
+export async function loadExperimentStatus(container, status, request) {
+  status.textContent = 'Loading private experiment status...';
+  try {
+    const data = await loadExperiments(container, request);
+    status.textContent = 'Visit-level page tests only; separate from account AARRR and website event counts. No live efficacy claim.';
+    return data;
+  } catch (error) {
+    container.replaceChildren();
+    status.textContent = `Experiment status unavailable: ${error instanceof Error ? error.message : 'request failed'}. No substitute status displayed.`;
+    return null;
   }
 }

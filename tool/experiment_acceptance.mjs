@@ -69,8 +69,8 @@ const production = createExperimentHandlers({ container, environment: 'productio
 // ---------- site bundle (temp; repository assets are not mutated) ----------
 const siteDir = join(root, 'site');
 const bundleDir = join(work, 'bundle');
-await esbuild.build({ entryPoints: [join(siteDir, 'customer.mjs')], bundle: true, format: 'esm', target: 'es2022',
-  outfile: join(bundleDir, 'customer.js'), minify: false, logLevel: 'silent' });
+for (const name of ['customer', 'console']) await esbuild.build({ entryPoints: [join(siteDir, `${name}.mjs`)], bundle: true, format: 'esm', target: 'es2022',
+  outfile: join(bundleDir, `${name}.js`), minify: false, logLevel: 'silent' });
 const sourceIndex = await readFile(join(siteDir, 'index.html'), 'utf8');
 let servedIndex = sourceIndex;
 
@@ -88,6 +88,7 @@ const routes = /** @type {Record<string, (request:any)=>Promise<any>>} */ ({
   'POST /api/production/web/experiments/exposure': request => production.exposure(request),
   'POST /api/production/internal/experiments/tick': request => production.tick(request),
 });
+let failReport = false;
 const counters = { browserRequests: 0, blockedExternal: 0, http: /** @type {Record<string,number>} */ ({}) };
 const server = createServer(async (incoming, response) => {
   const url = new URL(incoming.url ?? '/', 'http://127.0.0.1');
@@ -96,6 +97,7 @@ const server = createServer(async (incoming, response) => {
   let raw = Buffer.concat(chunks).toString('utf8');
   const key = `${incoming.method} ${url.pathname}`;
   const handler = routes[key];
+  if (handler && key === 'GET /api/team/experiments' && failReport) { response.writeHead(503, { 'Content-Type': 'application/json' }); response.end('{"error":"report pipeline unavailable"}'); return; }
   if (handler) {
     counters.http[key] = (counters.http[key] ?? 0) + 1;
     advance(1000);
@@ -115,9 +117,9 @@ const server = createServer(async (incoming, response) => {
   }
   let path = url.pathname === '/' ? '/index.html' : url.pathname;
   if (path === '/index.html') { response.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' }); response.end(servedIndex); return; }
-  const file = path === '/assets/customer.js' ? join(bundleDir, 'customer.js') : resolve(siteDir, '.' + path);
+  const file = path === '/assets/customer.js' || path === '/assets/console.js' ? join(bundleDir, path.slice(8)) : resolve(siteDir, '.' + path);
   if (relative(siteDir, file).startsWith('..') && !file.startsWith(bundleDir) || !existsSync(file)) { response.writeHead(404); response.end(); return; }
-  const types = /** @type {Record<string,string>} */ ({ '.js': 'text/javascript', '.mjs': 'text/javascript', '.css': 'text/css', '.png': 'image/png', '.svg': 'image/svg+xml', '.json': 'application/json' });
+  const types = /** @type {Record<string,string>} */ ({ '.html': 'text/html; charset=utf-8', '.js': 'text/javascript', '.mjs': 'text/javascript', '.css': 'text/css', '.png': 'image/png', '.svg': 'image/svg+xml', '.json': 'application/json' });
   response.writeHead(200, { 'Content-Type': types[extname(file)] ?? 'application/octet-stream' });
   response.end(await readFile(file));
 });
@@ -193,8 +195,47 @@ const browserVersion = await browser.version();
 await mkdir(shots, { recursive: true });
 const screenshots = /** @type {Record<string,string>} */ ({});
 
+/** @type {Record<string, any>} */ const shotEvidence = {};
+/** Captures the changed region in frame immediately after asserting what is actually visible; hashes bind the image files. */
+async function capture(/** @type {any} */ page, /** @type {string} */ name, /** @type {string} */ target) {
+  await page.$eval(target, (/** @type {any} */ node) => node.scrollIntoView({ block: 'center' }));
+  await new Promise(done => setTimeout(done, 150));
+  const seen = await page.$eval(target, (/** @type {any} */ node) => {
+    const rect = node.getBoundingClientRect();
+    const note = document.querySelector('.hero .small'), cta = document.getElementById('primary-cta');
+    return { text: node.textContent.trim(), inViewport: rect.top >= 0 && rect.bottom <= innerHeight && rect.width > 0 && rect.height > 0,
+      arm: document.documentElement.dataset.experimentArm ?? null,
+      noteBeforeCta: !!(note && cta && (note.compareDocumentPosition(cta) & Node.DOCUMENT_POSITION_FOLLOWING)) };
+  });
+  assert.equal(seen.inViewport, true, `${name}: ${target} visible in frame`);
+  const full = join(shots, `${name}.png`), region = join(shots, `${name}-region.png`);
+  await page.screenshot({ path: full, fullPage: false });
+  await (await page.$(target)).screenshot({ path: region });
+  screenshots[name] = createHash('sha256').update(await readFile(full)).digest('hex');
+  screenshots[`${name}-region`] = createHash('sha256').update(await readFile(region)).digest('hex');
+  shotEvidence[name] = { target, ...seen, sha256: screenshots[name], regionSha256: screenshots[`${name}-region`] };
+  return shotEvidence[name];
+}
+/** Opens fresh consented visits until the deterministic assignment yields `arm`, then captures that arm's changed region. */
+async function captureArm(/** @type {string} */ name, /** @type {any} */ instance, /** @type {string} */ arm, /** @type {string} */ target) {
+  for (let attempt = 0; attempt < 40; attempt++) {
+    const result = await visit(`${name}-${attempt}`, { screenshot: name, shotArm: arm, shotTarget: target });
+    if (!result.shot) continue;
+    assert.equal(result.shot.arm, arm);
+    const value = instance.arms[arm].value;
+    if (value === 'before_cta' || value === 'after_cta') assert.equal(result.shot.noteBeforeCta, value === 'before_cta', `${name}: note position`);
+    else assert.equal(result.shot.text, value, `${name}: visible copy is the ${arm} arm`);
+    return result;
+  }
+  throw Error(`${name}: ${arm} arm not assigned within 40 fresh visits`);
+}
+/** Arm images must differ; identical hashes mean the screenshot did not show the variant. */
+function assertArmsDiffer(/** @type {string} */ control, /** @type {string} */ candidate) {
+  assert.notEqual(screenshots[`${control}-region`], screenshots[`${candidate}-region`], `${control} vs ${candidate} region images identical`);
+  assert.notEqual(screenshots[control], screenshots[candidate], `${control} vs ${candidate} frames identical`);
+}
 /** One real consented browser visit (fresh tab = fresh visit unit). */
-async function visit(/** @type {string} */ name, { consent = true, clickDownload = false, withdraw = false, screenshot = '' } = {}) {
+async function visit(/** @type {string} */ name, { consent = true, clickDownload = false, withdraw = false, screenshot = '', shotArm = /** @type {string|null} */ (null), shotTarget = '#download-title' } = {}) {
   const page = await browser.newPage();
   await page.setViewport({ width: 1280, height: 900, deviceScaleFactor: 1 });
   await page.setRequestInterception(true);
@@ -221,16 +262,7 @@ async function visit(/** @type {string} */ name, { consent = true, clickDownload
     assert.equal(await page.evaluate(() => localStorage.length + sessionStorage.length), 0, 'no browser storage');
     assert.equal((await page.cookies()).length, 0, 'no cookies');
   }
-  if (screenshot) {
-    const path = join(shots, `${screenshot}.png`);
-    await page.evaluate(() => document.getElementById(document.documentElement.dataset.experimentArm ? 'download' : 'download')?.scrollIntoView());
-    await page.screenshot({ path, fullPage: false });
-    screenshots[screenshot] = createHash('sha256').update(await readFile(path)).digest('hex');
-    await page.evaluate(() => scrollTo(0, 0));
-    const top = join(shots, `${screenshot}-hero.png`);
-    await page.screenshot({ path: top, fullPage: false });
-    screenshots[`${screenshot}-hero`] = createHash('sha256').update(await readFile(top)).digest('hex');
-  }
+  if (screenshot && (shotArm === null || result.arm === shotArm)) result.shot = await capture(page, screenshot, shotTarget);
   if (clickDownload) {
     await page.click('[data-download]');
     await new Promise(done => setTimeout(done, 800));
@@ -290,8 +322,9 @@ try {
       arms.add(result.arm);
     }
     assert.equal(arms.size, 2, 'both arms observed in real browser');
-    for (const arm of arms) await visit(`shot-${arm}`, { screenshot: `download-heading-${arm}` }).then(result => assert.equal(result.arm === arm || result.arm !== arm, true));
-    return { arms: [...arms], headings: Object.fromEntries([...arms].map(arm => [arm, browserVisits[arm].heading])), externalRequestsBlocked: counters.blockedExternal };
+    for (const arm of ['control', 'candidate']) await captureArm(`download-heading-${arm}`, first, arm, '#download-title');
+    assertArmsDiffer('download-heading-control', 'download-heading-candidate');
+    return { screenshots: { control: shotEvidence['download-heading-control'], candidate: shotEvidence['download-heading-candidate'] }, arms: [...arms], headings: Object.fromEntries([...arms].map(arm => [arm, browserVisits[arm].heading])), externalRequestsBlocked: counters.blockedExternal };
   });
 
   await scenario('consent withdrawal: browser forget restores standard page, tombstones visit, late outcome rejected 410', async () => {
@@ -361,8 +394,10 @@ try {
   const second = (await config()).active;
   await scenario('next experiment + harm rollback: pre-registered interim harm look rolls back hero-cta-label-v1', async () => {
     assert.match(second.experimentId, /^hero-cta-label-v1\./);
-    const shown = await visit('second', { screenshot: 'hero-cta-label-live' });
+    const shown = await visit('second');
     assert.equal(shown.cta, second.arms[shown.arm].value);
+    for (const arm of ['control', 'candidate']) assert.equal((await captureArm(`hero-cta-label-${arm}`, second, arm, '#primary-cta')).heading, first.arms.candidate.value);
+    assertArmsDiffer('hero-cta-label-control', 'hero-cta-label-candidate');
     assert.equal(shown.heading, first.arms.candidate.value, 'promoted copy kept while testing a different surface');
     const simulated = await simulate(second, 900, { control: 0.30, candidate: 0.10 }, 3 * 86400000);
     now = Date.parse(second.harmLookAt[0]) + 3600000;
@@ -376,8 +411,10 @@ try {
 
   const third = (await config()).active;
   await scenario('kill switch: admin kill stops config, exposures and ticks; browser falls back to standard page', async () => {
-    const shown = await visit('third', { screenshot: 'hero-note-position-live' });
+    const shown = await visit('third');
     assert.equal(shown.noteBeforeCta, shown.arm === 'candidate');
+    for (const arm of ['control', 'candidate']) await captureArm(`hero-note-position-${arm}`, third, arm, '.hero');
+    assertArmsDiffer('hero-note-position-control', 'hero-note-position-candidate');
     const kill = await api('POST', '/api/team/experiments/kill', { killed: true, reason: 'acceptance kill switch drill' }, 'admin');
     assert.equal(kill.status, 200);
     const live = await config();
@@ -386,7 +423,7 @@ try {
       subjectId: randomUUID(), arm: 'control', applied: true });
     assert.equal(exposure.status, 503);
     assert.equal((await tick()).status, 'disabled');
-    const after = await visit('killed', { screenshot: 'killed-standard' });
+    const after = await visit('killed', { screenshot: 'killed-standard', shotTarget: '.hero' });
     assert.equal(after.arm, 'none'); assert.equal(after.cta, third.arms.control.value === 'after_cta' ? second.arms.control.value : after.cta);
     return { config: live, exposureStatus: exposure.status, browserArm: after.arm };
   });
@@ -414,38 +451,81 @@ try {
     return { auditActions: actions, concluded: report.concluded.map((/** @type {any} */ row) => ({ key: row.key, decision: row.decision })) };
   });
 
-  await scenario('private console: experiment status/guardrails/history panel renders the real persisted admin report over HTTP', async () => {
+  await scenario('private console: real console.html + CSS + shared loader render persisted report; keyboard, mobile, light, 503 and 401 states', async () => {
     const page = await browser.newPage();
-    await page.setViewport({ width: 1280, height: 1400, deviceScaleFactor: 1 });
-    await page.goto(origin + '/console.css', { waitUntil: 'load' });
-    await page.setContent('<!doctype html><html data-theme="dark"><head><link rel="stylesheet" href="/console.css"></head><body><main>' +
-      '<h2>Page experiments / guarded loop</h2><div id="experiment-report"></div></main></body></html>', { waitUntil: 'load' });
-    const shown = await page.evaluate(async (/** @type {string} */ token) => {
-      const { loadExperiments } = await import('/experiment-panels.mjs');
+    /** @type {string[]} */ const errors = [];
+    page.on('pageerror', (/** @type {any} */ error) => errors.push(error.message));
+    await page.setViewport({ width: 1280, height: 1000, deviceScaleFactor: 1 });
+    await page.goto(origin + '/console.html', { waitUntil: 'networkidle0' });
+    assert.equal(await page.evaluate(() => document.documentElement.dataset.theme), 'dark');
+    const styled = await page.evaluate(() => ({ sheets: [...document.styleSheets].map(sheet => new URL(sheet.href ?? '', location.href).pathname),
+      font: getComputedStyle(document.body).fontFamily }));
+    assert.ok(styled.sheets.includes('/console.css') && styled.sheets.includes('/assets/theme.css'), JSON.stringify(styled));
+    assert.ok(!/^"?Times/.test(styled.font), `styled font ${styled.font}`);
+    const section = async () => /** @type {any} */ (await page.$('section[aria-labelledby="experiment-title"]'));
+    const shot = async (/** @type {string} */ name) => {
+      const path = join(shots, `${name}.png`);
+      await (await section()).screenshot({ path });
+      screenshots[name] = createHash('sha256').update(await readFile(path)).digest('hex');
+    };
+    assert.equal(await page.$eval('#experiment-report', node => node.childElementCount), 0);
+    await shot('console-experiment-empty');
+    const load = () => page.evaluate(async (/** @type {string} */ token) => {
+      const { loadExperimentStatus } = await import('/experiment-panels.mjs');
       const request = async (/** @type {string} */ path) => {
         const response = await fetch(path, { headers: { 'x-acceptance-token': token } });
         if (!response.ok) throw Error(`HTTP ${response.status}`);
         return response.json();
       };
-      const data = await loadExperiments(document.getElementById('experiment-report'), request);
-      return { text: document.getElementById('experiment-report')?.textContent ?? '', concluded: data.concluded.length };
+      const data = await loadExperimentStatus(document.getElementById('experiment-report'), document.getElementById('experiment-admin-status'), request);
+      return { concluded: data?.concluded.length ?? null, cards: document.querySelectorAll('#experiment-report > .experiment-card').length,
+        text: document.getElementById('experiment-report')?.textContent ?? '', status: document.getElementById('experiment-admin-status')?.textContent ?? '' };
     }, tokens.admin);
-    assert.equal(shown.concluded, 3);
-    for (const expected of ['Isolated acceptance store (synthetic, not customers)', 'Kill switch: Engaged', 'Candidate promoted (build-time artifact only)',
+    const shown = await load();
+    assert.equal(shown.concluded, 3); assert.ok(shown.cards >= 4, `cards ${shown.cards}`);
+    for (const expected of ['Isolated acceptance store (synthetic, not customers)', 'Kill switch', 'Engaged', 'Candidate promoted (build-time artifact only)',
       'Rolled back: pre-registered harm look', 'isolated_acceptance_only', 'harm-only interim looks']) assert.ok(shown.text.includes(expected), expected);
-    const path = join(shots, 'console-experiment-history.png');
-    await page.screenshot({ path, fullPage: true });
-    screenshots['console-experiment-history'] = createHash('sha256').update(await readFile(path)).digest('hex');
+    assert.match(shown.status, /No live efficacy claim/);
+    const cardStyle = await page.$eval('#experiment-report > .experiment-card', node => {
+      const style = getComputedStyle(node); return { radius: style.borderRadius, grid: getComputedStyle(node.parentElement).display, dl: getComputedStyle(node.querySelector('dl')).display };
+    });
+    assert.deepEqual([cardStyle.radius, cardStyle.grid, cardStyle.dl], ['16px', 'grid', 'grid']);
+    await shot('console-experiment-history');
+    const summary = /** @type {any} */ (await page.$('#experiment-report details summary'));
+    assert.ok(summary, 'collapsed audit history present');
+    await summary.focus(); await page.keyboard.press('Space');
+    const audit = await page.$eval('#experiment-report details', node => ({ open: node.open, text: node.textContent }));
+    assert.equal(audit.open, true); assert.match(audit.text, /promote/); assert.match(audit.text, /rollback/); assert.match(audit.text, /kill/);
+    await shot('console-experiment-audit-keyboard');
+    for (const width of [390, 320]) {
+      await page.setViewport({ width, height: 900, deviceScaleFactor: 1 });
+      const overflow = await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
+      assert.ok(overflow <= 0, `no horizontal overflow at ${width}: ${overflow}`);
+      assert.equal(await page.$eval('#experiment-report', node => getComputedStyle(node).gridTemplateColumns.split(' ').length), 1);
+      await shot(`console-experiment-mobile-${width}`);
+    }
+    await page.setViewport({ width: 1280, height: 1000, deviceScaleFactor: 1 });
+    await page.goto(origin + '/console.html?scoutTheme=light', { waitUntil: 'networkidle0' });
+    assert.equal(await page.evaluate(() => document.documentElement.dataset.theme), 'light');
+    assert.equal((await load()).concluded, 3);
+    await shot('console-experiment-light');
+    failReport = true;
+    const failed = await load();
+    failReport = false;
+    assert.deepEqual([failed.concluded, failed.cards, failed.text], [null, 0, ''], 'HTTP 503 clears stale experiment output');
+    assert.match(failed.status, /Experiment status unavailable: HTTP 503.*No substitute status displayed/);
+    await shot('console-experiment-error');
     const unauthorized = await page.evaluate(async () => (await fetch('/api/team/experiments')).status);
     assert.equal(unauthorized, 401);
+    assert.deepEqual(errors, [], 'no page errors');
     await page.close();
-    return { renderedFrom: 'GET /api/team/experiments (persisted isolated store)', concluded: shown.concluded, unauthorizedStatus: unauthorized };
+    return { renderedFrom: 'real /console.html + /console.css + /assets/theme.css; shared loadExperimentStatus over GET /api/team/experiments (persisted isolated store)',
+      concluded: shown.concluded, cards: shown.cards, keyboardAuditOpened: true, mobileWidths: [390, 320], errorState: 'HTTP 503 cleared stale output', unauthorizedStatus: unauthorized, pageErrors: 0 };
   });
-
   // ---------- receipt (server-verifiable) ----------
   const sources = /** @type {Record<string,string>} */ ({});
   for (const file of ['api/src/experiment-policy.mjs', 'api/src/experiments.mjs', 'api/src/functions.mjs', 'api/src/website-funnel.mjs',
-    'site/customer.mjs', 'site/experiment-client.mjs', 'site/experiment-panels.mjs', 'site/console.mjs', 'site/console.html', 'site/index.html', 'site/build.mjs', 'site/experiment-promotions.json', 'tool/experiment_acceptance.mjs']) {
+    'site/customer.mjs', 'site/experiment-client.mjs', 'site/experiment-panels.mjs', 'site/console.mjs', 'site/console.html', 'site/console.css', 'site/assets/theme.css', 'site/index.html', 'site/build.mjs', 'site/experiment-promotions.json', 'tool/experiment_acceptance.mjs']) {
     sources[file] = createHash('sha256').update(await readFile(join(root, file))).digest('hex');
   }
   const receipt = {
@@ -454,7 +534,7 @@ try {
     browser: browserVersion, simulatedClockStart: new Date(T0).toISOString(),
     segregation: { environment: 'isolated', productionDocuments: 0, syntheticOnly: true,
       note: 'Website observations forced to __website_synthetic; prioritization volume from a labeled __website_acceptance_fixture partition (foundation synthetic cap 100 lifetime < 50/step floor); experiments in __experiments_isolated; temp file-backed store deleted after run. No real customer data exists or is claimed.' },
-    scenarios, screenshots, sources,
+    scenarios, screenshots, screenshotEvidence: shotEvidence, sources,
     http: counters.http, externalRequestsBlocked: counters.blockedExternal,
     costs: { declaration: 'run_dependencies_only', paidServices: [], newBillableResources: [], actualHostingBill: 'not_measured' },
     limitations: [
