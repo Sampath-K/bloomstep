@@ -1,0 +1,48 @@
+name: Free acquisition snapshots
+on:
+  schedule:
+    - cron: '20 2 * * *'
+  workflow_dispatch:
+permissions:
+  contents: write
+concurrency:
+  group: analytics-acquisition
+  cancel-in-progress: false
+jobs:
+  snapshot:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Snapshot release downloads and available repository traffic
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        run: node tool/acquisition_snapshot.mjs
+      - uses: actions/upload-artifact@v4
+        with:
+          name: acquisition-${{ github.run_id }}
+          path: build/acquisition/*.json
+          retention-days: 90
+      - name: Preserve daily data on analytics-snapshots branch
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          branch=analytics-snapshots
+          if ! gh api "repos/$GITHUB_REPOSITORY/git/ref/heads/$branch" > /dev/null 2>&1; then
+            base=$(gh api "repos/$GITHUB_REPOSITORY" --jq .default_branch)
+            sha=$(gh api "repos/$GITHUB_REPOSITORY/git/ref/heads/$base" --jq .object.sha)
+            gh api --method POST "repos/$GITHUB_REPOSITORY/git/refs" -f ref="refs/heads/$branch" -f sha="$sha" > /dev/null
+          fi
+          for file in build/acquisition/*.json; do
+            target="data/acquisition/$(basename "$file")"
+            sha=$(gh api "repos/$GITHUB_REPOSITORY/contents/$target?ref=$branch" --jq .sha 2>/dev/null || true)
+            args=()
+            if [ -n "$sha" ]; then args+=(-f "sha=$sha"); fi
+            gh api --method PUT "repos/$GITHUB_REPOSITORY/contents/$target" \
+              -f "branch=$branch" -f "message=Record daily acquisition snapshot" \
+              -f "content=$(base64 -w0 "$file")" "${args[@]}" > /dev/null
+          done

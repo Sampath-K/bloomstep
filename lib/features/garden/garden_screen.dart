@@ -22,6 +22,8 @@ import '../../services/session_diagnostics.dart';
 import 'reminder_observation_controls.dart';
 import '../../services/installer_measurement.dart';
 import 'measurement_controls.dart';
+import '../../services/analytics_sandbox.dart';
+import 'analytics_sandbox_controls.dart';
 
 import 'package:launch_at_startup/launch_at_startup.dart';
 
@@ -42,6 +44,7 @@ class GardenScreen extends StatefulWidget {
     this.invitationService,
     this.diagnostics,
     this.installerMeasurement,
+    this.analyticsSandbox,
     this.testExportPathSelector,
     this.clock,
   });
@@ -54,6 +57,7 @@ class GardenScreen extends StatefulWidget {
   final InvitationService? invitationService;
   final SessionDiagnostics? diagnostics;
   final InstallerMeasurement? installerMeasurement;
+  final AnalyticsSandbox? analyticsSandbox;
   final Future<String?> Function()? testExportPathSelector;
   final DateTime Function()? clock;
   @override
@@ -1084,6 +1088,9 @@ class _GardenScreenState extends State<GardenScreen> {
                       await _act(() async {
                         await widget.store.setSetting('analytics', '$v');
                         await widget.diagnostics?.consentChanged();
+                        if (!v) {
+                          await widget.analyticsSandbox?.consentChanged(false);
+                        }
                         if (!v) await widget.installerMeasurement?.clear();
                       });
                       analytics =
@@ -1097,6 +1104,11 @@ class _GardenScreenState extends State<GardenScreen> {
                   ),
                   if (analyticsWarning != null)
                     SelectableText('Product-event choice: $analyticsWarning'),
+                  if (widget.analyticsSandbox != null)
+                    AnalyticsSandboxControls(
+                      key: ValueKey(analytics),
+                      sandbox: widget.analyticsSandbox!,
+                    ),
                   ReminderObservationControls(
                     analyticsEnabled: analytics,
                     optedIn: reminderObservation,

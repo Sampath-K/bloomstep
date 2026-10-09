@@ -34,6 +34,10 @@ accessibility or population acceptance.
 account-consented session/token stages and explicitly unknown pre-auth/provider
 coverage; it is not a complete sign-in funnel.
 
+The [free analytics sandbox](docs/analytics-sandbox.md) is staging-only,
+default-off and independently consented. It includes owner signup/key steps and
+the offline browser check; production has no third-party analytics enablement.
+
 The small static website lives in `site`; authenticated Functions live in `api`.
 CI tests and packages per-user unsigned Windows ARM64 and x64 preview installers
 using Inno Setup. Tag releases are explicitly prereleases with checksums.
