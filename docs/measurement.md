@@ -6,6 +6,11 @@ contains these controls; preview.2 predates receipt import.
 
 ## Source of truth and explicit linkage
 
+Current customer website collection and independent browser-to-account
+receipt/HTTP proof are mapped in [`funnel-telemetry.md`](funnel-telemetry.md).
+The main customer page has a separate default-off anonymous count endpoint;
+the historical browser-storage receipt flow below is not its collection path.
+
 The website has no product-analytics upload endpoint. Optional local consent is
 unchecked unless a valid prior consented receipt is present. The browser-owned
 key `bloomstep.measurement-receipt.v1` stores at most32 actual post-consent page,

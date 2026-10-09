@@ -2,6 +2,7 @@ import { randomUUID } from 'node:crypto';
 import { access, mkdir, readFile, rename, unlink, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { dirname, isAbsolute, normalize, relative, sep } from 'node:path';
+import { setTimeout } from 'node:timers/promises';
 
 const clone = value => value === undefined ? undefined : structuredClone(value);
 const conflict = code => Object.assign(new Error('Test store concurrency conflict.'), { code });
@@ -144,7 +145,14 @@ export class FileBackedCosmosContainer {
     });
     try {
       await writeFile(temporary, contents, { encoding: 'utf8', mode: 0o600, flag: 'wx' });
-      await rename(temporary, this.path);
+      // Windows readers can briefly hold the destination open during independent readback.
+      for (let attempt = 0; ; attempt++) {
+        try { await rename(temporary, this.path); break; }
+        catch (error) {
+          if (process.platform !== 'win32' || !['EPERM', 'EACCES', 'EBUSY'].includes(error.code) || attempt >= 9) throw error;
+          await setTimeout(20);
+        }
+      }
     } catch (error) {
       try {
         await unlink(temporary);
@@ -180,6 +188,9 @@ export class FileBackedCosmosContainer {
       ));
     } else if (query.includes('c.type != "account"')) {
       rows = rows.filter(row => row.userId === parameters['@u'] && row.type !== 'account');
+    } else if (query.includes('c.type = "website_daily"')) {
+      rows = rows.filter(row => row.type === 'website_daily' &&
+        row.day >= parameters['@start'] && row.day <= parameters['@end']);
     } else if (query.includes('c.type = "events"')) {
       rows = rows.filter(row => row.type === 'events' &&
         (!parameters['@start'] || row.record?.ts >= parameters['@start']) &&
