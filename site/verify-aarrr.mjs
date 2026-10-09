@@ -1,8 +1,10 @@
 import puppeteer from 'puppeteer-core';
 import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
-import { mkdir, readFile, writeFile } from 'node:fs/promises';
+import { mkdir, readFile, readdir, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
+import { execFileSync } from 'node:child_process';
+import { fileURLToPath } from 'node:url';
 import { createAarrrFixture } from '../api/test/support/aarrr-fixture.mjs';
 
 const output = process.env.EVIDENCE_DIR;
@@ -104,6 +106,7 @@ try {
   checks.push('Actual production Load button without configured operator identity clears old fixture report and labels failure (no auth bypass)');
   assert.deepEqual(errors, []);
   const sources = {};
+  const root = fileURLToPath(new URL('../', import.meta.url));
   for (const path of ['api/src/aarrr.mjs', 'api/src/backend.mjs', 'site/aarrr-panels.mjs',
     'site/console.mjs', 'site/console.html', 'site/console.css', 'api/test/support/aarrr-fixture.mjs',
     'api/src/website-funnel.mjs', 'api/src/website-attribution.mjs', 'site/website-panels.mjs', 'site/acquisition-panels.mjs',
@@ -111,8 +114,18 @@ try {
     'site/test/aarrr.test.mjs', 'site/test/acquisition-panels.test.mjs', 'site/verify-aarrr.mjs']) {
     sources[path] = createHash('sha256').update(await readFile(new URL(`../${path}`, import.meta.url))).digest('hex');
   }
+  for (const directory of ['api/src', 'site']) {
+    for (const name of await readdir(new URL(`../${directory}/`, import.meta.url))) {
+      if (name.endsWith('.mjs')) {
+        const path = `${directory}/${name}`;
+        sources[path] = createHash('sha256').update(await readFile(new URL(`../${path}`, import.meta.url))).digest('hex');
+      }
+    }
+  }
+  const sourceRevision = execFileSync('git', ['rev-parse', 'HEAD'], { cwd: root, encoding: 'utf8' }).trim();
+  const sourceDirty = execFileSync('git', ['status', '--porcelain'], { cwd: root, encoding: 'utf8' }).trim().length > 0;
   await writeFile(join(output, 'aarrr-receipt.json'), JSON.stringify({
-    schemaVersion: 1, isolatedSynthetic: true, generatedAt: new Date().toISOString(), sources, checks,
+    schemaVersion: 1, isolatedSynthetic: true, generatedAt: new Date().toISOString(), sourceRevision, sourceDirty, sources, checks,
     oracle: { stages: [150, 100, 50], activationRate: 0.5, d7Rate: 1, revenue: null },
     limitations: ['No native installation or live customers exercised', 'Operator authentication is not bypassed; populated preview uses production renderer with isolated authenticated handler response',
       'No production synthetic data written; disposable local disk removed after run', 'Acquisition foundation acceptance is a separate composed check'],
