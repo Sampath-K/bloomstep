@@ -7,6 +7,7 @@ import { SignJWT, jwtVerify } from 'jose';
 import { createHandlers, ServiceError } from '../../src/backend.mjs';
 import { accountKey } from '../../src/contracts.mjs';
 import { FileBackedCosmosContainer } from './file_backed_cosmos.mjs';
+import { createWebsiteHandlers } from '../../src/website-funnel.mjs';
 
 const issuer = 'https://aarrr-fixture.invalid';
 const audience = 'isolated-aarrr-fixture';
@@ -32,6 +33,8 @@ export async function createAarrrFixture() {
   };
   const handlers = createHandlers({ container: () => container, authenticate,
     clock: () => new Date(observedAt), environment: () => ({ BLOOMSTEP_INVITATIONS_DISABLED: 'true' }) });
+  let webNow = new Date(observedAt);
+  const website = createWebsiteHandlers({ container: () => container, authenticate, clock: () => webNow });
   const staticFiles = new Map([
     ['/console.html', ['../../../site/console.html', 'text/html']],
     ['/console.css', ['../../../site/console.css', 'text/css']],
@@ -39,6 +42,8 @@ export async function createAarrrFixture() {
     ['/assets/console.js', ['../../../site/assets/console.js', 'text/javascript']],
     ['/aarrr-panels.mjs', ['../../../site/aarrr-panels.mjs', 'text/javascript']],
     ['/website-panels.mjs', ['../../../site/website-panels.mjs', 'text/javascript']],
+    ['/acquisition-panels.mjs', ['../../../site/acquisition-panels.mjs', 'text/javascript']],
+    ['/api/src/website-attribution.mjs', ['../../src/website-attribution.mjs', 'text/javascript']],
     ['/operator-config.json', ['../../../site/operator-config.json', 'application/json']],
     ['/assets/bloomstep-icon.png', ['../../../site/assets/bloomstep-icon.png', 'image/png']],
   ]);
@@ -56,6 +61,8 @@ export async function createAarrrFixture() {
       if (unavailable && path === '/api/team/metrics') throw new ServiceError(503, 'Isolated pipeline unavailable.');
       const handler = path === '/api/sync' && ['GET', 'POST'].includes(incoming.method) ? handlers.sync :
         path === '/api/team/metrics' && incoming.method === 'GET' ? handlers.metrics :
+        path === '/api/web/events' && incoming.method === 'POST' ? website.ingest :
+        path === '/api/team/website' && incoming.method === 'GET' ? website.metrics :
         path === '/api/account' && incoming.method === 'DELETE' ? handlers.deleteAccount : null;
       if (!handler) { response.writeHead(404, headers); response.end(); return; }
       let body = '';
@@ -64,6 +71,7 @@ export async function createAarrrFixture() {
         if (Buffer.byteLength(body) > 512 * 1024) throw new ServiceError(413, 'Fixture body cap exceeded.');
       }
       const result = await handler({ method: incoming.method, headers: new Headers(incoming.headers),
+        url: `${url}${incoming.url}`,
         query: new URLSearchParams(new URL(incoming.url, 'http://127.0.0.1').search),
         params: {}, text: async () => body });
       response.writeHead(result.status ?? 200, { ...headers, 'Content-Type': 'application/json' });
@@ -85,6 +93,22 @@ export async function createAarrrFixture() {
   return {
     url, databasePath, request, adminToken, subjects,
     failPipeline(value) { unavailable = value; },
+    async seedWebsite(attribution) {
+      let index = 0;
+      for (const [stageIndex, stage] of ['landing_view', 'primary_cta_click', 'download_click'].entries()) {
+        for (let count = 0; count < 50; count++) {
+          webNow = new Date(Date.parse(`2026-09-${String(12 + stageIndex).padStart(2, '0')}T10:00:00Z`) + count * 60000);
+          const result = await request('/api/web/events', adminToken, 'POST', {
+            channel: 'web', event: stage, source: 'search', architecture: 'unknown',
+            eventId: randomUUID(), synthetic: false, ...(attribution ? { attribution, observedAt: webNow.toISOString() } : {}),
+          });
+          if (result.status !== 202) throw Error(`Isolated web fixture failed (${result.status}): ${await result.text()}`);
+          index++;
+        }
+      }
+      webNow = new Date(observedAt);
+      return index;
+    },
     async seed() {
       for (let i = 0; i < 150; i++) {
         const subject = `synthetic-account-${String(i).padStart(3, '0')}`;

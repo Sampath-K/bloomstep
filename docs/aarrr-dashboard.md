@@ -9,6 +9,17 @@ explicit operator sign-in remain required. The separate website window includes
 today; account reports use completed UTC dates. Neither silently substitutes
 for the other.
 
+**Load website funnel** uses the separately authorized existing
+`GET /api/team/website?days=1..30`. Its source/referrer/campaign drilldowns show
+first and last touch independently for landing, primary CTA and download
+events. `scope: consented_page_epoch` is a single explicit page-consent epoch:
+first/last are not cross-visit acquisition. Each field is an independent
+marginal count, not a joint user segment. A whole dimension is withheld when
+an observed cell is below 50; missing and all-null dimensions are explicitly
+unknown/absent or suppressed, never zero. Legacy responses without attribution
+get an explicit not-instrumented panel. The shared website loader clears
+old data before requests and again on errors or malformed reports.
+
 ## Report contract and source of truth
 
 `api/src/aarrr.mjs` computes additive, on-demand `dashboards.aarrr` version 1.
@@ -92,6 +103,18 @@ sync deletions, verifies **150 / 50 / unknown**, and replays old offline
 records without reviving erased habit evidence. After retry, persisted raw
 documents must contain exactly 400 events, 100 habits and 150 check-ins.
 Missing worker snapshots stay unavailable.
+
+The composed acquisition oracle additionally sends 150 observations through
+the real anonymous collector in that same disposable store (50 events per
+stage, separate bounded UTC days), using allowlisted search/Google/newsletter/
+email/launch touches. Disk reopen and an Admin website read must produce 50
+source/referrer/campaign marginal events per stage/touch. The shared production
+website loader renders those values and keyboard-operable attribution
+drilldowns. The subsequent account report must remain 150/100/50 with
+100 eligible recipe accounts: anonymous events cannot alter that denominator.
+`synthetic:false` here exercises the collector's real aggregate partition
+**inside the isolated disposable store only**, never any production endpoint.
+Foundation's separate synthetic-partition exclusion tests remain required.
 
 The browser runner reads the authenticated real HTTP report through the same
 `loadAarrr` orchestration used by the production Load button (with an isolated

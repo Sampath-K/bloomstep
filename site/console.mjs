@@ -1,6 +1,6 @@
 import { loadOperatorAuth, operatorRequest } from './operator-auth.mjs';
 import { reminderPreferencePanels } from './reminder-panels.mjs';
-import { websitePanels } from './website-panels.mjs';
+import { loadWebsite } from './website-panels.mjs';
 import { loadAarrr } from './aarrr-panels.mjs';
 const groups = [
   ['activationRetention', 'Activation / returning activity', [
@@ -410,6 +410,7 @@ function initialize() {
     status.textContent = 'Loading consent-safe aggregate counts...';
     element('measurement').replaceChildren();
     element('aarrr-report').replaceChildren();
+    element('daily-counts').textContent = '';
     element('metrics').disabled = true;
     try {
       const days = Number(element('metric-days').value);
@@ -447,6 +448,8 @@ function initialize() {
       status.textContent = `Persisted worker history covers ${data.dailySnapshots.startDay} through ${data.dailySnapshots.endDay}; its latest completed-day panels require an available stored snapshot. Separately labelled on-demand dashboards cover ${data.dashboards.startDay} through ${data.dashboards.endDay}; raw compatibility counts include today. Private support uses server receipt/first committed operator reply facts, not product-event consent, customer-read proof or an all-feedback census. Business-day calendar remains unavailable. No daily unique-user/retention/median rollup is inferred. Cohorts below ${data.minimumCohort} are suppressed, not zero. Experiment remains off; crash-free rate is unavailable. Worker deployment and token execution need independent live verification.`;
     } catch (error) {
       element('aarrr-report').replaceChildren();
+      element('measurement').replaceChildren();
+      element('daily-counts').textContent = '';
       status.textContent = `Measurement unavailable: ${error.message} No prior or substitute counts displayed.`;
     } finally { element('metrics').disabled = false; }
   });
@@ -454,20 +457,14 @@ function initialize() {
   element('website-metrics').addEventListener('click', async () => {
     const output = element('website-funnel'), webStatus = element('website-admin-status');
     output.replaceChildren(); webStatus.textContent = 'Loading separate website aggregates...';
+    element('website-metrics').disabled = true;
     try {
-      const data = await request(`/api/team/website?days=${element('website-days').value}`);
-      for (const panel of websitePanels(data)) {
-        const card = document.createElement('article'), title = document.createElement('h3');
-        title.textContent = panel.title;
-        const description = document.createElement('p'); description.textContent = panel.definition;
-        card.append(title, description);
-        for (const row of panel.rows) {
-          const line = document.createElement('p'); line.textContent = `${row.label}: ${row.value}`; card.append(line);
-        }
-        output.append(card);
-      }
+      await loadWebsite(output, request, Number(element('website-days').value));
       webStatus.textContent = 'Anonymous counts and voluntary linked cohorts are separate; unknowns are not zero. Store is reserved.';
-    } catch (error) { webStatus.textContent = error.message; }
+    } catch (error) {
+      output.replaceChildren();
+      webStatus.textContent = `Website measurements unavailable: ${error.message} No substitute counts displayed.`;
+    } finally { element('website-metrics').disabled = false; }
   });
 
   function clear() {

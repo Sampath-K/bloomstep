@@ -1,9 +1,12 @@
 import { createServer } from 'node:http';
 import { normalize, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { readFile, readdir } from 'node:fs/promises';
+import { randomUUID } from 'node:crypto';
 import { jwtVerify } from 'jose';
 import { accountKey } from '../../src/contracts.mjs';
 import { createHandlers, ServiceError } from '../../src/backend.mjs';
+import { createWebsiteHandlers } from '../../src/website-funnel.mjs';
 import { FileBackedCosmosContainer, isWithinDisposableTestDirectory } from './file_backed_cosmos.mjs';
 
 const testIssuer = 'https://bloomstep.test';
@@ -21,6 +24,9 @@ export async function createLocalTestServer({
   key,
   port = 0,
   reuseDatabase = false,
+  telemetry = false,
+  clock = () => new Date(),
+  onError = () => {},
 }) {
   validateKey(key);
   const path = normalize(databasePath);
@@ -33,6 +39,7 @@ export async function createLocalTestServer({
   const environment = { BLOOMSTEP_INVITATIONS_DISABLED: 'true' };
   const handlers = createHandlers({
     container: () => container,
+    clock,
     authenticate: async request => {
       const authorization = request.headers.get('x-bloomstep-authorization') ?? '';
       const match = /^Bearer ([A-Za-z0-9_.-]+)$/.exec(authorization);
@@ -64,6 +71,23 @@ export async function createLocalTestServer({
     environment: () => environment,
   });
 
+  const adminToken = randomUUID();
+  const website = telemetry ? createWebsiteHandlers({ container: () => container, clock,
+    authenticate: async request => {
+      if (request.headers.get('x-bloomstep-test-admin') !== adminToken) throw new ServiceError(401, 'Test admin required.');
+      return { roles: ['Bloomstep.Admin'] };
+    } }) : null;
+  const assets = telemetry ? {
+    '/': await readFile(new URL('../../../site/index.html', import.meta.url)),
+    '/assets/customer.js': await readFile(new URL('../../../site/assets/customer.js', import.meta.url)),
+  } : {};
+  if (telemetry) {
+    for (const name of await readdir(new URL('../../../site/assets/', import.meta.url))) {
+      if (/^[a-z0-9_-]+\.(?:png|svg|css)$/.test(name)) {
+        assets[`/assets/${name}`] = await readFile(new URL(`../../../site/assets/${name}`, import.meta.url));
+      }
+    }
+  }
   const server = createServer(async (incoming, response) => {
     const headers = { 'Cache-Control': 'no-store', 'X-Content-Type-Options': 'nosniff' };
     if (incoming.url === '/healthz' && incoming.method === 'GET') {
@@ -71,8 +95,20 @@ export async function createLocalTestServer({
       response.end('{"ready":true}');
       return;
     }
-    if (incoming.url !== '/api/sync' ||
-        !['GET', 'POST'].includes(incoming.method ?? '')) {
+    const url = new URL(incoming.url ?? '/', 'http://127.0.0.1');
+    if (telemetry && incoming.method === 'GET' && Object.hasOwn(assets, url.pathname)) {
+      const type = url.pathname.endsWith('.js') ? 'text/javascript' :
+        url.pathname.endsWith('.png') ? 'image/png' : url.pathname.endsWith('.svg') ? 'image/svg+xml' :
+          url.pathname.endsWith('.css') ? 'text/css' : 'text/html';
+      response.writeHead(200, { ...headers, 'Content-Type': type });
+      response.end(assets[url.pathname]);
+      return;
+    }
+    const route = incoming.url === '/api/sync' && ['GET', 'POST'].includes(incoming.method ?? '') ? handlers.sync :
+      telemetry && url.pathname === '/api/web/events' && incoming.method === 'POST' ? website.ingest :
+      telemetry && url.pathname === '/api/team/website' && incoming.method === 'GET' ? website.metrics :
+      telemetry && url.pathname === '/api/account' && incoming.method === 'DELETE' ? handlers.deleteAccount : null;
+    if (!route) {
       response.writeHead(incoming.url === '/api/sync' ? 405 : 404, headers);
       response.end();
       return;
@@ -91,13 +127,14 @@ export async function createLocalTestServer({
     const rawBody = Buffer.concat(chunks).toString('utf8');
     const request = {
       method: incoming.method,
+      url: url.href,
       headers: new Headers(incoming.headers),
       query: new URLSearchParams(new URL(incoming.url ?? '/', 'http://127.0.0.1').search),
       params: {},
       text: async () => rawBody,
     };
     try {
-      const result = await handlers.sync(request);
+      const result = await route(request);
       const status = result.status ?? 200;
       response.writeHead(status, {
         ...headers,
@@ -105,6 +142,7 @@ export async function createLocalTestServer({
       });
       response.end(result.jsonBody === undefined ? '' : JSON.stringify(result.jsonBody));
     } catch (error) {
+      onError(error);
       const status = error instanceof ServiceError ? error.status : 500;
       const body = error instanceof ServiceError
         ? { error: error.message }
@@ -122,6 +160,7 @@ export async function createLocalTestServer({
   return {
     url: `http://127.0.0.1:${address.port}`,
     databasePath: path,
+    ...(telemetry ? { adminToken } : {}),
     async close() {
       await new Promise((resolve, reject) => server.close(error => error ? reject(error) : resolve()));
       await container.close();
@@ -145,6 +184,7 @@ if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.ur
       key: Buffer.from(keyText, 'hex'),
       port: Number(portText),
       reuseDatabase: process.env.BLOOMSTEP_TEST_REUSE_DATABASE === 'true',
+      telemetry: process.env.BLOOMSTEP_TEST_TELEMETRY === 'true',
     });
     process.stdout.write(`TEST_API_READY ${new URL(instance.url).port}\n`);
     let stopping = false;

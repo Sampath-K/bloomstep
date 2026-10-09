@@ -54,3 +54,24 @@ test('incomplete, negative, stale-shape and impossible rate responses fail close
     assert.throws(() => aarrrPanels(value), /Invalid|Incomplete/);
   }
 });
+
+test('measured transition partitions must sum to eligible denominator and preserve seven-day rate', () => {
+  const value = empty();
+  value.funnel.stages = [
+    { name: 'signin_succeeded', accounts: 150, status: 'measured' },
+    { name: 'recipe_created', accounts: 100, status: 'measured' },
+    { name: 'first_checkin', accounts: 50, status: 'measured' },
+  ];
+  value.funnel.transitions = [
+    { from: 'signin_succeeded', to: 'recipe_created', horizonDays: 7, eligibleAccounts: 150,
+      convertedAccounts: 100, laggedAccounts: 50, pendingAccounts: 0, censoredAccounts: 0, rate: 2 / 3, status: 'measured' },
+    { from: 'recipe_created', to: 'first_checkin', horizonDays: 7, eligibleAccounts: 100,
+      convertedAccounts: 50, laggedAccounts: 50, pendingAccounts: 0, censoredAccounts: 0, rate: 0.5, status: 'measured' },
+  ];
+  assert.equal(aarrrPanels(value).overview[1].value, '50.0%');
+  value.funnel.transitions[1].laggedAccounts = 49;
+  assert.throws(() => aarrrPanels(value), /Invalid/);
+  value.funnel.transitions[1].laggedAccounts = 50;
+  value.funnel.transitions[1].rate = 1;
+  assert.throws(() => aarrrPanels(value), /Invalid/);
+});

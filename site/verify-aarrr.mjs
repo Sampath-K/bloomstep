@@ -56,6 +56,27 @@ try {
   assert.match(await page.$eval('.aarrr-detail', node => node.textContent), /never abandonment/);
   await page.screenshot({ path: join(output, 'aarrr-drilldown.png'), fullPage: true });
   checks.push('Real HTTP sync + exact retry + disk restart -> report 150/100/50 -> rendered 50.0% activation, 100.0% D7; keyboard Space opens definition/denominators');
+  const touch = { source: 'search', referrerDomain: 'google.com', campaignSource: 'newsletter',
+    campaignMedium: 'email', campaignName: 'launch' };
+  await fixture.seedWebsite({ firstTouch: touch, lastTouch: touch });
+  await fixture.restartStore();
+  const web = await page.evaluate(async token => {
+    const { loadWebsite } = await import('/website-panels.mjs');
+    return loadWebsite(document.getElementById('website-funnel'), async path => {
+      const response = await fetch(path, { headers: { 'X-Bloomstep-Authorization': `Bearer ${token}` } });
+      if (!response.ok) throw Error(`Fixture website pipeline ${response.status}`);
+      return response.json();
+    }, 7);
+  }, fixture.adminToken);
+  assert.equal(web.acquisition.firstTouch.landing_view.source.search, 50);
+  assert.equal(web.acquisition.lastTouch.download_click.campaignName.launch, 50);
+  const attribution = await page.$('#website-funnel details summary');
+  await attribution.focus(); await page.keyboard.press('Space');
+  assert.equal(await page.$eval('#website-funnel details', node => node.open), true);
+  assert.match(await page.$eval('#website-funnel details', node => node.textContent), /Landing views · source · search: 50 events/);
+  assert.deepEqual((await load()).funnel.stages.map(stage => stage.accounts), [150, 100, 50]);
+  await page.screenshot({ path: join(output, 'aarrr-acquisition.png'), fullPage: true });
+  checks.push('Composed real collector150attributed events -> persisted disk -> shared website loader/render: source/referrer/campaign50-event margins; account denominators remain150/100/50; keyboard first-touch drilldown');
   for (const width of [390, 320]) {
     await page.setViewport({ width, height: 900, deviceScaleFactor: 1 });
     assert.equal(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), true, `No ${width}px overflow`);
@@ -85,7 +106,9 @@ try {
   const sources = {};
   for (const path of ['api/src/aarrr.mjs', 'api/src/backend.mjs', 'site/aarrr-panels.mjs',
     'site/console.mjs', 'site/console.html', 'site/console.css', 'api/test/support/aarrr-fixture.mjs',
-    'api/test/aarrr.test.mjs', 'api/test/aarrr-http.test.mjs', 'site/test/aarrr.test.mjs', 'site/verify-aarrr.mjs']) {
+    'api/src/website-funnel.mjs', 'api/src/website-attribution.mjs', 'site/website-panels.mjs', 'site/acquisition-panels.mjs',
+    'api/test/aarrr.test.mjs', 'api/test/aarrr-http.test.mjs', 'api/test/aarrr-acquisition-http.test.mjs',
+    'site/test/aarrr.test.mjs', 'site/test/acquisition-panels.test.mjs', 'site/verify-aarrr.mjs']) {
     sources[path] = createHash('sha256').update(await readFile(new URL(`../${path}`, import.meta.url))).digest('hex');
   }
   await writeFile(join(output, 'aarrr-receipt.json'), JSON.stringify({

@@ -78,6 +78,7 @@ button:disabled { cursor: wait; opacity: .65; }
 .metric-list dt { font-weight: 600; }
 .metric-list dd { margin: 0; overflow-wrap: anywhere; }
 #website-funnel { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; margin-top: 24px; }
+#website-funnel > details { grid-column: 1 / -1; }
 pre { white-space: pre-wrap; overflow-wrap: anywhere; }
 @media (max-width: 1000px) { .aarrr-overview { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
 @media (max-width: 600px) {

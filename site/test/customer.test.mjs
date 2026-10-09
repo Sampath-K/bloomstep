@@ -26,7 +26,7 @@ test('no storage, no identifying payload, honour signals, dedup and do not block
   await observer.record('landing_view');
   await observer.record('download_click', 'arm64');
   assert.equal(requests.length, 2);
-  assert.deepEqual(Object.keys(requests[0]).sort(), ['architecture','channel','event','eventId','source','synthetic'].sort());
+  assert.deepEqual(Object.keys(requests[0]).sort(), ['architecture','channel','event','eventId','source','synthetic','observedAt'].sort());
   for (const signals of [{ dnt: '1' }, { gpc: true }]) {
     const blocked = createWebObserver({ ...signals, send: async () => assert.fail('Must not upload') });
     assert.equal(await blocked.record('landing_view'), false);
@@ -98,7 +98,8 @@ test('website panel separates event conversion and receipt cohorts, rejects subs
     steps: [{ from: 'landing_view', to: 'primary_cta_click', rate: .5, reason: null }],
     linked: { minimumContributors: 50, definition: 'Linked opt-in accounts.', stages: { install_completed: null }, steps: [] } };
   const panels = websitePanels(data);
-  assert.equal(panels.length, 2);
+  assert.equal(panels.length, 3);
+  assert.match(panels[2].rows[0].value, /Unavailable \/ not instrumented/);
   assert.match(panels[0].rows.find(row => row.label.includes('event conversion')).value, /50.0%/);
   assert.match(panels[1].rows[0].value, /Insufficient data/);
   data.stages.primary_cta_click = 49;
