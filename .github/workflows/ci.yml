@@ -97,6 +97,35 @@ jobs:
           name: aarrr-dashboard-isolated-NOT-CUSTOMER-ACCEPTANCE
           path: ${{ runner.temp }}/aarrr-dashboard/
           if-no-files-found: warn
+  funnel-composed-acceptance:
+    name: 'funnel composed acceptance: telemetry + AARRR + experiment loop (isolated synthetic; installer excluded)'
+    if: github.event_name != 'workflow_dispatch' || (!inputs.verify_aggregates && !inputs.verify_spend_guard && !inputs.verify_edge_warning)
+    runs-on: windows-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          flutter-version: '3.47.6'
+          architecture: x64
+          cache: true
+      - run: npm ci --prefix api --ignore-scripts
+      - run: npm ci --prefix site
+      - run: flutter pub get
+      - name: Run telemetry, AARRR and experiment-loop suites in one bounded command
+        shell: pwsh
+        run: node tool/funnel_acceptance.mjs --out (Join-Path $env:RUNNER_TEMP 'funnel-composed')
+      - name: Preserve composed receipts and screenshots
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: funnel-composed-isolated-NOT-CUSTOMER-ACCEPTANCE
+          path: ${{ runner.temp }}/funnel-composed/
+          if-no-files-found: warn
   installer-launch-evidence:
     name: 'launch-after-install: UNVERIFIED (preview gap, owner manual trial pending)'
     if: github.event_name != 'workflow_dispatch' || (!inputs.verify_aggregates && !inputs.verify_spend_guard && !inputs.verify_edge_warning)

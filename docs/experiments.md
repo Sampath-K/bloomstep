@@ -58,6 +58,20 @@ publication floor, so the tool (a) proves real HTTP synthetic ingestion is block
 statistical scenarios are simulated with known rates through the public HTTP endpoints. None of this is customer
 data, and no paid or billable resource is used.
 
+## Composed funnel acceptance (one command)
+
+```powershell
+node tool/funnel_acceptance.mjs --out <fresh dir>
+```
+
+Runs three separately named stages against the exact clean HEAD: `telemetry-validation`
+(`tool/verify_telemetry.ps1`), `aarrr-validation` (`site/verify-aarrr.mjs`) and `experiment-loop-validation`
+(`tool/experiment_acceptance.mjs`). Each stage's receipt is independently re-checked (source revision, isolated
+synthetic labeling, account oracle 150/100/50, experiment segregation and `activeCounts:null`, zero cost) and the
+tool writes `composed-receipt.json` with source/evidence hashes, exiting nonzero on any failure or dirty tracked
+source. CI runs it in the `funnel-composed-acceptance` job. The native installer is explicitly excluded: the PR26
+zero-click candidate was Defender-quarantined and withdrawn, so install/launch remains unvalidated.
+
 ## Promotion boundary
 
 Winners never change the live site directly. Production promotion status is `pending_build_via_draft_pr`: a
