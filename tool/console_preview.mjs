@@ -97,6 +97,8 @@ export async function startConsolePreview({ port = 8787 } = {}) {
       const html = (await readFile(new URL('../site/console.html', import.meta.url), 'utf8'))
         .replace('<body>', '<body><aside role="status" style="padding:16px;background:#ffe9a8;color:#222;font-weight:bold">Local synthetic preview — not customers. Fixed fixture window: September 2026. No real traffic or efficacy evidence.</aside>')
         .replace('value="7"', 'value="14"')
+        .replace('<option value="7" selected>7 days</option>', '<option value="7">7 days</option>')
+        .replace('<option value="30">30 days</option>', '<option value="30" selected>30 days</option>')
         .replace('This deployed HTTPS API origin', 'Read-only loopback preview API origin')
         .replace('Sign in to Bloomstep operator console', 'Local preview connected (no sign-in needed)')
         .replace('Sign out and clear private data', 'Clear loaded preview panels');
