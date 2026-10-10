@@ -101,6 +101,12 @@ Personal Edge actions were interrupted by active user input. Approval remains
 retained; configuration and authenticated receipt are still pending. Other
 vendor Save actions are not covered by that approval.
 
+The tool reports input detection, not an identified actor; actual owner activity
+is not established. Subsequent readback exposed the existing staging stream
+table with the old placeholder URL and no data in 48 hours. Opening that stream
+was safety-interrupted, so neither edit controls nor persisted changes were
+verified. This is a safe-control blocker, not evidence of denied GA4 permissions.
+
 After the approved GA4-only artifact is deployed with receipt mode
 `ga4-staging`, run `node tool\analytics_ga4_staging_check.mjs`. It refuses
 keyless artifacts or additional configured website vendors and writes sanitized
@@ -108,6 +114,25 @@ collection evidence to `analytics-evidence\live-ga4-staging\readback.json` plus
 four consent screenshots. Cookie/client/session values and raw payloads are not
 saved. This check is prepared but has **not** passed on configured live staging;
 browser requests alone are not authenticated GA4 event receipt.
+
+### Conditional production readiness
+
+The owner's conditional production approval requires validated exact artifacts
+and resolved privacy/security gates. It does not enable production analytics
+now, authorize vendor onboarding or imply new billing/access permissions.
+
+| Gate | Current evidence | Required before promotion |
+| --- | --- | --- |
+| Website consent contract | Offline intercepted-loader proof covers default-off, explicit consent, deduplication, revoke, GPC/DNT, query redaction and visible loader failure. Hosted keyless acceptance passed. | Run the configured GA4 artifact live; offline queues are not delivery. |
+| GA4 settings and ingestion | Staging property/stream table accessible; approved Save and actual receipt pending. | Persist real staging URL and Enhanced measurement OFF; verify browser collection and authenticated vendor receipt separately. |
+| App and installer | Prior automated app checks passed; native Windows build remains unverified because of the symlink/Developer Mode requirement. | Obtain functional validation of the exact app/installer artifact; do not infer installer readiness from unit tests. |
+| Privacy and isolation | Production excludes third-party vendor code; static staging has no collector/backend. | Resolve owner controller identity, contact and legal basis; review exact production artifact and security gates. |
+| AARRR | Partial first-party contract coverage and synthetic persisted-order receipt-link proof only. | Preserve explicit opt-in linking and under-50-account suppression; distinguish fixtures from real customer observations. Installs, customer retention and revenue are not proven. |
+| ARR and break-even | No monetization exists. | If ARR means annual recurring revenue, report unavailable, not zero. Costs, customer revenue and break-even cannot be inferred from Free hosting or test events. |
+
+The offline error case deliberately aborts the vendor script and verifies a
+visible failure while download links remain available. It does not prove a
+vendor accepted an event or that failed collection requests are retried.
 
 ### Account access and autonomy limits
 

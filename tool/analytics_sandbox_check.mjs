@@ -41,24 +41,29 @@ let browser;
 const reports = [];
 try {
   browser = await puppeteer.launch({ executablePath, headless: true, args: ['--disable-gpu'] });
-  for (const [name, values, privacy] of [
+  for (const [name, values, privacy, failLoader] of [
     ['no-keys', {}, false],
     ['fake-eu', { GA4_ID: 'G-TEST123', CLARITY_ID: 'test123', CLOUDFLARE_TOKEN: '00000000-0000-0000-0000-000000000000', POSTHOG_KEY: 'phc_fake', POSTHOG_REGION: 'EU' }, false],
     ['fake-us', { POSTHOG_KEY: 'phc_fake', POSTHOG_REGION: 'US' }, false],
-    ['privacy-signal', { GA4_ID: 'G-TEST123', CLARITY_ID: 'test123', POSTHOG_KEY: 'phc_fake' }, true],
+    ['privacy-signal', { GA4_ID: 'G-TEST123', CLARITY_ID: 'test123', POSTHOG_KEY: 'phc_fake' }, 'globalPrivacyControl'],
+    ['do-not-track', { GA4_ID: 'G-TEST123' }, 'doNotTrack'],
+    ['vendor-load-error', { GA4_ID: 'G-TEST123' }, false, true],
   ]) {
     await buildSandbox(values);
     const context = await browser.createBrowserContext();
     const page = await context.newPage();
     const external = [], errors = [];
     page.on('pageerror', error => errors.push(error.message));
-    if (privacy) await page.evaluateOnNewDocument(() => Object.defineProperty(navigator, 'globalPrivacyControl', { value: true }));
+    if (privacy) await page.evaluateOnNewDocument(signal => Object.defineProperty(navigator, signal, {
+      value: signal === 'doNotTrack' ? '1' : true,
+    }), privacy);
     await page.setRequestInterception(true);
     page.on('request', request => {
       if (new URL(request.url()).origin !== origin) {
         external.push({ url: request.url(), method: request.method() });
         // Offline proof: all external requests are intercepted. No vendor receives data.
-        void request.respond({ status: 200, contentType: 'application/javascript', body: '' });
+        if (failLoader) void request.abort('failed');
+        else void request.respond({ status: 200, contentType: 'application/javascript', body: '' });
       } else void request.continue();
     });
     await page.goto(origin + '/?utm_source=linkedin&utm_medium=social&utm_campaign=prelaunch&invite=private', { waitUntil: 'networkidle0' });
@@ -86,6 +91,12 @@ try {
       values.POSTHOG_KEY && `https://${values.POSTHOG_REGION === 'US' ? 'us' : 'eu'}.i.posthog.com/static/array.js`,
     ].filter(Boolean);
     assert.deepEqual(external.map(item => item.url).sort(), expected.sort());
+    if (privacy) assert.equal(await page.$eval('#sandbox-consent', el => el.checked), false);
+    if (failLoader) {
+      assert.equal(await page.$eval('#sandbox-status', el => el.textContent),
+        'A sandbox vendor failed to load. Downloads still work.');
+      assert.ok(await page.$eval('[data-download]', el => el.href));
+    }
     await clickFunnel();
     await clickFunnel();
     const queues = await page.evaluate(() => ({
@@ -143,7 +154,8 @@ try {
       assert.equal(new URL(page.url()).search, '');
       reports.push({ name: 'unsafe-campaign-release-page', events, links, passed: true });
     } finally { await unsafeContext.close(); }
-    reports.push({ name, before: [], after: external, queues, errors, revoked: !privacy });
+    reports.push({ name, before: [], after: external, queues, errors, revoked: !privacy,
+      loaderErrorReported: Boolean(failLoader) });
     await context.close();
   }
   await assertProductionClean();
