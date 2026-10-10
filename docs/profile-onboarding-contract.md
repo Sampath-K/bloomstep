@@ -13,8 +13,10 @@ polished initials avatar and keep the sign-out action intact.
 
 Personal Microsoft accounts federated through the customer tenant do not provide
 a usable Graph photo token to this app. A direct Microsoft public-client photo
-connection with delegated `User.Read` and additional consent is a separate
-follow-up; this PR does not request that scope or claim live MSA photo evidence.
+connection with delegated `User.Read` is a blocked draft foundation; see
+[Microsoft profile photos](microsoft-profile-photos.md) for owner registration
+steps and the missing immutable-account-linkage prerequisite. Current CIAM claims
+keep that connection disabled; no live MSA photo evidence is claimed.
 The Google HTTPS `picture` claim path is unchanged.
 
 ## First-habit sequence
