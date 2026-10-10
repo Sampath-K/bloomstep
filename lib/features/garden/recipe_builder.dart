@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 
 import '../../core/models.dart';
+import '../../core/coach.dart';
+import 'coach_widgets.dart';
 import 'plant_art.dart';
 
 class RecipeDraft {
@@ -30,9 +32,11 @@ class PlantedRecipeDialog extends StatelessWidget {
     super.key,
     required this.habit,
     this.reducedMotion = false,
+    this.badges = const [],
   });
   final Habit habit;
   final bool reducedMotion;
+  final List<GardenBadge> badges;
 
   @override
   Widget build(BuildContext context) => AlertDialog(
@@ -72,6 +76,10 @@ class PlantedRecipeDialog extends StatelessWidget {
               'A glimpse of growth to come. Your new habit starts as a seed; practice grows it.',
             ),
             const SizedBox(height: 16),
+            if (badges.isNotEmpty) ...[
+              BadgeMoment(badges: badges, reducedMotion: reducedMotion),
+              const SizedBox(height: 16),
+            ],
             Text(
               'Your next step:\nAfter I ${habit.anchor}, I will ${habit.behavior}. '
               'Then I celebrate: ${habit.celebration}.',
