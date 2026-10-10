@@ -119,6 +119,42 @@ custom text on all three steps, and post-save seed growth with reduced motion.
 The composed executable still needs exact-head native evidence; source
 composition does not establish genuine launch or account acceptance.
 
+## Exact-candidate acceptance checklist (production blocked)
+
+Conditional production approval is not a waiver of these tests. Bind every
+receipt to the composed source, CI run, artifact, installer SHA-256, payload
+hashes and actual native OS architecture. Neither an older owner observation
+nor a successful compilation transfers acceptance to a new candidate.
+
+| Required test, on both native x64 and ARM64 | Current acceptance |
+| --- | --- |
+| Fresh install as an interactive standard user to the default per-user folder, without elevation | Missing protected exact-candidate receipt |
+| Upgrade a prior install containing a synthetic garden; preserve habits, settings and installation folder | Missing protected upgrade/data-preservation receipt |
+| Visible branded native Ready/Install, progress, Finish; no self-advance, hidden windows or automatic clicks | Source contracts only; protected rendered evidence missing |
+| Finish defaults to checked Launch Bloomstep; checked starts exactly one same-user non-elevated app with an owned visible window | Protected genuine-launch receipt missing |
+| Untick Launch Bloomstep, then Finish; no app process or window; silent/elevated contexts do not launch | Protected independent outcome receipts missing |
+| Uninstall removes owned program/protocol artifacts while preserving synthetic customer garden data | Protected preservation receipt missing |
+| Correct native payload routing on x64 and ARM64 | Hosted subjob evidence is not protected behavior acceptance |
+| Defender antivirus, real-time and behavior protection enabled before/during/after; scan/signature versions, hashes, detections and event receipts retained | Protected static and behavior receipts missing; static-only success is insufficient |
+| Record actual Authenticode status for installer and payloads; enforce any applicable signing requirement and managed policy | Signing not established; unsigned reputation is not safety |
+
+As checked on 10 October 2026, the repository runner API lists **zero**
+configured self-hosted runners. Tests require separate clean disposable native
+x64 and ARM64 Windows VMs with an unlocked interactive standard-user desktop,
+enabled Defender protection, required tools already installed and ephemeral
+`defender-interactive` runners with matching architecture labels. Review the
+exact workflow/head and clear stale unreviewed queued jobs before registering;
+revert the clean checkpoint between independent trials. Follow
+[the VM runbook](defender-test-vm.md), not an owner-machine retry.
+No provision, runner registration, security-setting change or execution has
+been performed here. Missing protection, policy refusal or detection stops
+execution and distribution; do not bypass it.
+
+MSA/Google provider flows and live profile photos remain separate unverified
+runtime scope. Conditional production approval also requires the parent's
+functional app and analytics validation; this installer checklist does not
+satisfy those independent gates.
+
 ## Historical autonomous designs (superseded; not instructions)
 
 User-directed after testing: the setup steps that each required Next were not
