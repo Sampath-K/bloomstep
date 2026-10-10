@@ -106,13 +106,14 @@ void main() {
         store.importMeasurementReceipt(receipt),
         throwsStateError,
       );
-      final habit = await store.plant(
+      final preConsent = await store.plant(
         aspiration: 'Synthetic private aspiration',
         anchor: 'Synthetic private anchor',
         behavior: 'Synthetic private habit',
         celebration: 'Synthetic private celebration',
         species: 'Fern',
       );
+      expect(preConsent.id, isNotEmpty);
       expect((await store.syncPayload())['events'], isEmpty);
       await store.setSetting('analytics', 'true');
       expect(
@@ -123,6 +124,14 @@ void main() {
       await store.track(
         'signin_succeeded',
         properties: {'platform': 'windows', 'provider': 'microsoft'},
+      );
+      // Launch funnel: a habit planted after consent + receipt link is attributable.
+      final habit = await store.plant(
+        aspiration: 'Synthetic private aspiration two',
+        anchor: 'Synthetic private anchor two',
+        behavior: 'Synthetic private habit two',
+        celebration: 'Synthetic private celebration two',
+        species: 'Fern',
       );
       await store.checkIn(habit.id, CheckInResult.did);
       final pending = ((await store.syncPayload())['events'] as List)

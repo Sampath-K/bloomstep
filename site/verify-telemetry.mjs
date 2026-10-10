@@ -131,7 +131,7 @@ try {
     now += 61000;
     await load(index % 2 ? '' : '?utm_source=newsletter&utm_medium=email&utm_campaign=launch');
     await click('#website-consent'); await waitCount(4 + index * 3 - 2);
-    await click('#primary-cta');
+    await click(index % 3 ? '#primary-cta' : '[data-primary-cta="footer"]');
     try { await waitCount(4 + index * 3 - 1); }
     catch (error) { throw new Error(`CTA acceptance failed: ${await page.$eval('#website-status', node => node.textContent)}; recent HTTP=${httpOutcomes.slice(-5)}; errors=${JSON.stringify(collectorErrors)}; iteration=${index}`, { cause: error }); }
     await page.$eval('[data-download="unknown"]', link => link.click()); await waitCount(4 + index * 3);
