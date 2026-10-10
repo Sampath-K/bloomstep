@@ -9,6 +9,8 @@ import 'package:url_launcher/url_launcher.dart';
 
 import '../../core/garden_store.dart';
 import '../../core/models.dart';
+import '../../core/coach.dart';
+import 'coach_widgets.dart';
 import '../../core/rules.dart';
 import '../../services/identity.dart';
 import '../../services/sync_service.dart';
@@ -81,6 +83,12 @@ class _GardenScreenState extends State<GardenScreen> {
   bool loading = true;
   bool working = false;
   bool reducedMotion = false;
+  CoachState coachState = CoachState();
+  List<GardenBadge> badgeReveals = [];
+  CoachSuggestion? coachSuggestion;
+  CoachSuggestion? coachCandidate;
+  bool coachScheduled = false;
+  bool celebrationActive = false;
   bool weeklyDue = false;
   bool ratingInvitation = false;
   int ratingMoment = 0;
@@ -282,10 +290,33 @@ class _GardenScreenState extends State<GardenScreen> {
   }
 
   Future<void> _load() async {
+    final owner = widget.store.account;
+    final generation = widget.store.syncGeneration;
     try {
       final data = await widget.store.habits();
       final reduce = await widget.store.setting('reducedMotion') == 'true';
       final weekly = await widget.store.weeklyReflectionDue();
+      final coach = await widget.store.refreshCoach(now: _now());
+      widget.store.requireSyncSession(owner, generation);
+      if (!coachScheduled &&
+          !working &&
+          coach.state.suggestions &&
+          coach.newBadges.isEmpty &&
+          badgeReveals.isEmpty &&
+          mounted &&
+          ModalRoute.of(context)?.isCurrent == true &&
+          !(widget.deviceGuest &&
+              widget.autoInviteFirstHabit &&
+              data.isEmpty)) {
+        coachScheduled = true;
+        final suggestion = nextCoach(data, weeklyDue: weekly);
+        if (await widget.store.claimCoachSuggestion(
+          suggestion.rule,
+          now: _now(),
+        )) {
+          coachCandidate = suggestion;
+        }
+      }
       final dates = <String, DateTime?>{};
       final paused = <String>{};
       for (final habit in data) {
@@ -299,15 +330,25 @@ class _GardenScreenState extends State<GardenScreen> {
         }
       }
       if (mounted) {
+        widget.store.requireSyncSession(owner, generation);
         setState(() {
           habits = data;
           reducedMotion = reduce;
           weeklyDue = weekly;
+          coachState = coach.state;
+          if (coach.newBadges.isNotEmpty) ratingInvitation = false;
+          badgeReveals = [
+            ...badgeReveals,
+            ...coach.newBadges.where(
+              (b) => !badgeReveals.any((old) => old.id == b.id),
+            ),
+          ];
           naturalnessDates = dates;
           pausedReminders = paused;
           loading = false;
         });
         _scheduleFirstHabit();
+        _scheduleCoach();
         if (!profileShown && widget.profileBuilder != null) {
           profileShown = true;
           WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -325,10 +366,88 @@ class _GardenScreenState extends State<GardenScreen> {
     }
   }
 
+  void _scheduleCoach() {
+    if (working ||
+        loading ||
+        closing ||
+        invitationScheduled ||
+        badgeReveals.isNotEmpty ||
+        ratingInvitation ||
+        celebrationActive ||
+        !coachState.suggestions ||
+        error != null) {
+      return;
+    }
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted ||
+          working ||
+          closing ||
+          ModalRoute.of(context)?.isCurrent != true ||
+          badgeReveals.isNotEmpty ||
+          ratingInvitation ||
+          celebrationActive) {
+        return;
+      }
+      setState(() {
+        coachSuggestion = coachCandidate;
+        coachCandidate = null;
+      });
+    });
+  }
+
+  Future<void> _coachAction() async {
+    final suggestion = coachSuggestion;
+    if (suggestion == null || working || closing) return;
+    setState(() => coachSuggestion = null);
+    try {
+      if (suggestion.rule == CoachRule.firstSeed ||
+          suggestion.rule == CoachRule.anotherSeed) {
+        await _plant();
+        return;
+      }
+      final matching = habits.where((h) => h.id == suggestion.habitId);
+      if (matching.isEmpty) {
+        throw StateError('This recipe is no longer in your garden.');
+      }
+      if (suggestion.rule == CoachRule.reflection ||
+          suggestion.rule == CoachRule.friction) {
+        await _weeklyReflection(matching.first);
+      } else {
+        await _edit(matching.first);
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() => error = 'Your coach action could not be opened: $e');
+      }
+    }
+  }
+
+  Future<void> _badges() async {
+    await showDialog<void>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Your small wins'),
+        content: SizedBox(
+          width: 460,
+          child: SingleChildScrollView(
+            child: BadgeCollection(state: coachState),
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Back to my garden'),
+          ),
+        ],
+      ),
+    );
+  }
+
   Future<void> _act(Future<void> Function() action) async {
     if (working) return;
     setState(() {
       working = true;
+      coachSuggestion = null;
       error = null;
       ratingInvitation = false;
       ratingMoment++;
@@ -372,10 +491,15 @@ class _GardenScreenState extends State<GardenScreen> {
       );
     });
     if (!mounted || closing || error != null || planted == null) return;
+    final plantedBadges = List<GardenBadge>.of(badgeReveals);
+    setState(() => badgeReveals = []);
     await showDialog<void>(
       context: context,
-      builder: (_) =>
-          PlantedRecipeDialog(habit: planted!, reducedMotion: reducedMotion),
+      builder: (_) => PlantedRecipeDialog(
+        habit: planted!,
+        reducedMotion: reducedMotion,
+        badges: plantedBadges,
+      ),
     );
   }
 
@@ -445,6 +569,7 @@ class _GardenScreenState extends State<GardenScreen> {
       if (reason == null) return;
       if (reason == 'skip') reason = null;
     } else {
+      setState(() => celebrationActive = true);
       // Show the personal celebration immediately; persistence follows independently.
       celebration = ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
@@ -463,6 +588,9 @@ class _GardenScreenState extends State<GardenScreen> {
     await reminders?.practiced(habit.id);
     if (saved && celebration != null) {
       unawaited(_offerRatingAfterCelebration(celebration.closed, ratingMoment));
+    } else if (celebration != null) {
+      await celebration.closed;
+      if (mounted) setState(() => celebrationActive = false);
     }
   }
 
@@ -471,10 +599,14 @@ class _GardenScreenState extends State<GardenScreen> {
     int moment,
   ) async {
     await closed;
+    if (mounted && moment == ratingMoment) {
+      setState(() => celebrationActive = false);
+    }
     if (!mounted ||
         closing ||
         working ||
         error != null ||
+        badgeReveals.isNotEmpty ||
         moment != ratingMoment) {
       return;
     }
@@ -508,12 +640,18 @@ class _GardenScreenState extends State<GardenScreen> {
     );
     if (draft != null) {
       await _act(() async {
-        await widget.store.edit(
+        final coach = await widget.store.edit(
           habit,
           anchor: draft.anchor,
           behavior: draft.behavior,
           celebration: draft.celebration,
         );
+        if (mounted) {
+          setState(() {
+            coachState = coach.state;
+            badgeReveals = [...badgeReveals, ...coach.newBadges];
+          });
+        }
         if (draft.celebrationPracticed) {
           await widget.store.track(
             'celebration_practiced',
@@ -614,6 +752,7 @@ class _GardenScreenState extends State<GardenScreen> {
       if (error == null &&
           habit.status != 'graduated' &&
           habits.firstWhere((h) => h.id == habit.id).status == 'graduated') {
+        setState(() => celebrationActive = true);
         final celebration = ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
             content: Text(
@@ -1134,6 +1273,33 @@ class _GardenScreenState extends State<GardenScreen> {
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   SwitchListTile(
+                    title: const Text('Gentle coach suggestions'),
+                    subtitle: const Text(
+                      'On-device only. At most one a day and three a week. No notifications.',
+                    ),
+                    value: coachState.suggestions,
+                    onChanged: (v) async {
+                      await _act(
+                        () => widget.store.setCoachPreferences(suggestions: v),
+                      );
+                      if (context.mounted) update(() {});
+                    },
+                  ),
+                  SwitchListTile(
+                    title: const Text('Surprise moments'),
+                    subtitle: const Text(
+                      'Earned small wins are saved even when reveals are off.',
+                    ),
+                    value: coachState.reveals,
+                    onChanged: (v) async {
+                      await _act(
+                        () => widget.store.setCoachPreferences(reveals: v),
+                      );
+                      if (!v && mounted) setState(() => badgeReveals = []);
+                      if (context.mounted) update(() {});
+                    },
+                  ),
+                  SwitchListTile(
                     title: const Text('Reduced motion'),
                     value: reducedMotion,
                     onChanged: (v) async {
@@ -1597,6 +1763,11 @@ class _GardenScreenState extends State<GardenScreen> {
         title: const Text('Bloomstep'),
         actions: [
           IconButton(
+            tooltip: 'Your small wins',
+            onPressed: working || loading ? null : _badges,
+            icon: const Icon(Icons.auto_awesome_outlined),
+          ),
+          IconButton(
             tooltip: 'Invite a friend',
             onPressed: working ? null : _share,
             icon: const Icon(Icons.ios_share),
@@ -1640,6 +1811,26 @@ class _GardenScreenState extends State<GardenScreen> {
                         style: theme.textTheme.titleMedium,
                       ),
                       const SizedBox(height: 24),
+                      if (!working &&
+                          !celebrationActive &&
+                          badgeReveals.isNotEmpty)
+                        BadgeReveal(
+                          badges: badgeReveals,
+                          reducedMotion: reducedMotion,
+                          onDismiss: () => setState(() => badgeReveals = []),
+                        ),
+                      if (!working &&
+                          !celebrationActive &&
+                          badgeReveals.isEmpty &&
+                          !ratingInvitation &&
+                          coachSuggestion != null &&
+                          error == null)
+                        CoachCard(
+                          suggestion: coachSuggestion!,
+                          onAction: () => unawaited(_coachAction()),
+                          onDismiss: () =>
+                              setState(() => coachSuggestion = null),
+                        ),
                       Text(
                         weeklyDue && habits.isNotEmpty
                             ? '$syncStatus • Weekly reflection is ready'
