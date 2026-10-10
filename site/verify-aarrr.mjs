@@ -68,10 +68,13 @@ try {
       const response = await fetch(path, { headers: { 'X-Bloomstep-Authorization': `Bearer ${token}` } });
       if (!response.ok) throw Error(`Fixture website pipeline ${response.status}`);
       return response.json();
-    }, 7);
+    }, 7, { fixture: true });
   }, fixture.adminToken);
   assert.equal(web.acquisition.firstTouch.landing_view.source.search, 50);
   assert.equal(web.acquisition.lastTouch.download_click.campaignName.launch, 50);
+  assert.match(await page.$eval('#website-funnel', node => node.textContent), /100.0% \(50 \/ 50 events\)/);
+  assert.match(await page.$eval('#website-funnel', node => node.textContent), /ISOLATED SYNTHETIC FIXTURE/);
+  assert.match(await page.$eval('#website-funnel', node => node.textContent), /Freshness \/ capture completeness is unknown/);
   const attribution = await page.$('#website-funnel details summary');
   await attribution.focus(); await page.keyboard.press('Space');
   assert.equal(await page.$eval('#website-funnel details', node => node.open), true);

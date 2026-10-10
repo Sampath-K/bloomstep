@@ -93,14 +93,17 @@ test('public Windows downloads match the verified preview.12 universal release',
 });
 test('website panel separates event conversion and receipt cohorts, rejects substitute zeros', () => {
   const data = { schemaVersion: 1, channel: 'web', synthetic: false, definition: 'Events, not people.',
+    startDay: '2026-09-01', endDay: '2026-09-07',
     stages: { landing_view: 100, primary_cta_click: 50, download_click: null },
-    sources: { search: 100, direct: null }, architectures: { x64: null },
-    steps: [{ from: 'landing_view', to: 'primary_cta_click', rate: .5, reason: null }],
+    sources: { search: 100, direct: null, referral: null, campaign: null, unknown: null },
+    architectures: { arm64: null, x64: null, unknown: null },
+    steps: [{ from: 'landing_view', to: 'primary_cta_click', rate: .5, reason: null },
+      { from: 'primary_cta_click', to: 'download_click', rate: null, reason: 'events_below_50' }],
     linked: { minimumContributors: 50, definition: 'Linked opt-in accounts.', stages: { install_completed: null }, steps: [] } };
   const panels = websitePanels(data);
   assert.equal(panels.length, 3);
   assert.match(panels[2].rows[0].value, /Unavailable \/ not instrumented/);
-  assert.match(panels[0].rows.find(row => row.label.includes('event conversion')).value, /50.0%/);
+  assert.match(panels[0].rows.find(row => row.label.includes('event ratio')).value, /50.0% \(50 \/ 100 events\)/);
   assert.match(panels[1].rows[0].value, /Insufficient data/);
   data.stages.primary_cta_click = 49;
   assert.throws(() => websitePanels(data));
