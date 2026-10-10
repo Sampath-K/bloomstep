@@ -102,6 +102,18 @@ third-party requests in that interval. `home-withdrawal.json` and
 `releases-withdrawal.json` preserve this boundary separately. Earlier collection
 receipts do not prove this corrected withdrawal contract.
 
+The corrected artifact from commit `ffc120b` is now deployed to that same
+isolated staging resource. Chrome and Edge live checks both passed the expanded
+withdrawal boundary on home and releases, with no third-party request after
+uncheck. All observed GA4 events used the fixed sandbox title and sanitized
+location/referrer. Remote bytes match the local artifact for both pages, the
+receipt and `assets/sandbox.js`; the latter's SHA-256 is
+`84ac385105d0bdaf11b4cafe7e2e800c8ad170c2858d1960a49768e9c097bb8c`.
+Current Edge evidence is in `analytics-evidence\live-ga4-staging\`; the Chrome
+run is preserved in `analytics-evidence\live-ga4-withdrawal-chrome\`.
+This fixes the staging withdrawal defect, not authenticated ingestion or the
+remaining production gates.
+
 Run `node tool\analytics_ga4_staging_check.mjs`; sanitized evidence and four
 screenshots are in `analytics-evidence\live-ga4-staging\`. The checker allows
 up to 15 seconds for GA4's batched custom events and preserves sanitized
