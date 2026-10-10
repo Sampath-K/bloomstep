@@ -98,6 +98,85 @@ per-page collection evidence even if a later assertion fails.
 The historical keyless results below remain evidence for the earlier artifact;
 the keyless-only checker is no longer applicable to the current deployment.
 
+### API-first report receipt and configuration readback
+
+Official Google APIs avoid the unreliable browser rendering/dispatch observed
+here. They still require separately authorized API credentials: a public
+Measurement ID and a signed-in browser do **not** authorize reporting or Admin
+API requests. No browser cookies/tokens were extracted. Current tooling has no
+`gcloud`, no Google/OAuth credential environment variables and no loaded API
+extension. Unauthenticated requests to the existing property's Data/Admin
+endpoints returned **HTTP 401**; this proves missing API authentication, not a
+denied GA4 property role. No authenticated report response has been obtained.
+
+Minimum one-time owner preparation, with separate approval before API enablement
+or persistent credential/access changes:
+
+1. Select an existing owner-controlled Google Cloud project and enable
+   **Google Analytics Data API**. Enable **Google Analytics Admin API** only
+   for stream/settings readback. No paid service, new billing or new project is
+   required by this proposal; do not create them implicitly.
+2. Prefer user OAuth for the existing staging-property user, with only
+   `https://www.googleapis.com/auth/analytics.readonly`. Use an approved installed
+   desktop OAuth client and a supported secure credential provider. If OAuth
+   consent/client configuration is absent, the owner must authorize that setup.
+   Refreshable unattended access is persistent access and needs explicit scoped
+   approval; do not save refresh tokens in this repo or the analytics env file.
+3. That principal needs at least **Viewer** on staging property `558335435`.
+   Existing browser read access may already satisfy this for user OAuth; verify
+   rather than adding a role. A service account is an alternative only with
+   separate approval for its creation, authentication and property Viewer grant.
+   Do not download a service-account JSON key as a shortcut.
+
+After supported authentication exists, request the following small aggregate
+Realtime report using its OAuth bearer credential in memory, never in a logged
+command or evidence file:
+
+```text
+POST https://analyticsdata.googleapis.com/v1beta/properties/558335435:runRealtimeReport
+```
+
+```json
+{
+  "dimensions": [{"name": "eventName"}, {"name": "streamId"}],
+  "metrics": [{"name": "eventCount"}],
+  "dimensionFilter": {
+    "filter": {
+      "fieldName": "streamId",
+      "stringFilter": {"matchType": "EXACT", "value": "16099593986"}
+    }
+  },
+  "limit": "10"
+}
+```
+
+Run the consented staging checker immediately before the report, within its
+Realtime window. Positive rows for the three manual event names prove report
+receipt for this stream, not a deterministic individual browser join. Empty
+rows are not successful acceptance, nor evidence of zero customer activity.
+Retain only event names/counts, stream, timestamp and response status; no user,
+client, geographic or demographic dimensions are needed.
+
+Read-only Admin verification uses the **same readonly scope**:
+
+```text
+GET https://analyticsadmin.googleapis.com/v1beta/properties/558335435/dataStreams/16099593986
+GET https://analyticsadmin.googleapis.com/v1alpha/properties/558335435/dataStreams/16099593986/enhancedMeasurementSettings
+```
+
+The latter settings endpoint is `v1alpha`, not `v1beta`. Future configuration
+PATCH calls require separate `analytics.edit` authorization and adequate
+property roles; reporting credentials must not silently gain write scope.
+The owner already corrected the current stream in the UI, so no Admin write
+is needed for pending receipt verification.
+
+Official references: [authentication quickstart](https://developers.google.com/analytics/devguides/reporting/data/v1/quickstart),
+[Realtime schema](https://developers.google.com/analytics/devguides/reporting/data/v1/realtime-api-schema),
+[stream read](https://developers.google.com/analytics/devguides/config/admin/v1/rest/v1beta/properties.dataStreams/get)
+and [Enhanced measurement read](https://developers.google.com/analytics/devguides/config/admin/v1/rest/v1alpha/properties.dataStreams/getEnhancedMeasurementSettings).
+API prerequisites are currently a plan, not created credentials or proof that
+API receipt verification passed.
+
 On 10 October 2026 the separate **Free** resource was provisioned and deployed
 using Azure CLI plus Static Web Apps CLI 2.0.10. Only `build/analytics-site/` was
 uploaded, with the explicit staging configuration directory; no API was deployed.
