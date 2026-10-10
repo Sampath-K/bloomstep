@@ -18,7 +18,7 @@ class _RestoringIdentity extends IdentityService {
   final restored = Completer<bool>();
   bool active = false;
   @override
-  bool get configured => false;
+  bool get configured => true;
   @override
   bool get hasValidSession => active;
   @override
@@ -29,6 +29,17 @@ class _RestoringIdentity extends IdentityService {
   Future<void> checkpoint() async {}
   @override
   Future<bool> restore() => restored.future;
+  @override
+  Future<void> signIn() async {
+    active = true;
+    account = List.filled(64, 'a').join();
+  }
+
+  @override
+  Future<void> signOut() async {
+    active = false;
+    account = null;
+  }
 }
 
 Future<void> ready(WidgetTester tester, Finder finder) async {
@@ -123,7 +134,8 @@ void main() {
         home: HabitHome(testIdentity: returning, testOpenStore: open),
       ),
     );
-    await ready(tester, find.text('A little is enough.'));
+    await ready(tester, find.byType(RecipeBuilder));
+    await tester.tap(find.text('Cancel'));
     await tester.pumpAndSettle();
     expect(find.byType(RecipeBuilder), findsNothing);
     await tester.pumpWidget(const SizedBox());
@@ -333,7 +345,7 @@ void main() {
     },
   );
 
-  testWidgets('account garden is never auto-interrupted even when empty', (
+  testWidgets('empty account garden also opens the builder automatically', (
     tester,
   ) async {
     final store = (await tester.runAsync(
@@ -343,14 +355,128 @@ void main() {
     await tester.pumpWidget(
       MaterialApp(home: GardenScreen(store: store, autoInviteFirstHabit: true)),
     );
-    await ready(tester, find.text('A little is enough.'));
+    await ready(tester, find.byType(RecipeBuilder));
     await tester.pumpAndSettle();
-    expect(find.byType(RecipeBuilder), findsNothing);
+    expect(find.byType(RecipeBuilder), findsOneWidget);
     await tester.pumpWidget(const SizedBox());
   });
+
+  for (final signedIn in [false, true]) {
+    testWidgets(
+      'returning empty ${signedIn ? 'account' : 'device'} ignores old dismissal and history',
+      (tester) async {
+        await tester.binding.setSurfaceSize(const Size(1200, 920));
+        addTearDown(() => tester.binding.setSurfaceSize(null));
+        final root = (await tester.runAsync(
+          () => Directory.systemTemp.createTemp('bloomstep-returning-empty-'),
+        ))!;
+        addTearDown(() => tester.runAsync(() => root.delete(recursive: true)));
+        final identity = _RestoringIdentity()
+          ..active = signedIn
+          ..account = signedIn ? List.filled(64, 'a').join() : null
+          ..restored.complete(signedIn);
+        final account = identity.account ?? HabitHome.guestAccount;
+        Future<GardenStore> open(String owner) =>
+            GardenStore.open(p.join(root.path, '$owner.sqlite'), owner);
+        await tester.runAsync(() async {
+          final store = await open(account);
+          await store.claimFirstHabitInvitation();
+          await store.recordInteraction();
+          await store.close();
+        });
+        final screenshotKey = GlobalKey();
+        await tester.pumpWidget(
+          RepaintBoundary(
+            key: screenshotKey,
+            child: MaterialApp(
+              debugShowCheckedModeBanner: false,
+              theme: BloomstepTheme.light(),
+              home: HabitHome(testIdentity: identity, testOpenStore: open),
+            ),
+          ),
+        );
+        await ready(tester, find.byType(RecipeBuilder));
+        await captureFirstHabitScreen(
+          tester,
+          screenshotKey,
+          name: 'first-habit-returning-${signedIn ? 'account' : 'device'}.png',
+        );
+        await tester.tap(find.text('Cancel'));
+        await tester.pumpAndSettle();
+        expect(find.byType(RecipeBuilder), findsNothing);
+        await tester.pump(const Duration(seconds: 5));
+        expect(find.byType(RecipeBuilder), findsNothing);
+        expect(find.text('Plant a habit'), findsOneWidget);
+        await tester.pumpWidget(const SizedBox());
+        await tester.runAsync(
+          () => Future<void>.delayed(const Duration(milliseconds: 100)),
+        );
+      },
+    );
+  }
+
+  testWidgets(
+    'sign-in opens empty account builder once after ownership changes',
+    (tester) async {
+      final root = (await tester.runAsync(
+        () => Directory.systemTemp.createTemp('bloomstep-signin-empty-'),
+      ))!;
+      addTearDown(() => tester.runAsync(() => root.delete(recursive: true)));
+      Future<GardenStore> open(String account) =>
+          GardenStore.open(p.join(root.path, '$account.sqlite'), account);
+      await tester.runAsync(() async {
+        final guest = await open(HabitHome.guestAccount);
+        await guest.plant(
+          aspiration: 'Calm',
+          anchor: 'pour my drink',
+          behavior: 'take one breath',
+          celebration: 'smile',
+          species: 'Cosmos',
+        );
+        await guest.close();
+        final account = await open(List.filled(64, 'a').join());
+        await account.claimFirstHabitInvitation();
+        await account.recordInteraction();
+        await account.close();
+      });
+      final identity = _RestoringIdentity()..restored.complete(false);
+      await tester.pumpWidget(
+        MaterialApp(
+          home: HabitHome(testIdentity: identity, testOpenStore: open),
+        ),
+      );
+      await ready(tester, find.text('Did it'));
+      expect(find.byType(RecipeBuilder), findsNothing);
+      await tester.tap(find.text('Sign in with Microsoft or Google'));
+      await ready(tester, find.byType(RecipeBuilder));
+      expect(identity.hasValidSession, isTrue);
+      expect(find.text('Did it'), findsNothing);
+      await tester.tap(find.text('Cancel'));
+      await tester.pumpAndSettle();
+      expect(find.byType(RecipeBuilder), findsNothing);
+      await tester.pump(const Duration(seconds: 5));
+      expect(find.byType(RecipeBuilder), findsNothing);
+      await tester.tap(find.text('Sign out'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.widgetWithText(FilledButton, 'Sign out'));
+      await ready(tester, find.text('Did it'));
+      await tester.tap(find.text('Sign in with Microsoft or Google'));
+      await ready(tester, find.text('Sign out'));
+      await tester.pumpAndSettle();
+      expect(find.byType(RecipeBuilder), findsNothing);
+      await tester.pumpWidget(const SizedBox());
+      await tester.runAsync(
+        () => Future<void>.delayed(const Duration(milliseconds: 100)),
+      );
+    },
+  );
 }
 
-Future<void> captureFirstHabitScreen(WidgetTester tester, GlobalKey key) async {
+Future<void> captureFirstHabitScreen(
+  WidgetTester tester,
+  GlobalKey key, {
+  String name = 'first-habit-auto-open.png',
+}) async {
   final output = Platform.environment['BLOOMSTEP_SCREENSHOTS'];
   if (output == null) return;
   await tester.pumpAndSettle();
@@ -361,7 +487,7 @@ Future<void> captureFirstHabitScreen(WidgetTester tester, GlobalKey key) async {
     try {
       final bytes = await image.toByteData(format: ui.ImageByteFormat.png);
       await Directory(output).create(recursive: true);
-      await File(p.join(output, 'first-habit-auto-open.png'))
+      await File(p.join(output, name))
           .writeAsBytes(bytes!.buffer.asUint8List());
     } finally {
       image.dispose();
