@@ -48,7 +48,9 @@ class ProfileSection extends StatelessWidget {
           children: [
             Semantics(
               image: true,
-              label: name == null ? 'Profile photo' : 'Profile photo for $name',
+              label: name == null
+                  ? 'Account avatar'
+                  : 'Account avatar for $name',
               child: CircleAvatar(
                 radius: 28,
                 backgroundColor: Theme.of(context)
@@ -72,20 +74,7 @@ class ProfileSection extends StatelessWidget {
                 ),
               ),
             ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  if (name != null)
-                    Text(name, style: Theme.of(context).textTheme.titleMedium),
-                  Text(
-                    'Signed in',
-                    style: Theme.of(context).textTheme.labelLarge,
-                  ),
-                ],
-              ),
-            ),
+            const Spacer(),
             TextButton.icon(
               onPressed: busy ? null : onSignOut,
               icon: const Icon(Icons.logout),
@@ -93,7 +82,6 @@ class ProfileSection extends StatelessWidget {
             ),
           ],
         ),
-        if (notice != null) Text(notice!),
         if (error != null)
           Semantics(liveRegion: true, child: SelectableText(error!)),
         if (onClearSavedSignIn != null)

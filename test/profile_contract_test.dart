@@ -97,8 +97,8 @@ void main() {
         ),
       ),
     );
-    expect(find.text('Signed in'), findsOneWidget);
-    expect(find.text('Synthetic Garden Tester'), findsOneWidget);
+    expect(find.text('Signed in'), findsNothing);
+    expect(find.text('Synthetic Garden Tester'), findsNothing);
     expect(find.textContaining('synthetic@example.invalid'), findsNothing);
     expect(find.textContaining('Google'), findsNothing);
     expect(find.textContaining('login.live.com'), findsNothing);
@@ -127,9 +127,9 @@ void main() {
         ),
       ),
     );
-    expect(find.text('Ada Lovelace'), findsOneWidget);
+    expect(find.text('Ada Lovelace'), findsNothing);
     expect(find.text('AL'), findsOneWidget);
-    expect(find.text('Signed in'), findsOneWidget);
+    expect(find.text('Signed in'), findsNothing);
     expect(find.text('Sign out'), findsOneWidget);
     expect(find.byType(Image), findsNothing);
   });
