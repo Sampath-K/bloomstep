@@ -11,7 +11,7 @@ test('launch path discloses prerequisites and optional consent without collectin
   assert.equal((home.match(/id="website-consent"/g) ?? []).length, 1);
   assert.doesNotMatch(home, /id="website-consent"[^>]*checked/);
   assert.match(home, /href="#website-measurement">Optional website measurement/);
-  assert.match(home, /data-download-intent href="#download"/);
+  assert.match(home, /data-primary-cta="footer" href="#download"/);
   assert.match(home, /id="feedback-help"/);
   assert.doesNotMatch(home, /type="email"|mailto:|<form/);
   assert.match(home, /Privacy notice details still to be supplied/);

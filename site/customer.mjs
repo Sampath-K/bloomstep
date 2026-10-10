@@ -143,7 +143,7 @@ function initializeCustomer() {
   window.addEventListener('pagehide', () => {
     consentGeneration++; controller.abort(); observer.reset(); consent.checked = false;
   });
-  for (const link of document.querySelectorAll('#primary-cta, [data-download-intent]')) {
+  for (const link of document.querySelectorAll('#primary-cta, [data-primary-cta]')) {
     link.addEventListener('click', () => {
       record('primary_cta_click');
       if (link.id === 'primary-cta') experimentOutcome('primary_cta_click');

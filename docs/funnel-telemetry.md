@@ -134,6 +134,43 @@ receipts and 50 contributors in numerator/denominator, not an anonymous visitor
 denominator. Missing installation prevents downstream linked-chain conversion
 even when a separately observed app check-in exists.
 
+## Launch funnel (website → first completion)
+
+Stage status for the minimal launch funnel at this head. "Synthetic proof" means
+the isolated functional command below exercised the real code path; it is not
+customer evidence.
+
+| Stage | Source/sink | Status |
+| --- | --- | --- |
+| Visit | `landing_view` after explicit page consent → `POST /api/web/events` → daily aggregate | Implemented; real browser + persisted readback (synthetic proof). Event count, not visitors. |
+| Primary CTA | `primary_cta_click` from the hero `#primary-cta` **and** footer `[data-primary-cta="footer"]` | Implemented; footer CTA was previously uncounted (fixed, browser-proven). |
+| Download | `download_click` on home-page `[data-download]` links | Implemented. Click ≠ completed transfer. `/releases/` page downloads have no consent UI and are **not counted** (known undercount). |
+| Install / first launch time | none | **Unobservable.** Installer receipts are withdrawn (PR26 quarantine); reported as `unobservable`, never zero. |
+| Attributable app use | Explicit in-app link of an exported website receipt (Settings → Optional acquisition/install receipts) → account events via `/api/sync` | Implemented (headless app + real HTTP, synthetic proof). Proves later app use by that account, not install/launch time. |
+| First habit planted | `recipe_created` after the receipt's download click | Implemented in `linked.activation` (additive). Habits planted before app analytics consent are never captured, so such users stay at the earlier stage (undercount, not zero). |
+| First completion | first `checkin` with `did`/`didMore` on a habit planted in that journey | Implemented in `linked.activation`; a first skip does not hide a later completion. |
+
+Additive report key `linked.activation` (schemaVersion 1):
+`stages.{website_receipt_download, recipe_created, first_completion}` (distinct
+accounts, number ≥ 50 or null), `steps[].{from,to,rate}`, `minimumContributors: 50`,
+`unobservable: [download_completed, install_completed, first_launch_time, signin_succeeded]`.
+The existing installer-ordered `linked.stages/steps` are unchanged. Anonymous
+website counts and linked accounts are never joined; the linked funnel covers only
+people who opt into both app analytics and receipt linking, so it is a
+self-selected subset.
+
+Owner actions before a public launch: supply the privacy-notice controller
+identity/contact and legal basis (site `TODO(owner)` block), choose launch UTM
+values from the allowlist (`utm_campaign=launch`, sources newsletter/github/linkedin/
+community), and keep production website measurement gated per existing operations.
+Smallest customer validation: one owner-run real visit with consent on the live
+site, confirm the `/api/team/website?days=1` readback moves (counts publish only at
+50 events, so verify via the private synthetic-free budget `realAccepted`), then a
+handful of pilot users who opt in, export and link a receipt, plant and complete a
+habit. Below 50 linked accounts the activation report stays null by design; pilot
+learning must come from qualitative follow-up, not these aggregates. Retention and
+coaching metrics are follow-up work.
+
 ## Remaining gap matrix / next increments
 
 | Stage/goal | Observable today | Remaining gap/owner |

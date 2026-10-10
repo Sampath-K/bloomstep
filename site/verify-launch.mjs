@@ -32,13 +32,13 @@ try {
     { waitUntil: 'networkidle0' });
   await page.$$eval('[data-download]', nodes => nodes.forEach(node =>
     node.addEventListener('click', event => event.preventDefault())));
-  await page.click('[data-download-intent]');
+  await page.click('[data-primary-cta="footer"]');
   assert.equal(new URL(page.url()).hash, '#download');
   await page.click('[data-universal-download] a');
   assert.equal(requests.length, 0, 'CTA and downloads do not require consent or issue observations when off');
   await page.click('#website-consent');
   await page.waitForFunction(() => document.querySelector('#website-status').textContent.includes('active'));
-  await page.click('[data-download-intent]');
+  await page.click('[data-primary-cta="footer"]');
   await page.click('#primary-cta');
   await page.click('[data-universal-download] a');
   await page.waitForNetworkIdle();
@@ -58,7 +58,7 @@ try {
   assert.equal(report.stages.landing_view, null, 'Small cells stay suppressed; no lead count inferred');
   await page.click('#website-consent');
   const before = requests.length;
-  await page.click('[data-download-intent]');
+  await page.click('[data-primary-cta="footer"]');
   await page.waitForNetworkIdle();
   assert.equal(requests.length, before, 'Withdrawal stops additional intent observations');
   const shot = async (name, selector) => {

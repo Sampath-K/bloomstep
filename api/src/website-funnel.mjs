@@ -115,6 +115,48 @@ export function summarizeWebCounts(document, startDay, endDay) {
     definition: 'Anonymous UTC daily event counts, not unique visitors. Event conversion — not unique visitors; repeat visits and bots may be counted. Ratios may exceed 100% and do not imply same-person transitions or successful file transfers. Stages need 50 events; small dimensions are suppressed together and daily drilldown is withheld to avoid subtractable cells. Missing/opted-out observations are unknown. Timestamped retries deduplicate transactionally for five minutes across hosts; legacy retries only deduplicate in-process. Synthetic observations are excluded.' };
 }
 
+/**
+ * Per-account website-attributed activation, read only from persisted, explicitly linked account events.
+ * Internal: callers must aggregate with suppression before exposing anything.
+ * @param {{userId:string,record:unknown}[]} rows @param {string} startDay @param {string} endDay
+ */
+export function attributedActivationJourneys(rows, startDay, endDay) {
+  const events = normalizedEvents(rows).filter(row => row.record.ts.slice(0, 10) >= startDay && row.record.ts.slice(0, 10) <= endDay)
+    .sort((a, b) => timestampKey(a.record.ts).localeCompare(timestampKey(b.record.ts)));
+  /** @type {Map<string,{download:string,recipeCreated:string|null,firstCompletion:string|null}>} */
+  const journeys = new Map();
+  /** @type {Map<string,Set<string>>} */
+  const habits = new Map();
+  for (const row of events) {
+    const { name, ts, properties } = row.record;
+    const journey = journeys.get(row.userId);
+    if (name === 'download_click' && properties?.measurementSource === 'website_receipt') {
+      if (!journey) journeys.set(row.userId, { download: ts, recipeCreated: null, firstCompletion: null });
+    } else if (journey && name === 'recipe_created' && typeof properties?.habitId === 'string') {
+      journey.recipeCreated ??= ts;
+      habits.set(row.userId, (habits.get(row.userId) ?? new Set()).add(properties.habitId));
+    } else if (journey && journey.recipeCreated && !journey.firstCompletion && name === 'checkin' &&
+        ['did', 'didMore'].includes(String(properties?.result)) && habits.get(row.userId)?.has(String(properties?.habitId))) {
+      journey.firstCompletion = ts;
+    }
+  }
+  return journeys;
+}
+
+/** @param {{userId:string,record:unknown}[]} rows @param {string} startDay @param {string} endDay */
+function attributedActivation(rows, startDay, endDay) {
+  const journeys = [...attributedActivationJourneys(rows, startDay, endDay).values()];
+  const sizes = [journeys.length, journeys.filter(j => j.recipeCreated).length, journeys.filter(j => j.firstCompletion).length];
+  const names = ['website_receipt_download', 'recipe_created', 'first_completion'];
+  const count = (/** @type {number} */ size) => size >= 50 ? size : null;
+  return { schemaVersion: 1, minimumContributors: 50,
+    stages: Object.fromEntries(names.map((name, index) => [name, count(sizes[index])])),
+    steps: names.slice(1).map((name, index) => ({ from: names[index], to: name,
+      rate: sizes[index] >= 50 && sizes[index + 1] >= 50 ? sizes[index + 1] / sizes[index] : null })),
+    unobservable: ['download_completed', 'install_completed', 'first_launch_time', 'signin_succeeded'],
+    definition: 'Distinct opted-in accounts that explicitly linked a website receipt containing a download click, then (in timestamp order) planted a habit, then first completed that same habit (did/didMore). Linking proves the app was later used by that account, not when it was installed or first launched. Stages and rates need 50 distinct accounts; others are null (unknown), never zero. Not a share of anonymous website visitors.' };
+}
+
 /** @param {{userId:string,record:unknown}[]} rows @param {string} startDay @param {string} endDay */
 export function linkedWebFunnel(rows, startDay, endDay) {
   const events = normalizedEvents(rows).filter(row => row.record.ts.slice(0, 10) >= startDay && row.record.ts.slice(0, 10) <= endDay);
@@ -140,6 +182,7 @@ export function linkedWebFunnel(rows, startDay, endDay) {
     stages: Object.fromEntries(orderedStages.map((stage, index) => [stage, count(groups[index])])),
     steps: orderedStages.slice(1).map((stage, index) => ({ from: orderedStages[index], to: stage,
       rate: groups[index].size >= 50 && groups[index + 1].size >= 50 ? groups[index + 1].size / groups[index].size : null })),
+    activation: attributedActivation(rows, startDay, endDay),
     definition: 'Separate self-selected, explicitly account-linked website + installer receipts, ordered under app analytics consent. 50 distinct accounts in numerator and denominator required. No automatic browser linkage, no anonymous denominator, no Store attribution; missing stages unknown.' };
 }
 
