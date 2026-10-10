@@ -138,9 +138,36 @@ receipts; the existing PROFILE-FIX installer is unchanged and its acceptance
 does not transfer. Owner-session badge store/widget and rendered synthetic UI
 evidence is not OS-input, real-provider or protected installer acceptance.
 
-## Exact-candidate acceptance checklist (production blocked)
+## User-directed VM validation deferral (10 October 2026, 17:34 IST)
 
-Conditional production approval is not a waiver of these tests. Bind every
+The owner explicitly deferred VM/protected-runtime validation to a separate
+step and directed that its absence alone must not block launch preparation.
+VM setup work is stopped. This supersedes the earlier requirement to hold
+preparation for missing protected receipts; it does **not** mark those tests
+passed, establish installer safety, or authorize overriding a detection,
+managed policy or protection setting. Existing CI gates remain unchanged:
+protected jobs are queued and overall CI is not green.
+
+Retain exact candidate source
+`cc0ceabe67c3447034c19ca163338c44707ee2ff`, CI run `38032343858`,
+artifact `11662298966`, 21,619,137 bytes, SHA-256
+`75b43351bad158057644d2b7ca4bb9e01d95df8e11776e02f5d895b7b575e347`.
+API, native x64/ARM64 app build/tests, universal compilation and exact-head
+customer-quality run `38032343862` passed. The authorized local handoff was
+size/hash-verified before and after copying without overwrite, and rechecked
+on 10 October; no local execution occurred. Prior candidate files remain
+unchanged.
+
+No independent installer source/build failure is identified for these exact
+bytes in the reviewed evidence. Protected behavior, launch, lifecycle and
+signing status remain **UNVERIFIED**, not accepted. Earlier zero-click
+withdrawal remains binding. Promotion still belongs to the coordinating
+workstream and its independent app/analytics and publication decisions;
+this documentation change does not publish, merge or release anything.
+
+## Deferred exact-candidate acceptance checklist (UNVERIFIED)
+
+The following tests are retained for the separate validation step. Bind every
 receipt to the composed source, CI run, artifact, installer SHA-256, payload
 hashes and actual native OS architecture. Neither an older owner observation
 nor a successful compilation transfers acceptance to a new candidate.
@@ -170,7 +197,7 @@ been performed here. Missing protection, policy refusal or detection stops
 execution and distribution; do not bypass it.
 
 MSA/Google provider flows and live profile photos remain separate unverified
-runtime scope. Conditional production approval also requires the parent's
+runtime scope. Production coordination also requires the parent's
 functional app and analytics validation; this installer checklist does not
 satisfy those independent gates.
 
