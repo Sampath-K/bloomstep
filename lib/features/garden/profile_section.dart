@@ -60,7 +60,9 @@ class ProfileSection extends StatelessWidget {
                   alignment: Alignment.center,
                   children: [
                     fallback,
-                    if (profile?.photoUrl case final photoUrl?)
+                    if (profile?.photoBytes != null)
+                      ClipOval(child: _MemoryPhoto(profile: profile!))
+                    else if (profile?.photoUrl case final photoUrl?)
                       ClipOval(
                         child: Image.network(
                           photoUrl,
@@ -150,4 +152,54 @@ class ProfileSection extends StatelessWidget {
     return String.fromCharCode(first) +
         (last == null ? '' : String.fromCharCode(last));
   }
+}
+
+class _MemoryPhoto extends StatefulWidget {
+  const _MemoryPhoto({required this.profile});
+  final IdentityProfile profile;
+
+  @override
+  State<_MemoryPhoto> createState() => _MemoryPhotoState();
+}
+
+class _MemoryPhotoState extends State<_MemoryPhoto> {
+  late ImageProvider _provider;
+
+  void _replace() {
+    _provider = ResizeImage(
+      MemoryImage(widget.profile.photoBytes!),
+      width: 112,
+      height: 112,
+    );
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    _replace();
+  }
+
+  @override
+  void didUpdateWidget(_MemoryPhoto oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.profile.photoBytes != widget.profile.photoBytes) {
+      _provider.evict();
+      _replace();
+    }
+  }
+
+  @override
+  void dispose() {
+    _provider.evict();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) => Image(
+    image: _provider,
+    width: 56,
+    height: 56,
+    fit: BoxFit.cover,
+    errorBuilder: (_, _, _) => const SizedBox.shrink(),
+  );
 }

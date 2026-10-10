@@ -178,6 +178,12 @@ class _HabitHomeState extends State<HabitHome> {
     previousObservations?.close();
     await previousDiagnostics?.close();
     await previous?.close();
+    if (authenticated) unawaited(_loadMicrosoftPhoto());
+  }
+
+  Future<void> _loadMicrosoftPhoto() async {
+    await identity.loadMicrosoftPhoto();
+    if (mounted && accountGarden) setState(() {});
   }
 
   Future<void> _signIn() async {
@@ -269,6 +275,7 @@ class _HabitHomeState extends State<HabitHome> {
 
   @override
   void dispose() {
+    identity.clearMicrosoftPhoto();
     observations?.close();
     identity.observations = null;
     unawaited(_close());
