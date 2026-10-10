@@ -158,6 +158,16 @@ would support the bot-exclusion explanation. No rows would leave ingestion
 unproved and point to a real, non-automated browser visit as the remaining
 check.
 
+**Realtime receipt confirmed (11 October 2026, 03:28 IST):** an authenticated
+Realtime report for stream `16099593986` showed browser-only rows from that
+headed run: `first_visit=2`, `session_start=2`, `page_view=2`,
+`sandbox_download_click=2` and `sandbox_primary_cta_click=1`. This supports the
+known-bot explanation. **Headless automation is excluded from GA4 reports even
+when collection returns HTTP 204; ingestion proof needs `ANALYTICS_HEADED=1` or
+a real visit.** Headless runs remain valid only for consent and network-contract
+checks. Standard-report (non-Realtime) ingestion for this window is still
+pending readback.
+
 Run `node tool\analytics_ga4_staging_check.mjs`; sanitized evidence and four
 screenshots are in `analytics-evidence\live-ga4-staging\`. The checker allows
 up to 15 seconds for GA4's batched custom events and preserves sanitized
