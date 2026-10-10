@@ -59,7 +59,7 @@ owner supplies it, those jobs remain queued, not passing. See
 Hosted workers compile only; installer execution, native screenshots, lifecycle
 and privacy proofs are explicitly withheld there and routed to the protected VM.
 
-### Owner-reported clean baseline, not replacement acceptance
+### Owner-reported install observations (not protected-runner acceptance)
 
 The owner reported running exact baseline source
 `922da673552c3a6534d1a563d1e23521aff17e65` installer SHA-256
@@ -70,6 +70,18 @@ This is one owner-reported host observation, not independently inspected event
 receipts, protected-VM acceptance, provider/full-journey or launch-token proof.
 It does not transfer to the new one-click bytes or invalidate the older
 zero-click withdrawal. No agent retry on that machine was performed.
+
+The owner separately reports that the current one-click candidate from exact
+source `f7552cfe75207f5fee61356ea22c6c6fb48d1398`, SHA-256
+`8a4388113a2096cf612415bc47edacaba761bcaf08ab707c3fa4746a5de44f00`,
+installed successfully on the same ARM64 PC with Defender protection on.
+Reported `%LOCALAPPDATA%\Programs\Bloomstep` files were written on10October
+at10:19, and `Get-MpThreatDetection` showed no detections in the preceding
+two hours. This remains one owner-reported machine observation; it is not an
+independently reviewed Defender event/scan receipt, protected disposable VM or
+runner acceptance, verified Finish checkbox outcome, app launch/token proof,
+provider/full-journey or UI screenshot. It does not authorize distribution or
+merge and does not transfer to other binaries.
 
 PR28's six app commits through
 `2753a6203f97923557f2de669c5f66cd3fdf70a6`, plus the rendered custom-field
