@@ -78,7 +78,59 @@ response ownership and abuse protection. Existing aggregate telemetry cannot sub
 | Download / install / first launch | Existing preview.12 pointer unchanged. **Blocked:** protected acceptance of the intended composed artifact and unresolved launch CI. The withdrawn PR26 `b58ba7fc` candidate was Defender-quarantined (`Behavior:Win32/DefenseEvasion.A!ml`) and remains excluded; this does not characterize every artifact on PR26. See the artifact-specific evidence below. |
 | App activation / retention | Existing separate account reports, not website or campaign conversion. Revenue and referral-delivery/attributed activation remain unsupported. |
 | Experiments | Public OFF; no sufficient customer evidence or deployment authorization. Existing isolated loop proof is not live efficacy. |
-| Public demand / deployment | Owner approves support/legal details, site/domain and verified downloadable asset, then explicitly approves publication/deployment. No merge, deploy, release or outreach was performed. |
+| Public demand / deployment | Owner conditionally approved production promotion after exact-head functional, security and privacy gates. This does not waive contact disclosure, installer acceptance or authorize outreach. No merge, deploy, release or outreach was performed. |
+
+## Conditional production change order
+
+The owner has authorized production only after functional app, installer and website analytics validation.
+Use the composed revision, not separate cherry-picked dashboard or collector files. A passing synthetic
+fixture is a prerequisite, not customer acceptance. Keep third-party analytics sandboxes and public
+experiments disabled; monetization is outside this launch.
+
+1. Freeze the composed source revision and the intended installer filename/full SHA-256. Preserve exact-head
+   API, customer-site, telemetry, console-preview and composed-loop receipts and hosted artifacts. Obtain
+   protected install/launch acceptance for that exact installer on each advertised architecture; a prior
+   owner's ARM64 trial does not cover another build or x64. Failed or missing runtime evidence blocks promotion.
+2. Close privacy/contact and identity gates before merging: publish only an explicitly authorized private
+   contact accessible without app sign-in, verify applicable provider retention/recovery boundaries, and
+   verify actual customer authentication and explicit operator roles. Public GitHub issues remain a
+   non-sensitive bug alternative, not a private rights-request route. Do not create a mailbox or infer
+   public permission for a personal address.
+3. Record the existing production revision, public site hashes/download manifest, approved runtime settings
+   and resource metadata before change, without exporting credentials or customer data. Build the approved
+   revision with production operator configuration through `azure.yml`; never upload the loopback preview
+   bundle or its synthetic token/store. The separate keyless analytics staging site is not this deployment
+   candidate and its SDK trials do not authorize production vendors.
+4. Coordinate one composed merge to `main` only after those gates. The existing `azure.yml` triggers on that
+   merge and deploys the built site plus managed API to the existing Free SWA. It is not a deploy-later merge:
+   do not merge while a gate is pending. Do not dispatch the static-only `site.yml` as a substitute for the
+   API deployment. Verify the complete staging/composed artifact before this production-triggering change.
+5. After deployment, read back actual served source/assets and protected-route rejection, then perform a
+   bounded consent-off/on/withdrawal proof and authenticated operator load using isolated synthetic records.
+   Preserve real-traffic/synthetic segregation and verify erasure. `website-live.yml` supplies existing public
+   readback; supplement it with exact route/config and report evidence rather than treating deployment success
+   as analytics success. Verify schedules/worker roles and spend/volume caps before enabling any existing worker.
+6. Change the public download manifest only to the accepted exact installer after the app/API compatibility
+   proof. Verify served links and checksums. If an asset is blocked or harm/security/privacy errors appear,
+   stop promotion, restore the prior accepted manifest and redeploy the prior compatible site/API revision
+   through the same reviewed path. Disable optional collection/worker execution with existing operational
+   controls as necessary; keep export/deletion available. Never restore a database as a UI rollback or erase
+   deletion markers. A prior revision is not an acceptable rollback if it reintroduces the identified defect.
+
+Live readback may expose missing production configuration. Resolve only verified dependencies; do not weaken
+authentication, enable broad experiments, provision paid resources, or present a pending gate as complete.
+Public demand starts after accepted download/support paths exist, not during this change order.
+
+### Measurement availability at this handoff
+
+| Dimension | Implemented evidence | Production claim permitted now |
+| --- | --- | --- |
+| Acquisition | Consented allowlisted website event/touch margins, suppression; real HTTP/disk synthetic proof. | Live deployment/readback unverified; not unique visitors, leads or campaign-attributed accounts. |
+| Activation | Separate account recipe/completion reports and optional explicitly linked receipt journey, tested 150/100/50. | Synthetic acceptance only; installation and first-launch timing unobservable. |
+| Retention | Opted-in exact-local-day account retention with pending/censored/suppressed states. | No customer retention result or completeness claim without actual eligible data. |
+| Referral | Separate invitation/support evidence where observed. | Delivery and attributed recipient activation unsupported; not viral conversion. |
+| Revenue / ARR | No monetization in launch scope. | Unavailable, not measured zero; no paid flows or full-AARRR claim. |
+| Optimization | Fixed-horizon finite variants, audit/promotion/rollback/kill proven in isolation. | Public OFF; no customer efficacy or autonomous production promotion claim. |
 
 ### Installer evidence is artifact-specific
 
