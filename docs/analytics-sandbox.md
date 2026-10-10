@@ -113,6 +113,22 @@ browser requests alone are not authenticated GA4 event receipt.
 
 Read-only access status on 10 October 2026:
 
+Following manual sign-in, all six vendor tabs were present in one Edge window.
+Fresh observation verified the expected Gmail identity and existing Bloomstep
+staging property in GA4, and the existing Bloomstep staging project in Clarity.
+Clarity's profile displayed `store-developer@outlook.com` (with a hyphen).
+Cloudflare displayed the expected Gmail-named account, but no Bloomstep site was
+verified. PostHog EU rendered a blank organization-confirmation page; Aptabase
+EU rendered a blank Welcome page; Sentry displayed an organization onboarding
+spinner. Those three did not expose a usable Bloomstep project or verified
+account identity. These observations supersede the earlier historical-only
+session status below, but do not prove configuration rights or ingestion.
+
+GA4 Admin navigation changed the address while the rendered page remained Home,
+which reported no website data. The subsequent refresh was safety-interrupted.
+No stream Save occurred. Optional vendor onboarding/project creation remains
+outside the existing GA4-only Save authorization.
+
 | Service | Evidence | Remaining prerequisite |
 | --- | --- | --- |
 | Azure | Fresh CLI read confirms `bloomstep-analytics-staging`, actual hostname, East Asia and Free SKU. Earlier staging creation/deployment succeeded. | CLI reauthentication may eventually be required; subscription trial availability is not guaranteed. |
