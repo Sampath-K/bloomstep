@@ -52,7 +52,7 @@ export async function checkGa4Staging() {
     for (const path of ['/', '/releases/']) {
       const context = await browser.createBrowserContext();
       const page = await context.newPage();
-      const requests = [], events = [], errors = [], failures = [];
+      const requests = [], events = [], errors = [], failures = [], collectionResponses = [];
       page.on('request', request => {
         const url = new URL(request.url());
         requests.push({ origin: url.origin, path: url.pathname, method: request.method() });
@@ -60,6 +60,13 @@ export async function checkGa4Staging() {
         catch (error) { failures.push(error.message); }
       });
       page.on('pageerror', error => errors.push(error.message));
+      page.on('response', response => {
+        const url = new URL(response.url());
+        if (/^(?:[a-z0-9-]+\.)?google-analytics\.com$/.test(url.hostname)
+            && url.pathname === '/g/collect') {
+          collectionResponses.push({ origin: url.origin, path: url.pathname, status: response.status() });
+        }
+      });
       const response = await page.goto(`${origin}${path}?private=${privateMarker}#${privateMarker}`,
         { waitUntil: 'networkidle0' });
       assert.equal(response.status(), 200);
@@ -78,9 +85,23 @@ export async function checkGa4Staging() {
         }
       });
       await page.waitForFunction(() => typeof window.google_tag_manager === 'object');
-      await new Promise(resolve => setTimeout(resolve, 4000));
+      // GA4 can batch custom events after the initial page-view request.
+      const deadline = Date.now() + 15000;
+      const hasCta = await page.$$eval('#primary-cta, #download-footer-cta .button', links => links.length > 0);
+      while (Date.now() < deadline && !eventNames.every(name =>
+        (name === 'sandbox_primary_cta_click' && !hasCta)
+          || events.some(event => event.fields.en === name))) {
+        await new Promise(resolve => setTimeout(resolve, 250));
+      }
+      await new Promise(resolve => setTimeout(resolve, 1000));
+      await writeFile(join(directory, path === '/' ? 'home-collection.json' : 'releases-collection.json'),
+        JSON.stringify({ path, requests, events: events.map(({ fields, parameterNames }) => ({ fields, parameterNames })),
+          collectionResponses, boundary: 'Collection requests/responses only; not authenticated report ingestion.' }, null, 2));
       assert.deepEqual(failures, []);
       assert.deepEqual(errors, []);
+      assert.ok(collectionResponses.length > 0, 'No GA4 collection response received.');
+      assert.ok(collectionResponses.every(response => response.status >= 200 && response.status < 300),
+        'GA4 collection endpoint returned an error.');
       assert.equal(requests.some(request => request.path.startsWith('/api/')), false);
       assert.equal(requests.some(request => request.origin !== origin
         && request.origin !== 'https://www.googletagmanager.com'
@@ -107,7 +128,7 @@ export async function checkGa4Staging() {
       assert.equal(await page.$eval('#sandbox-consent', node => node.checked), false);
       assert.equal(requests.slice(beforeRevoke).some(request => request.origin !== origin), false);
       reports.push({ path, requests, events: events.map(({ fields, parameterNames }) => ({ fields, parameterNames })),
-        consentOff: true, revoked: true });
+        collectionResponses, consentOff: true, revoked: true });
       await context.close();
     }
     for (const signal of ['doNotTrack', 'globalPrivacyControl']) {

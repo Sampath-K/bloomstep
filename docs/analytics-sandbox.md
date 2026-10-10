@@ -74,6 +74,30 @@ those services and makes no full-stack E2E or production-promotion claim.
 
 ### Actual deployment, evidence and cost experiment
 
+**Current configured staging readback (10 October 2026):** the owner saved the
+existing Bloomstep site stream's real staging URL and Enhanced measurement OFF.
+Fresh authenticated stream details confirmed both settings. The existing ignored
+configuration contains the matching public Measurement ID and no other website
+vendor keys; no config fields were overwritten.
+
+GA4-only static output was deployed to
+<https://brave-grass-0e6c8ed00.4.azurestaticapps.net/> with receipt commit
+`d603149b44997f6b6e41ee5187106e88dfe85f9f`, mode `ga4-staging`,
+built at `2026-10-10T10:51:49.622Z`. No API or production deployment occurred.
+The configured live checker passed on home/releases: default-off, consent-on,
+manual event deduplication, revoke, DNT/GPC and query redaction. Home sent exactly
+one each of `page_view`, `sandbox_primary_cta_click` and
+`sandbox_download_click`; releases sent one page view and one download click.
+GA4 collection endpoints returned HTTP 204. These are **real accepted collection
+requests, not yet authenticated report-ingestion evidence**.
+
+Run `node tool\analytics_ga4_staging_check.mjs`; sanitized evidence and four
+screenshots are in `analytics-evidence\live-ga4-staging\`. The checker allows
+up to 15 seconds for GA4's batched custom events and preserves sanitized
+per-page collection evidence even if a later assertion fails.
+The historical keyless results below remain evidence for the earlier artifact;
+the keyless-only checker is no longer applicable to the current deployment.
+
 On 10 October 2026 the separate **Free** resource was provisioned and deployed
 using Azure CLI plus Static Web Apps CLI 2.0.10. Only `build/analytics-site/` was
 uploaded, with the explicit staging configuration directory; no API was deployed.
@@ -123,8 +147,8 @@ now, authorize vendor onboarding or imply new billing/access permissions.
 
 | Gate | Current evidence | Required before promotion |
 | --- | --- | --- |
-| Website consent contract | Offline intercepted-loader proof covers default-off, explicit consent, deduplication, revoke, GPC/DNT, query redaction and visible loader failure. Hosted keyless acceptance passed. | Run the configured GA4 artifact live; offline queues are not delivery. |
-| GA4 settings and ingestion | Staging property/stream table accessible; approved Save and actual receipt pending. | Persist real staging URL and Enhanced measurement OFF; verify browser collection and authenticated vendor receipt separately. |
+| Website consent contract | Offline error handling and hosted GA4 consent/dedup/revoke/GPC/DNT/query-redaction acceptance passed. | Keep exact artifact provenance; offline errors and live collection do not prove all downstream processing. |
+| GA4 settings and ingestion | Owner-saved URL and Enhanced measurement OFF read back; configured live collection returned HTTP 204. | Verify authenticated vendor report receipt separately; HTTP acceptance is not ingestion. |
 | App and installer | Prior automated app checks passed; native Windows build remains unverified because of the symlink/Developer Mode requirement. | Obtain functional validation of the exact app/installer artifact; do not infer installer readiness from unit tests. |
 | Privacy and isolation | Production excludes third-party vendor code; static staging has no collector/backend. | Resolve owner controller identity, contact and legal basis; review exact production artifact and security gates. |
 | AARRR | Partial first-party contract coverage and synthetic persisted-order receipt-link proof only. | Preserve explicit opt-in linking and under-50-account suppression; distinguish fixtures from real customer observations. Installs, customer retention and revenue are not proven. |
