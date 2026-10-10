@@ -95,8 +95,19 @@ node tool\analytics_staging_check.mjs
 Evidence: `analytics-evidence\live-keyless-staging\readback.json` and four
 screenshots. This is **real hosted keyless-page acceptance**, not live GA4 receipt.
 Owner's local website vendor identifiers were empty at deployment; the existing
-local file was preserved. Vendor URL/privacy settings and GA4 receipt remain
-pending scoped UI Save approval and authenticated verification.
+local file was preserved. The owner subsequently approved saving the existing
+GA4 staging stream URL and disabling Enhanced measurement. No Save has occurred:
+Personal Edge actions were interrupted by active user input. Approval remains
+retained; configuration and authenticated receipt are still pending. Other
+vendor Save actions are not covered by that approval.
+
+After the approved GA4-only artifact is deployed with receipt mode
+`ga4-staging`, run `node tool\analytics_ga4_staging_check.mjs`. It refuses
+keyless artifacts or additional configured website vendors and writes sanitized
+collection evidence to `analytics-evidence\live-ga4-staging\readback.json` plus
+four consent screenshots. Cookie/client/session values and raw payloads are not
+saved. This check is prepared but has **not** passed on configured live staging;
+browser requests alone are not authenticated GA4 event receipt.
 
 Cost/effort observation: one new Free SWA, no paid SKU/domain/backend/RBAC or
 billing upgrade. The Free plan has a published $0 resource tier within limits
