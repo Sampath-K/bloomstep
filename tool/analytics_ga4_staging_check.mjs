@@ -115,18 +115,31 @@ export async function checkGa4Staging() {
       }
       for (const event of events) {
         assert.equal(event.measurementId, config.GA4_ID);
-        if (eventNames.includes(event.fields.en)) {
-          assert.equal(event.fields.dl, origin + path);
-          assert.ok(!event.fields.dr);
-          assert.equal(event.fields.dt, 'Bloomstep sandbox');
-        }
+        assert.equal(event.fields.dl, origin + path);
+        assert.ok(!event.fields.dr);
+        assert.equal(event.fields.dt, 'Bloomstep sandbox');
       }
       await page.screenshot({ path: join(directory, path === '/' ? 'home-on.png' : 'releases-on.png'), fullPage: true });
+      // Exercise an engaged old document, not just an immediate post-load withdrawal.
+      await page.bringToFront();
+      await page.evaluate(() => window.scrollTo(0, 0));
+      await new Promise(resolve => setTimeout(resolve, 12000));
       const beforeRevoke = requests.length;
       await Promise.all([page.waitForNavigation({ waitUntil: 'networkidle0' }), page.click('#sandbox-consent')]);
-      await new Promise(resolve => setTimeout(resolve, 1500));
+      await new Promise(resolve => setTimeout(resolve, 5000));
+      const withdrawalRequests = requests.slice(beforeRevoke);
+      await writeFile(join(directory, path === '/' ? 'home-withdrawal.json' : 'releases-withdrawal.json'),
+        JSON.stringify({ path, checkedAt: new Date().toISOString(), withdrawalRequests,
+          events: events.map(({ fields, parameterNames }) => ({ fields, parameterNames })),
+          boundary: 'All requests from immediately before uncheck through reload and five seconds afterwards.' }, null, 2));
       assert.equal(await page.$eval('#sandbox-consent', node => node.checked), false);
-      assert.equal(requests.slice(beforeRevoke).some(request => request.origin !== origin), false);
+      assert.equal(withdrawalRequests.some(request => request.origin !== origin), false,
+        'Third-party request sent during consent withdrawal.');
+      for (const event of events) {
+        assert.equal(event.fields.dl, origin + path);
+        assert.ok(!event.fields.dr);
+        assert.equal(event.fields.dt, 'Bloomstep sandbox');
+      }
       reports.push({ path, requests, events: events.map(({ fields, parameterNames }) => ({ fields, parameterNames })),
         collectionResponses, consentOff: true, revoked: true });
       await context.close();

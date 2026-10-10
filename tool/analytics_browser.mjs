@@ -49,6 +49,13 @@ export function initializeSandbox(config, win = window, doc = document) {
   tagLinks();
   consent.addEventListener('change', () => {
     if (!consent.checked && started) {
+      started = false;
+      if (config.GA4_ID) {
+        // Disable transport before consent updates or pagehide can flush engagement.
+        win[`ga-disable-${config.GA4_ID}`] = true;
+        win.gtag?.('consent', 'update', { analytics_storage: 'denied', ad_storage: 'denied',
+          ad_user_data: 'denied', ad_personalization: 'denied' });
+      }
       // Destroy the browsing context to stop SDK timers, workers and queued events.
       win.location.reload();
       return;
@@ -69,7 +76,7 @@ export function initializeSandbox(config, win = window, doc = document) {
         ad_user_data: 'denied', ad_personalization: 'denied' });
       win.gtag('js', new Date());
       win.gtag('config', config.GA4_ID, { send_page_view: false, allow_google_signals: false,
-        allow_ad_personalization_signals: false });
+        allow_ad_personalization_signals: false, ...pageProperties });
       win.gtag('event', 'page_view', pageProperties);
       script(`https://www.googletagmanager.com/gtag/js?id=${config.GA4_ID}`);
     }

@@ -91,6 +91,17 @@ one each of `page_view`, `sandbox_primary_cta_click` and
 GA4 collection endpoints returned HTTP 204. These are **real accepted collection
 requests, not yet authenticated report-ingestion evidence**.
 
+The original withdrawal check was insufficient: a later engaged-document check
+observed GA4 `user_engagement` sending during the withdrawal reload, with the
+document's actual title. The corrected runtime sets Google's per-ID collection
+disable flag synchronously before consent denial and reload, and sets sanitized
+page metadata at SDK configuration level, including automatic events. The live
+checker now holds the document engaged for 12 seconds before withdrawal, records
+every request across reload and five seconds afterwards, and requires zero
+third-party requests in that interval. `home-withdrawal.json` and
+`releases-withdrawal.json` preserve this boundary separately. Earlier collection
+receipts do not prove this corrected withdrawal contract.
+
 Run `node tool\analytics_ga4_staging_check.mjs`; sanitized evidence and four
 screenshots are in `analytics-evidence\live-ga4-staging\`. The checker allows
 up to 15 seconds for GA4's batched custom events and preserves sanitized

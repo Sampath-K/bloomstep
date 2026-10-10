@@ -5,6 +5,44 @@ import { websiteConfig } from '../tool/analytics_config.mjs';
 import { assertProductionClean } from '../tool/analytics_site_build.mjs';
 import { snapshot } from '../tool/acquisition_snapshot.mjs';
 import { collectionEvents } from '../tool/analytics_ga4_staging_check.mjs';
+import { initializeSandbox } from '../tool/analytics_browser.mjs';
+
+test('GA4 withdrawal disables transport synchronously before consent update and unload', () => {
+  const calls = [];
+  let change;
+  const consent = { checked: false, addEventListener: (_, handler) => { change = handler; } };
+  const status = {};
+  const win = {
+    navigator: {}, location: { search: '?private=secret', pathname: '/', origin: 'https://example.test',
+      reload: () => {
+        assert.equal(win['ga-disable-G-TEST123'], true);
+        calls.push('reload');
+      } },
+    history: { replaceState() {} },
+  };
+  const doc = {
+    getElementById: id => id === 'sandbox-consent' ? consent : status,
+    querySelectorAll: () => [],
+    createElement: () => ({ setAttribute() {} }),
+    head: { append() {} },
+  };
+  initializeSandbox({ GA4_ID: 'G-TEST123' }, win, doc);
+  consent.checked = true;
+  change();
+  const settings = [...win.dataLayer.find(args => args[0] === 'config')][2];
+  assert.equal(settings.page_title, 'Bloomstep sandbox');
+  assert.equal(settings.page_location, 'https://example.test/');
+  assert.equal(settings.page_referrer, '');
+  win.gtag = (...args) => {
+    assert.equal(win['ga-disable-G-TEST123'], true);
+    calls.push(args);
+  };
+  consent.checked = false;
+  change();
+  assert.equal(calls[0][0], 'consent');
+  assert.equal(calls[0][2].analytics_storage, 'denied');
+  assert.equal(calls[1], 'reload');
+});
 
 test('production site is free of vendor code and domains', assertProductionClean);
 test('missing keys disable each vendor and invalid IDs fail explicitly', () => {
