@@ -25,3 +25,11 @@ jobs:
         with:
           name: analytics-sandbox-offline-proof
           path: analytics-evidence/
+      - name: Record keyless staging artifact provenance
+        run: |
+          node --input-type=module -e "import {writeFile} from 'node:fs/promises'; await writeFile('build/analytics-site/build-receipt.json', JSON.stringify({commit:process.env.GITHUB_SHA,runId:process.env.GITHUB_RUN_ID,mode:'keyless-staging-artifact',deployed:false}, null, 2));"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: analytics-staging-keyless-site
+          path: build/analytics-site/
+          retention-days: 7

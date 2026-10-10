@@ -3,6 +3,32 @@ export function initializeSandbox(config, win = window, doc = document) {
   const status = doc.getElementById('sandbox-status');
   const blocked = () => win.navigator.doNotTrack === '1' || win.navigator.globalPrivacyControl === true;
   let started = false;
+  const seen = new Set();
+  const incoming = new URLSearchParams(win.location.search);
+  const campaign = {};
+  const campaignChoices = {
+    utm_source: ['sandbox', 'newsletter', 'linkedin', 'community', 'search', 'referral'],
+    utm_medium: ['test', 'organic', 'email', 'social', 'referral'],
+    utm_campaign: ['prelaunch', 'tiny-habits'],
+  };
+  for (const [key, choices] of Object.entries(campaignChoices)) {
+    const value = incoming.get(key);
+    campaign[key] = incoming.getAll(key).length === 1 && choices.includes(value) ? value : choices[0];
+  }
+  const pagePath = win.location.pathname === '/releases/' ? '/releases/' : '/';
+  const pageProperties = { page_location: win.location.origin + pagePath,
+    page_referrer: '', page_title: 'Bloomstep sandbox', ...campaign };
+  const productProperties = { $current_url: win.location.origin + pagePath,
+    $referrer: '', ...campaign };
+  function record(name, architecture) {
+    if (!started || !consent.checked || blocked()) return;
+    const id = `${name}:${architecture || ''}`;
+    if (seen.has(id)) return;
+    seen.add(id);
+    const properties = architecture ? { architecture } : {};
+    if (config.GA4_ID) win.gtag?.('event', name, { ...pageProperties, ...properties });
+    if (config.POSTHOG_KEY) win.posthog?.capture(name, { ...productProperties, ...properties });
+  }
   function script(src, attributes = {}) {
     const node = doc.createElement('script');
     node.src = src; node.async = true; node.referrerPolicy = 'no-referrer';
@@ -12,14 +38,11 @@ export function initializeSandbox(config, win = window, doc = document) {
   }
   const host = config.POSTHOG_REGION === 'US' ? 'https://us.i.posthog.com' : 'https://eu.i.posthog.com';
   const tagLinks = () => {
-    const incoming = new URLSearchParams(win.location.search);
     for (const link of doc.querySelectorAll('[data-download], #primary-cta, #download-footer-cta .button')) {
       const url = new URL(link.href, win.location.href);
-      for (const key of ['utm_source', 'utm_medium', 'utm_campaign']) {
-        const value = incoming.get(key);
-        url.searchParams.set(key, /^[a-zA-Z0-9_-]{1,48}$/.test(value ?? '') ? value :
-          ({ utm_source: 'sandbox', utm_medium: 'test', utm_campaign: 'prelaunch' })[key]);
-      }
+      // Discard unknown query data before replay SDKs can inspect link targets.
+      url.search = '';
+      for (const [key, value] of Object.entries(campaign)) url.searchParams.set(key, value);
       link.href = url.href;
     }
   };
@@ -47,7 +70,7 @@ export function initializeSandbox(config, win = window, doc = document) {
       win.gtag('js', new Date());
       win.gtag('config', config.GA4_ID, { send_page_view: false, allow_google_signals: false,
         allow_ad_personalization_signals: false });
-      win.gtag('event', 'page_view', { page_location: win.location.origin + '/', page_referrer: '', page_title: 'Bloomstep sandbox' });
+      win.gtag('event', 'page_view', pageProperties);
       script(`https://www.googletagmanager.com/gtag/js?id=${config.GA4_ID}`);
     }
     if (config.CLARITY_ID) {
@@ -67,13 +90,15 @@ export function initializeSandbox(config, win = window, doc = document) {
         disable_session_recording: true, persistence: 'memory', person_profiles: 'never',
         advanced_disable_feature_flags: true,
       }, 'posthog']];
-      queue.capture('sandbox_page_view', { $current_url: win.location.origin + '/', $referrer: '' });
+      queue.capture('sandbox_page_view', productProperties);
       script(`${host}/static/array.js`);
     }
   });
+  for (const link of doc.querySelectorAll('#primary-cta, #download-footer-cta .button')) {
+    link.addEventListener('click', () => record('sandbox_primary_cta_click'));
+  }
   for (const link of doc.querySelectorAll('[data-download]')) link.addEventListener('click', () => {
-    if (!consent.checked || blocked()) return;
-    win.gtag?.('event', 'sandbox_download_click', { page_location: win.location.origin + '/', page_referrer: '' });
-    win.posthog?.capture('sandbox_download_click', { $current_url: win.location.origin + '/', $referrer: '' });
+    const architecture = ['x64', 'arm64'].includes(link.dataset.download) ? link.dataset.download : 'unknown';
+    record('sandbox_download_click', architecture);
   });
 }

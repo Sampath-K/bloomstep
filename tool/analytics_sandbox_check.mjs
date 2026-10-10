@@ -61,11 +61,21 @@ try {
         void request.respond({ status: 200, contentType: 'application/javascript', body: '' });
       } else void request.continue();
     });
-    await page.goto(origin + '/?utm_source=test&utm_medium=check&utm_campaign=prelaunch&invite=private', { waitUntil: 'networkidle0' });
+    await page.goto(origin + '/?utm_source=linkedin&utm_medium=social&utm_campaign=prelaunch&invite=private', { waitUntil: 'networkidle0' });
     assert.equal(await page.$eval('#sandbox-consent', el => el.checked), false);
     assert.deepEqual(external, [], `${name}: no requests before consent`);
     assert.equal(await page.$eval('meta[name="robots"]', el => el.content), 'noindex,nofollow,noarchive');
-    assert.match(await page.$eval('[data-download]', el => el.href), /utm_source=test/);
+    assert.match(await page.$eval('[data-download]', el => el.href), /utm_source=linkedin/);
+    const clickFunnel = () => page.evaluate(() => {
+      for (const selector of ['#primary-cta', '#download-footer-cta .button', '[data-download]']) {
+        const node = document.querySelector(selector);
+        node.addEventListener('click', event => event.preventDefault(), { once: true });
+        node.click();
+      }
+    });
+    await clickFunnel();
+    assert.equal(await page.evaluate(() => window.dataLayer?.length || 0), 0);
+    assert.equal(await page.evaluate(() => window.posthog?.length || 0), 0);
     await page.screenshot({ path: join(evidence, `${name}-before.png`), fullPage: true });
     await page.click('#sandbox-consent');
     await new Promise(resolve => setTimeout(resolve, 350));
@@ -76,18 +86,28 @@ try {
       values.POSTHOG_KEY && `https://${values.POSTHOG_REGION === 'US' ? 'us' : 'eu'}.i.posthog.com/static/array.js`,
     ].filter(Boolean);
     assert.deepEqual(external.map(item => item.url).sort(), expected.sort());
+    await clickFunnel();
+    await clickFunnel();
     const queues = await page.evaluate(() => ({
       ga: window.dataLayer?.map(args => [...args]),
       clarity: window.clarity?.q?.map(args => [...args]),
       posthog: window.posthog?._i,
+      productEvents: window.posthog?.filter(row => row[0] === 'capture'),
     }));
     if (values.GA4_ID && !privacy) {
       assert.equal(queues.ga.find(row => row[0] === 'config')[2].send_page_view, false);
       assert.equal(queues.ga.find(row => row[0] === 'event')[2].page_location, origin + '/');
+      const events = queues.ga.filter(row => row[0] === 'event');
+      assert.deepEqual(events.map(row => row[1]), ['page_view', 'sandbox_primary_cta_click', 'sandbox_download_click']);
+      assert.equal(events[2][2].architecture, 'unknown');
+      assert.equal(events[0][2].utm_source, 'linkedin');
+      assert.equal(JSON.stringify(events).includes('private'), false);
     }
     if (values.POSTHOG_KEY && !privacy) {
       assert.equal(queues.posthog[0][1].api_host, `https://${values.POSTHOG_REGION === 'US' ? 'us' : 'eu'}.i.posthog.com`);
       assert.equal(queues.posthog[0][1].disable_session_recording, true);
+      assert.deepEqual(queues.productEvents.map(row => row[1]),
+        ['sandbox_page_view', 'sandbox_primary_cta_click', 'sandbox_download_click']);
     }
     assert.deepEqual(errors, []);
     await page.screenshot({ path: join(evidence, `${name}-after.png`), fullPage: true });
@@ -96,7 +116,33 @@ try {
       await Promise.all([page.waitForNavigation({ waitUntil: 'networkidle0' }), page.click('#sandbox-consent')]);
       assert.equal(await page.$eval('#sandbox-consent', el => el.checked), false);
       assert.equal(external.length, count, 'Reload revocation loads no vendor scripts');
+      await clickFunnel();
+      assert.equal(await page.evaluate(() => window.dataLayer?.length || 0), 0);
     }
+    await buildSandbox({ GA4_ID: 'G-TEST123' });
+    const unsafeContext = await browser.createBrowserContext();
+    try {
+      const page = await unsafeContext.newPage();
+      await page.setRequestInterception(true);
+      page.on('request', request => {
+        if (new URL(request.url()).origin !== origin) {
+          void request.respond({ status: 200, contentType: 'application/javascript', body: '' });
+        } else void request.continue();
+      });
+      await page.goto(origin + '/releases/?utm_source=private_email&utm_source=linkedin&utm_medium=secret&utm_campaign=private&token=private',
+        { waitUntil: 'networkidle0' });
+      const links = await page.$$eval('[data-download]', nodes => nodes.map(node => node.href));
+      assert.equal(links.some(url => url.includes('private')), false);
+      await page.click('#sandbox-consent');
+      const events = await page.evaluate(() => window.dataLayer.filter(args => args[0] === 'event').map(args => [...args]));
+      assert.equal(events[0][2].page_location, origin + '/releases/');
+      assert.equal(events[0][2].utm_source, 'sandbox');
+      assert.equal(events[0][2].utm_medium, 'test');
+      assert.equal(events[0][2].utm_campaign, 'prelaunch');
+      assert.equal(JSON.stringify(events).includes('private'), false);
+      assert.equal(new URL(page.url()).search, '');
+      reports.push({ name: 'unsafe-campaign-release-page', events, links, passed: true });
+    } finally { await unsafeContext.close(); }
     reports.push({ name, before: [], after: external, queues, errors, revoked: !privacy });
     await context.close();
   }
