@@ -51,6 +51,7 @@ class GardenScreen extends StatefulWidget {
     this.onProfileShown,
     this.autoInviteFirstHabit = false,
     this.firstHabitInvitationReady = true,
+    this.onFirstHabitInvited,
   });
   final GardenStore store;
   final IdentityService? identity;
@@ -71,6 +72,7 @@ class GardenScreen extends StatefulWidget {
   final VoidCallback? onProfileShown;
   final bool autoInviteFirstHabit;
   final bool firstHabitInvitationReady;
+  final VoidCallback? onFirstHabitInvited;
   @override
   State<GardenScreen> createState() => _GardenScreenState();
 }
@@ -161,7 +163,6 @@ class _GardenScreenState extends State<GardenScreen> {
 
   void _scheduleFirstHabit() {
     if (loading ||
-        !widget.deviceGuest ||
         !widget.autoInviteFirstHabit ||
         !widget.firstHabitInvitationReady ||
         habits.isNotEmpty ||
@@ -180,13 +181,13 @@ class _GardenScreenState extends State<GardenScreen> {
           working ||
           firstHabitInvited ||
           habits.isNotEmpty ||
-          !widget.deviceGuest ||
           !widget.autoInviteFirstHabit ||
           !widget.firstHabitInvitationReady ||
           ModalRoute.of(context)?.isCurrent != true) {
         return;
       }
       firstHabitInvited = true;
+      widget.onFirstHabitInvited?.call();
       unawaited(_plant());
     });
   }
