@@ -71,6 +71,75 @@ Do not use a third party's trademark in the product name or marketing headline.
 No copied book exercises or validated questionnaire wording without verified
 licensing. Self-reflection wording must not be described as clinically validated.
 
+## Bounded V1: small-win surprises and a quiet coach
+
+**Implementation for review, not a merge/release or customer-validation claim.**
+Hidden action-based badges celebrate identity and effort, never a novice/beginner
+rank. There are no locked badges, unlock meters, points, random rewards,
+leaderboards, streak requirements or losses. The earned-only collection is
+available from `Your small wins` in the garden.
+
+| Small win | First qualifying action |
+| --- | --- |
+| First seed | A successfully saved recipe |
+| Growing possibilities | Two currently saved recipes |
+| Tiny step, real win | A saved positive practice |
+| Roots taking hold | Three distinct practice days for one recipe, not consecutive |
+| Thoughtful gardener | A saved weekly or naturalness reflection |
+| Making it yours | A saved change to anchor, action or celebration |
+
+`Did it` and `Did more` qualify equally; repeated same-day check-ins do not
+multiply practice days. Earned moments survive rest, undo and recipe deletion,
+without retaining a recipe ID or its text. Existing gardens quietly backfill
+observable milestones into the collection; historical adjustments are not
+inferred. Device and signed-in gardens remain separate.
+
+Planting surprises appear inside the existing saved-seed confirmation, never a
+second forced modal. Practice surprises wait for the user's personal
+celebration to finish and take precedence over a rating invitation. Other small
+wins appear in a dismissible inline card. Finite silent fades are immediately
+actionable; reduced motion at app or platform level uses static content.
+Semantic announcements, keyboard controls, scrolling and scalable text remain
+independent of animation. No sound, background notification or route auto-open.
+
+The deterministic offline coach prioritizes explicitly recorded friction,
+optional weekly reflection after practice, an empty-garden invitation, an
+optional additional recipe after three practice days, then an anchor reminder.
+It reuses Recipe Doctor and the recipe/reflection flows, not AI or inferred
+health/personality/skill. Suggestions to add a recipe stop at three active
+recipes; the existing manually chosen `Plant another` path remains available.
+Existing first-habit onboarding is not interrupted.
+
+An atomic exposure claim caps suggestions at one local calendar day, three
+within the preceding 168 hours, and seven days per rule. Later/dismissal consumes
+the exposure; reopening the app does not reset it. Clock rollback stays quiet.
+There is at most one suggestion per garden-screen visit; ineligible or busy
+moments are skipped, not queued into a catch-up shower. Settings independently
+disable `Gentle coach suggestions` and `Surprise moments`; earning remains
+available quietly in the collection.
+
+**Source of truth:** the typed versioned catalog/rules live in
+`lib/core/coach.dart`; account-scoped `quietCoach.v1` SQLite settings retain
+only badge IDs/timestamps, preferences and bounded exposure records. State is
+local to this device, included in export, erased with its garden and deliberately
+excluded from preference sync. It never links/imports device habits into an
+account. No new telemetry, dashboard pipeline, remote configuration or backend
+data is added; existing event/feedback consent boundaries remain unchanged.
+
+**Customer-first stop rule:** prioritize a small usable V1 in front of customers
+for validation rather than expanding a wish list. The hypothesis is that a
+quiet, unexpected acknowledgment makes the first tiny step feel satisfying and
+supports another *manageable* recipe, without pressure. The smallest feedback
+check, after owner-approved delivery, is to watch a customer plant one recipe,
+practice it, and encounter one optional suggestion; ask whether the moment felt
+encouraging, whether Later was clear, and whether another recipe felt welcome or
+pressured. Use the existing `Help us grow` feedback path if they choose.
+Rendered synthetic fixtures prove rendering/behavior, not customer usefulness,
+habit outcomes, native installation or permission to release. Stop building
+the catalog/coach at this V1; keep it if feedback supports the hypothesis,
+iterate or disable a pushy/confusing moment first, and defer AI, broader learning,
+North-Star instrumentation and new reward mechanics until feedback warrants them.
+
 ## Planned enhancement workstream: confident habit building
 
 **Planned, not implemented and not part of the current owner-record-deletion

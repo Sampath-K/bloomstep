@@ -6,6 +6,7 @@ import 'package:sqflite_common_ffi/sqflite_ffi.dart';
 import 'package:uuid/uuid.dart';
 
 import 'models.dart';
+import 'coach.dart';
 import 'rules.dart';
 import 'event_registry.g.dart' as registry;
 import 'measurement_receipt.dart';
@@ -354,7 +355,7 @@ class GardenStore {
     return rows.single;
   }
 
-  Future<void> edit(
+  Future<CoachUpdate> edit(
     Habit habit, {
     required String anchor,
     required String behavior,
@@ -367,18 +368,39 @@ class GardenStore {
     ].any((s) => s.trim().isEmpty || s.length > 200)) {
       throw ArgumentError('Recipe fields must contain 1-200 characters.');
     }
-    await _owned(habit.id, _db);
-    await _db.update(
-      'habits',
-      {
-        'anchor': anchor.trim(),
-        'behavior': behavior.trim(),
-        'celebration': celebration.trim(),
-        'updated': _clock().toUtc().toIso8601String(),
-      },
-      where: 'id = ? AND account = ?',
-      whereArgs: [habit.id, _account],
-    );
+    final owner = _account, generation = _syncGeneration;
+    return _db.transaction((txn) async {
+      requireSyncSession(owner, generation);
+      final existing = await _owned(habit.id, txn);
+      final state = await _coachWith(txn, owner);
+      final changed =
+          existing['anchor'] != anchor.trim() ||
+          existing['behavior'] != behavior.trim() ||
+          existing['celebration'] != celebration.trim();
+      await txn.update(
+        'habits',
+        {
+          'anchor': anchor.trim(),
+          'behavior': behavior.trim(),
+          'celebration': celebration.trim(),
+          'updated': _clock().toUtc().toIso8601String(),
+        },
+        where: 'id = ? AND account = ?',
+        whereArgs: [habit.id, owner],
+      );
+      final earned = changed && !state.earned.containsKey('making-yours');
+      final updated = state.copyWith(
+        earned: {...state.earned, if (earned) 'making-yours': _clock().toUtc()},
+      );
+      if (earned) await _saveCoachWith(txn, owner, updated);
+      requireSyncSession(owner, generation);
+      return CoachUpdate(
+        updated,
+        earned && state.reveals
+            ? [badgeCatalog.firstWhere((b) => b.id == 'making-yours')]
+            : [],
+      );
+    });
   }
 
   Future<List<Map<String, Object?>>> _current(
@@ -875,6 +897,123 @@ class GardenStore {
       whereArgs: [_account, key],
     );
     return rows.isEmpty ? null : rows.single['value'] as String;
+  }
+
+  Future<CoachState> _coachWith(DatabaseExecutor db, String owner) async {
+    final raw = await _valueWith(db, owner, coachStateKey);
+    return raw == null ? CoachState() : CoachState.decode(raw);
+  }
+
+  Future<void> _saveCoachWith(
+    DatabaseExecutor db,
+    String owner,
+    CoachState state,
+  ) async {
+    await db.insert('settings', {
+      'account': owner,
+      'key': coachStateKey,
+      'value': state.encode(),
+      'updated': _clock().toUtc().toIso8601String(),
+    }, conflictAlgorithm: ConflictAlgorithm.replace);
+  }
+
+  Future<CoachUpdate> refreshCoach({DateTime? now}) async {
+    final owner = _account, generation = _syncGeneration;
+    final date = now ?? _clock();
+    return _db.transaction((txn) async {
+      requireSyncSession(owner, generation);
+      final state = await _coachWith(txn, owner);
+      final rows = await txn.query(
+        'habits',
+        where: 'account = ?',
+        whereArgs: [owner],
+        orderBy: 'id',
+      );
+      final recipes = <Habit>[];
+      for (final row in rows) {
+        final current = await _current(
+          txn,
+          row['id'] as String,
+          account: owner,
+        );
+        final practiced = current
+            .where(
+              (r) =>
+                  (r['result'] == 'did' || r['result'] == 'didMore') &&
+                  (r['day'] as String).compareTo(localDate(date)) <= 0,
+            )
+            .length;
+        recipes.add(
+          Habit(
+            id: row['id'] as String,
+            aspiration: row['aspiration'] as String,
+            anchor: row['anchor'] as String,
+            behavior: row['behavior'] as String,
+            celebration: row['celebration'] as String,
+            species: row['species'] as String,
+            stage: GrowthStage.values[row['stage'] as int],
+            status: row['status'] as String,
+            practiceCount: practiced,
+            recentPractice: 0,
+          ),
+        );
+      }
+      final reflections = await txn.query(
+        'reflections',
+        columns: ['id'],
+        where: 'account = ?',
+        whereArgs: [owner],
+        limit: 1,
+      );
+      final ids = eligibleBadges(
+        recipes,
+        reflected:
+            reflections.isNotEmpty ||
+            await _valueWith(txn, owner, 'weeklyLast') != null,
+      );
+      final added = ids.where((id) => !state.earned.containsKey(id)).toSet();
+      final updated = state.copyWith(
+        initialized: true,
+        earned: {...state.earned, for (final id in added) id: date.toUtc()},
+      );
+      if (!state.initialized || added.isNotEmpty) {
+        await _saveCoachWith(txn, owner, updated);
+      }
+      requireSyncSession(owner, generation);
+      return CoachUpdate(
+        updated,
+        state.initialized && state.reveals
+            ? badgeCatalog.where((b) => added.contains(b.id)).toList()
+            : [],
+      );
+    });
+  }
+
+  Future<bool> claimCoachSuggestion(CoachRule rule, {DateTime? now}) async {
+    final owner = _account, generation = _syncGeneration;
+    return _db.transaction((txn) async {
+      requireSyncSession(owner, generation);
+      final state = await _coachWith(txn, owner);
+      final date = now ?? _clock();
+      if (!state.canSuggest(rule, date)) return false;
+      await _saveCoachWith(txn, owner, state.exposed(rule, date));
+      requireSyncSession(owner, generation);
+      return true;
+    });
+  }
+
+  Future<void> setCoachPreferences({bool? suggestions, bool? reveals}) async {
+    final owner = _account, generation = _syncGeneration;
+    await _db.transaction((txn) async {
+      requireSyncSession(owner, generation);
+      final state = await _coachWith(txn, owner);
+      await _saveCoachWith(
+        txn,
+        owner,
+        state.copyWith(suggestions: suggestions, reveals: reveals),
+      );
+      requireSyncSession(owner, generation);
+    });
   }
 
   Future<void> setSetting(String key, String value) async {
