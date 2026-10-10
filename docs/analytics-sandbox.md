@@ -162,11 +162,26 @@ check.
 Realtime report for stream `16099593986` showed browser-only rows from that
 headed run: `first_visit=2`, `session_start=2`, `page_view=2`,
 `sandbox_download_click=2` and `sandbox_primary_cta_click=1`. This supports the
-known-bot explanation. **Headless automation is excluded from GA4 reports even
-when collection returns HTTP 204; ingestion proof needs `ANALYTICS_HEADED=1` or
-a real visit.** Headless runs remain valid only for consent and network-contract
-checks. Standard-report (non-Realtime) ingestion for this window is still
-pending readback.
+known-bot explanation, but does not causally prove it. **The earlier headless
+runs produced no observed report rows despite HTTP 204; headless checks alone
+are not ingestion proof.** Use `ANALYTICS_HEADED=1` or a real visit followed by
+authenticated readback. Headless runs remain useful for consent and
+network-contract checks; headed requests alone are also insufficient.
+
+**Standard-report receipt confirmed (11 October 2026, approximately 04:57 IST):**
+the coordinator's authenticated report for property `558335435`, dates
+`2026-10-10` through `2026-10-11`, dimensions `date`, `streamId`, `eventName`
+and metric `eventCount`, filtered to stream `16099593986`, returned
+`2026-10-11 page_view=2`, `sandbox_download_click=2` and
+`sandbox_primary_cta_click=1`, plus `2026-10-10 page_view=1`. Metadata reported
+`Asia/Calcutta`, no sampling and `data_loss_from_other_row=false`. The Oct 11
+rows match the bounded headed run above, closing the **CTA/download ingestion
+gap**. Sanitized, coordinator-reported receipt:
+`analytics-evidence\live-ga4-staging\standard-report-receipt.json`.
+No `user_engagement` row was returned; not every expected automatic event is
+proved. Bot exclusion remains a supported hypothesis, not an established cause.
+These test rows do not prove customer retention, installs, revenue or the
+complete AARRR funnel, and do not authorize production promotion.
 
 Run `node tool\analytics_ga4_staging_check.mjs`; sanitized evidence and four
 screenshots are in `analytics-evidence\live-ga4-staging\`. The checker allows
@@ -180,11 +195,15 @@ the keyless-only checker is no longer applicable to the current deployment.
 Official Google APIs avoid the unreliable browser rendering/dispatch observed
 here. They still require separately authorized API credentials: a public
 Measurement ID and a signed-in browser do **not** authorize reporting or Admin
-API requests. No browser cookies/tokens were extracted. Current tooling has no
+API requests. No browser cookies/tokens were extracted. At the initial
+API investigation, tooling had no
 `gcloud`, no Google/OAuth credential environment variables and no loaded API
 extension. Unauthenticated requests to the existing property's Data/Admin
 endpoints returned **HTTP 401**; this proves missing API authentication, not a
-denied GA4 property role. No authenticated report response has been obtained.
+denied GA4 property role. This was the historical access blocker; connected
+read-only reporting subsequently obtained the Realtime and standard receipts
+documented above. No additional credential or role setup is needed for those
+existing authorized report reads.
 
 Minimum one-time owner preparation, with separate approval before API enablement
 or persistent credential/access changes:
