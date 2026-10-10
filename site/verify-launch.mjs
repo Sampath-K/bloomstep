@@ -86,13 +86,18 @@ try {
       await page.$eval('#feedback-help summary', node => node.focus());
       await page.keyboard.press('Space');
       assert.equal(await page.$eval('#feedback-help', node => node.open), true);
+      await page.$eval('#privacy-notice summary', node => node.focus());
+      await page.keyboard.press('Space');
+      assert.equal(await page.$eval('#privacy-notice', node => node.open), true);
+      assert.match(await page.$eval('#privacy-notice', node => node.textContent), /Sampath Kumar's personal independent project/);
+      await shot(`launch-privacy-${width}`, '#privacy-notice');
     }
     await shot(`launch-home-${width}-${js ? 'js' : 'no-js'}`);
     await shot(`launch-download-${width}-${js ? 'js' : 'no-js'}`, '#download');
   }
   assert.deepEqual(errors, []);
   const sources = {};
-  for (const file of ['site/index.html', 'site/customer.mjs', 'site/verify-launch.mjs']) {
+  for (const file of ['site/index.html', 'site/releases/index.html', 'site/customer.mjs', 'site/verify-launch.mjs', 'docs/website-launch.md']) {
     sources[file] = createHash('sha256').update(await readFile(new URL('../' + file, import.meta.url))).digest('hex');
   }
   await writeFile(join(out, 'launch-receipt.json'), JSON.stringify({ passed: true, syntheticOnly: true,

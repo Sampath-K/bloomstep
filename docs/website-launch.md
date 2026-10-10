@@ -3,8 +3,8 @@
 Status: public-site UX and isolated collector evidence are implemented; **a full public launch is not approved or
 verified**. This checklist does not supersede the installer, privacy, identity or deployment gates.
 
-Owner decision: launch a useful, trustworthy **ad-free** app first; monetization is deferred until customer
-evidence. No ads, supporter checkout or paid-tier expansion is part of this launch.
+Owner decision: launch a useful, trustworthy app **without advertising in this launch**; monetization is deferred
+until customer evidence. Advertising, supporter checkout and paid-tier expansion are outside this launch scope.
 
 ## Audience and conversion path
 
@@ -57,9 +57,12 @@ A download click is intent, **not a qualified lead**. There is no lead count or 
 initial free self-service preview, a mailing list is not essential to the product funnel. In-app private feedback
 is now explicitly discoverable in the FAQ, but it requires successful sign-in and has no response-time guarantee.
 
-An owner-approved public support/privacy contact is essential before full launch, including for people unable
-to sign in. The existing privacy notice still lacks controller identity/contact, applicable basis and
-processor/backup retention facts. Do not invent these or create an email/CRM signup. If the owner wants lead
+An owner-approved private support/privacy contact accessible without app sign-in remains essential before full
+launch. The draft notice now identifies Sampath Kumar's personal project, lists actual services and processing
+purposes, and documents verified active-store/backup retention without universal legal-basis guarantees.
+The genuine in-app private feedback and GitHub public bug routes are explained; GitHub is not for privacy
+requests. A known personal email draft is held outside the repository for owner review, not published or
+represented as a monitored support mailbox. If the owner wants lead
 capture later, first agree purpose, qualification, fields, consent, access, storage, retention/deletion,
 response ownership and abuse protection. Existing aggregate telemetry cannot substitute for that agreement.
 
@@ -70,7 +73,7 @@ response ownership and abuse protection. Existing aggregate telemetry cannot sub
 | Value proposition / audience | Concrete Windows routine, labeled app illustration; no clinical or efficacy claim. Owner approves initial audience/channel. |
 | Responsive / keyboard / static download | Isolated real-browser 1280/390/320 reflow, skip link, keyboard FAQ, no-JS links; customer-site CI checks Lighthouse, both entry pages and warning/help surfaces. |
 | Acquisition / intent | Real browser -> HTTP -> disk confirms allowlisted campaign, footer/hero dedup, consent-off zero writes, withdrawal and small-cell suppression. Synthetic proof only. |
-| Privacy | Default-off preserved. **Blocked:** supply controller identity, support/privacy contact, applicable basis and verified processor/backup retention. |
+| Privacy | Default-off preserved; draft owner/purpose/processor/active-store/backup facts documented. **Unresolved:** explicit public authorization of the private-contact address, provider log/identity/email retention, jurisdiction-specific obligations and verified backup recovery/deletion-marker preservation. |
 | Production collection / console | Local synthetic preview is usable. **Unverified:** approved live deployment, Functions/OIDC/Admin roles, deployed collector/readback, retention/erasure operations and hosting logs/billing facts. No new paid resources provisioned. |
 | Download / install / first launch | Existing preview.12 pointer unchanged. **Blocked:** protected acceptance of the intended composed artifact and unresolved launch CI. The withdrawn PR26 `b58ba7fc` candidate was Defender-quarantined (`Behavior:Win32/DefenseEvasion.A!ml`) and remains excluded; this does not characterize every artifact on PR26. See the artifact-specific evidence below. |
 | App activation / retention | Existing separate account reports, not website or campaign conversion. Revenue and referral-delivery/attributed activation remain unsupported. |
@@ -91,6 +94,30 @@ The prefixes above identify the owner's update, not complete checksum values to 
 No acceptance transfers between revisions; no candidate was promoted by this website work. Do not bypass
 Defender, browser warnings or device policy. Require exact-artifact protected acceptance before changing the
 public download pointer or describing a candidate as independently safety-accepted.
+
+### Privacy evidence (read-only, 10 October 2026)
+
+`site/index.html#privacy-notice` is the shared public draft notice; the releases page links to it. The owner
+authorized using known details and standard factual terms, not public dissemination of their personal mailbox.
+No new account, mailing list or binding terms were created.
+
+Verified Azure metadata for the existing personal `bloomstep-free` resource group:
+`bloomstep-free` Static Web Apps, `bloomstep-free-261004` Cosmos DB, `bloomstepcustomers261004` External ID
+directory and separate `bloomstep-analytics-staging` Static Web Apps. Cosmos readback: active region Central India,
+analytical storage disabled, Periodic backups, interval 240 minutes, retention 8 hours, Geo redundancy;
+`bloomstep/data` has `/userId` partitioning and default TTL `-1` (individual event/audit records supply TTL).
+No secrets, user records or access policies were read or changed.
+
+Source facts: app event TTL 34,214,400 seconds (396 days), audits/snapshots 2,592,000 seconds (30 days);
+other garden/feedback/settings records do not automatically expire. Account and record deletion retain
+minimal replay-protection markers. Anonymous counts cannot be individually located; revocation is not
+retroactive deletion of aggregate counts. Active deletion does not remove exports, identity-provider accounts
+or existing backups instantly. Exact log/identity/email retention and tested recovery are unknown.
+
+PR35 owner confirms current production has no third-party vendor code; separately deployed keyless staging
+loads none of GA4/Clarity/Cloudflare/PostHog and has no API. GA4 proposed save/configuration and vendor retention
+are not verified; Aptabase/Sentry are gated debug prototypes, not enabled release processors. Do not list six
+vendors as active processors or infer live first-party collector success from staging SDK tests.
 
 ## Reproduce the public UX/collector evidence
 

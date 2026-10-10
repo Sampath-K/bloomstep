@@ -14,7 +14,14 @@ test('launch path discloses prerequisites and optional consent without collectin
   assert.match(home, /data-primary-cta="footer" href="#download"/);
   assert.match(home, /id="feedback-help"/);
   assert.doesNotMatch(home, /type="email"|mailto:|<form/);
-  assert.match(home, /Privacy notice details still to be supplied/);
+  assert.match(home, /id="privacy-notice"/);
+  assert.match(home, /Sampath Kumar's personal independent project/);
+  assert.match(home, /not operated by Microsoft/);
+  assert.match(home, /periodic backups every four hours with an eight-hour retention setting/);
+  assert.match(home, /396 days/);
+  assert.match(home, /30-day lifetime/);
+  assert.match(home, /private contact accessible without signing in/);
+  assert.doesNotMatch(home, /hotmail\.com|microsoft\.com">[^<]*support|GDPR compliant|certified safe/);
 });
 test('initial demand link uses fixed allowlisted labels and never treats interest as an identified lead', () => {
   const touch = classifyAttribution('https://www.linkedin.com/feed/',
