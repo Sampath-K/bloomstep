@@ -29,6 +29,12 @@ test('GA4 withdrawal disables transport synchronously before consent update and 
   initializeSandbox({ GA4_ID: 'G-TEST123' }, win, doc);
   consent.checked = true;
   change();
+  const commands = win.dataLayer.map(args => [...args]);
+  assert.deepEqual(commands.map(args => args[0]), ['consent', 'js', 'config', 'event']);
+  assert.deepEqual(commands[0], ['consent', 'default', {
+    analytics_storage: 'granted', ad_storage: 'denied',
+    ad_user_data: 'denied', ad_personalization: 'denied',
+  }]);
   const settings = [...win.dataLayer.find(args => args[0] === 'config')][2];
   assert.equal(settings.page_title, 'Bloomstep sandbox');
   assert.equal(settings.page_location, 'https://example.test/');
@@ -69,11 +75,12 @@ test('release builds cannot enable sandbox even with compile-time flag', async (
   assert.match(source, /!kReleaseMode && bool\.fromEnvironment\('BLOOMSTEP_ANALYTICS_SANDBOX'\)/);
 });
 test('live GA4 evidence excludes identifiers and parses batched event bodies', () => {
-  const events = collectionEvents('https://region1.google-analytics.com/g/collect?tid=G-TEST&cid=private-client&sid=private-session',
+  const events = collectionEvents('https://region1.google-analytics.com/g/collect?tid=G-TEST&cid=private-client&sid=private-session&gcs=G101',
     'en=page_view&dl=https%3A%2F%2Fexample.test%2F\nen=sandbox_download_click&ep.architecture=x64');
   assert.equal(events.length, 2);
   assert.equal(events[1].fields.en, 'sandbox_download_click');
   assert.equal(events[1].fields['ep.architecture'], 'x64');
+  assert.equal(events[0].fields.gcs, 'G101');
   assert.equal(JSON.stringify(events).includes('private-client'), false);
   assert.equal(JSON.stringify(events).includes('private-session'), false);
   assert.deepEqual(collectionEvents('https://example.test/g/collect?en=page_view'), []);

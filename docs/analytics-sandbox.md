@@ -114,6 +114,34 @@ run is preserved in `analytics-evidence\live-ga4-withdrawal-chrome\`.
 This fixes the staging withdrawal defect, not authenticated ingestion or the
 remaining production gates.
 
+**Authenticated API access now works (10 October 2026):** the connected read-only
+tools returned the expected `Bloomstep staging` property and stream-filtered
+standard reports. Today's only rows were `bloomstep_ingest_probe: 1` and
+`page_view: 1`, matching the coordinator's earlier direct synthetic probe, not
+proof of browser-surface ingestion. A fresh consented browser check completed at
+`2026-10-10T15:44:36.479Z`; immediate filtered and unfiltered Realtime reads had no
+rows. Sanitized aggregate evidence is
+`analytics-evidence\live-ga4-staging\authenticated-report-check.json`.
+A single later filtered Realtime read, after a further two-minute wait, also had
+no rows. Browser ingestion therefore remains unproved; the next bounded step is
+a read-only standard report after the documented intraday processing interval,
+looking for the browser-only `sandbox_primary_cta_click` and
+`sandbox_download_click` names on this stream, without new collection traffic.
+
+The existing checkbox grants **analytics storage only** before the SDK's
+`js`, `config` and `event` commands; all three advertising categories stay
+denied. The ordering and exact states now have a regression assertion. Observed
+`gcs=G101` is the analytics-only wire state (ads denied, analytics granted), not
+evidence that analytics consent was denied. `G111` would also grant advertising
+storage and is not an acceptable fix for this contract. Google's
+[basic consent guidance](https://developers.google.com/tag-platform/security/concepts/consent-mode)
+supports blocking tags until opt-in; no runtime consent broadening was made.
+Wire encodings are not a replacement for the documented consent API contract.
+Google documents [Realtime freshness as typically a few minutes and standard
+intraday freshness as 2–6 hours](https://support.google.com/analytics/answer/11198161).
+Empty immediate reports do not establish a root cause or justify additional
+direct synthetic hits.
+
 Run `node tool\analytics_ga4_staging_check.mjs`; sanitized evidence and four
 screenshots are in `analytics-evidence\live-ga4-staging\`. The checker allows
 up to 15 seconds for GA4's batched custom events and preserves sanitized

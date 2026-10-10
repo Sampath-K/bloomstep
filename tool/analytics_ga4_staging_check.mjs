@@ -8,7 +8,7 @@ import { localConfig, websiteConfig } from './analytics_config.mjs';
 const origin = 'https://brave-grass-0e6c8ed00.4.azurestaticapps.net';
 const privateMarker = 'PRIVATE_SANDBOX_SENTINEL';
 const eventNames = ['page_view', 'sandbox_primary_cta_click', 'sandbox_download_click'];
-const allowedFields = ['en', 'dl', 'dr', 'dt', 'ep.utm_source', 'ep.utm_medium',
+const allowedFields = ['en', 'dl', 'dr', 'dt', 'gcs', 'ep.utm_source', 'ep.utm_medium',
   'ep.utm_campaign', 'ep.architecture'];
 
 export function collectionEvents(url, body = '') {
@@ -115,6 +115,8 @@ export async function checkGa4Staging() {
       }
       for (const event of events) {
         assert.equal(event.measurementId, config.GA4_ID);
+        // Observed SDK wire state for analytics-only consent, not a reporting credential.
+        assert.equal(event.fields.gcs, 'G101', 'Unexpected GA4 storage-consent wire state.');
         assert.equal(event.fields.dl, origin + path);
         assert.ok(!event.fields.dr);
         assert.equal(event.fields.dt, 'Bloomstep sandbox');
