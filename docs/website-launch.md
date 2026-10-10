@@ -72,10 +72,25 @@ response ownership and abuse protection. Existing aggregate telemetry cannot sub
 | Acquisition / intent | Real browser -> HTTP -> disk confirms allowlisted campaign, footer/hero dedup, consent-off zero writes, withdrawal and small-cell suppression. Synthetic proof only. |
 | Privacy | Default-off preserved. **Blocked:** supply controller identity, support/privacy contact, applicable basis and verified processor/backup retention. |
 | Production collection / console | Local synthetic preview is usable. **Unverified:** approved live deployment, Functions/OIDC/Admin roles, deployed collector/readback, retention/erasure operations and hosting logs/billing facts. No new paid resources provisioned. |
-| Download / install / first launch | Existing preview.12 pointer unchanged. **Blocked:** independent real install/launch acceptance and unresolved launch CI. PR26 candidate was Defender-quarantined (`Behavior:Win32/DefenseEvasion.A!ml`) and withdrawn; do not download/run it or bypass protections. |
+| Download / install / first launch | Existing preview.12 pointer unchanged. **Blocked:** protected acceptance of the intended composed artifact and unresolved launch CI. The withdrawn PR26 `b58ba7fc` candidate was Defender-quarantined (`Behavior:Win32/DefenseEvasion.A!ml`) and remains excluded; this does not characterize every artifact on PR26. See the artifact-specific evidence below. |
 | App activation / retention | Existing separate account reports, not website or campaign conversion. Revenue and referral-delivery/attributed activation remain unsupported. |
 | Experiments | Public OFF; no sufficient customer evidence or deployment authorization. Existing isolated loop proof is not live efficacy. |
 | Public demand / deployment | Owner approves support/legal details, site/domain and verified downloadable asset, then explicitly approves publication/deployment. No merge, deploy, release or outreach was performed. |
+
+### Installer evidence is artifact-specific
+
+Per the coordinating owner's evidence update:
+
+- Withdrawn PR26 candidate `b58ba7fc`: Defender quarantine; excluded from downloads, execution and acceptance.
+- Candidate `f7552cf` (SHA-256 prefix `8a438`): owner verified it on their own ARM64 machine only. This is not
+  x64 acceptance or evidence for another revision.
+- Latest composed profile-fix candidate `ce47ccb` (SHA-256 prefix `03ccac`): locally downloaded and hash-verified,
+  **not executed**, and no protected install/launch acceptance. Hash consistency is not a safety guarantee.
+
+The prefixes above identify the owner's update, not complete checksum values to use for file verification.
+No acceptance transfers between revisions; no candidate was promoted by this website work. Do not bypass
+Defender, browser warnings or device policy. Require exact-artifact protected acceptance before changing the
+public download pointer or describing a candidate as independently safety-accepted.
 
 ## Reproduce the public UX/collector evidence
 

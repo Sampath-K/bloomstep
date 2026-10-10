@@ -115,8 +115,10 @@ Runs three separately named stages against the exact clean HEAD: `telemetry-vali
 (`tool/experiment_acceptance.mjs`). Each stage's receipt is independently re-checked (source revision, isolated
 synthetic labeling, account oracle 150/100/50, experiment segregation and `activeCounts:null`, no paid-service/new-billable-resource dependency, hosting bill `not_measured`) and the
 tool writes `composed-receipt.json` with source/evidence hashes, exiting nonzero on any failure or dirty tracked
-source. CI runs it in the `funnel-composed-acceptance` job. The native installer is explicitly excluded: the PR26
-zero-click candidate was Defender-quarantined and withdrawn, so install/launch remains unvalidated.
+source. CI runs it in the `funnel-composed-acceptance` job. Native installer acceptance is explicitly excluded:
+the old PR26 `b58ba7fc` candidate was Defender-quarantined and withdrawn. PR26 contains multiple artifacts;
+neither owner ARM64 evidence for `f7552cf` nor hash-only evidence for the unexecuted `ce47ccb` transfers to this
+loop or another candidate. See the artifact-specific status in [website-launch.md](website-launch.md).
 
 ## Promotion boundary
 
@@ -147,5 +149,6 @@ stays `eligible:false` until verified exposure evidence exists.
 ## Known limitations
 
 - No real traffic has been randomized; nothing here demonstrates real-world lift.
-- The PR26 zero-click installer candidate was Defender-quarantined (`Behavior:Win32/DefenseEvasion.A!ml`) and
-  withdrawn; real install/launch validation remains blocked and is excluded from this loop and its acceptance.
+- The withdrawn PR26 `b58ba7fc` installer candidate was Defender-quarantined (`Behavior:Win32/DefenseEvasion.A!ml`)
+  and remains excluded. This is not a claim about every PR26 artifact. The latest `ce47ccb` candidate is hash-verified
+  but unexecuted and lacks protected acceptance; no installer acceptance or promotion is provided by this loop.
