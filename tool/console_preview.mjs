@@ -108,7 +108,7 @@ export async function startConsolePreview({ port = 8787 } = {}) {
         ['GET /api/team/experiments', request => experiments.report(request)],
       ]);
     } });
-    await fixture.seed();
+    await fixture.seed({ receipt: true });
     const touch = { source: 'search', referrerDomain: 'google.com', campaignSource: 'newsletter',
       campaignMedium: 'email', campaignName: 'tiny_habits' };
     await fixture.seedWebsite({ firstTouch: touch, lastTouch: touch });

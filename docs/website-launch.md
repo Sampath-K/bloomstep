@@ -3,6 +3,9 @@
 Status: public-site UX and isolated collector evidence are implemented; **a full public launch is not approved or
 verified**. This checklist does not supersede the installer, privacy, identity or deployment gates.
 
+Owner decision: launch a useful, trustworthy **ad-free** app first; monetization is deferred until customer
+evidence. No ads, supporter checkout or paid-tier expansion is part of this launch.
+
 ## Audience and conversion path
 
 Initial audience: adults using Windows who want a small routine alongside their working day, without streak
@@ -40,8 +43,11 @@ publication floors below 50 remain suppressed. Campaign dimensions are marginal 
 qualified leads, installs or attributed app activations.
 
 Treat stage ratios as descriptive event ratios, not visitor conversion probabilities or a causal test.
-Account recipe -> first positive check-in and exact-day retention remain separate opt-in AARRR evidence;
-neither can be attributed to that post without a supported consented link. Use voluntarily submitted in-app
+Account recipe -> first positive check-in and exact-day retention remain separate opt-in AARRR evidence.
+The foundation's additive `linked.activation` report separately supports explicitly imported website receipt
+download -> saved recipe -> first positive same-habit completion, with 50-account suppression and unknown
+install/launch timing. It is not a campaign-level join or an anonymous visitor denominator; neither report can
+be attributed to that post without a supported consented campaign link. Use voluntarily submitted in-app
 feedback to identify specific obstacles, never infer rejection from missing telemetry. If evidence is sparse,
 record insufficient data; do not promote variants, run experiments or broaden collection.
 

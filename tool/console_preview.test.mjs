@@ -76,8 +76,11 @@ test('loopback-only synthetic preview: actual console buttons, production auth i
     assert.deepEqual(await page.$$eval('.aarrr-stage strong', nodes => nodes.map(node => node.textContent)), ['150', '100', '50']);
     assert.match(await page.$eval('#admin-status', node => node.textContent), /2026-09-01 through 2026-09-14/);
     const acquisition = await page.$eval('#website-funnel', node => node.textContent);
-    for (const expected of ['landing_view: 50', 'primary_cta_click: 50', 'download_click: 50',
+    for (const expected of ['Observed landing events (not unique visits): 50', 'Primary CTA events: 50', 'Download click events (not completed downloads): 50',
       'google.com', 'newsletter', 'tiny_habits']) assert.ok(acquisition.includes(expected), expected);
+    for (const expected of ['website_receipt_download: 150', 'recipe_created: 100', 'first_completion: 50']) {
+      assert.ok(acquisition.includes(expected), expected);
+    }
     for (const summary of await page.$$('#website-funnel details summary')) {
       await summary.focus(); await page.keyboard.press('Space');
     }
