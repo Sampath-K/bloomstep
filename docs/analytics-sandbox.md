@@ -72,6 +72,51 @@ authentication registrations/redirects, and non-production app configuration.
 Pointing staging at the production API is not isolation. This PR adds none of
 those services and makes no full-stack E2E or production-promotion claim.
 
+### Actual deployment, evidence and cost experiment
+
+On 10 October 2026 the separate **Free** resource was provisioned and deployed
+using Azure CLI plus Static Web Apps CLI 2.0.10. Only `build/analytics-site/` was
+uploaded, with the explicit staging configuration directory; no API was deployed.
+The CLI's `--env production` refers to the default slot of this **staging
+resource**, not promotion or deployment to `bloomstep-free`.
+Deployment token was fetched for the staging resource only, passed through a
+temporary process environment and removed; no token was logged or committed.
+
+Served `build-receipt.json`: commit
+`9a3f2664441da1f50b0247045f0c23b31c1dc45a`, mode `keyless-staging`.
+Real public readback passed on both home/releases: HTTPS 200, noindex headers,
+deny-all robots, unchecked consent, consent-on with missing keys, revoke/reload,
+zero third-party and API requests. Run:
+
+```powershell
+node tool\analytics_staging_check.mjs
+```
+
+Evidence: `analytics-evidence\live-keyless-staging\readback.json` and four
+screenshots. This is **real hosted keyless-page acceptance**, not live GA4 receipt.
+Owner's local website vendor identifiers were empty at deployment; the existing
+local file was preserved. Vendor URL/privacy settings and GA4 receipt remain
+pending scoped UI Save approval and authenticated verification.
+
+Cost/effort observation: one new Free SWA, no paid SKU/domain/backend/RBAC or
+billing upgrade. The Free plan has a published $0 resource tier within limits
+(100 GB/month bandwidth, 250 MB/environment, 500 MB total, ten Free apps per
+subscription; see <https://learn.microsoft.com/en-us/azure/static-web-apps/quotas>).
+That Free SKU is distinct from this subscription's **temporary Free Trial
+subsidy/availability**; trial expiry or credit exhaustion can suspend access.
+No invoice/billing usage was read back, so measured recurring spend is unknown,
+not an asserted zero bill for the whole system.
+
+Observed setup friction: mistaken placeholder hostname, trial-vs-production
+policy clarification, scoped owner approval, CLI dependency download and explicit
+staging configuration selection. Operator actions included choosing the bounded
+Free Trial exception and resource scope; vendor Save/privacy steps are still
+pending. Developer hours, support/maintenance effort, revenue, conversion lift
+and break-even are **not measured**. Cheapest viable hosting is still an open
+question; this is not evidence Azure is cheapest. Reuse these concrete receipts
+for a later comparison rather than creating a new cost platform or migrating
+hosts during first-customer validation.
+
 ### Launch funnel contract and acceptance
 
 | Stage | GA4 event | Meaning and deduplication |
