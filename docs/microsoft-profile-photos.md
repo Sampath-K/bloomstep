@@ -131,3 +131,154 @@ app-path regressions, not installed-executable acceptance.
 MSA ID-token claims/Graph photo response, a supported CIAM upstream immutable
 identity projection, or installed desktop acceptance. Photo support is blocked
 until that projection and a real owner-controlled end-to-end trial exist.
+
+## Bounded design decision (2026-10-10)
+
+**Decision:** there is no evidenced configuration-only fix for the existing
+CIAM-to-separate-public-client gap. The smallest plausible existing-account
+solution is a **server-side same-federation-client proof bridge**, not an
+arbitrary account-link button or a custom claim populated from user input.
+It preserves the primary CIAM login and garden keys but adds an authentication
+component, backend directory-read privilege, a confidential-server credential,
+and an extra browser authentication round trip. These are new approval scope,
+not covered by the owner's approval of delegated photo `User.Read`.
+
+The components below are documented platform capabilities. Their composition
+is a proposed design, **not implemented or live-verified**. In particular, the
+actual deployed CIAM federated identity representation must be verified before
+calling the bridge viable. If that equality gate cannot be demonstrated, do not
+deploy it.
+
+### Evidence and options
+
+| Option | Decision and reason |
+| --- | --- |
+| Project an upstream MSA object ID through standard OIDC mapping | Not evidenced by the supported mapping table; current mapping uses upstream `sub`. No invented extension claim is acceptable. |
+| Add an OnTokenIssuanceStart custom claims provider | Supported enrichment mechanism, but not an identity-proof source. Its documented request contains the CIAM user ID/profile, not a validated upstream MSA token or object ID. It cannot manufacture the missing binding. Adds a synchronous dependency to sign-in; not the minimum photo-only solution. |
+| Read the CIAM user's directory `identities` | Supported server Graph surface containing issuer + issuerAssignedId. This supplies the federation-side identity, not automatically the separate public-client MSA object ID. Must verify the actual representation, provider mapping and provenance. |
+| Reauthenticate on the server with the **existing federation application ID** | Candidate bridge: compare a validated token's same-client upstream `sub` to the authenticated CIAM user's authoritative federated identity; derive MSA tenant + object ID from that same validated token. This does not compare different clients' `sub` values. |
+| Change federation Subject mapping to `oid`, replace provider, or make direct MSA primary login | Authentication architecture/migration project, not this follow-up. Existing subject-based directory links and issuer/sub garden keys can change; account duplication/orphaned gardens require explicit migration. Do not toggle the mapping on the live provider. |
+
+Sources:
+[MSA federation settings](https://learn.microsoft.com/en-us/entra/external-id/customers/how-to-microsoft-accounts-federation-customers)
+document the confidential web registration and `openid profile email`;
+[OIDC claims mapping](https://learn.microsoft.com/en-us/entra/external-id/customers/reference-oidc-claims-mapping-customers)
+documents the Subject mapping;
+[Graph objectIdentity](https://learn.microsoft.com/en-us/graph/api/resources/objectidentity?view=graph-rest-1.0)
+documents the authoritative identity tuple;
+[Graph get user](https://learn.microsoft.com/en-us/graph/api/user-get?view=graph-rest-1.0)
+supports customer users, `$select`, and application `User.Read.All`;
+[ID-token claims](https://learn.microsoft.com/en-us/entra/identity-platform/id-token-claims-reference)
+documents same-client pairwise `sub`, cross-application `oid` within a tenant,
+and the consumer tenant ID;
+[custom claims provider request](https://learn.microsoft.com/en-us/entra/identity-platform/custom-claims-provider-reference)
+documents the callout data rather than an upstream-token forwarding channel.
+
+### Minimum proof-bridge contract, if approved
+
+1. The desktop starts a short-lived photo-binding operation with its existing
+   **Garden API access token to the Garden API only**. The API validates the
+   existing CIAM issuer/audience/signature/expiry/scope and authorized client.
+   It must additionally retain a validated CIAM `oid` and tenant context for
+   directory lookup. Current `createPrimaryAuthenticator` returns only the
+   issuer/sub account hash, roles and scopes; it does not expose that object ID.
+   Never accept a client-posted directory user ID or account hash as authority.
+   Do not auto-start this on Google/local sign-in: a documented, verified
+   trusted current-provider signal must gate an automatic attempt. A directory
+   identity list alone does not establish which provider authenticated this
+   session. If that signal is unavailable, automatic startup stays disabled;
+   any explicit Microsoft-connection UX is a separate owner-reviewed behavior.
+2. The server reads only
+   `GET https://graph.microsoft.com/v1.0/users/{validated-ciam-oid}?$select=id,identities`
+   with its **separate CIAM-tenant app-only Graph credential**. It pins the
+   configured customer tenant and exact Microsoft provider identity, verifies
+   `id` equals the token's object ID, and rejects missing/ambiguous identities
+   or unexpected provider mapping. This credential has no role in reading
+   personal-account photos. The Garden API token is never sent to Graph.
+3. The server creates random one-use state/nonce/PKCE and binds them to the
+   authenticated garden account, directory identity and initiating operation.
+   The browser URL contains only an opaque short-lived operation/state handle,
+   never the CIAM token, upstream identifiers, photo or a user-chosen callback.
+   The server initiates authorization code flow against the consumers authority
+   **using the existing confidential MSA federation application's client ID**,
+   requesting `openid profile` (no Graph permission). A new unrelated bridge
+   client cannot match the old pairwise subject.
+4. At its fixed HTTPS callback the server exchanges the code using a
+   server-only credential for that same federation application. It validates
+   signature, exact consumer issuer, audience, expiry, nonce and the operation.
+   The token's nonempty `sub` must exactly match the directory identity's
+   issuerAssignedId **under the verified existing Subject=sub mapping**;
+   any composite/transformed representation without a documented verified
+   comparison rule fails closed. Provider alias `https://login.live.com` is
+   not the JWT issuer. Require consumer `tid` and valid `oid` in this same
+   validated token; neither email nor two successful logins is sufficient.
+5. The server returns the resulting consumer tenant/object-ID binding only
+   through an authenticated HTTPS operation-result read by the initiating
+   Bloomstep account. It does not issue it to another account or put it in a
+   browser redirect. State/results are one-use and expire within minutes;
+   keep tokens and binding data in scoped ephemeral server memory, with an
+   instance-affinity or reviewed shared ephemeral-state strategy. Do not add a
+   durable identity/photo cache by default. Restart/scale-out losing state must
+   fail closed. Rate-limit starts and do not log tokens/codes/identifiers.
+6. Only then run the **separate public-client User.Read** photo flow. Its
+   authenticated consumer identity must match that server-proved object ID.
+   The bridge must not receive the public client's Graph access token. Fetch
+   `/me/photo/$value` only after equality; all failures retain initials.
+   Sign-out/cancellation invalidates the initiating operation and all local
+   photo state; late results are discarded.
+
+**Additional finding:** Microsoft's ID-token reference says `oid` requires the
+OIDC `profile` scope. The foundation currently requests only `openid` +
+`User.Read` and rejects an absent `oid`; it cannot assume `oid` will be returned.
+Before operationalizing it, choose either OIDC `profile` as well (still only
+one **Graph delegated** permission, `User.Read`) or resolve the direct user's
+`id` through bounded, redirect-free `GET /me?$select=id` using its own Graph
+`User.Read` token. The latter adds an endpoint/identity-source change and tests.
+Neither option by itself proves the CIAM linkage.
+
+### Exact owner prerequisites for a proof-only pilot
+
+These are a proposed operator checklist, **not an instruction to mutate now**.
+Do not change the live primary flow just to obtain evidence.
+
+1. Using a dedicated test identity and an owner-controlled diagnostic harness,
+   privately verify the configured MSA provider's client ID, issuer alias and
+   Subject=`sub` mapping; verify the authenticated CIAM token includes a usable
+   customer-tenant `oid` and verify how (or whether) the actual current provider
+   is authoritatively distinguished. Read that exact test user's Graph
+   `id,identities`.
+   Verify the identity corresponds to the upstream **same-client** validated
+   MSA subject. Report only equality/absence outcomes, not token or identifier
+   values. No real customer photo/token exports or credential screenshots.
+2. Approve backend **application Microsoft Graph `User.Read.All` in the CIAM
+   tenant with admin consent**, for read-only directory identity lookup. Keep
+   it separate from the photo public registration and from API scopes. Do not
+   grant `Directory.ReadWrite.All` or `User.ManageIdentities.All`; the bridge
+   never creates/updates directory links. Review the privacy/breach scope of
+   tenant-wide profile read before approving.
+3. Approve server access to a credential for the **existing MSA federation
+   application**, with rotation/secret-store policy. A new credential for that
+   same application is preferable to extracting the provider's current secret;
+   it still requires owner approval. No confidential material goes into Dart,
+   git, public-client configuration or logs.
+4. Add only a **Web** redirect on that existing federation registration:
+   `<API_ORIGIN>/api/microsoft-photo-binding/callback`, after implementation
+   establishes that exact fixed HTTPS endpoint. `API_ORIGIN` is the existing
+   pinned SWA HTTPS origin. Preserve every existing CIAM federation callback,
+   audience and Subject mapping. This is **not** the separate photo client's
+   loopback redirect and must not be added as an InstalledClient URI.
+5. Approve the backend start/result/callback routes, bounded ephemeral state,
+   authenticated CIAM-object-ID extraction, and mismatch/replay/expiry/sign-out
+   coverage as a new narrowly scoped workstream. No custom claims extension or
+   primary-login replacement is necessary for this candidate. The public
+   client's settings remain those above, with the direct `oid` scope/source
+   correction explicitly reviewed.
+
+**Go/no-go:** if the owner permits the additional server privilege/credential
+and the same-client directory-subject equality is demonstrated, implement a
+photo-only bridge as a separate reviewed change, preserving V1 login/gardens.
+If either is refused or cannot be established, the original no-secret desktop
+photo connection cannot securely identify the current CIAM-federated account
+with available evidence. A broader primary-auth/provider redesign would then
+be required and is outside the approved scope. V1 and PR #31 remain nonblocking;
+there is no live proof or current configuration-only solution to claim.
