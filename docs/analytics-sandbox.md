@@ -109,6 +109,50 @@ four consent screenshots. Cookie/client/session values and raw payloads are not
 saved. This check is prepared but has **not** passed on configured live staging;
 browser requests alone are not authenticated GA4 event receipt.
 
+### Account access and autonomy limits
+
+Read-only access status on 10 October 2026:
+
+| Service | Evidence | Remaining prerequisite |
+| --- | --- | --- |
+| Azure | Fresh CLI read confirms `bloomstep-analytics-staging`, actual hostname, East Asia and Free SKU. Earlier staging creation/deployment succeeded. | CLI reauthentication may eventually be required; subscription trial availability is not guaranteed. |
+| GA4 | Existing Bloomstep staging property was accessible in signed-in Personal Edge; no approved Save has succeeded. | Access Personal profile normally while Edge is idle, verify existing stream and current configuration rights, then perform the retained approved action. |
+| Clarity | Existing Bloomstep staging project was previously accessible in Personal Edge. | Reverify current session/project and configuration rights; no Save approval is implied. |
+| Cloudflare | Existing account was previously accessible; Add Site contained the invalid placeholder hostname. No Bloomstep site identity was verified. | Reverify current session and existing site, if any; creation or Save requires its own authorization. |
+| PostHog, Aptabase, Sentry | No signed-in session, existing Bloomstep project or configuration rights verified. | Inspect normal existing account/project access; owner sign-in may be required. Do not create accounts or extract credentials. |
+
+After the owner closed browser windows, tool-native Edge launch reopened the
+Work profile. Profile navigation was interrupted twice by the tool's
+active-input detection, including a fresh read and same-action retry. The owner
+had expressly allowed use after closing windows, so actual owner activity is
+not established; tooling/session contention remains a possible cause.
+This does not establish that the
+Personal sessions were lost, nor that all vendor accounts are accessible.
+Session persistence, reauthentication and future interactive approvals remain
+limits on unattended operation. No password, cookie or administrative token was
+captured. Browser interruptions must not be bypassed.
+
+Diagnostic receipt: `computer-use-click`, app `MSEdge`, newly discovered window
+`7212420`, latest `Work Profile` button index `21`, returned
+`# action: click - interrupted` with reason
+`user input was detected in Microsoft Edge; call get_window_state for it before continuing`.
+The fresh read found the same Work-profile window; the indexed retry returned
+the same interruption. The tools did not expose an input-event timestamp or
+actor identity. Later read-only `list_apps` still found this exact window, so
+stale targeting was not evidenced. Extension discovery reported no extensions,
+but this does not rule out another automation actor. No safety or OS settings
+were changed to investigate.
+
+The separate first-party reporting work supports an explicitly opted-in receipt
+link to account activation, with a minimum of 50 distinct accounts per stage;
+its SQLite/HTTP proof is synthetic, not live customer evidence. It is not
+automatic anonymous-to-account attribution or install proof. Its website
+landing/CTA/download events are separate from this GA4 sandbox, and do not cover
+releases-page downloads. This static staging resource has no collector/backend.
+Public first-party telemetry also requires the owner's controller identity,
+contact and legal-basis decisions; staging verification does not resolve those
+production prerequisites.
+
 Cost/effort observation: one new Free SWA, no paid SKU/domain/backend/RBAC or
 billing upgrade. The Free plan has a published $0 resource tier within limits
 (100 GB/month bandwidth, 250 MB/environment, 500 MB total, ten Free apps per
