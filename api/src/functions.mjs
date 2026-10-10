@@ -7,13 +7,15 @@ import { createAggregateAuthenticator } from './aggregate-auth.mjs';
 import { createSpendAuthenticator } from './spend-auth.mjs';
 import { createWebsiteHandlers } from './website-funnel.mjs';
 import { createExperimentHandlers, websiteStageSummary } from './experiments.mjs';
+import { storageTarget } from './storage-target.mjs';
 const { app } = azureFunctions;
 
 const issuer = process.env.OIDC_ISSUER;
 const audience = process.env.OIDC_API_AUDIENCE;
 const jwks = process.env.OIDC_JWKS_URI;
 const cosmosConnection = process.env.COSMOS_CONNECTION_STRING;
-const configuredContainer = cosmosConnection ? new CosmosClient(cosmosConnection).database('bloomstep').container('data') : null;
+const target = storageTarget(process.env);
+const configuredContainer = cosmosConnection ? new CosmosClient(cosmosConnection).database(target.database).container(target.container) : null;
 function container() {
   if (!configuredContainer) throw new ServiceError(503, 'Database is not provisioned.');
   return configuredContainer;
