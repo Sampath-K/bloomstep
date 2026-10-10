@@ -69,12 +69,13 @@ Future<void> _ready(WidgetTester tester, Finder finder) async {
       () => Future<void>.delayed(const Duration(milliseconds: 30)),
     );
     await tester.pump(const Duration(milliseconds: 30));
-    if ((finder.toString().contains('Not signed in') ||
-            finder.toString().contains('Sign in with Microsoft or Google')) &&
-        find.byType(RecipeBuilder).evaluate().isNotEmpty &&
+    if (find.byType(RecipeBuilder).evaluate().isNotEmpty &&
         find.text('Cancel').evaluate().isNotEmpty) {
-      await tester.tap(find.text('Cancel'));
       await tester.pumpAndSettle();
+      if (find.text('Cancel').evaluate().isNotEmpty) {
+        await tester.tap(find.text('Cancel'));
+        await tester.pumpAndSettle();
+      }
     }
     if (finder.evaluate().isNotEmpty) {
       if ((finder.toString().contains('Not signed in') ||
@@ -83,9 +84,8 @@ Future<void> _ready(WidgetTester tester, Finder finder) async {
         continue;
       }
       await tester.pumpAndSettle();
-      if ((finder.toString().contains('Not signed in') ||
-              finder.toString().contains('Sign in with Microsoft or Google')) &&
-          find.byType(RecipeBuilder).evaluate().isNotEmpty) {
+      if (find.byType(RecipeBuilder).evaluate().isNotEmpty &&
+          find.text('Cancel').evaluate().isNotEmpty) {
         await tester.tap(find.text('Cancel'));
         await tester.pumpAndSettle();
       }
@@ -156,9 +156,7 @@ void main() {
       );
       await _ready(
         tester,
-        find.text(
-          scenario == 'restored account' ? 'Signed in' : 'Not signed in',
-        ),
+        find.text(scenario == 'restored account' ? 'ST' : 'Not signed in'),
       );
       MeasurementReceipt? receipt;
       for (var i = 0; i < 100; i++) {
@@ -329,8 +327,9 @@ void main() {
     await _ready(tester, find.text('Did it'));
     await _screenshot(tester, boundaryKey, 'profile-signed-out.png');
     await tester.tap(find.text('Sign in with Microsoft or Google'));
-    await _ready(tester, find.text('Synthetic Garden Tester'));
-    expect(find.text('Signed in'), findsOneWidget);
+    await _ready(tester, find.text('ST'));
+    expect(find.text('Signed in'), findsNothing);
+    expect(find.text('Synthetic Garden Tester'), findsNothing);
     expect(find.textContaining('synthetic@example.invalid'), findsNothing);
     expect(find.textContaining('Google'), findsNothing);
     expect(find.textContaining('unknown'), findsNothing);
@@ -338,13 +337,15 @@ void main() {
     expect(find.text('Did it'), findsNothing);
     expect(find.textContaining('kept separate'), findsOneWidget);
     expect(find.byType(BackButton), findsNothing);
+    await tester.pump(const Duration(seconds: 5));
+    await tester.pumpAndSettle();
     await _screenshot(tester, boundaryKey, 'profile-signed-in-SYNTHETIC.png');
     final account = identity.account!;
     await tester.tap(find.text('Sign out'));
     await tester.pumpAndSettle();
     await tester.tap(find.text('Cancel'));
     await tester.pumpAndSettle();
-    expect(find.text('Signed in'), findsOneWidget);
+    expect(find.text('ST'), findsOneWidget);
     expect(identity.account, account);
     await tester.tap(find.text('Sign out'));
     await tester.pumpAndSettle();
@@ -438,8 +439,8 @@ void main() {
           ),
         ),
       );
-      await _ready(tester, find.text('Synthetic Garden Tester'));
-      expect(find.text('Signed in'), findsOneWidget);
+      await _ready(tester, find.text('ST'));
+      expect(find.text('Signed in'), findsNothing);
       expect(find.text('Plant a habit'), findsOneWidget);
       expect(find.text('Sign in with Microsoft or Google'), findsNothing);
       await tester.pumpWidget(const SizedBox());

@@ -68,6 +68,7 @@ class _HabitHomeState extends State<HabitHome> {
   bool busy = true;
   bool accountGarden = false;
   bool autoInviteFirstHabit = false;
+  final Set<String> invitedGardens = {};
   bool pendingAuthCleanup = false;
   Future<void>? returningToGuest;
   String? error;
@@ -136,7 +137,6 @@ class _HabitHomeState extends State<HabitHome> {
     );
     SessionDiagnostics? nextDiagnostics;
     AuthObservations? nextObservations;
-    var inviteFirstHabit = false;
     try {
       if (authenticated) {
         nextDiagnostics = SessionDiagnostics(next, onWriteError: _writeError);
@@ -146,7 +146,6 @@ class _HabitHomeState extends State<HabitHome> {
         });
       } else {
         await next.setSetting('analytics', 'false');
-        inviteFirstHabit = await next.claimFirstHabitInvitation();
       }
     } catch (_) {
       nextObservations?.close();
@@ -169,7 +168,7 @@ class _HabitHomeState extends State<HabitHome> {
     setState(() {
       store = next;
       accountGarden = authenticated;
-      autoInviteFirstHabit = inviteFirstHabit;
+      autoInviteFirstHabit = !invitedGardens.contains(next.account);
       diagnostics = nextDiagnostics;
       observations = nextObservations;
       identity.observations = nextObservations;
@@ -195,6 +194,10 @@ class _HabitHomeState extends State<HabitHome> {
       notice = count == 0
           ? null
           : 'Your $count device ${count == 1 ? 'habit is' : 'habits are'} kept separate. Nothing was transferred to your account.';
+      if (mounted && notice != null) {
+        ScaffoldMessenger.of(context)
+            .showSnackBar(SnackBar(content: Text(notice!)));
+      }
     } catch (e) {
       error = e is AuthFailure
           ? 'Sign-in did not complete: ${e.message} Your device garden is unchanged.'
@@ -300,6 +303,7 @@ class _HabitHomeState extends State<HabitHome> {
       deviceGuest: !accountGarden,
       autoInviteFirstHabit: autoInviteFirstHabit,
       firstHabitInvitationReady: !busy,
+      onFirstHabitInvited: () => invitedGardens.add(current.account),
       testDisableServices: widget.testOpenStore != null,
       invitationInbox: accountGarden ? widget.invitationInbox : null,
       diagnostics: diagnostics,
