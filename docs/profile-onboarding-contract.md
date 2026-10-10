@@ -15,7 +15,8 @@ Personal Microsoft accounts federated through the customer tenant do not provide
 a usable Graph photo token to this app. A direct Microsoft public-client photo
 connection with delegated `User.Read` and additional consent is a separate
 follow-up; this PR does not request that scope or claim live MSA photo evidence.
-The Google HTTPS `picture` claim path is unchanged.
+The initials avatar is only a fallback, not a live photo. This change does not
+claim MSA photo support; the Google HTTPS `picture` claim path is unchanged.
 
 ## First-habit sequence
 

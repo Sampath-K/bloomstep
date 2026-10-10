@@ -4,7 +4,7 @@
 cloud deployment and native background behavior require integration evidence.
 This ledger is updated with verified outcomes, not inferred from source code.
 
-**PR26 security hold and standard wizard redesign (draft, unpublished):** previous
+**PR26 security hold and native one-click installer (draft, unpublished):** previous
 zero-click bytes are withdrawn after severe Defender behavior quarantine.
 The owner-directed correction preserves static Anchor/Action/Celebrate art but
 removes extra Next pages: one visible native Ready page with Install, default
@@ -16,15 +16,22 @@ jobs require an owner-prepared disposable non-admin interactive Hyper-V VM with
 Defender real-time and behavior protection already enabled, optionally registered
 as an ephemeral `defender-interactive` runner. Without it they remain queued.
 The owner reports baseline922da67/hash0ef50e8f installed on ARM64 with real-time
-and behavior protection enabled and no detections in the preceding hour. This
-bounded owner observation is not protected-VM acceptance or evidence for new bytes.
+and behavior protection enabled and no detections in the preceding hour, and
+candidatef7552cf/hash8a438811 installed on the same architecture with protection
+enabled and no detections in two hours. These are owner-reported install-only
+observations, not protected-VM acceptance or genuine Finish launch/provider proof.
 See [the exact owner VM steps](defender-test-vm.md). Installer
 observations remain absent; legacy owner-matched cleanup is preserved.
-PR28 app changes are composed into this source branch: fresh empty device
-gardens invite first-habit creation once without a button click; returning/account
-gardens are untouched. Anchor, Action and Celebration accept visible custom text.
+App changes through PR28 and exact PR31 app head
+`7e7b7d1e52c8f0c4260584bd136b1499a52cafa3` are composed into this source branch:
+empty device/account gardens invite first-habit creation once per garden each
+launch after restoration/sign-in; cancellation does not loop. The signed-in
+profile shows avatar and Sign out only. Initials are an avatar fallback, **not
+live MSA photo support**; a direct MSA photo connection is a separate follow-up.
+Google HTTPS picture-claim behavior remains subject to its existing contract.
+Anchor, Action and Celebration accept visible custom text.
 Saved-habit confirmation previews seed-to-sprout growth with reduced-motion and
-save-failure contracts. New standard-flow build/native evidence and protected
+save-failure contracts. New composed app/installer build/native evidence and protected
 behavior acceptance remain pending; this source change does not establish genuine provider/launch
 acceptance. Immutable preview.12 and the public website remain unchanged.
 
