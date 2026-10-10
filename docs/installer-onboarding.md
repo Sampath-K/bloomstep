@@ -83,6 +83,30 @@ runner acceptance, verified Finish checkbox outcome, app launch/token proof,
 provider/full-journey or UI screenshot. It does not authorize distribution or
 merge and does not transfer to other binaries.
 
+### Composed PR31 profile candidate (unpublished; app checks passed)
+
+PR31 app head `7e7b7d1e52c8f0c4260584bd136b1499a52cafa3` was composed after its
+x64/ARM64 build/tests, API, universal installer/native proofs and customer-quality
+checks succeeded. Overall CI still failed at unchanged launch-after-install and
+genuine-launch guards before installer execution because no clean non-elevated
+interactive installing user was available. That is not runtime acceptance.
+
+Composed source `ce47ccb09eca27a211857f7ea12e0f4059f3ef91`, CI run
+`38028040592`, produced unpublished artifact `11661775486`:
+`Bloomstep-0.1.0-preview-windows-universal-setup.exe`, 21,593,133 bytes,
+SHA-256 `03ccac138a79ca6e1d0c181b6afcbd04130950519394e2f71f685c75f6f36355`.
+This exact CI build receipt is not a local download or execution. Signed-in
+profile shows avatar plus Sign out; initials are fallback only and **not live
+MSA photo support**. Empty device/account gardens open the habit flow once per
+garden each launch after restoration/sign-in; cancel does not loop. Direct MSA
+photo support remains a separate follow-up.
+
+Protected lifecycle/genuine-launch jobs await a suitable disposable runner; no
+actual rendered installer screenshot is available. This candidate is for owner
+trial only, not released or accepted. MSA/Google live flow, checked/unticked
+Finish outcome, token-level launch, protected behavior and144DPI remain
+unverified.
+
 PR28's six app commits through
 `2753a6203f97923557f2de669c5f66cd3fdf70a6`, plus the rendered custom-field
 label/value overlap correction at exact PR28 head
