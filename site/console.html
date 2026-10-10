@@ -8,6 +8,7 @@
   <title>Bloomstep private operator console</title>
   <link rel="icon" type="image/png" href="/assets/bloomstep-icon.png">
   <link rel="stylesheet" href="/assets/theme.css">
+  <link rel="stylesheet" href="/console.css">
   <script>
     (() => {
       const param = new URLSearchParams(window.location.search).get("scoutTheme");
@@ -16,31 +17,41 @@
       document.documentElement.setAttribute("data-theme", theme);
     })();
   </script>
+  <script>
+    if (!new URLSearchParams(location.search).has('scoutTheme')) document.documentElement.setAttribute('data-theme', 'dark');
+  </script>
 </head>
 <body>
-  <header><a href="/">Bloomstep</a></header>
+  <header><a href="/" class="brand">Bloomstep</a><span class="small">Private growth observatory</span></header>
   <main>
-    <h1>Private operator console</h1>
+    <p class="eyebrow">AARRR / evidence-led growth</p>
+    <h1>Understand the journey.<br>Keep the unknowns honest.</h1>
     <p>For authorized operators only. Server-assigned Bloomstep.Admin is required. No private data is fetched before a request. Tokens stay in page memory; temporary sign-in state uses session storage.</p>
     <form id="admin">
       <label>This deployed HTTPS API origin<input id="origin" type="url" required readonly></label>
       <button id="signin-console" type="button">Sign in to Bloomstep operator console</button>
-      <button type="submit">Load private feedback</button>
-      <button id="next-feedback" type="button" disabled>Next private feedback page</button>
       <label>UTC measurement days<input id="metric-days" type="number" min="1" max="30" value="7"></label>
-      <button id="metrics" type="button">Load private preview measurements</button>
+      <button id="metrics" type="button">Load private AARRR overview</button>
       <button id="clear-console" type="button">Sign out and clear private data</button>
+      <details><summary>Private feedback workflow</summary>
+        <button type="submit">Load private feedback</button>
+        <button id="next-feedback" type="button" disabled>Next private feedback page</button>
+      </details>
     </form>
     <p id="admin-status" role="status"></p>
+    <section id="aarrr-report" aria-label="Private AARRR report" aria-live="polite">
+      <article><h2>No private measurements loaded</h2><p>Sign in and request the overview. Empty, capped, stale and failed pipelines are unknown or unavailable, never a successful zero.</p></article>
+    </section>
     <section aria-labelledby="web-title">
-      <h2 id="web-title">Website funnel</h2>
+      <h2 id="web-title">Acquisition / separate website observations</h2>
+      <p class="small">Anonymous event counts and touch margins are not unique visitors, account conversion or an installed journey. This independently selected window includes today.</p>
       <label>Website window (UTC days, includes today)<select id="website-days"><option value="1">1 day</option><option value="7" selected>7 days</option><option value="30">30 days</option></select></label>
       <button id="website-metrics" type="button">Load website funnel</button>
       <p id="website-admin-status" role="status"></p>
       <div id="website-funnel"></div>
     </section>
     <div id="feedback"></div>
-    <div id="measurement"></div>
+    <details><summary>Detailed goals, worker health and compatibility metrics</summary><div id="measurement"></div></details>
     <details><summary>UTC daily counts and suppression</summary><pre id="daily-counts"></pre></details>
   </main>
   <script type="module" src="/assets/console.js"></script>
