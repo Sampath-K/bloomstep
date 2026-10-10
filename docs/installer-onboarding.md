@@ -119,6 +119,25 @@ custom text on all three steps, and post-save seed growth with reduced motion.
 The composed executable still needs exact-head native evidence; source
 composition does not establish genuine launch or account acceptance.
 
+### Composed PR38 bounded badges/quiet-coach V1 (not runtime accepted)
+
+The terminal owner-session handoff pins PR38 app head
+`77d7e75d163fbfd95cf9f15fb296889773217c5e`. Its exact-head API, native
+x64/ARM64 app build/tests and customer-quality run `38029293671` passed.
+Run `38029293650` is overall **FAILURE**: universal compilation/native subjobs
+passed, but inert checked-launch evidence was absent and genuine launch gates
+stopped before installer start because no clean non-elevated interactive
+installing user was available. These are not accepted runtime outcomes.
+
+That bounded app delta was cherry-picked as
+`c118ecde9ed7605bcc516a244e99258b3228c370`, preserving the existing PR31
+profile/empty-garden fixes and unchanged native installer, packaging, workflow
+and security source. No live photos, new coach catalog or broader coaching scope
+was added. The composition needs fresh exact-head CI and new artifact/hash
+receipts; the existing PROFILE-FIX installer is unchanged and its acceptance
+does not transfer. Owner-session badge store/widget and rendered synthetic UI
+evidence is not OS-input, real-provider or protected installer acceptance.
+
 ## Exact-candidate acceptance checklist (production blocked)
 
 Conditional production approval is not a waiver of these tests. Bind every
