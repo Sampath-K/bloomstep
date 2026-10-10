@@ -6,6 +6,33 @@ const validDay = day => typeof day === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(da
 const stageNames = ['landing_view', 'primary_cta_click', 'download_click'];
 const stageLabels = { landing_view: 'Observed landing events (not unique visits)', primary_cta_click: 'Primary CTA events', download_click: 'Download click events (not completed downloads)' };
 
+function activationPanel(value, startDay, endDay) {
+  if (value === undefined) return [];
+  const names = ['website_receipt_download', 'recipe_created', 'first_completion'];
+  const unavailable = ['download_completed', 'install_completed', 'first_launch_time', 'signin_succeeded'];
+  if (value?.schemaVersion !== 1 || value.minimumContributors !== 50 || typeof value.definition !== 'string' ||
+      !value.stages || Object.keys(value.stages).length !== 3 ||
+      names.some(name => !Object.hasOwn(value.stages, name) ||
+        value.stages[name] !== null && (!Number.isInteger(value.stages[name]) || value.stages[name] < 50)) ||
+      !Array.isArray(value.steps) || value.steps.length !== 2 ||
+      !Array.isArray(value.unobservable) || value.unobservable.length !== unavailable.length ||
+      unavailable.some(name => !value.unobservable.includes(name))) throw Error('Invalid receipt activation report.');
+  const rows = names.map(name => ({ label: name, value: value.stages[name] === null ?
+    'Unknown / absent or privacy suppressed' : `${value.stages[name].toLocaleString()} observed accounts` }));
+  value.steps.forEach((step, index) => {
+    const numerator = value.stages[names[index + 1]], denominator = value.stages[names[index]];
+    if (step.from !== names[index] || step.to !== names[index + 1] ||
+        step.rate !== null && (numerator === null || denominator === null || numerator > denominator ||
+          !Number.isFinite(step.rate) || step.rate !== numerator / denominator)) throw Error('Invalid receipt activation denominator.');
+    rows.push({ label: `${step.from} → ${step.to}`, value: step.rate === null ?
+      'Unknown / absent or privacy suppressed; no conversion claim' :
+      `${(step.rate * 100).toFixed(1)}% (${numerator.toLocaleString()} / ${denominator.toLocaleString()} observed accounts)` });
+  });
+  rows.push({ label: 'Unobservable stages', value: unavailable.join(', ') });
+  return [{ title: 'Voluntary website receipt → saved habit → first completion',
+    definition: `${startDay} through ${endDay}, UTC window. ${value.definition} Distinct consenting accounts in the self-selected receipt sample, not anonymous visitors or installer proof. Independent from sign-in-based app activation.`, rows }];
+}
+
 export function websitePanels(data) {
   if (data?.schemaVersion !== 1 || data.channel !== 'web' || data.synthetic !== false ||
       typeof data.definition !== 'string' || !data.stages || !data.sources || !data.architectures || !data.linked ||
@@ -66,6 +93,7 @@ export function websitePanels(data) {
         }),
         { label: 'Store channel', value: 'Reserved / unavailable; not zero' },
       ] },
+    ...activationPanel(data.linked.activation, data.startDay, data.endDay),
     ...acquisitionPanels(data.acquisition),
   ];
 }

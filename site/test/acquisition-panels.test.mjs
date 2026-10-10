@@ -61,6 +61,14 @@ test('launch overview publishes supported event denominators/window, never visit
   assert.match(panel.rows.find(row => row.label.includes('landing_view →')).value, /50.0% \(50 \/ 100 events\)/);
   assert.match(panel.definition, /2026-09-01 through 2026-09-07/);
   assert.match(panel.definition, /Freshness.*unknown/);
+  data.linked.activation = { schemaVersion: 1, minimumContributors: 50,
+    stages: { website_receipt_download: 100, recipe_created: 50, first_completion: 50 },
+    steps: [{ from: 'website_receipt_download', to: 'recipe_created', rate: 0.5 },
+      { from: 'recipe_created', to: 'first_completion', rate: 1 }],
+    unobservable: ['download_completed', 'install_completed', 'first_launch_time', 'signin_succeeded'],
+    definition: 'Ordered positive checkin on a saved habit; no install evidence.' };
+  assert.match(websitePanels(data).find(panel => panel.title.includes('first completion')).rows[3].value,
+    /50.0% \(50 \/ 100 observed accounts\)/);
   for (const mutate of [
     value => { value.synthetic = true; },
     value => { delete value.stages.download_click; },
@@ -70,6 +78,9 @@ test('launch overview publishes supported event denominators/window, never visit
     value => { value.stages.download_click = 0; },
     value => { value.sources.private = 50; },
     value => { value.linked.steps[0].rate = 1; },
+    value => { value.linked.activation.stages.first_completion = 0; },
+    value => { value.linked.activation.steps[0].rate = 1; },
+    value => { value.linked.activation.unobservable = []; },
   ]) {
     const broken = structuredClone(data); mutate(broken);
     assert.throws(() => websitePanels(broken), /Invalid|Incomplete/);

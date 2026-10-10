@@ -109,7 +109,7 @@ export async function createAarrrFixture() {
       webNow = new Date(observedAt);
       return index;
     },
-    async seed() {
+    async seed({ receipt = false } = {}) {
       for (let i = 0; i < 150; i++) {
         const subject = `synthetic-account-${String(i).padStart(3, '0')}`;
         const token = await sign(subject), habitId = randomUUID();
@@ -117,6 +117,8 @@ export async function createAarrrFixture() {
         const payload = { habits: [], checkins: [], reflections: [], voice: [], events: [
           event('signin_succeeded', '2026-09-01T10:00:00Z'),
         ] };
+        if (receipt) payload.events.push(event('download_click', '2026-09-01T09:00:00Z',
+          { measurementSource: 'website_receipt', platform: 'web', channel: 'website' }));
         if (i < 100) {
           payload.habits.push({ id: habitId, aspiration: 'ISOLATED FIXTURE', anchor: 'FIXTURE',
             behavior: 'FIXTURE', celebration: 'FIXTURE', species: 'Fern', stage: 0, status: 'active', updated: '2026-09-01T11:00:00Z' });

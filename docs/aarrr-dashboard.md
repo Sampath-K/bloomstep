@@ -33,6 +33,15 @@ implicitly fresh. Null counts are absent/unknown or privacy-suppressed,
 not zero; the report publication threshold cannot support small first-customer
 population claims. Event ratios can exceed 100% and are not person conversion.
 
+PR32 additive `linked.activation` is displayed when present as a separate
+voluntary receipt-download -> saved recipe -> first positive completion
+account sample, using the authoritative ordered same-habit positive `checkin`
+contract (not `first_checkin`, so an initial skip cannot hide later completion).
+Each ratio includes its observed account numerator/denominator and selected
+UTC window. Download completion, install completion, first-launch time and
+sign-in remain explicitly unobservable. Historical responses without this
+optional report remain readable; malformed additive reports fail closed.
+
 The account activation card separately exposes converted / eligible saved
 recipe accounts within its completed UTC window and seven-day horizon.
 It never divides by anonymous landing events. Synthetic collector responses

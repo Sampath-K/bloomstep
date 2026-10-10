@@ -7,18 +7,22 @@ import { websitePanels } from '../../site/website-panels.mjs';
 test('real collector and account sync persist separately; acquisition margins do not change account denominators', async () => {
   const fixture = await createAarrrFixture();
   try {
-    await fixture.seed();
+    await fixture.seed({ receipt: true });
     const touch = { source: 'search', referrerDomain: 'google.com', campaignSource: 'newsletter',
       campaignMedium: 'email', campaignName: 'launch' };
     assert.equal(await fixture.seedWebsite({ firstTouch: touch, lastTouch: touch }), 150);
     await fixture.restartStore();
     const disk = JSON.parse(await readFile(fixture.databasePath, 'utf8'));
     assert.equal(disk.documents.filter(row => row.type === 'website_daily').reduce((sum, row) => sum + row.accepted, 0), 150);
-    const webResponse = await fixture.request('/api/team/website?days=7');
+    const webResponse = await fixture.request('/api/team/website?days=30');
     assert.equal(webResponse.status, 200);
     const web = await webResponse.json();
     assert.deepEqual(web.stages, { landing_view: 50, primary_cta_click: 50, download_click: 50 });
     assert.equal(web.acquisition.scope, 'consented_page_epoch');
+    assert.deepEqual(web.linked.activation.stages, { website_receipt_download: 150, recipe_created: 100, first_completion: 50 });
+    assert.equal(web.linked.activation.steps[1].rate, 0.5);
+    assert.match(websitePanels(web).find(panel => panel.title.includes('first completion')).rows[4].value,
+      /50.0% \(50 \/ 100 observed accounts\)/);
     for (const touch of ['firstTouch', 'lastTouch']) {
       for (const stage of ['landing_view', 'primary_cta_click', 'download_click']) {
         assert.equal(web.acquisition[touch][stage].source.search, 50);
