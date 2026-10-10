@@ -143,7 +143,12 @@ function initializeCustomer() {
   window.addEventListener('pagehide', () => {
     consentGeneration++; controller.abort(); observer.reset(); consent.checked = false;
   });
-  document.getElementById('primary-cta').addEventListener('click', () => { record('primary_cta_click'); experimentOutcome('primary_cta_click'); });
+  for (const link of document.querySelectorAll('#primary-cta, [data-download-intent]')) {
+    link.addEventListener('click', () => {
+      record('primary_cta_click');
+      if (link.id === 'primary-cta') experimentOutcome('primary_cta_click');
+    });
+  }
   for (const link of document.querySelectorAll('[data-download]')) {
     link.addEventListener('click', () => { record('download_click', link.dataset.download); experimentOutcome('download_click'); });
   }
