@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { acquisitionPanels } from '../acquisition-panels.mjs';
-import { loadWebsite } from '../website-panels.mjs';
+import { loadWebsite, websitePanels } from '../website-panels.mjs';
 
 function fixture() {
   const touch = Object.fromEntries(['landing_view', 'primary_cta_click', 'download_click'].map(stage => [stage, {
@@ -44,4 +44,53 @@ test('partial dimensions, malformed scope and unsuppressed small cells fail clos
     const value = fixture(); mutate(value);
     assert.throws(() => acquisitionPanels(value), /Invalid/);
   }
+});
+
+test('launch overview publishes supported event denominators/window, never visits or installed people', () => {
+  const data = { schemaVersion: 1, channel: 'web', synthetic: false, startDay: '2026-09-01', endDay: '2026-09-07',
+    definition: 'Anonymous event counts, not unique visitors.',
+    stages: { landing_view: 100, primary_cta_click: 50, download_click: 50 },
+    sources: { search: 100, referral: null, direct: null, campaign: null, unknown: null },
+    architectures: { arm64: null, x64: null, unknown: 50 },
+    steps: [{ from: 'landing_view', to: 'primary_cta_click', rate: 0.5, reason: null },
+      { from: 'primary_cta_click', to: 'download_click', rate: 1, reason: null }],
+    linked: { minimumContributors: 50, definition: 'Voluntary linked receipts.', stages: { landing_view: null },
+      steps: [{ from: 'landing_view', to: 'download_click', rate: null }] } };
+  const panel = websitePanels(data)[0];
+  assert.match(panel.title, /Launch decision/);
+  assert.match(panel.rows.find(row => row.label.includes('landing_view →')).value, /50.0% \(50 \/ 100 events\)/);
+  assert.match(panel.definition, /2026-09-01 through 2026-09-07/);
+  assert.match(panel.definition, /Freshness.*unknown/);
+  data.linked.activation = { schemaVersion: 1, minimumContributors: 50,
+    stages: { website_receipt_download: 100, recipe_created: 50, first_completion: 50 },
+    steps: [{ from: 'website_receipt_download', to: 'recipe_created', rate: 0.5 },
+      { from: 'recipe_created', to: 'first_completion', rate: 1 }],
+    unobservable: ['download_completed', 'install_completed', 'first_launch_time', 'signin_succeeded'],
+    definition: 'Ordered positive checkin on a saved habit; no install evidence.' };
+  assert.match(websitePanels(data).find(panel => panel.title.includes('first completion')).rows[3].value,
+    /50.0% \(50 \/ 100 observed accounts\)/);
+  for (const mutate of [
+    value => { value.synthetic = true; },
+    value => { delete value.stages.download_click; },
+    value => { value.startDay = 'yesterday'; },
+    value => { value.endDay = '2026-08-01'; },
+    value => { value.steps = []; },
+    value => { value.stages.download_click = 0; },
+    value => { value.sources.private = 50; },
+    value => { value.linked.steps[0].rate = 1; },
+    value => { value.linked.activation.stages.first_completion = 0; },
+    value => { value.linked.activation.steps[0].rate = 1; },
+    value => { value.linked.activation.unobservable = []; },
+  ]) {
+    const broken = structuredClone(data); mutate(broken);
+    assert.throws(() => websitePanels(broken), /Invalid|Incomplete/);
+  }
+  data.stages.download_click = 100;
+  data.steps[1].rate = 2;
+  assert.match(websitePanels(data)[0].rows.find(row => row.label.includes('primary_cta_click →')).value,
+    /200.0% \(100 \/ 50 events\)/, 'event ratios above100 must not be clamped into person conversion');
+  for (const name of Object.keys(data.stages)) data.stages[name] = null;
+  data.steps.forEach(step => { step.rate = null; step.reason = 'events_below_50'; });
+  assert.match(websitePanels(data)[0].rows[0].value, /Unknown/);
+  assert.match(websitePanels(data)[0].rows.find(row => row.label.includes('landing_view →')).value, /no conversion claim/);
 });

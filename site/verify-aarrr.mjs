@@ -39,7 +39,7 @@ try {
   assert.match(await page.$eval('#aarrr-report', node => node.textContent), /Unknown \/ absent observations/);
   await page.screenshot({ path: join(output, 'aarrr-empty.png'), fullPage: true });
   checks.push('Real authenticated HTTP empty report renders unknown, unsupported revenue; private dark default');
-  await fixture.seed();
+  await fixture.seed({ receipt: true });
   assert.equal((await fixture.request('/api/sync', fixture.subjects[0].token, 'POST', fixture.subjects[0].payload)).status, 200);
   await fixture.restartStore();
   const report = await load();
@@ -68,10 +68,15 @@ try {
       const response = await fetch(path, { headers: { 'X-Bloomstep-Authorization': `Bearer ${token}` } });
       if (!response.ok) throw Error(`Fixture website pipeline ${response.status}`);
       return response.json();
-    }, 7);
+    }, 30, { fixture: true });
   }, fixture.adminToken);
   assert.equal(web.acquisition.firstTouch.landing_view.source.search, 50);
   assert.equal(web.acquisition.lastTouch.download_click.campaignName.launch, 50);
+  assert.deepEqual(web.linked.activation.stages, { website_receipt_download: 150, recipe_created: 100, first_completion: 50 });
+  assert.match(await page.$eval('#website-funnel', node => node.textContent), /50.0% \(50 \/ 100 observed accounts\)/);
+  assert.match(await page.$eval('#website-funnel', node => node.textContent), /100.0% \(50 \/ 50 events\)/);
+  assert.match(await page.$eval('#website-funnel', node => node.textContent), /ISOLATED SYNTHETIC FIXTURE/);
+  assert.match(await page.$eval('#website-funnel', node => node.textContent), /Freshness \/ capture completeness is unknown/);
   const attribution = await page.$('#website-funnel details summary');
   await attribution.focus(); await page.keyboard.press('Space');
   assert.equal(await page.$eval('#website-funnel details', node => node.open), true);

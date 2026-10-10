@@ -68,7 +68,9 @@ export function aarrrPanels(data) {
   const overview = [
     { label: 'Acquisition', value: 'Separate web events', note: 'Page touches, not people; load channel drilldown below.', status: 'unsupported' },
     { label: 'Activation · 7 days', value: activation.status === 'measured' ? displayRate(activation.rate) : unavailable[activation.status],
-      note: 'Saved recipe → first positive same-habit check-in.', status: activation.status },
+      note: activation.status === 'measured'
+        ? `${displayCount(activation.convertedAccounts)} / ${displayCount(activation.eligibleAccounts)} observed recipe accounts; saved positive same-habit check-in.`
+        : 'Saved recipe → first positive same-habit check-in; denominator unavailable.', status: activation.status },
     { label: 'Retention · exact D7', value: lastD7 ? displayRate(lastD7.d7.rate) : 'Unknown / no publishable mature cohort',
       note: lastD7 ? `${lastD7.cohortDay} cohort; local-day activity.` : 'Pending and suppressed cohorts stay distinct.', status: lastD7 ? 'measured' : 'unknown' },
     { label: 'Referral · share intent', value: showObservation(referral.initiated),
