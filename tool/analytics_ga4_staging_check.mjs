@@ -11,6 +11,15 @@ const eventNames = ['page_view', 'sandbox_primary_cta_click', 'sandbox_download_
 const allowedFields = ['en', 'dl', 'dr', 'dt', 'gcs', 'ep.utm_source', 'ep.utm_medium',
   'ep.utm_campaign', 'ep.architecture'];
 
+const reportExcludedParameters = ['_dbg', 'ep.debug_mode', 'epn.debug_mode', 'tt', 'ep.traffic_type'];
+
+export function browserLaunchOptions(env = process.env) {
+  return {
+    executablePath: env.CHROME_PATH || 'C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe',
+    headless: env.ANALYTICS_HEADED !== '1',
+  };
+}
+
 export function collectionEvents(url, body = '') {
   const parsed = new URL(url);
   if (!/^(?:[a-z0-9-]+\.)?google-analytics\.com$/.test(parsed.hostname)
@@ -20,6 +29,8 @@ export function collectionEvents(url, body = '') {
   return (body ? body.split(/\r?\n/).filter(Boolean) : ['']).map(line => {
     const parameters = new URLSearchParams(query);
     for (const [key, value] of new URLSearchParams(line)) parameters.set(key, value);
+    const excluded = reportExcludedParameters.filter(key => parameters.has(key));
+    assert.deepEqual(excluded, [], `GA4 report-excluded parameters present: ${excluded.join(', ')}`);
     return {
       measurementId: parameters.get('tid'),
       fields: Object.fromEntries(allowedFields.filter(key => parameters.has(key))
@@ -43,10 +54,16 @@ export async function checkGa4Staging() {
   const directory = resolve('analytics-evidence', 'live-ga4-staging');
   await mkdir(directory, { recursive: true });
   const puppeteer = createRequire(new URL('../site/package.json', import.meta.url))('puppeteer-core');
-  const browser = await puppeteer.launch({
-    executablePath: process.env.CHROME_PATH || 'C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe',
-    headless: true,
-  });
+  const launchOptions = browserLaunchOptions();
+  const startedAt = new Date().toISOString();
+  const browser = await puppeteer.launch(launchOptions);
+  const browserIdentity = await (async () => {
+    const page = await browser.newPage();
+    const identity = await page.evaluate(() => ({
+      userAgent: navigator.userAgent, webdriver: navigator.webdriver }));
+    await page.close();
+    return { headless: launchOptions.headless, ...identity };
+  })();
   const reports = [];
   try {
     for (const path of ['/', '/releases/']) {
@@ -164,11 +181,11 @@ export async function checkGa4Staging() {
       await context.close();
     }
     await writeFile(join(directory, 'readback.json'), JSON.stringify({
-      checkedAt: new Date().toISOString(), origin, receipt, reports,
+      startedAt, checkedAt: new Date().toISOString(), origin, receipt, browserIdentity, reports,
       boundary: 'Real GA4 browser collection requests only. Authenticated GA4 receipt must be evidenced separately; no install, account attribution or revenue proof.',
     }, null, 2));
   } finally { await browser.close(); }
-  console.log(`GA4 staging browser check passed. Evidence: ${directory}`);
+  console.log(`GA4 staging browser check passed (${startedAt} to ${new Date().toISOString()}, headless=${launchOptions.headless}). Evidence: ${directory}`);
 }
 
 if (process.argv[1] === fileURLToPath(import.meta.url)) await checkGa4Staging();

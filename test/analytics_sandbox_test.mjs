@@ -4,7 +4,7 @@ import { readFile } from 'node:fs/promises';
 import { websiteConfig } from '../tool/analytics_config.mjs';
 import { assertProductionClean } from '../tool/analytics_site_build.mjs';
 import { snapshot } from '../tool/acquisition_snapshot.mjs';
-import { collectionEvents } from '../tool/analytics_ga4_staging_check.mjs';
+import { browserLaunchOptions, collectionEvents } from '../tool/analytics_ga4_staging_check.mjs';
 import { initializeSandbox } from '../tool/analytics_browser.mjs';
 
 test('GA4 withdrawal disables transport synchronously before consent update and unload', () => {
@@ -86,4 +86,16 @@ test('live GA4 evidence excludes identifiers and parses batched event bodies', (
   assert.deepEqual(collectionEvents('https://example.test/g/collect?en=page_view'), []);
   assert.throws(() => collectionEvents('https://www.google-analytics.com/g/collect?dl=PRIVATE_SANDBOX_SENTINEL'),
     /Private query/);
+});
+test('live GA4 evidence rejects report-excluded debug and internal traffic parameters', () => {
+  for (const parameter of ['_dbg=1', 'ep.debug_mode=1', 'tt=internal', 'ep.traffic_type=internal']) {
+    assert.throws(() => collectionEvents(`https://www.google-analytics.com/g/collect?tid=G-TEST&${parameter}`,
+      'en=page_view'), /report-excluded/);
+  }
+});
+test('live GA4 check is headless by default and headed only by explicit opt-in', () => {
+  assert.equal(browserLaunchOptions({}).headless, true);
+  assert.equal(browserLaunchOptions({ ANALYTICS_HEADED: '1' }).headless, false);
+  assert.equal(browserLaunchOptions({ ANALYTICS_HEADED: 'yes' }).headless, true);
+  assert.equal(browserLaunchOptions({ CHROME_PATH: 'C:\\edge.exe' }).executablePath, 'C:\\edge.exe');
 });

@@ -142,6 +142,22 @@ intraday freshness as 2–6 hours](https://support.google.com/analytics/answer/1
 Empty immediate reports do not establish a root cause or justify additional
 direct synthetic hits.
 
+**Ingestion gap diagnosis (11 October 2026):** standard reports for 10–11 October
+still showed only the two direct synthetic rows, beyond the 2–6 hour window. The
+runtime and checker set no `_dbg`, `debug_mode`, `tt` or `traffic_type`
+parameters (the checker now fails if any appear), and every `tid` equalled the
+configured ID for stream `16099593986`. Every earlier browser hit came from
+headless Puppeteer, whose user agent says `HeadlessChrome`. GA4's
+[known bot-traffic exclusion](https://support.google.com/analytics/answer/9888366)
+is always on and unreportable, so it is the leading, still unverified,
+explanation. `ANALYTICS_HEADED=1` runs the same checker headed (user agent
+`Chrome/155`; `navigator.webdriver` stays true and is not masked). One
+bounded headed run against deployed `ffc120b` took place from
+`2026-10-10T21:56:51.061Z` to `2026-10-10T21:57:52.134Z`. Rows from that window
+would support the bot-exclusion explanation. No rows would leave ingestion
+unproved and point to a real, non-automated browser visit as the remaining
+check.
+
 Run `node tool\analytics_ga4_staging_check.mjs`; sanitized evidence and four
 screenshots are in `analytics-evidence\live-ga4-staging\`. The checker allows
 up to 15 seconds for GA4's batched custom events and preserves sanitized
