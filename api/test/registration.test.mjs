@@ -20,7 +20,7 @@ test('actual ESM entrypoint registers only host-valid routes and guarded handler
   const results = JSON.parse(execFileSync(process.execPath, ['--input-type=module', '-e', script], {
     cwd: new URL('../', import.meta.url), encoding: 'utf8',
   }));
-  assert.equal(results.length, 13);
+  assert.equal(results.length, 14);
   for (const entry of results) {
     // Mirrors ScriptHost.ValidateHttpFunction: prefix check precedes host api prefix.
     assert.equal(/^(admin|runtime)/i.test(entry.route.replace(/^\/+|\/+$/g, '')), false, entry.route);
@@ -33,6 +33,7 @@ test('actual ESM entrypoint registers only host-valid routes and guarded handler
     'invitations', 'invitations/redeem', 'invitations/status',
     'internal/operational-pause',
     'team/operational-resume',
+    'team/operational-status',
     'web/events', 'team/website', 'internal/website-proof',
   ]);
 });
@@ -60,7 +61,7 @@ test('configured entrypoint rejects platform-only auth on every served handler b
   const results = JSON.parse(execFileSync(process.execPath, ['--input-type=module', '-e', script], {
     cwd: new URL('../', import.meta.url), encoding: 'utf8', timeout: 30000,
   }));
-  assert.equal(results.length, 26);
+  assert.equal(results.length, 28);
   for (const entry of results) {
     assert.equal(entry.status, entry.route === 'web/events' ? 400 : 401, entry.route);
     assert.equal(entry.error, entry.route === 'web/events' ? 'JSON required.' : 'Sign in required.');

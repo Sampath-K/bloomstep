@@ -618,10 +618,19 @@ test('spend pause is isolated, bounded, one-way and idempotent; garden/team paus
   assert.equal((await guard.deleteAccount(deletion)).status, 204);
   assert.equal((await guard.operationalPause(request('POST', { requestId: randomUUID(), reason: 'spending_limit_off' }))).jsonBody.paused, true);
   await assert.rejects(guard.operationalResume(request('POST', {})), e => e.status === 403);
+  await assert.rejects(guard.operationalStatus(request('GET')), e => e.status === 403);
+  const adminWithoutGarden = createHandlers({ container: () => h.store,
+    authenticate: async () => ({ userId: teamId, roles: ['Bloomstep.Admin'], scopes: [] }), clock: () => new Date(now) });
+  await assert.rejects(adminWithoutGarden.operationalStatus(request('GET')), e => e.status === 403);
+  const current = h.read('budget', '__preview_budget').operationalPause;
+  assert.deepEqual((await h.operationalStatus(request('GET'))).jsonBody,
+    { paused: true, requestId: current.requestId, reason: current.reason, pausedAt: current.pausedAt });
+  assert.equal(current.requestId, data.requestId);
   await assert.rejects(h.operationalResume(request('POST', { requestId: randomUUID(), reviewedPauseRequestId: data.requestId })), e => e.status === 400);
   const review = { requestId: randomUUID(), reviewedPauseRequestId: data.requestId, confirmation: 'reviewed-free-tier-and-spending-limit' };
   assert.equal((await h.operationalResume(request('POST', review))).jsonBody.paused, false);
   assert.equal((await h.operationalResume(request('POST', review))).jsonBody.paused, false);
+  assert.deepEqual((await h.operationalStatus(request('GET'))).jsonBody, { paused: false });
   await h.metrics(request('GET'));
   const newPause = { requestId: randomUUID(), reason: 'positive_cost' };
   await guard.operationalPause(request('POST', newPause));

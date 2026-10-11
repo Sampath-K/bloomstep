@@ -1,6 +1,7 @@
 import { loadOperatorAuth, operatorRequest } from './operator-auth.mjs';
 import { reminderPreferencePanels } from './reminder-panels.mjs';
 import { websitePanels } from './website-panels.mjs';
+import { parsePauseStatus, pauseSummary, resumePayload } from './operational-review.mjs';
 const groups = [
   ['activationRetention', 'Activation / returning activity', [
     ['signins', 'Sign-ins'], ['recipesCreated', 'Recipes created'],
@@ -464,10 +465,43 @@ function initialize() {
     } catch (error) { webStatus.textContent = error.message; }
   });
 
+  let pauseStatus = null;
+  let resumeAttempt;
+  const pauseOutput = element('pause-admin-status');
+  function showPause(value) {
+    pauseStatus = value;
+    element('pause-confirm').value = '';
+    element('pause-confirm').disabled = !value?.paused;
+    element('resume-operations').disabled = !value?.paused;
+    pauseOutput.textContent = value ? pauseSummary(value) : '';
+  }
+  element('pause-status').addEventListener('click', async () => {
+    showPause(null); pauseOutput.textContent = 'Loading current pause status...';
+    try { showPause(parsePauseStatus(await request('/api/team/operational-status'))); }
+    catch (error) { pauseOutput.textContent = error.message; }
+  });
+  element('resume-operations').addEventListener('click', async () => {
+    const button = element('resume-operations');
+    button.disabled = true;
+    try {
+      const payload = resumePayload(pauseStatus, element('pause-confirm').value);
+      if (resumeAttempt?.reviewedPauseRequestId === payload.reviewedPauseRequestId) payload.requestId = resumeAttempt.requestId;
+      resumeAttempt = payload;
+      const result = await request('/api/team/operational-resume', payload);
+      if (result?.paused !== false) throw new Error('Resume was not confirmed.');
+      showPause(parsePauseStatus(await request('/api/team/operational-status')));
+      pauseOutput.textContent = 'Resumed after spending review. ' + pauseOutput.textContent;
+    } catch (error) {
+      pauseOutput.textContent = `${error.message} If the pause changed (HTTP 409), reload the status and review the new pause.`;
+      button.disabled = !pauseStatus?.paused;
+    }
+  });
+
   function clear() {
     for (const controller of pending) controller.abort();
     ++sessionGeneration;
     const cleared = auth?.clear();
+    showPause(null);
     panel.replaceChildren(); element('measurement').replaceChildren();
     element('website-funnel').replaceChildren(); element('website-admin-status').textContent = '';
     element('daily-counts').textContent = ''; status.textContent = '';
