@@ -84,6 +84,60 @@ jobs:
           npm --prefix site ci
           node --test site/test/*.test.mjs
           npm --prefix site run build
+      - name: Verify isolated AARRR HTTP persistence and rendered report
+        working-directory: .
+        env:
+          CHROME_PATH: /usr/bin/google-chrome
+          EVIDENCE_DIR: ${{ runner.temp }}/aarrr-dashboard
+        run: node site/verify-aarrr.mjs
+      - name: Preserve isolated AARRR screenshots and source receipts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: aarrr-dashboard-isolated-NOT-CUSTOMER-ACCEPTANCE
+          path: ${{ runner.temp }}/aarrr-dashboard/
+          if-no-files-found: warn
+  funnel-composed-acceptance:
+    name: 'funnel composed acceptance: telemetry + AARRR + experiment loop (isolated synthetic; installer excluded)'
+    if: github.event_name != 'workflow_dispatch' || (!inputs.verify_aggregates && !inputs.verify_spend_guard && !inputs.verify_edge_warning)
+    runs-on: windows-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          flutter-version: '3.47.6'
+          architecture: x64
+          cache: true
+      - run: npm ci --prefix api --ignore-scripts
+      - run: npm ci --prefix site
+      - run: flutter pub get
+      - name: Run telemetry, AARRR and experiment-loop suites in one bounded command
+        shell: pwsh
+        run: node tool/funnel_acceptance.mjs --out (Join-Path $env:RUNNER_TEMP 'funnel-composed')
+      - name: Preserve composed receipts and screenshots
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: funnel-composed-isolated-NOT-CUSTOMER-ACCEPTANCE
+          path: ${{ runner.temp }}/funnel-composed/
+          if-no-files-found: warn
+      - name: Verify read-only loopback console preview and real load buttons
+        shell: pwsh
+        run: |
+          $env:PREVIEW_EVIDENCE_DIR = Join-Path $env:RUNNER_TEMP 'console-preview'
+          node --test tool/console_preview.test.mjs
+      - name: Preserve local synthetic console preview screenshots
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: console-preview-isolated-NOT-CUSTOMERS
+          path: ${{ runner.temp }}/console-preview/
+          if-no-files-found: warn
   installer-launch-evidence:
     name: 'launch-after-install: UNVERIFIED (preview gap, owner manual trial pending)'
     if: github.event_name != 'workflow_dispatch' || (!inputs.verify_aggregates && !inputs.verify_spend_guard && !inputs.verify_edge_warning)

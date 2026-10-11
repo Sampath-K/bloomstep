@@ -7,6 +7,7 @@ import { fileURLToPath } from 'node:url';
 import { execFileSync } from 'node:child_process';
 import puppeteer from 'puppeteer-core';
 import { createLocalTestServer } from '../api/test/support/local_api_server.mjs';
+import { telemetryWindowStart } from './telemetry-window.mjs';
 
 const root = fileURLToPath(new URL('../', import.meta.url));
 if (!process.env.EVIDENCE_DIR) throw Error('Set EVIDENCE_DIR to an owned artifact directory to retain evidence.');
@@ -26,7 +27,8 @@ for (const candidate of candidates.filter(Boolean)) {
 }
 if (!executablePath) throw Error('CHROME_PATH must identify an installed trusted browser.');
 const temporary = await mkdtemp(join(tmpdir(), 'bloomstep-it-telemetry-'));
-let now = Date.now();
+// The 50 simulated 61s steps plus later checks must not straddle the one-day readback window.
+let now = telemetryWindowStart(Date.now(), 2 * 60 * 60 * 1000);
 const collectorErrors = [];
 const onError = error => collectorErrors.push({ code: error.code, syscall: error.syscall });
 const databasePath = join(temporary, 'website.json'), key = randomBytes(32);
@@ -196,7 +198,7 @@ try {
   const sourceHashes = {};
   const apiModules = (await readdir(join(root, 'api', 'src'))).filter(name => name.endsWith('.mjs')).map(name => `api/src/${name}`);
   for (const path of ['site/customer.mjs', 'site/measurement.mjs', 'site/invitation-landing.mjs',
-    'site/assets/customer.js', 'site/index.html', 'site/verify-telemetry.mjs',
+    'site/assets/customer.js', 'site/index.html', 'site/verify-telemetry.mjs', 'site/telemetry-window.mjs',
     ...apiModules, 'api/test/support/local_api_server.mjs',
     'api/test/support/file_backed_cosmos.mjs']) sourceHashes[path] = hash(await readFile(join(root, path)));
   await writeFile(join(output, 'computed-reports.json'), JSON.stringify(reports, null, 2), { flag: 'wx' });

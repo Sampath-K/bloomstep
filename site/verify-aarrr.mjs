@@ -1,0 +1,142 @@
+import puppeteer from 'puppeteer-core';
+import assert from 'node:assert/strict';
+import { createHash } from 'node:crypto';
+import { mkdir, readFile, readdir, writeFile } from 'node:fs/promises';
+import { join } from 'node:path';
+import { execFileSync } from 'node:child_process';
+import { fileURLToPath } from 'node:url';
+import { createAarrrFixture } from '../api/test/support/aarrr-fixture.mjs';
+
+const output = process.env.EVIDENCE_DIR;
+if (!output) throw Error('EVIDENCE_DIR required for source-bound isolated screenshot receipts.');
+await mkdir(output, { recursive: true });
+const fixture = await createAarrrFixture();
+let browser;
+const checks = [];
+try {
+  assert.equal((await fetch(fixture.url + '/healthz')).status, 200);
+  browser = await puppeteer.launch({ executablePath: process.env.CHROME_PATH ??
+    'C:\\Program Files (x86)\\Microsoft\\Edge\\Application\\msedge.exe', headless: true,
+    args: process.platform === 'linux' ? ['--no-sandbox'] : [] });
+  const page = await browser.newPage();
+  const errors = [];
+  page.on('pageerror', error => errors.push(error.message));
+  await page.setViewport({ width: 1440, height: 1050, deviceScaleFactor: 1 });
+  await page.goto(fixture.url + '/console.html', { waitUntil: 'networkidle0' });
+  assert.equal(await page.evaluate(() => document.documentElement.dataset.theme), 'dark');
+  assert.match(await page.$eval('#aarrr-report', node => node.textContent), /No private measurements loaded/);
+  const load = async () => page.evaluate(async token => {
+    const { loadAarrr } = await import('/aarrr-panels.mjs');
+    const request = async path => {
+      const response = await fetch(path, { headers: { 'X-Bloomstep-Authorization': `Bearer ${token}` } });
+      if (!response.ok) throw Error(`Fixture pipeline ${response.status}`);
+      return response.json();
+    };
+    const data = await loadAarrr(document.getElementById('aarrr-report'), request, 14, { fixture: true });
+    return data.dashboards.aarrr;
+  }, fixture.adminToken);
+  await load();
+  assert.match(await page.$eval('#aarrr-report', node => node.textContent), /Unknown \/ absent observations/);
+  await page.screenshot({ path: join(output, 'aarrr-empty.png'), fullPage: true });
+  checks.push('Real authenticated HTTP empty report renders unknown, unsupported revenue; private dark default');
+  await fixture.seed({ receipt: true });
+  assert.equal((await fixture.request('/api/sync', fixture.subjects[0].token, 'POST', fixture.subjects[0].payload)).status, 200);
+  await fixture.restartStore();
+  const report = await load();
+  assert.deepEqual(report.funnel.stages.map(stage => stage.accounts), [150, 100, 50]);
+  assert.equal(report.funnel.transitions[1].rate, 0.5);
+  const values = await page.$$eval('.aarrr-stage strong', nodes => nodes.map(node => node.textContent));
+  assert.deepEqual(values, ['150', '100', '50']);
+  assert.equal(await page.$eval('.aarrr-kpi:nth-child(2) .aarrr-value', node => node.textContent), '50.0%');
+  assert.equal(await page.$eval('.aarrr-kpi:nth-child(3) .aarrr-value', node => node.textContent), '100.0%');
+  assert.match(await page.$eval('#aarrr-report', node => node.textContent), /ISOLATED SYNTHETIC FIXTURE/);
+  await page.screenshot({ path: join(output, 'aarrr-desktop.png'), fullPage: true });
+  const summary = await page.$('.aarrr-detail summary');
+  await summary.focus(); await page.keyboard.press('Space');
+  assert.equal(await page.$eval('.aarrr-detail', node => node.open), true);
+  assert.match(await page.$eval('.aarrr-detail', node => node.textContent), /50.0% \(50 \/ 100 accounts\)/);
+  assert.match(await page.$eval('.aarrr-detail', node => node.textContent), /never abandonment/);
+  await page.screenshot({ path: join(output, 'aarrr-drilldown.png'), fullPage: true });
+  checks.push('Real HTTP sync + exact retry + disk restart -> report 150/100/50 -> rendered 50.0% activation, 100.0% D7; keyboard Space opens definition/denominators');
+  const touch = { source: 'search', referrerDomain: 'google.com', campaignSource: 'newsletter',
+    campaignMedium: 'email', campaignName: 'launch' };
+  await fixture.seedWebsite({ firstTouch: touch, lastTouch: touch });
+  await fixture.restartStore();
+  const web = await page.evaluate(async token => {
+    const { loadWebsite } = await import('/website-panels.mjs');
+    return loadWebsite(document.getElementById('website-funnel'), async path => {
+      const response = await fetch(path, { headers: { 'X-Bloomstep-Authorization': `Bearer ${token}` } });
+      if (!response.ok) throw Error(`Fixture website pipeline ${response.status}`);
+      return response.json();
+    }, 30, { fixture: true });
+  }, fixture.adminToken);
+  assert.equal(web.acquisition.firstTouch.landing_view.source.search, 50);
+  assert.equal(web.acquisition.lastTouch.download_click.campaignName.launch, 50);
+  assert.deepEqual(web.linked.activation.stages, { website_receipt_download: 150, recipe_created: 100, first_completion: 50 });
+  assert.match(await page.$eval('#website-funnel', node => node.textContent), /50.0% \(50 \/ 100 observed accounts\)/);
+  assert.match(await page.$eval('#website-funnel', node => node.textContent), /100.0% \(50 \/ 50 events\)/);
+  assert.match(await page.$eval('#website-funnel', node => node.textContent), /ISOLATED SYNTHETIC FIXTURE/);
+  assert.match(await page.$eval('#website-funnel', node => node.textContent), /Freshness \/ capture completeness is unknown/);
+  const attribution = await page.$('#website-funnel details summary');
+  await attribution.focus(); await page.keyboard.press('Space');
+  assert.equal(await page.$eval('#website-funnel details', node => node.open), true);
+  assert.match(await page.$eval('#website-funnel details', node => node.textContent), /Landing views · source · search: 50 events/);
+  assert.deepEqual((await load()).funnel.stages.map(stage => stage.accounts), [150, 100, 50]);
+  await page.screenshot({ path: join(output, 'aarrr-acquisition.png'), fullPage: true });
+  checks.push('Composed real collector150attributed events -> persisted disk -> shared website loader/render: source/referrer/campaign50-event margins; account denominators remain150/100/50; keyboard first-touch drilldown');
+  for (const width of [390, 320]) {
+    await page.setViewport({ width, height: 900, deviceScaleFactor: 1 });
+    assert.equal(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), true, `No ${width}px overflow`);
+    await page.screenshot({ path: join(output, `aarrr-mobile-${width}.png`), fullPage: true });
+  }
+  await page.setViewport({ width: 1280, height: 900, deviceScaleFactor: 1 });
+  await page.goto(fixture.url + '/console.html?scoutTheme=light', { waitUntil: 'networkidle0' });
+  await load();
+  assert.equal(await page.evaluate(() => document.documentElement.dataset.theme), 'light');
+  await page.screenshot({ path: join(output, 'aarrr-light.png'), fullPage: true });
+  checks.push('390/320px no horizontal overflow; explicit light theme preserved');
+  fixture.failPipeline(true);
+  assert.equal((await fixture.request('/api/team/metrics?days=14')).status, 503);
+  await assert.rejects(load(), /Fixture pipeline 503/);
+  assert.equal(await page.$eval('#aarrr-report', node => node.children.length), 0);
+  checks.push('Shared production loader consumes real authenticated HTTP 503 and clears stale report before rethrow; no zero fallback');
+  fixture.failPipeline(false);
+  await load();
+  // Exercise the production console's actual failure/clear path without bypassing operator auth.
+  await page.click('#metrics');
+  await page.waitForFunction(() => document.getElementById('admin-status').textContent.includes('Measurement unavailable'));
+  assert.equal(await page.$eval('#aarrr-report', node => node.children.length), 0);
+  assert.match(await page.$eval('#admin-status', node => node.textContent), /No prior or substitute counts/);
+  await page.screenshot({ path: join(output, 'aarrr-error.png'), fullPage: true });
+  checks.push('Actual production Load button without configured operator identity clears old fixture report and labels failure (no auth bypass)');
+  assert.deepEqual(errors, []);
+  const sources = {};
+  const root = fileURLToPath(new URL('../', import.meta.url));
+  for (const path of ['api/src/aarrr.mjs', 'api/src/backend.mjs', 'site/aarrr-panels.mjs',
+    'site/console.mjs', 'site/console.html', 'site/console.css', 'api/test/support/aarrr-fixture.mjs',
+    'api/src/website-funnel.mjs', 'api/src/website-attribution.mjs', 'site/website-panels.mjs', 'site/acquisition-panels.mjs',
+    'api/test/aarrr.test.mjs', 'api/test/aarrr-http.test.mjs', 'api/test/aarrr-acquisition-http.test.mjs',
+    'site/test/aarrr.test.mjs', 'site/test/acquisition-panels.test.mjs', 'site/verify-aarrr.mjs']) {
+    sources[path] = createHash('sha256').update(await readFile(new URL(`../${path}`, import.meta.url))).digest('hex');
+  }
+  for (const directory of ['api/src', 'site']) {
+    for (const name of await readdir(new URL(`../${directory}/`, import.meta.url))) {
+      if (name.endsWith('.mjs')) {
+        const path = `${directory}/${name}`;
+        sources[path] = createHash('sha256').update(await readFile(new URL(`../${path}`, import.meta.url))).digest('hex');
+      }
+    }
+  }
+  const sourceRevision = execFileSync('git', ['rev-parse', 'HEAD'], { cwd: root, encoding: 'utf8' }).trim();
+  const sourceDirty = execFileSync('git', ['status', '--porcelain'], { cwd: root, encoding: 'utf8' }).trim().length > 0;
+  await writeFile(join(output, 'aarrr-receipt.json'), JSON.stringify({
+    schemaVersion: 1, isolatedSynthetic: true, generatedAt: new Date().toISOString(), sourceRevision, sourceDirty, sources, checks,
+    oracle: { stages: [150, 100, 50], activationRate: 0.5, d7Rate: 1, revenue: null },
+    limitations: ['No native installation or live customers exercised', 'Operator authentication is not bypassed; populated preview uses production renderer with isolated authenticated handler response',
+      'No production synthetic data written; disposable local disk removed after run', 'Acquisition foundation acceptance is a separate composed check'],
+  }, null, 2));
+  console.log('AARRR HTTP/disk/render acceptance passed; isolated screenshots and source receipt written.');
+} finally {
+  await browser?.close();
+  await fixture.close();
+}
