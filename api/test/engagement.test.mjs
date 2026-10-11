@@ -2,6 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { randomUUID } from 'node:crypto';
 import { createHash } from 'node:crypto';
+import { readFileSync } from 'node:fs';
 import { createHandlers, ServiceError } from '../src/backend.mjs';
 import { aggregateEvents, previewLimits } from '../src/engagement.mjs';
 import { newerSetting } from '../src/contracts.mjs';
@@ -245,7 +246,11 @@ test('private support metrics use bounded server-only metadata, share raw scan c
   const projection = queryLog.find(sql => sql.includes('AS kind'));
   assert.ok(projection);
   assert.doesNotMatch(projection, /c\.record\.body|c\.record\.replies\s*,|SELECT.*\*/);
-  assert.match(projection, /IIF\(IS_ARRAY\(STRINGTOARRAY\(c\.record\.replies\)\) AND NOT EXISTS\(SELECT VALUE r FROM r IN STRINGTOARRAY\(c\.record\.replies\) WHERE NOT IS_STRING\(r\) OR LENGTH\(r\) > 2100\), ARRAY_LENGTH\(STRINGTOARRAY\(c\.record\.replies\)\) > 0, null\) AS hasResponses/);
+  // Cosmos rejects subqueries iterating a function result (`r IN STRINGTOARRAY(...)`) with HTTP 400 -> metrics 500.
+  // Verified against the live engine: parse once via a subquery JOIN, then iterate the alias.
+  assert.doesNotMatch(projection, /\bIN\s+[A-Z_]+\s*\(/i);
+  assert.match(projection, /JOIN \(SELECT VALUE \{ a: STRINGTOARRAY\(c\.record\.replies\) \}\) w WHERE c\.type = "voice"/);
+  assert.match(projection, /IIF\(IS_ARRAY\(w\.a\) AND NOT EXISTS\(SELECT VALUE r FROM r IN w\.a WHERE NOT IS_STRING\(r\) OR LENGTH\(r\) > 2100\), ARRAY_LENGTH\(w\.a\) > 0, null\) AS hasResponses/);
   for (let i = 0; i < 2; i++) {
     const event = { id: randomUUID(), name: 'session_started', ts: '2026-08-30T12:00:00.000Z' };
     h.put({ id: `events:${event.id}`, userId, type: 'events', record: event, ttl: 3600 });
@@ -1573,4 +1578,19 @@ test('alternate authenticator is invoked only for the internal aggregate route',
   assert.equal(alternateCalls, 0);
   await handlers.aggregates(request('POST', {}));
   assert.equal(alternateCalls, 1);
+});
+
+test('no Cosmos SQL subquery iterates a function result (engine rejects it with 400, surfacing as 500)', () => {
+  for (const file of ['backend.mjs', 'website-funnel.mjs', 'invitations.mjs', 'support.mjs']) {
+    const source = readFileSync(new URL(`../src/${file}`, import.meta.url), 'utf8');
+    assert.doesNotMatch(source, /FROM\s+\w+\s+IN\s+[A-Z_]+\s*\(/i, file);
+  }
+});
+
+test('empty production-shaped dataset returns 200 metrics with suppressed/unavailable counts, not 500', async () => {
+  const h = harness();
+  const data = (await h.metrics(request('GET', null, { days: '7' }))).jsonBody;
+  assert.equal(data.supportMetrics.source, 'server_voice_receipts');
+  assert.ok(data.dailySnapshots.days.every(day => day.status === 'unavailable'));
+  assert.ok(Array.isArray(data.limitations));
 });
