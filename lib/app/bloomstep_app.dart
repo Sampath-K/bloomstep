@@ -1,16 +1,21 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:path/path.dart' as p;
 import 'package:path_provider/path_provider.dart';
 
 import '../core/garden_store.dart';
 import '../features/garden/garden_screen.dart';
+import '../features/garden/profile_section.dart';
+import '../services/auth_observations.dart';
 import '../services/identity.dart';
+import '../services/installer_measurement.dart';
 import '../services/invitation_intent.dart';
 import '../services/session_diagnostics.dart';
-import '../services/auth_observations.dart';
-import '../services/installer_measurement.dart';
-import 'theme.dart';
 import 'session_boundary.dart';
+import 'theme.dart';
+
+const _testBuild = bool.fromEnvironment('BLOOMSTEP_TEST_BUILD');
 
 class BloomstepApp extends StatelessWidget {
   const BloomstepApp({
@@ -28,7 +33,7 @@ class BloomstepApp extends StatelessWidget {
     debugShowCheckedModeBanner: false,
     theme: BloomstepTheme.light(),
     darkTheme: BloomstepTheme.dark(),
-    home: SignInScreen(
+    home: HabitHome(
       invitationInbox: invitationInbox,
       measurement: measurement,
       measurementWarning: measurementWarning,
@@ -36,239 +41,296 @@ class BloomstepApp extends StatelessWidget {
   );
 }
 
-class SignInScreen extends StatefulWidget {
-  const SignInScreen({
+class HabitHome extends StatefulWidget {
+  const HabitHome({
     super.key,
     this.invitationInbox,
     this.measurement,
     this.measurementWarning,
+    this.testIdentity,
+    this.testOpenStore,
   });
+  static const guestAccount = 'device-guest';
   final InvitationInbox? invitationInbox;
   final InstallerMeasurement? measurement;
   final String? measurementWarning;
+  final IdentityService? testIdentity;
+  final Future<GardenStore> Function(String account)? testOpenStore;
   @override
-  State<SignInScreen> createState() => _SignInScreenState();
+  State<HabitHome> createState() => _HabitHomeState();
 }
 
-class _SignInScreenState extends State<SignInScreen> {
-  final identity = IdentityService();
+class _HabitHomeState extends State<HabitHome> {
+  IdentityService identity = IdentityService();
+  GardenStore? store;
+  SessionDiagnostics? diagnostics;
+  AuthObservations? observations;
   bool busy = true;
+  bool accountGarden = false;
+  bool autoInviteFirstHabit = false;
+  bool pendingAuthCleanup = false;
+  Future<void>? returningToGuest;
   String? error;
+  String? notice;
+
   @override
   void initState() {
     super.initState();
+    if (!_testBuild &&
+        (widget.testIdentity != null || widget.testOpenStore != null)) {
+      throw StateError(
+        'Profile test adapters are unavailable in release builds.',
+      );
+    }
+    identity = widget.testIdentity ?? IdentityService();
     _restore();
-    WidgetsBinding.instance.addPostFrameCallback((_) async {
-      if (!mounted || ModalRoute.of(context)?.isCurrent != true) return;
-      try {
-        await widget.measurement?.observe('signin_view');
-      } catch (_) {
-        if (mounted) {
-          setState(
-            () => error = 'Optional local sign-in-view observation failed. No server data was sent; sign-in still works. Clear the installer receipt below to stop observation.',
-          );
-        }
-      }
-    });
+  }
+
+  Future<GardenStore> _open(String account) async {
+    if (widget.testOpenStore != null) return widget.testOpenStore!(account);
+    final directory = await getApplicationSupportDirectory();
+    return GardenStore.open(p.join(directory.path, '$account.sqlite'), account);
+  }
+
+  void _writeError(String message) {
+    debugPrint(message);
+    if (mounted) setState(() => error = message);
+  }
+
+  Future<void> _observeProfile() async {
+    try {
+      await widget.measurement?.observe('signin_view');
+    } catch (_) {
+      _writeError(
+        'Optional local sign-in-view observation failed. No server data was sent; planting and sign-in still work. Clear the installer receipt in profile Settings to stop observation.',
+      );
+    }
   }
 
   Future<void> _restore() async {
     try {
-      if (await identity.restore()) await _enter();
+      final restored = await identity.restore();
+      await _showGarden(authenticated: restored);
     } catch (e) {
-      if (mounted) setState(() => error = 'Session could not be restored: $e');
+      error =
+          'Session could not be restored: $e. Your saved garden was not deleted.';
+      try {
+        await _showGarden(authenticated: false);
+      } catch (storageError) {
+        error = '$error\nYour device garden could not be opened: $storageError';
+      }
     } finally {
       if (mounted) setState(() => busy = false);
     }
   }
 
-  Future<void> _enter({bool authenticatedNow = false}) async {
-    if (!identity.hasValidSession) {
+  Future<void> _showGarden({
+    required bool authenticated,
+    bool authenticatedNow = false,
+  }) async {
+    if (authenticated && !identity.hasValidSession) {
       throw StateError('Your offline session has ended. Sign in again.');
     }
-    final directory = await getApplicationSupportDirectory();
-    final store = await GardenStore.open(
-      p.join(directory.path, '${identity.account!}.sqlite'),
-      identity.account!,
+    final next = await _open(
+      authenticated ? identity.account! : HabitHome.guestAccount,
     );
+    SessionDiagnostics? nextDiagnostics;
+    AuthObservations? nextObservations;
+    var inviteFirstHabit = false;
+    try {
+      if (authenticated) {
+        nextDiagnostics = SessionDiagnostics(next, onWriteError: _writeError);
+        nextObservations = AuthObservations(next, onWriteError: _writeError);
+        await nextObservations.run(AuthStage.sessionEntry, () async {
+          await nextDiagnostics!.start(authenticatedNow: authenticatedNow);
+        });
+      } else {
+        await next.setSetting('analytics', 'false');
+        inviteFirstHabit = await next.claimFirstHabitInvitation();
+      }
+    } catch (_) {
+      nextObservations?.close();
+      await nextDiagnostics?.close();
+      await next.close();
+      rethrow;
+    }
     if (!mounted) {
-      await store.close();
+      nextObservations?.close();
+      await nextDiagnostics?.close();
+      await next.close();
       return;
     }
-    final diagnostics = SessionDiagnostics(
-      store,
-      onWriteError: (message) {
-        if (mounted) {
-          setState(() => error = message);
-          ScaffoldMessenger.of(context)
-              .showSnackBar(SnackBar(content: Text(message)));
-        }
-        debugPrint(message);
-      },
-    );
-    final observations = AuthObservations(
-      store,
-      onWriteError: (message) {
-        if (mounted) {
-          ScaffoldMessenger.of(context)
-              .showSnackBar(SnackBar(content: Text(message)));
-        }
-        debugPrint(message);
-      },
-    );
-    identity.observations = observations;
-    try {
-      await observations.run(AuthStage.sessionEntry, () async {
-        await diagnostics.start(authenticatedNow: authenticatedNow);
-        diagnostics.attach();
-      });
-      if (!mounted) return;
-      await Navigator.of(context).push(
-        MaterialPageRoute<void>(
-          builder: (_) => SessionBoundary(
-            expiresAt: identity.sessionExpiresAt!,
-            isValid: () => identity.hasValidSession,
-            onExpired: _expire,
-            onCheckpoint: identity.checkpoint,
-            child: GardenScreen(
-              store: store,
-              identity: identity,
-              invitationInbox: widget.invitationInbox,
-              diagnostics: diagnostics,
-              installerMeasurement: widget.measurement,
-            ),
-          ),
-        ),
-      );
-    } finally {
-      observations.close();
-      if (identical(identity.observations, observations)) {
-        identity.observations = null;
-      }
-      await diagnostics.close();
-      await store.close();
-    }
-  }
-
-  Future<void> _expire(String? reason) async {
-    String message =
-        'Your offline session ended. Sign in again; your saved garden was not deleted.';
-    try {
-      await identity.signOut();
-    } catch (error) {
-      message =
-          'Your session ended, but saved authentication could not be cleared: $error';
-    }
-    if (reason != null) message = '$message\n\n$reason';
-    if (!mounted) return;
-    setState(() => error = message);
+    final previous = store;
+    final previousDiagnostics = diagnostics;
+    final previousObservations = observations;
+    // Dismiss guest dialogs before changing ownership; a draft cannot save into
+    // a different account after a browser callback returns.
     Navigator.of(context).popUntil((route) => route.isFirst);
+    setState(() {
+      store = next;
+      accountGarden = authenticated;
+      autoInviteFirstHabit = inviteFirstHabit;
+      diagnostics = nextDiagnostics;
+      observations = nextObservations;
+      identity.observations = nextObservations;
+    });
+    nextDiagnostics?.attach();
+    await WidgetsBinding.instance.endOfFrame;
+    previousObservations?.close();
+    await previousDiagnostics?.close();
+    await previous?.close();
   }
 
   Future<void> _signIn() async {
+    if (busy) return;
     setState(() {
       busy = true;
       error = null;
     });
     try {
       await identity.signIn();
-      await _enter(authenticatedNow: true);
+      pendingAuthCleanup = false;
+      final count = (await store!.habits()).length;
+      await _showGarden(authenticated: true, authenticatedNow: true);
+      notice = count == 0
+          ? null
+          : 'Your $count device ${count == 1 ? 'habit is' : 'habits are'} kept separate. Nothing was transferred to your account.';
     } catch (e) {
-      if (mounted) {
-        final message = e is AuthFailure
-            ? e.message
-            : 'Your garden could not be opened. Your saved garden was not deleted. '
-                  'Check local storage access and try again.';
-        setState(() => error = 'Bloomstep sign-in did not complete: $message');
+      error = e is AuthFailure
+          ? 'Sign-in did not complete: ${e.message} Your device garden is unchanged.'
+          : 'Your account garden could not be opened: $e. Your device garden is unchanged.';
+      if (!accountGarden) {
+        try {
+          await identity.signOut();
+        } catch (cleanupError) {
+          pendingAuthCleanup = true;
+          error =
+              '$error Saved authentication could not be cleared: $cleanupError';
+        }
       }
     } finally {
       if (mounted) setState(() => busy = false);
     }
   }
 
+  Future<void> _signedOut(String? warning, {bool authCleanupFailed = false}) {
+    return returningToGuest ??= _returnToGuest(
+      warning,
+      authCleanupFailed: authCleanupFailed,
+    ).whenComplete(() => returningToGuest = null);
+  }
+
+  Future<void> _returnToGuest(
+    String? warning, {
+    required bool authCleanupFailed,
+  }) async {
+    notice = null;
+    error = warning;
+    pendingAuthCleanup = authCleanupFailed;
+    if (mounted) setState(() => busy = true);
+    try {
+      await _showGarden(authenticated: false);
+    } finally {
+      if (mounted) setState(() => busy = false);
+    }
+  }
+
+  Future<void> _clearSavedSignIn() async {
+    if (busy) return;
+    setState(() => busy = true);
+    try {
+      await identity.signOut();
+      pendingAuthCleanup = false;
+      error = 'Saved sign-in cleared. Your device garden is unchanged.';
+    } catch (e) {
+      error =
+          'Saved sign-in could not be cleared: $e. Do not share this OS account until cleanup succeeds.';
+    } finally {
+      if (mounted) setState(() => busy = false);
+    }
+  }
+
+  Future<void> _expire(String? reason) async {
+    var cleanupFailed = false;
+    var message =
+        'Your offline session ended. Sign in again; your saved account garden was not deleted.';
+    try {
+      await identity.signOut();
+    } catch (e) {
+      cleanupFailed = true;
+      message = '$message Saved authentication could not be cleared: $e';
+    }
+    if (reason != null) message = '$message\n$reason';
+    await _signedOut(message, authCleanupFailed: cleanupFailed);
+  }
+
   @override
-  Widget build(BuildContext context) => Scaffold(
-    body: Center(
-      child: ConstrainedBox(
-        constraints: const BoxConstraints(maxWidth: 560),
-        child: SingleChildScrollView(
-          padding: const EdgeInsets.all(32),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              Icon(
-                Icons.local_florist_outlined,
-                size: 88,
-                color: Theme.of(context).colorScheme.primary,
-              ),
-              const SizedBox(height: 24),
-              Text(
-                'Bloomstep',
-                textAlign: TextAlign.center,
-                style: Theme.of(context).textTheme.displaySmall,
-              ),
-              const SizedBox(height: 12),
-              const Text(
-                'One tiny step. A garden that grows with you.',
-                textAlign: TextAlign.center,
-              ),
-              const SizedBox(height: 32),
-              const Text(
-                'Your garden is private. Sign in to plant, celebrate and keep it safe across devices.',
-              ),
-              const SizedBox(height: 16),
-              if (!identity.configured)
-                const Card(
-                  child: Padding(
-                    padding: EdgeInsets.all(20),
-                    child: Text(
-                      'Preview build - sign-in is not yet configured.\n\nThe personal identity tenant and cloud service must be provisioned before this app can be used. This is not the released MVP.',
-                    ),
-                  ),
-                ),
-              if (error != null) SelectableText(error!),
-              if (widget.measurementWarning != null)
-                SelectableText(widget.measurementWarning!),
-              if (widget.measurement != null)
-                TextButton(
-                  onPressed: () async {
-                    try {
-                      await widget.measurement!.clear();
-                      if (mounted) {
-                        setState(
-                          () => error = 'Installer receipt removed. No further local observations; nothing was sent.',
-                        );
-                      }
-                    } catch (_) {
-                      if (mounted) {
-                        setState(
-                          () => error = 'Installer receipt could not be removed. Clear the per-user Bloomstep measurement file manually; sign-in still works.',
-                        );
-                      }
-                    }
-                  },
-                  child: const Text(
-                    'Clear optional installer observation receipt',
-                  ),
-                ),
-              const SizedBox(height: 16),
-              FilledButton.icon(
-                onPressed: busy || !identity.configured ? null : _signIn,
-                icon: const Icon(Icons.login),
-                label: Text(
-                  busy ? 'Opening your garden...' : 'Sign in securely',
-                ),
-              ),
-              const SizedBox(height: 16),
-              const Text(
-                "Microsoft personal accounts, Google and email options depend on the configured identity provider. ciamlogin.com is Microsoft's sign-in service for Bloomstep. Your provider handles its password and account consent in the system browser; Bloomstep never collects your password.",
-                textAlign: TextAlign.center,
-              ),
-            ],
-          ),
+  void dispose() {
+    observations?.close();
+    identity.observations = null;
+    unawaited(_close());
+    super.dispose();
+  }
+
+  Future<void> _close() async {
+    try {
+      await diagnostics?.close();
+      await store?.close();
+    } catch (e) {
+      debugPrint('Garden cleanup failed: $e');
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final current = store;
+    if (current == null) {
+      return Scaffold(
+        body: Center(
+          child: error == null
+              ? const CircularProgressIndicator()
+              : SelectableText(error!),
         ),
+      );
+    }
+    final garden = GardenScreen(
+      key: ObjectKey(current),
+      store: current,
+      identity: accountGarden ? identity : null,
+      deviceGuest: !accountGarden,
+      autoInviteFirstHabit: autoInviteFirstHabit,
+      firstHabitInvitationReady: !busy,
+      testDisableServices: widget.testOpenStore != null,
+      invitationInbox: accountGarden ? widget.invitationInbox : null,
+      diagnostics: diagnostics,
+      installerMeasurement: widget.measurement,
+      onProfileShown: accountGarden || widget.measurement == null
+          ? null
+          : () => unawaited(_observeProfile()),
+      onSignedOut: (warning) =>
+          _signedOut(warning, authCleanupFailed: warning != null),
+      profileBuilder: (signOut, manage) => ProfileSection(
+        signedIn: accountGarden && identity.hasValidSession,
+        profile: accountGarden ? identity.profile : null,
+        configured: identity.configured,
+        busy: busy,
+        error: error ?? widget.measurementWarning,
+        notice: notice,
+        onSignIn: _signIn,
+        onSignOut: signOut,
+        onManage: manage,
+        onClearSavedSignIn: pendingAuthCleanup ? _clearSavedSignIn : null,
       ),
-    ),
-  );
+    );
+    return accountGarden
+        ? SessionBoundary(
+            key: ObjectKey(current),
+            expiresAt: identity.sessionExpiresAt ?? DateTime.now(),
+            isValid: () => identity.hasValidSession,
+            onExpired: _expire,
+            onCheckpoint: identity.checkpoint,
+            child: garden,
+          )
+        : garden;
+  }
 }

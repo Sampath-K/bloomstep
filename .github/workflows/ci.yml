@@ -260,7 +260,19 @@ jobs:
           Add-Content $env:GITHUB_PATH "$sdk\bin"
       - run: flutter pub get
       - run: flutter analyze
-      - run: flutter test --reporter expanded --concurrency 1 --timeout 60s --dart-define=BLOOMSTEP_TEST_BUILD=true
+      - name: Run app contracts and labeled synthetic profile screenshots
+        env:
+          BLOOMSTEP_SCREENSHOTS: ${{ runner.temp }}/bloomstep-profile-evidence
+        run: flutter test --reporter expanded --concurrency 1 --timeout 60s --dart-define=BLOOMSTEP_TEST_BUILD=true
+      - name: Preserve profile UI evidence (synthetic identity, not provider acceptance)
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: profile-ui-synthetic-evidence-${{ matrix.arch }}
+          path: |
+            ${{ runner.temp }}/bloomstep-profile-evidence/profile-*.png
+            ${{ runner.temp }}/bloomstep-profile-evidence/picker-*.png
+          if-no-files-found: error
       - name: Verify production-mode test-auth and adapter gates
         run: flutter test test/test_auth_release_contract_test.dart --reporter expanded --concurrency 1 --timeout 60s
       - uses: actions/setup-node@v4
@@ -336,7 +348,7 @@ jobs:
           name: bloomstep-v1-compiled-flutter-ui-${{ matrix.arch }}-SYNTHETIC
           path: ${{ runner.temp }}/bloomstep-v1-compiled-flutter-ui/
           if-no-files-found: error
-      - name: Build real sign-in-gated release
+      - name: Build real provider-backed release
         env:
           OIDC_ISSUER: ${{ vars.OIDC_ISSUER }}
           OIDC_CLIENT_ID: ${{ vars.OIDC_CLIENT_ID }}

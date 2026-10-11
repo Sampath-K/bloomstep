@@ -4,6 +4,13 @@
 cloud deployment and native background behavior require integration evidence.
 This ledger is updated with verified outcomes, not inferred from source code.
 
+**Isolated PR28 habit-first follow-up (not merged/released):** fresh empty device
+gardens invite first-habit creation once without a button click; returning/account
+gardens are untouched. Anchor, Action and Celebration accept visible custom text.
+Saved-habit confirmation previews seed-to-sprout growth with reduced-motion and
+save-failure contracts. Installer composition and exact-head native gates remain
+separate; this source change does not establish genuine provider/launch acceptance.
+
 **Frozen v1 merged and published for owner trial (PR21):** merge
 `45efbf2da0cb8363675321e5e257d5dd66391f04` is the immutable
 `v0.1.0-preview.10` source. Real
@@ -462,7 +469,9 @@ identified PIDs gracefully, never kill a process name.
 Developer Mode stays **off by user choice**. Use GitHub CI ARM64 builds, download
 artifacts and launch locally. A separate CI-only `tool/preview.dart` profile target
 is labeled synthetic, uses its own temporary SQLite store and never authenticates,
-syncs, or enters release installers. Normal `lib/main.dart` is always sign-in gated.
+syncs, or enters release installers. The habit-first profile branch replaces the
+normal sign-in gate with a separate device-only guest garden (no sync/analytics);
+account gardens still require a valid provider session. This is not fake login.
 The preview rejects release mode. Native captures use its Flutter repaint boundary,
 not desktop capture, so other applications and login screens cannot leak.
 
