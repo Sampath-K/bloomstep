@@ -26,7 +26,7 @@ test('no storage, no identifying payload, honour signals, dedup and do not block
   await observer.record('landing_view');
   await observer.record('download_click', 'arm64');
   assert.equal(requests.length, 2);
-  assert.deepEqual(Object.keys(requests[0]).sort(), ['architecture','channel','event','eventId','source','synthetic'].sort());
+  assert.deepEqual(Object.keys(requests[0]).sort(), ['architecture','channel','event','eventId','source','synthetic','observedAt'].sort());
   for (const signals of [{ dnt: '1' }, { gpc: true }]) {
     const blocked = createWebObserver({ ...signals, send: async () => assert.fail('Must not upload') });
     assert.equal(await blocked.record('landing_view'), false);
