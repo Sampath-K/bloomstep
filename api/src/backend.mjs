@@ -109,6 +109,14 @@ export function createHandlers({ container, authenticate, authenticateAggregate 
     catch (error) { if (conflict(error)) throw new ServiceError(409, 'Pause changed during review.'); throw error; }
     return { jsonBody: { paused: false } };
   }
+  /** @param {import('@azure/functions').HttpRequest} request */
+  async function operationalStatus(request) {
+    const actor = await gardenActor(request);
+    if (!isAdmin(actor.roles) || !actor.scopes?.includes('Garden.ReadWrite')) throw new ServiceError(403, 'Selected customer Admin and Garden scope required.');
+    const pause = (await container().item('budget', budgetPartition).read()).resource?.operationalPause;
+    if (pause?.paused !== true) return { jsonBody: { paused: false } };
+    return { jsonBody: { paused: true, requestId: pause.requestId, reason: pause.reason, pausedAt: pause.pausedAt } };
+  }
   /** @param {number} records @param {number} accounts @param {keyof typeof limits.adminActions | undefined} action */
   async function reserve(records = 0, accounts = 0, action = undefined) {
     const item = container().item('budget', budgetPartition);
@@ -700,7 +708,7 @@ export function createHandlers({ container, authenticate, authenticateAggregate 
     container, clock, active: assertActive, batch, reserve, gateBody, ServiceError,
     actor: invitationActor, body, rateLimit, readGarden,
   });
-  return { sync, deleteAccount, admin, metrics, aggregates, operationalPause, operationalResume,
+  return { sync, deleteAccount, admin, metrics, aggregates, operationalPause, operationalResume, operationalStatus,
     createInvitation: invitations.createInvitation, redeemInvitation: invitations.redeemInvitation,
     invitationStatus: invitations.invitationStatus };
 }

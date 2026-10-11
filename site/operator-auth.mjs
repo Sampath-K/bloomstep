@@ -45,7 +45,7 @@ export function createOperatorAuth(client, rawConfig, origin, initialized = fals
 }
 
 export async function operatorRequest(auth, origin, path, options = {}, fetcher = fetch) {
-  if(new URL(origin).protocol!=='https:' || !/^\/api\/team\/(?:metrics|feedback)(?:[/?]|$)/.test(path) || path.includes('\\')) throw Error('Invalid same-origin operator route.');
+  if(new URL(origin).protocol!=='https:' || !/^\/api\/team\/(?:metrics|feedback|website|operational-status|operational-resume)(?:[/?]|$)/.test(path) || path.includes('\\') || path.includes('..')) throw Error('Invalid same-origin operator route.');
   const token=await auth.token();
   const response=await fetcher(origin+path,{
     ...options,credentials:'same-origin',redirect:'error',cache:'no-store',

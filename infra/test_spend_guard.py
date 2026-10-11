@@ -72,7 +72,39 @@ class SpendGuardTests(unittest.TestCase):
         data["inventory"].append("Microsoft.AzureActiveDirectory/ciamDirectories")
         self.assertEqual(evaluate(data, None)["pauseReason"], "paid_sku")
 
-    def transport(self, cost=None, sku="Free", invalid_subject=False):
+    def test_additional_static_sites_allowed_only_when_each_verified_free_and_bounded(self):
+        def with_extras(*skus):
+            data = self.fixture()
+            data["inventory"] += ["Microsoft.Web/staticSites"] * len(skus)
+            data["additionalStaticSites"] = [{"name": f"extra{i}", "sku": sku} for i, sku in enumerate(skus)]
+            return data
+        self.assertIsNone(evaluate(with_extras({"name": "Free"}), None)["pauseReason"])
+        self.assertEqual(evaluate(with_extras({"name": "Free"}), 0)["status"], "verified_zero_cost_current_query")
+        self.assertIsNone(evaluate(with_extras(*[{"name": "Free"}] * 3), None)["pauseReason"])
+        for skus in [[{"name": "Standard"}], [{"name": "Dedicated"}], [{}], [None], [{"name": "free"}],
+                     [{"name": "Free"}, {"name": "Standard"}], [{"name": "Free"}] * 4]:
+            self.assertEqual(evaluate(with_extras(*skus), None)["pauseReason"], "paid_sku", skus)
+        data = with_extras({"name": "Free"})
+        data["additionalStaticSites"].append({"name": "unlisted", "sku": {"name": "Free"}})
+        self.assertEqual(evaluate(data, None)["pauseReason"], "paid_sku")
+        data = with_extras({"name": "Free"})
+        data["additionalStaticSites"] = []
+        self.assertEqual(evaluate(data, None)["pauseReason"], "paid_sku")
+        data = with_extras({"name": "Free"})
+        data["additionalStaticSites"] = "Free"
+        self.assertEqual(evaluate(data, None)["pauseReason"], "paid_sku")
+        data = with_extras({"name": "Free"})
+        data["inventory"].append("Microsoft.Web/sites")
+        self.assertEqual(evaluate(data, None)["pauseReason"], "paid_sku")
+        data = with_extras({"name": "Free"})
+        data["swa"] = {"sku": {"name": "Standard"}}
+        self.assertEqual(evaluate(data, None)["pauseReason"], "paid_sku")
+        data = with_extras({"name": "Free"})
+        data["subscription"]["subscriptionPolicies"]["spendingLimit"] = "Off"
+        self.assertEqual(evaluate(data, None)["pauseReason"], "spending_limit_off")
+        self.assertEqual(evaluate(with_extras({"name": "Free"}), 0.01)["pauseReason"], "positive_cost")
+
+    def transport(self, cost=None, sku="Free", invalid_subject=False, extra_swas=()):
             requests = []
             tenant = "22222222-2222-4222-8222-222222222222"
             subscription = "11111111-1111-4111-8111-111111111111"
@@ -108,7 +140,7 @@ class SpendGuardTests(unittest.TestCase):
                     if "operational-pause" in url:
                         self.assertIsNone(req.get_header("Authorization"))
                         self.assertEqual(req.get_header("X-bloomstep-authorization"), "Bearer offline-api-token")
-                        self.assertIn(json.loads(req.data)["reason"], ("paid_sku", "positive_cost"))
+                        self.assertIn(json.loads(req.data)["reason"], ("paid_sku", "positive_cost", "configuration_unknown"))
                         return Response({"paused": True})
                     self.assertNotIn("listKeys", url)
                     self.assertNotIn("/config/", url)
@@ -117,9 +149,18 @@ class SpendGuardTests(unittest.TestCase):
                             raise HTTPError(url, 404, "GtmDimension empty", {}, None)
                         return Response({"properties": {"columns": [{"name": "PreTaxCost"}], "rows": [[cost]]}})
                     if "/resources?" in url:
-                        return Response({"value": [{"type": kind} for kind in self.fixture()["inventory"]]})
+                        rows = [{"type": kind, "name": "mock" if kind.endswith("staticSites") else "other"}
+                                for kind in self.fixture()["inventory"]]
+                        return Response({"value": rows + [{"type": "Microsoft.Web/staticSites", "name": name}
+                                                          for name, _ in extra_swas]})
                     if "/staticSites/" in url:
-                        return Response({"sku": {"name": sku}})
+                        site = url.split("/staticSites/")[1].split("?")[0]
+                        if site == "mock":
+                            return Response({"sku": {"name": sku}})
+                        extra = dict(extra_swas)[site]
+                        if isinstance(extra, Exception):
+                            raise extra
+                        return Response({"name": site, "sku": {"name": extra}})
                     if "/ciamDirectories/" in url:
                         return Response(self.fixture()["customerDirectory"])
                     if "/throughputSettings/" in url:
@@ -159,6 +200,19 @@ class SpendGuardTests(unittest.TestCase):
     def test_runtime_rejects_legacy_or_untrusted_subject_before_token_exchange(self):
             requests, _ = self.transport(invalid_subject=True)
             self.assertEqual(len(requests), 1)
+
+    def test_runtime_reads_each_additional_static_site_sku_read_only(self):
+            requests, output = self.transport(extra_swas=[("bloomstep-analytics-staging", "Free")])
+            self.assertIn('"pauseReason": null', output)
+            self.assertFalse(any("operational-pause" in req.full_url for req in requests))
+            self.assertEqual(sum("/staticSites/bloomstep-analytics-staging?" in req.full_url for req in requests), 1)
+            self.assertTrue(all(req.data is None for req in requests if "/staticSites/" in req.full_url))
+            for extras, reason in [([("paid-site", "Standard")], "paid_sku"),
+                                   ([("unreadable", HTTPError("u", 403, "Forbidden", {}, None))], "configuration_unknown"),
+                                   ([(f"free{i}", "Free") for i in range(4)], "configuration_unknown")]:
+                requests, output = self.transport(extra_swas=extras)
+                self.assertIn(f'"pauseReason": "{reason}"', output)
+                self.assertEqual(sum("operational-pause" in req.full_url for req in requests), 1)
 
 
 if __name__ == "__main__":
