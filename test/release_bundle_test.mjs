@@ -96,6 +96,20 @@ test('manual trial publication binds bytes/native frames/launch blocker within o
     assert.throws(() => verifyReleaseEvidence(options), /checksum/);
     native.corruptExitCode = 5;
     json(nativePath, native);
+    writeFileSync(join(root, 'native-x64', 'actual-universal-destination.png'), image);
+    native.entry = { page: 'destination', file: 'actual-universal-destination.png', sha256: sha(image) };
+    delete native.welcome;
+    json(nativePath, native);
+    assert.equal(verifyReleaseEvidence(options).native.x64.entry.page, 'destination');
+    for (const invalid of [
+      { ...native.entry, page: 'ready' },
+      { ...native.entry, file: '../actual-universal-destination.png' },
+      { ...native.entry, sha256: '0'.repeat(64) },
+    ]) {
+      json(nativePath, { ...native, entry: invalid });
+      assert.throws(() => verifyReleaseEvidence(options), /frame/);
+    }
+    json(nativePath, native);
     json('launch-x64/genuine-universal-app-launch-receipt.json', {
       source, architecture: 'x64', installerSha256: sha(packageBytes), outcome: 'UNVERIFIED',
       workerTokenElevated: false, modes: [],

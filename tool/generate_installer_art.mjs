@@ -87,7 +87,7 @@ if (check) {
       `Re-export authored illustrations after changing ${source.path}`);
   }
   assert.deepEqual(manifest.assets.map(asset => asset.file),
-    ['education-seed.bmp', 'education-recipe.bmp', 'education-growth.bmp', 'education-hero.bmp']);
+    ['welcome-steps.bmp', 'welcome-garden.bmp']);
   for (const asset of manifest.assets) {
     const bytes = readFileSync(new URL(asset.file, directory));
     assert.equal(hash(bytes), asset.sha256, `Original illustration changed: ${asset.file}`);

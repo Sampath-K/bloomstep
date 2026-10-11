@@ -1,0 +1,30 @@
+name: Withdrawn installer security evidence (historical gate retired)
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  defender-static-capability:
+    runs-on: windows-latest
+    steps:
+      - name: Refuse withdrawn candidate access; preserve historical dependency
+        shell: pwsh
+        run: |
+          $evidence = Join-Path $env:RUNNER_TEMP 'security-evidence'
+          New-Item -ItemType Directory -Path $evidence -Force | Out-Null
+          @{
+            result = 'BLOCKED; no binary download, scan, restore or execution'
+            previousCapabilityRun = '37859130228'
+            previousReceiptArtifact = '11585685771'
+            dependency = 'Owner-prepared protected standard-user interactive Hyper-V VM; docs/defender-test-vm.md'
+          } | ConvertTo-Json | Set-Content "$evidence\withdrawal-receipt.json" -Encoding utf8
+          throw 'Withdrawn candidate access is disabled. Use only the new standard-flow protected VM gate; historical capability receipt is not acceptance.'
+      - name: Preserve withdrawal receipt even on failure
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: withdrawn-installer-defender-receipt-NOT-ACCEPTANCE
+          path: ${{ runner.temp }}\security-evidence
+          if-no-files-found: error

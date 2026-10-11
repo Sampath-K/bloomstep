@@ -5,6 +5,12 @@ claim. Microsoft/Google federation, provider consent, MFA, customer accounts,
 production Cosmos, Windows notifications/share UI, and population measurements
 are not exercised by it.
 
+The profile UI evidence artifact also contains `picker-*.png`: disposable-device
+first-run auto-invitation, typed inputs, and seed-growth start/middle/final frames.
+These are synthetic widget evidence using the normal home/store/save flow, not
+genuine provider sign-in or installer launch evidence. Reduced-motion and save
+failure paths are regression contracts; native UI/API tests remain a separate gate.
+
 ## Engineering acceptance policy
 
 The approved engineering MVP gate is unattended for non-provider application
@@ -151,8 +157,17 @@ population inputs.
 
 The current production path emits `session_started` and fresh verified
 `signin_succeeded` through `SessionEvents` only under existing analytics consent.
-Restored sessions do not manufacture fresh sign-in successes. Optional installer
-`signin_view` observation has its own consent boundary. `SessionDiagnostics`
+Restored sessions do not manufacture fresh sign-in successes. The habit-first
+profile preserves the legacy installer `signin_view` receipt only when the
+signed-out inline sign-in affordance actually renders. Its existing meaning is
+surface exposure, not authentication success: the old screen emitted it before
+sign-in, and the installer disclosure covers first launch/sign-in view.
+It requires an unexpired explicitly opted-in receipt and matching install owner,
+is deduplicated, remains local and needs separate account analytics consent plus
+explicit linking before sync. No receipt means no observation or manufactured
+receipt; authenticated restoration emits no sign-in view. Profile Settings can
+clear the receipt while signed out. Device gardens have no account analytics or
+session observations. `SessionDiagnostics`
 records consented, capped error-kind/source/session metadata without exception
 text or stacks; it is not a provider-stage collector. Latest main `4513438`
 adds guarded, account-consented session-entry/API-token observations through

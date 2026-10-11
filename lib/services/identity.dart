@@ -10,6 +10,30 @@ import 'package:uuid/uuid.dart';
 
 import 'auth_observations.dart';
 
+class IdentityProfile {
+  const IdentityProfile({this.displayName, this.photoUrl});
+  final String? displayName;
+  final String? photoUrl;
+
+  factory IdentityProfile.fromClaims(Map<String, dynamic> claims) {
+    String? text(dynamic value) =>
+        value is String && value.trim().isNotEmpty ? value.trim() : null;
+    final picture = text(claims['picture']);
+    final pictureUri = picture == null ? null : Uri.tryParse(picture);
+    return IdentityProfile(
+      displayName: text(claims['name']),
+      photoUrl:
+          pictureUri != null &&
+              pictureUri.scheme == 'https' &&
+              pictureUri.hasAuthority &&
+              pictureUri.host.isNotEmpty &&
+              pictureUri.userInfo.isEmpty
+          ? pictureUri.toString()
+          : null,
+    );
+  }
+}
+
 class IdentityService {
   AuthObservations? observations;
   static const issuerUrl = String.fromEnvironment('OIDC_ISSUER');
@@ -26,6 +50,11 @@ class IdentityService {
   DateTime? _lastObservedAt;
   Future<void> _storageTail = Future<void>.value();
   String? account;
+  IdentityProfile? get profile {
+    if (!hasValidSession) return null;
+    return IdentityProfile.fromClaims(_credential!.idToken.claims.toJson());
+  }
+
   DateTime? get sessionExpiresAt => _validatedAt?.add(const Duration(days: 30));
   bool get hasValidSession {
     final now = DateTime.now().toUtc();
@@ -249,14 +278,26 @@ class IdentityService {
           'Identity token validation failed. Sign-in was not saved.',
         );
       }
+      final previousCredential = _credential;
+      final previousAccount = account;
+      final previousValidated = _validatedAt;
+      final previousObserved = _lastObservedAt;
       _credential = credential;
       account = sha256
           .convert(utf8.encode('${claims['iss']}|${claims['sub']}'))
           .toString();
-      await guardAuthStep(
-        AuthStep.save,
-        () => _save(DateTime.now().toUtc().toIso8601String()),
-      );
+      try {
+        await guardAuthStep(
+          AuthStep.save,
+          () => _save(DateTime.now().toUtc().toIso8601String()),
+        );
+      } catch (_) {
+        _credential = previousCredential;
+        account = previousAccount;
+        _validatedAt = previousValidated;
+        _lastObservedAt = previousObserved;
+        rethrow;
+      }
     } finally {
       await subscription.cancel();
       await server.close(force: true);

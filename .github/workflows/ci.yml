@@ -77,7 +77,8 @@ jobs:
       - run: npm test
       - run: node ../tool/generate_event_registry.mjs --check
       - run: node --test ../test/universal_installer_test.mjs ../test/release_bundle_test.mjs
-      - run: node --test ../test/site_console_test.mjs ../test/measurement_packaging_test.mjs ../test/installer_onboarding_test.mjs ../test/installer_journey_test.mjs ../test/public_claims_test.mjs ../test/identity_callbacks_test.mjs ../test/branding_contract_test.mjs ../test/synthetic_native_contract_test.mjs
+      - run: node --test ../test/installer_standard_flow_test.mjs ../test/installer_security_gate_test.mjs ../test/installer_one_click_test.mjs
+      - run: node --test ../test/site_console_test.mjs ../test/measurement_packaging_test.mjs ../test/installer_onboarding_test.mjs ../test/installer_journey_test.mjs ../test/installer_direct_install_test.mjs ../test/public_claims_test.mjs ../test/identity_callbacks_test.mjs ../test/branding_contract_test.mjs ../test/synthetic_native_contract_test.mjs
       - name: Verify bundled operator authentication
         working-directory: .
         run: |
@@ -85,18 +86,25 @@ jobs:
           node --test site/test/*.test.mjs
           npm --prefix site run build
   installer-launch-evidence:
-    name: 'launch-after-install: UNVERIFIED (preview gap, owner manual trial pending)'
-    if: github.event_name != 'workflow_dispatch' || (!inputs.verify_aggregates && !inputs.verify_spend_guard && !inputs.verify_edge_warning)
-    runs-on: windows-latest
+    name: 'protected launch-after-install (VM required)'
+    if: >-
+      (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository) &&
+      (github.event_name != 'workflow_dispatch' || (!inputs.verify_aggregates && !inputs.verify_spend_guard && !inputs.verify_edge_warning))
+    runs-on: [self-hosted, defender-interactive]
+    timeout-minutes: 20
+    permissions:
+      contents: read
     steps:
       - uses: actions/checkout@v4
         with:
           ref: ${{ github.event.pull_request.head.sha || github.sha }}
-      - name: Install Inno Setup
+          persist-credentials: false
+      - name: Verify disposable protected standard-user desktop and preinstalled compiler
         shell: pwsh
         run: |
+          & .\tool\setup_defender_test_vm.ps1 -Mode Check -EvidenceDir (Join-Path $env:RUNNER_TEMP 'bloomstep-inert-launch-evidence\preflight')
           if (-not (Test-Path "${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe")) {
-            choco install innosetup --no-progress -y
+            throw 'Owner must preinstall Inno in the disposable VM; no elevation or provisioning in this job.'
           }
       - name: Verify inert installing-user launch branches without customer data
         id: launch-proof
@@ -131,7 +139,7 @@ jobs:
             installerSha256 = (Get-FileHash $installer).Hash.ToLower()
             reportedProductName = (Get-Item $installer).VersionInfo.ProductName
           } | ConvertTo-Json | Set-Content $manifest -Encoding utf8
-          foreach ($mode in @('checked-launch','unchecked-launch','silent','unattended','cancel','failure','elevated')) {
+          foreach ($mode in @('checked-launch','unchecked-launch','silent','unattended','cancel','failure')) {
             & pwsh -NoProfile -File .\tool\verify_installer_journey.ps1 -Installer $installer -FixtureManifest $manifest -EvidenceDir $evidence -Mode $mode
             if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           }
@@ -142,18 +150,18 @@ jobs:
           name: bloomstep-inert-launch-proof-NOT-APP-ACCEPTANCE
           path: ${{ runner.temp }}/bloomstep-inert-launch-evidence/
           if-no-files-found: error
-      - name: Report acknowledged owner-trial preview gap
+      - name: Report protected fixture evidence boundaries
         if: always()
         shell: pwsh
         run: |
           @'
-          launch-after-install: UNVERIFIED (preview gap, owner manual trial pending)
+          launch-after-install: protected disposable VM fixture evidence only
 
           Inert automated proof outcome: ${{ steps.launch-proof.outcome }}.
           No masked failure, no claimed customer-app or launch acceptance.
-          Only exact preview.10 and recovery preview.12 have separately authorized owner-trial publication exceptions. Failed preview.11 remains immutable and unpublished.
-          The public site remains on preview.9 until both checked/unchecked owner trials pass.
-          Before M2/open preview/Store, blocking automated or recorded clean-machine human proof is required again.
+          The withdrawn zero-click candidate remains blocked. No new publication, release, tag or owner-machine execution is authorized.
+          Genuine app security/launch evidence remains a separate required VM gate; static scan and inert fixture success do not establish it.
+          See docs/defender-test-vm.md for standard-user interactive owner preparation and teardown.
           '@ | Add-Content $env:GITHUB_STEP_SUMMARY
   test-and-build-windows:
     if: github.event_name != 'workflow_dispatch' || (!inputs.verify_aggregates && !inputs.verify_spend_guard && !inputs.verify_edge_warning)
@@ -189,7 +197,7 @@ jobs:
           if ($compiledSource -match 'Installation is prohibited|8E9B101B-CB3D-4C0F-B733-FC1DFFB75129|A6690692-4D92-475A-9EAC-1AD867AB0635|function PrepareToInstall|isolated journey proof') {
             throw 'Production compile contains capture-only fixture guard or identity.'
           }
-      - name: Capture compile-only native Welcome and ordered default-off pages
+      - name: Compile isolated standard-wizard capture fixture; execution awaits protected VM
         shell: pwsh
         run: |
           $env:BLOOMSTEP_SOURCE_REVISION = git rev-parse HEAD
@@ -215,24 +223,13 @@ jobs:
             installerSha256 = (Get-FileHash $installer).Hash.ToLower()
             preprocessedSha256 = (Get-FileHash "$output\fixture-preprocessed.iss").Hash.ToLower()
           } | ConvertTo-Json | Set-Content $manifest -Encoding utf8
-          if ('${{ matrix.arch }}' -eq 'arm64') {
-            & .\tool\verify_onboarding_wizard.ps1 -Installer $installer -FixtureManifest $manifest -EvidenceDir $evidence -AllowUnavailableKeyboard
-          } else {
-            & .\tool\verify_onboarding_wizard.ps1 -Installer $installer -FixtureManifest $manifest -EvidenceDir $evidence
-          }
+          'WITHHELD: wizard fixture execution and screenshots require the protected interactive VM job; hosted compile is not evidence.' | Add-Content $env:GITHUB_STEP_SUMMARY
       - name: Preserve bounded compile-only capture fixture authority
         if: always()
         uses: actions/upload-artifact@v4
         with:
           name: bloomstep-onboarding-capture-fixture-${{ matrix.arch }}-NOT-FOR-RELEASE
           path: ${{ runner.temp }}/bloomstep-onboarding-fixture/
-          if-no-files-found: error
-      - name: Preserve compile-only wizard evidence (not a public installer)
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: bloomstep-onboarding-${{ matrix.arch }}-NOT-FOR-RELEASE
-          path: ${{ runner.temp }}/bloomstep-onboarding-evidence/
           if-no-files-found: error
       - uses: subosito/flutter-action@v2
         if: matrix.arch == 'x64'
@@ -260,7 +257,20 @@ jobs:
           Add-Content $env:GITHUB_PATH "$sdk\bin"
       - run: flutter pub get
       - run: flutter analyze
-      - run: flutter test --reporter expanded --concurrency 1 --timeout 60s --dart-define=BLOOMSTEP_TEST_BUILD=true
+      - name: Run app contracts and labeled synthetic profile screenshots
+        env:
+          BLOOMSTEP_SCREENSHOTS: ${{ runner.temp }}/bloomstep-profile-evidence
+        run: flutter test --reporter expanded --concurrency 1 --timeout 60s --dart-define=BLOOMSTEP_TEST_BUILD=true
+      - name: Preserve profile UI evidence (synthetic identity, not provider acceptance)
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: profile-ui-synthetic-evidence-${{ matrix.arch }}
+          path: |
+            ${{ runner.temp }}/bloomstep-profile-evidence/profile-*.png
+            ${{ runner.temp }}/bloomstep-profile-evidence/picker-*.png
+            ${{ runner.temp }}/bloomstep-profile-evidence/first-habit-*.png
+          if-no-files-found: error
       - name: Verify production-mode test-auth and adapter gates
         run: flutter test test/test_auth_release_contract_test.dart --reporter expanded --concurrency 1 --timeout 60s
       - uses: actions/setup-node@v4
@@ -270,6 +280,8 @@ jobs:
           cache-dependency-path: api/package-lock.json
       - name: Install isolated test API dependencies
         run: npm ci --prefix api --ignore-scripts
+      - name: Verify native installer helpers without executing an installer
+        run: node --test test/universal_installer_test.mjs test/installer_standard_flow_test.mjs test/installer_security_gate_test.mjs
       - name: Run isolated Windows UI and API acceptance
         id: synthetic-integration
         timeout-minutes: 20
@@ -336,7 +348,7 @@ jobs:
           name: bloomstep-v1-compiled-flutter-ui-${{ matrix.arch }}-SYNTHETIC
           path: ${{ runner.temp }}/bloomstep-v1-compiled-flutter-ui/
           if-no-files-found: error
-      - name: Build real sign-in-gated release
+      - name: Build real provider-backed release
         env:
           OIDC_ISSUER: ${{ vars.OIDC_ISSUER }}
           OIDC_CLIENT_ID: ${{ vars.OIDC_CLIENT_ID }}
@@ -364,7 +376,9 @@ jobs:
           Get-FileHash release-output\*.exe -Algorithm SHA256 | ForEach-Object { "$($_.Hash.ToLower())  $([IO.Path]::GetFileName($_.Path))" } | Set-Content release-output\SHA256-${{ matrix.arch }}.txt
           node tool/release_payload.mjs create "build/windows/${{ matrix.arch }}/runner/Release" "release-output/payload-manifest-${{ matrix.arch }}.json" "${{ matrix.arch }}" (git rev-parse HEAD) $version
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-      - name: Installer lifecycle smoke test
+      - &protected-lifecycle-smoke
+        name: Installer lifecycle smoke test (protected VM only)
+        if: runner.environment == 'self-hosted'
         shell: pwsh
         run: |
           $installer = (Get-ChildItem release-output\*.exe).FullName
@@ -431,13 +445,25 @@ jobs:
           path: |
             build/windows/${{ matrix.arch }}/runner/Release/
             release-output/
-      - name: Verify optional measurement wizard and genuine installed observations
+      - &protected-measurement-proof
+        name: Verify disabled installer observations and legacy privacy cleanup (protected VM only)
+        if: runner.environment == 'self-hosted'
         shell: pwsh
         run: |
           $installer = (Get-ChildItem release-output\*.exe).FullName
           & .\tool\verify_measurement_install.ps1 -Installer $installer -Target (Join-Path $env:RUNNER_TEMP 'Bloomstep-measurement-smoke')
           $protocolKey = 'Registry::HKEY_CURRENT_USER\Software\Classes\bloomstep\shell\open\command'
           if (Test-Path $protocolKey) { throw 'Owned invitation protocol survived measurement uninstall.' }
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: installer-disabled-observations-${{ matrix.arch }}-NOT-CUSTOMER
+          path: ${{ runner.temp }}/disabled-installer-observations-proof/
+          if-no-files-found: warn
+      - name: Report withheld installer execution on hosted build worker
+        shell: pwsh
+        run: |
+          'Installer runtime/lifecycle/privacy/wizard proofs are WITHHELD on hosted build workers and require protected disposable standard-user VM jobs. Build artifacts alone are not security acceptance.' | Add-Content $env:GITHUB_STEP_SUMMARY
       - name: Build isolated Windows runtime probe
         if: matrix.arch == 'arm64'
         run: flutter build windows --profile --target tool/runtime_probe.dart
@@ -467,6 +493,65 @@ jobs:
           name: bloomstep-synthetic-input-arm64-NOT-CUSTOMER-ACCEPTANCE
           path: ${{ runner.temp }}/synthetic-native-input.json
           if-no-files-found: warn
+  protected-installer-lifecycle:
+    if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
+    needs: test-and-build-windows
+    strategy:
+      fail-fast: false
+      matrix:
+        arch: [x64, arm64]
+    runs-on: [self-hosted, defender-interactive, '${{ matrix.arch }}']
+    timeout-minutes: 20
+    permissions:
+      contents: read
+      actions: read
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          persist-credentials: false
+      - uses: actions/download-artifact@v4
+        with:
+          name: bloomstep-windows-${{ matrix.arch }}
+          path: .
+      - uses: actions/download-artifact@v4
+        with:
+          name: bloomstep-onboarding-capture-fixture-${{ matrix.arch }}-NOT-FOR-RELEASE
+          path: onboarding-fixture
+      - name: Require protected non-elevated disposable desktop before lifecycle execution
+        shell: pwsh
+        run: |
+          . .\tool\universal_integrity_contract.ps1
+          $installer = (Get-ChildItem release-output\*.exe).FullName
+          $env:BLOOMSTEP_INSTALLER_PROTECTION = $null
+          $context = Start-ProtectedInstallerProof $installer (Get-FileHash $installer).Hash.ToLower() (Join-Path $env:RUNNER_TEMP 'disabled-installer-observations-proof')
+          $context | ConvertTo-Json -Depth 6 | Set-Content (Join-Path $env:RUNNER_TEMP 'lifecycle-protection-context.json')
+      - *protected-lifecycle-smoke
+      - *protected-measurement-proof
+      - name: Capture exact compiled standard-wizard fixture and Cancel (no payload install)
+        shell: pwsh
+        run: |
+          $manifest = Join-Path $PWD 'onboarding-fixture\capture-fixture-manifest.json'
+          $authority = Get-Content $manifest -Raw | ConvertFrom-Json
+          & .\tool\verify_onboarding_wizard.ps1 -Installer (Join-Path $PWD "onboarding-fixture\$($authority.installerFile)") -FixtureManifest $manifest -EvidenceDir (Join-Path $env:RUNNER_TEMP 'bloomstep-onboarding-evidence')
+      - name: Require unchanged protection and no new detections after lifecycle
+        if: always()
+        shell: pwsh
+        run: |
+          . .\tool\universal_integrity_contract.ps1
+          $path = Join-Path $env:RUNNER_TEMP 'lifecycle-protection-context.json'
+          if (-not (Test-Path $path)) { throw 'Protected lifecycle preflight did not produce authority; no acceptance.' }
+          $context = Get-Content $path -Raw | ConvertFrom-Json -AsHashtable
+          Assert-InstallerProtectionUnchanged $context
+      - name: Preserve protected lifecycle/privacy and wizard receipts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: protected-installer-lifecycle-${{ matrix.arch }}-NOT-CUSTOMER
+          path: |
+            ${{ runner.temp }}/disabled-installer-observations-proof/
+            ${{ runner.temp }}/bloomstep-onboarding-evidence/
+          if-no-files-found: error
   universal-installer:
     needs: [api, test-and-build-windows]
     runs-on: windows-latest
@@ -533,6 +618,7 @@ jobs:
           @{
             kind = 'bloomstep-offline-universal-v1'; source = $source; version = $version
             installerFile = $installer.Name; installerSha256 = $hash; bytes = $installer.Length
+            installFlow = 'oneclick-native'; distribution = 'UNPUBLISHED; protected behavior and owner acceptance pending'
             compiler = $env:BLOOMSTEP_INNO_ENGINE_VERSION
             signatureStatus = (Get-AuthenticodeSignature $installer.FullName).Status.ToString()
             payloadManifests = $payloadHashes
@@ -541,6 +627,8 @@ jobs:
             Copy-Item "artifacts\bloomstep-windows-$arch\release-output\payload-manifest-$arch.json" $output
           }
           Write-Output "Offline universal installer compressed bytes: $($installer.Length)"
+          Write-Output "UNPUBLISHED standard candidate: $($installer.Name); source $source; SHA-256 $hash"
+          "UNPUBLISHED standard candidate: $($installer.Name); source $source; SHA-256 $hash; bytes $($installer.Length). Protected behavior/genuine launch remain pending." | Add-Content $env:GITHUB_STEP_SUMMARY
       - name: Compile real native x64 host-query probe, never a release asset
         shell: pwsh
         run: |
@@ -601,21 +689,22 @@ jobs:
             universal-integrity-output/isolated-corrupted-setup.exe
             universal-integrity-output/integrity-manifest.json
   universal-native-proof:
+    if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
     needs: universal-installer
     strategy:
       fail-fast: false
       matrix:
-        include:
-          - os: windows-latest
-            arch: x64
-          - os: windows-11-arm
-            arch: arm64
-    runs-on: ${{ matrix.os }}
+        arch: [x64, arm64]
+    runs-on: [self-hosted, defender-interactive, '${{ matrix.arch }}']
     timeout-minutes: 15
+    permissions:
+      contents: read
+      actions: read
     steps:
       - uses: actions/checkout@v4
         with:
           ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          persist-credentials: false
       - uses: actions/download-artifact@v4
         with:
           name: bloomstep-universal-installer
@@ -631,7 +720,23 @@ jobs:
       - name: Verify offline native routing and disposable installer lifecycle
         shell: pwsh
         run: |
-          & .\tool\verify_universal_installer.ps1 -PackageDir (Join-Path $PWD 'universal-output') -ExpectedArch '${{ matrix.arch }}' -EvidenceDir (Join-Path $env:RUNNER_TEMP 'universal-native-evidence')
+          & .\tool\setup_defender_test_vm.ps1 -Mode Check -EvidenceDir (Join-Path $env:RUNNER_TEMP 'universal-native-evidence\preflight')
+          . .\tool\universal_integrity_contract.ps1
+          $manifest = Get-Content .\universal-output\universal-manifest.json -Raw | ConvertFrom-Json
+          $context = Start-ProtectedInstallerProof (Join-Path $PWD "universal-output\$($manifest.installerFile)") $manifest.installerSha256 (Join-Path $env:RUNNER_TEMP 'universal-native-evidence')
+          try {
+            & .\tool\verify_universal_installer.ps1 -PackageDir (Join-Path $PWD 'universal-output') -ExpectedArch '${{ matrix.arch }}' -EvidenceDir (Join-Path $env:RUNNER_TEMP 'universal-native-evidence')
+          } finally { Assert-InstallerProtectionUnchanged $context }
+      - name: Capture actual standard wizard (unchecked Finish; not protected behavior acceptance)
+        shell: pwsh
+        run: |
+          & .\tool\verify_install_progress.ps1 -PackageDir (Join-Path $PWD 'universal-output') -EvidenceDir (Join-Path $env:RUNNER_TEMP 'universal-progress-evidence\standard')
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: universal-progress-${{ matrix.arch }}-NOT-APP-ACCEPTANCE
+          path: ${{ runner.temp }}/universal-progress-evidence/
+          if-no-files-found: error
       - uses: actions/upload-artifact@v4
         if: always()
         with:
@@ -639,26 +744,31 @@ jobs:
           path: ${{ runner.temp }}/universal-native-evidence/
           if-no-files-found: error
   universal-app-launch-evidence:
-    name: 'genuine universal app checked/unchecked launch (${{ matrix.arch }})'
+    name: 'protected genuine app checked/unchecked launch (${{ matrix.arch }})'
+    if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
     needs: universal-installer
     strategy:
       fail-fast: false
       matrix:
-        include:
-          - os: windows-latest
-            arch: x64
-          - os: windows-11-arm
-            arch: arm64
-    runs-on: ${{ matrix.os }}
+        arch: [x64, arm64]
+    runs-on: [self-hosted, defender-interactive, '${{ matrix.arch }}']
     timeout-minutes: 15
+    permissions:
+      contents: read
+      actions: read
     steps:
       - uses: actions/checkout@v4
         with:
           ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          persist-credentials: false
       - uses: actions/download-artifact@v4
         with:
           name: bloomstep-universal-installer
           path: universal-output
+      - name: Verify disposable protected standard-user interactive desktop
+        shell: pwsh
+        run: |
+          & .\tool\setup_defender_test_vm.ps1 -Mode Check -EvidenceDir (Join-Path $env:RUNNER_TEMP 'genuine-universal-launch-evidence\preflight')
       - name: Actual genuine app launch requires a clean non-elevated installing user
         shell: pwsh
         env:
@@ -675,10 +785,11 @@ jobs:
     if: >-
       always() && startsWith(github.ref, 'refs/tags/v') &&
       needs.api.result == 'success' && needs.test-and-build-windows.result == 'success' &&
+      needs.protected-installer-lifecycle.result == 'success' &&
       needs.universal-native-proof.result == 'success' &&
       (needs.universal-app-launch-evidence.result == 'success' || github.ref_name == 'v0.1.0-preview.12') &&
       (needs.installer-launch-evidence.result == 'success' || github.ref_name == 'v0.1.0-preview.10' || github.ref_name == 'v0.1.0-preview.12')
-    needs: [api, test-and-build-windows, installer-launch-evidence, universal-native-proof, universal-app-launch-evidence]
+    needs: [api, test-and-build-windows, protected-installer-lifecycle, installer-launch-evidence, universal-native-proof, universal-app-launch-evidence]
     runs-on: ubuntu-latest
     permissions:
       contents: write
