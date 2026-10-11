@@ -77,6 +77,7 @@ jobs:
       - run: npm test
       - run: node ../tool/generate_event_registry.mjs --check
       - run: node --test ../test/universal_installer_test.mjs ../test/release_bundle_test.mjs
+      - run: node --test ../test/msix_update_test.mjs
       - run: node --test ../test/site_console_test.mjs ../test/measurement_packaging_test.mjs ../test/installer_onboarding_test.mjs ../test/installer_journey_test.mjs ../test/public_claims_test.mjs ../test/identity_callbacks_test.mjs ../test/branding_contract_test.mjs ../test/synthetic_native_contract_test.mjs
       - name: Verify bundled operator authentication
         working-directory: .
@@ -670,6 +671,43 @@ jobs:
         with:
           name: genuine-universal-launch-${{ matrix.arch }}-NOT-FULL-OWNER-ACCEPTANCE
           path: ${{ runner.temp }}/genuine-universal-launch-evidence/
+          if-no-files-found: error
+  msix-sdk-validation:
+    if: github.event_name != 'workflow_dispatch'
+    needs: [test-and-build-windows]
+    runs-on: windows-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: bloomstep-windows-*
+          path: artifacts
+      - name: Validate real compiled Bloomstep bundles without signing, installation or publication
+        shell: pwsh
+        env:
+          RELEASE_TAG: ${{ startsWith(github.ref, 'refs/tags/v') && github.ref_name || 'v0.1.0-preview' }}
+        run: |
+          $source = git rev-parse HEAD
+          if ($LASTEXITCODE -ne 0) { throw 'Checked-out source identity is unavailable.' }
+          & .\tool\build_msix.ps1 -Artifacts "$PWD\artifacts" -Version ($env:RELEASE_TAG.TrimStart('v')) -SourceSha $source -Publisher 'CN=Bloomstep unsigned SDK validation only' -Output "$PWD\msix-sdk-validation" -UnsignedValidationOnly
+      - name: Validate two-version SDK signing and untrusted publisher rejection without installation
+        shell: pwsh
+        run: |
+          & .\tool\verify_msix_packaging.ps1 -Output (Join-Path $env:RUNNER_TEMP 'bloomstep-msix-fixture-proof')
+      - name: Preserve validation receipt only, never an unsigned customer package
+        uses: actions/upload-artifact@v4
+        with:
+          name: real-bloomstep-msix-SDK-VALIDATION-NOT-INSTALLED
+          path: |
+            msix-sdk-validation/candidate-receipt.json
+            ${{ runner.temp }}/bloomstep-msix-fixture-proof/packaging-proof.json
           if-no-files-found: error
   release:
     if: >-

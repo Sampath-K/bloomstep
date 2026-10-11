@@ -4,6 +4,16 @@
 cloud deployment and native background behavior require integration evidence.
 This ledger is updated with verified outcomes, not inferred from source code.
 
+**Automatic-update implementation, production not activated:** new builds add
+startup/daily release discovery with persistent settings and explicit failure
+status. Optional same-source, publisher-signed MSIX bundle generation and
+App Installer enrollment provide the supported OS automatic-apply path.
+Existing unsigned Inno customers are **not automatically upgraded**.
+Trusted publisher provisioning, actual enrollment/installed update and synthetic
+garden/DPAPI/session/consent preservation across packaging remain genuine gates.
+See [capability and activation contract](automatic-updates.md); neither the
+current public download nor immutable releases are changed.
+
 **Frozen v1 merged and published for owner trial (PR21):** merge
 `45efbf2da0cb8363675321e5e257d5dd66391f04` is the immutable
 `v0.1.0-preview.10` source. Real
