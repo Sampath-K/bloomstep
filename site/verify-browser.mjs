@@ -70,7 +70,7 @@ try {
     await page.click('#website-consent');
     await page.click('#primary-cta');
     assert.equal(requests, 0);
-    assert.match(await page.$eval('#website-status', node => node.textContent), /Privacy signal honoured/);
+    assert.match(await page.$eval('#website-status', node => node.textContent), /Your browser privacy setting is on/);
     await page.close();
   }
   const offline = await browser.newPage();
@@ -86,7 +86,7 @@ try {
   assert.equal(links.length, unified ? 3 : 2);
   if (unified) {
     assert.equal(await offline.$eval('[data-universal-download] a', link => link.dataset.download), 'unknown');
-    assert.equal(await offline.$eval('[data-universal-download] a', link => link.textContent.trim()), 'Download Bloomstep for Windows');
+    assert.equal(await offline.$eval('[data-universal-download] a', link => link.textContent.trim()), 'Owner-test download (designated testers only)');
   }
   assert.ok(links.every(link => link.startsWith('https://github.com/Sampath-K/bloomstep/releases/download/')));
   await offline.click('#primary-cta');

@@ -4,7 +4,7 @@ import { existsSync, readFileSync } from 'node:fs';
 
 const read = path => readFileSync(new URL(`../${path}`, import.meta.url), 'utf8');
 const readRepositoryFile = path => readFileSync(new URL(`../../${path}`, import.meta.url), 'utf8');
-const limited = 'Limited preview — Bloomstep is an early, unsigned Windows app for trying tiny, routine-linked habits, check-ins, and a personal growing garden. Sign-in is required; some features and sign-in options are still being refined. This is not the complete verified MVP, and it is not medical advice. There is no Microsoft Store version yet. If you use the app, private feedback is available in-app after sign-in.';
+const limited = 'Bloomstep is an early, unsigned Windows app for trying tiny, routine-linked habits, check-ins and a personal growing garden. This version is for designated owner testing only; it has not been verified for general use. Sign-in is required, and some features and sign-in options are still being refined. It is not a complete release or medical care. There is no Microsoft Store version yet. Private feedback is available in the app after sign-in.';
 
 test('hero sells the small first step without front-loading installer warning language', () => {
   const page = read('index.html');
@@ -12,8 +12,8 @@ test('hero sells the small first step without front-loading installer warning la
   assert.ok(hero);
   assert.match(hero, /Make a tiny habit part of your day/);
   assert.match(hero, /Choose a routine, pair it with one small action, and celebrate your moment/);
-  assert.match(hero, /Get Bloomstep for Windows/);
-  assert.match(hero, /Free Windows download · Limited preview · Sign-in required/);
+  assert.match(hero, /Check preview availability/);
+  assert.match(hero, /Early Windows preview · Owner testing only · Sign-in required/);
   assert.doesNotMatch(hero, /unsigned|not the full MVP|engineering preview|Windows protected your PC|SmartScreen/i);
   assert.match(page, /src="\/assets\/sample-garden\.png"[^>]+alt="[^"]+"/);
   assert.match(page, /Isolated synthetic sample garden; example app content, not customer data/);
@@ -86,11 +86,14 @@ test('Edge observation is exact-asset, policy-gated, non-executing and one-shot'
   assert.match(workflow, /name: edge-download-warning-observation/);
 });
 
-test('both customer entry paths disclose the exact limited scope, independence and official learning', () => {
-  for (const path of ['index.html', 'releases/index.html']) {
-    const page = read(path);
-    assert.ok(page.includes(limited), path);
-    assert.match(page, /independent app inspired by the Tiny Habits method/);
+test('both customer entry paths explain the early-preview limits and official learning', () => {
+  const home = read('index.html');
+  const releases = read('releases/index.html');
+  assert.ok(home.includes(limited));
+  for (const page of [home, releases]) {
+    assert.match(page, /Early preview — not yet verified for general use/);
+    assert.match(page, /owner-test candidate, not a general customer release/);
+    assert.match(page, /Launch after installation and the complete sign-in and app journey have not been verified/);
     assert.match(page, /not affiliated with or endorsed by BJ Fogg or Tiny Habits/);
     assert.match(page, /href="https:\/\/tinyhabits.com"/);
     assert.match(page, /href="https:\/\/tinyhabits.com\/book\/"/);

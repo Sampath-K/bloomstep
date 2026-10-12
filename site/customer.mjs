@@ -101,7 +101,7 @@ function initializeCustomer() {
   });
   const stopForPrivacy = () => {
     consentGeneration++; controller.abort(); observer.reset(); consent.checked = false;
-    status.textContent = 'Privacy signal honoured: no website observations are sent.';
+    status.textContent = 'Your browser privacy setting is on, so this page will not send measurement data.';
   };
   const record = (event, arch) => {
     if (blocked()) { stopForPrivacy(); return; }
@@ -109,12 +109,12 @@ function initializeCustomer() {
     const generation = consentGeneration;
     void observer.record(event, arch).then(accepted => {
       if (generation !== consentGeneration || !consent.checked) return;
-      if (!accepted) status.textContent = 'Website measurement is unavailable or this observation was already counted. Downloads still work.';
+      if (!accepted) status.textContent = 'Website counts are unavailable or this click was already counted. The preview link still works.';
     });
   };
-  if (blocked()) { consent.disabled = true; status.textContent = 'Privacy signal honoured: no website observations are sent.'; }
+  if (blocked()) { consent.disabled = true; status.textContent = 'Your browser privacy setting is on, so this page will not send measurement data.'; }
   const experiments = createExperimentClient({ document, fetchJson: async (path, body) => {
-    if (blocked()) throw Error('Privacy signal honoured.');
+    if (blocked()) throw Error('Browser privacy setting is on.');
     const response = await fetch(path, { method: body ? 'POST' : 'GET', headers: body ? { 'Content-Type': 'application/json' } : {},
       body: body ? JSON.stringify(body) : undefined, credentials: 'omit', referrerPolicy: 'no-referrer', cache: 'no-store',
       signal: AbortSignal.timeout(4000), keepalive: !!body });
@@ -127,8 +127,8 @@ function initializeCustomer() {
   };
   consent.addEventListener('change', () => {
     consentGeneration++; controller.abort(); controller = new AbortController(); observer.reset();
-    if (blocked()) { consent.checked = false; status.textContent = 'Privacy signal honoured: no website observations are sent.'; return; }
-    status.textContent = consent.checked ? 'Optional daily website counts active for this visit only.' : 'Website measurement is off. Earlier anonymous counts cannot be individually identified.';
+    if (blocked()) { consent.checked = false; status.textContent = 'Your browser privacy setting is on, so this page will not send measurement data.'; return; }
+    status.textContent = consent.checked ? 'Optional website counts are on for this visit only.' : 'Website counts are off. Earlier anonymous counts cannot be linked back to you.';
     if (consent.checked) {
       record('landing_view');
       void experiments.start().then(state => { document.documentElement.dataset.experimentArm = state.arm ?? 'none'; })
@@ -173,15 +173,15 @@ function initializeCustomer() {
     if (!invitation) return;
     notice.hidden = false;
     const explanation = document.createElement('p');
-    explanation.textContent = invitation.generic ? 'You were invited to grow a tiny habit. No personal garden data is shared.' :
-      'Your invitation is ready. Install Bloomstep, then return to this link. Open it when you are ready; Bloomstep validates it after sign-in.';
+    explanation.textContent = invitation.generic ? 'You were invited to grow a tiny habit. This link does not share personal garden information.' :
+      'Your invitation is ready. Keep this link while you install the app if you are an authorized tester. Bloomstep checks the invitation after you sign in.';
     notice.append(explanation);
     if (!invitation.generic) {
       const open = document.createElement('a'); open.href = nativeInvitationUrl(invitation);
       open.textContent = 'Open invitation in Bloomstep'; notice.append(open);
     }
   } catch (error) {
-    notice.hidden = false; notice.textContent = `${error.message} No invitation was accepted. Use the original link.`;
+    notice.hidden = false; notice.textContent = `${error.message} Nothing was accepted. Try the original invitation link.`;
   }
 }
 
@@ -190,21 +190,21 @@ function initializeReceipt(blocked) {
   const status = document.getElementById('receipt-status');
   let receipt = null;
   const clear = () => {
-    receipt = null; consent.checked = false; button.disabled = true; status.textContent = 'Receipt collection is off; page memory cleared.';
+    receipt = null; consent.checked = false; button.disabled = true; status.textContent = 'Optional receipt is off; this page has cleared it.';
   };
   consent.addEventListener('change', () => {
     if (!consent.checked) { clear(); return; }
-    if (blocked()) { clear(); status.textContent = 'Your privacy signal disables receipt collection too.'; return; }
+    if (blocked()) { clear(); status.textContent = 'Your browser privacy setting also turns off receipts.'; return; }
     const at = new Date().toISOString();
     receipt = { schemaVersion: 1, source: 'website', consentedAt: at,
       events: [{ id: crypto.randomUUID(), name: 'landing_view', ts: at }] };
-    button.disabled = false; status.textContent = 'Receipt stays only in page memory. Nothing is linked to your account.';
+    button.disabled = false; status.textContent = 'This optional receipt stays on this page and is not linked to your account.';
   });
   for (const link of document.querySelectorAll('[data-download]')) {
     link.addEventListener('click', () => {
       if (blocked()) { clear(); return; }
       if (!receipt) return;
-      if (receipt.events.length >= 32) { status.textContent = 'Receipt limit reached; export or clear it. Download is unaffected.'; return; }
+      if (receipt.events.length >= 32) { status.textContent = 'This receipt has reached its limit. Export or clear it; the preview link still works.'; return; }
       receipt.events.push({ id: crypto.randomUUID(), name: 'download_click', ts: new Date().toISOString() });
     });
   }
@@ -216,8 +216,10 @@ function initializeReceipt(blocked) {
       const url = URL.createObjectURL(new Blob([raw], { type: 'application/json' }));
       const link = document.createElement('a'); link.href = url; link.download = 'bloomstep-website-measurement.json'; link.click();
       setTimeout(() => URL.revokeObjectURL(url), 1000);
-      status.textContent = 'Receipt export requested. Linking it in app Settings is a separate choice.';
-    } catch (error) { status.textContent = error.message; }
+      status.textContent = 'Your browser was asked to download the receipt. Adding it in app Settings is a separate choice.';
+    } catch {
+      status.textContent = 'The receipt could not be prepared. Clear it and try again; the preview link still works.';
+    }
   });
   document.getElementById('receipt-clear').addEventListener('click', clear);
   window.addEventListener('pagehide', clear);
