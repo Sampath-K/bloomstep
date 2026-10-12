@@ -323,11 +323,31 @@ now, authorize vendor onboarding or imply new billing/access permissions.
 | Gate | Current evidence | Required before promotion |
 | --- | --- | --- |
 | Website consent contract | Offline error handling and hosted GA4 consent/dedup/revoke/GPC/DNT/query-redaction acceptance passed. | Keep exact artifact provenance; offline errors and live collection do not prove all downstream processing. |
-| GA4 settings and ingestion | Owner-saved URL and Enhanced measurement OFF read back; configured live collection returned HTTP 204. | Verify authenticated vendor report receipt separately; HTTP acceptance is not ingestion. |
-| App and installer | Prior automated app checks passed; native Windows build remains unverified because of the symlink/Developer Mode requirement. | Obtain functional validation of the exact app/installer artifact; do not infer installer readiness from unit tests. |
+| GA4 settings and ingestion | Owner-saved URL and Enhanced measurement OFF read back; authenticated Realtime and standard reports confirmed page view, CTA and download events for deployed `ffc120b`. | Preserve exact artifact association. `user_engagement` was not returned; HTTP acceptance alone is not ingestion. |
+| App and installer | Automated app/build checks passed; genuine VM installer runtime is deferred and UNVERIFIED under the updated owner policy. | Do not infer runtime acceptance or use the deferred VM check as the sole promotion blocker. |
 | Privacy and isolation | Production excludes third-party vendor code; static staging has no collector/backend. | Resolve owner controller identity, contact and legal basis; review exact production artifact and security gates. |
 | AARRR | Partial first-party contract coverage and synthetic persisted-order receipt-link proof only. | Preserve explicit opt-in linking and under-50-account suppression; distinguish fixtures from real customer observations. Installs, customer retention and revenue are not proven. |
 | ARR and break-even | No monetization exists. | If ARR means annual recurring revenue, report unavailable, not zero. Costs, customer revenue and break-even cannot be inferred from Free hosting or test events. |
+
+**Promotion review, 12 October 2026:** branch reconciled with main `35cd8dd9`
+in merge `a4a6222`. Production deployment run `38191449125` and real two-account
+acceptance run `38191580532` both succeeded on that main commit. Spending guard
+`38180577366` succeeded; fresh Azure readback lists two SWAs, both Free SKU.
+Reconciled local checks passed: 9 sandbox tests, 46 site tests, production build
+and offline browser consent/privacy/isolation checks. Live default-off, DNT and
+GPC inspection at `2026-10-12T01:47:48.954Z` emitted no vendor traffic and confirmed
+the unchanged deployed runtime SHA-256
+`84ac385105d0bdaf11b4cafe7e2e800c8ad170c2858d1960a49768e9c097bb8c`.
+Sanitized evidence is `analytics-evidence\promotion-readiness.json`.
+
+**Promotion remains blocked by the public privacy notice:** `site/index.html`
+still contains owner TODOs for controller identity, privacy contact, applicable
+legal basis and processor/backup retention details; releases also identifies
+the complete notice as a launch gate. Those facts cannot be invented from test
+credentials or inferred from successful two-account isolation. The reconciled
+branch has not been deployed, and existing GA4 report evidence belongs to the
+older staging artifact, not a new production artifact. No production telemetry
+enablement, PR merge or deployment was performed during this review.
 
 The offline error case deliberately aborts the vendor script and verifies a
 visible failure while download links remain available. It does not prove a
