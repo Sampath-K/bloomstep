@@ -1,16 +1,68 @@
 # Bloomstep product contract (Flutter v0.4)
 
-This is the public, implementation source of truth for the approved Windows-first
-MVP. The older PWA/Tauri install, push and AI proposals are superseded. No private
-account details, subscription identifiers, identity secrets or Store research
-belong in this repository.
+This is the public implementation contract for the approved Windows-first
+Flutter v0.4 MVP, with the customer outcome and product priorities below clearly
+identified as hypotheses where they have not been validated. The older PWA/Tauri
+install, push and AI proposals are superseded. No private account details,
+subscription identifiers, identity secrets or Store research belong in this
+repository.
+
+## Origin and decision status
+
+The initial requests combined helping people build habits with the owner's
+separate learning about application distribution. On 3 October, the assistant
+expanded those requests into a broad capability specification; on 4 October,
+the owner requested a Windows-first implementation and one complete,
+verifiable customer job per iteration. This repository's current implementation
+contract is Flutter v0.4. These decisions explain how the spec evolved; they do
+not establish customer demand or behavior change.
+
+On 12 October 2026, the owner approved this first-customer hypothesis, central
+job and spec-first refinement direction: adults who have abandoned habit
+trackers because goals felt too large, tracking felt burdensome, or missed days
+felt like failure. This is a hypothesis for validation, not a researched
+customer segment, medical diagnosis or therapeutic promise. Screen wording,
+journey details and proposed research are review inputs, not claims about the
+current build or newly approved implementation requirements.
+
+Developer distribution research (installer, Store and platform choices) is a
+separate workstream. It must not add unnecessary steps to or substitute for
+validating the customer journey.
 
 ## Outcome and trust
 
-Help people make one tiny behavior natural and eventually graduate it. The north
-star is habits graduated per activated user at 30/60/90 days, not time in app.
-Notification opt-out, pushy feedback, early uninstall, shame-related feedback and
-account deletion are guardrails. Ages 16+. Not medical advice.
+Help a person make one useful, tiny action fit an existing routine, feel
+positive about trying it, and adapt when life interrupts. The central job is:
+"When I want to change something but struggle to keep going, help me choose an
+action small enough for a difficult day, attach it to a routine I already do,
+and adjust it without feeling that I have failed." The action should be useful
+even if the person never records it.
+
+The existing north star of habits graduated per activated user at 30/60/90 days
+is a candidate outcome measure, not proof that the product is useful or that a
+habit became automatic. Preserve its existing operational definitions below
+until explicitly reviewed; do not treat a recorded check-in as proof of an
+action, or silence as failure.
+
+Keep evidence claims separate: implementation evidence names a revision;
+usability and safety need direct functional, accessibility and privacy
+acceptance; usefulness needs prospective customers using the product for their
+own goals and explaining what helps or does not; effectiveness over time needs
+longitudinal customer evidence with limitations disclosed. Launch gates,
+identity, account separation, persistence, export/deletion, consent and the
+numerical rules elsewhere in this spec remain unchanged by this product
+refinement.
+
+Before further feature implementation, review the end-to-end customer journey
+screen by screen against the actual build, challenge the assumptions about
+garden presentation, recording, routine anchors, sign-in, reminders and
+self-reflection, and agree what evidence would change the design. This review
+is the next product decision, not authorization to build proposed wording or
+features, recruit participants, collect personal data, change launch gates or
+spend money. No research recruitment or data collection is authorized here.
+
+Notification opt-out, pushy feedback, early uninstall, shame-related feedback
+and account deletion are guardrails. Ages 16+. Not medical advice.
 
 Tiny first (less than 30 seconds); celebration first; autonomy; privacy by
 default; coming back is a success. Plants never wilt, die, or lose a stage.
