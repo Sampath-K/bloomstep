@@ -17,7 +17,8 @@ test('customer surfaces and current product documents make bounded privacy claim
   }
   const home = readFileSync(join(root, 'site/index.html'), 'utf8');
   assert.match(home, /habit text is never sold or used for ads/i);
-  assert.match(home, /no third-party product analytics scripts/i);
+  assert.match(home, /public production website does not load third-party product analytics/i);
+  assert.match(home, /separate, noindex staging sandbox uses opt-in Google Analytics for test activity/i);
   assert.match(home, /Website measurement is off by default/);
   assert.match(home, /AI features, if added, will be explained and optional/);
 });

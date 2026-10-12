@@ -58,8 +58,9 @@ initial free self-service preview, a mailing list is not essential to the produc
 is now explicitly discoverable in the FAQ, but it requires successful sign-in and has no response-time guarantee.
 
 The shared homepage privacy notice identifies Sampath Kumar's personal project, lists actual services and
-processing purposes, and documents verified active-store/backup retention without universal legal-basis
-guarantees. The in-app private feedback route requires sign-in; public GitHub issues are available for
+processing purposes, and distinguishes verified active-store TTLs and backup configuration from unresolved
+restore behavior without universal legal-basis guarantees. The owner-approved account-content policy is
+retention until the user deletes the records, with no automatic inactivity expiry. The in-app private feedback route requires sign-in; public GitHub issues are available for
 non-sensitive bugs only, not privacy requests. No verified sign-in-independent private contact is currently
 published. This remains a launch limitation; do not invent or publish an unverified address. No web contact
 form or lead-capture flow was added, and no response time is guaranteed. If the owner wants lead capture later,
@@ -73,7 +74,7 @@ and abuse protection. Existing aggregate telemetry cannot substitute for that ag
 | Value proposition / audience | Concrete Windows routine, labeled app illustration; no clinical or efficacy claim. Owner approves initial audience/channel. |
 | Responsive / keyboard / static download | Isolated real-browser 1280/390/320 reflow, skip link, keyboard FAQ, no-JS links; customer-site CI checks Lighthouse, both entry pages and warning/help surfaces. |
 | Acquisition / intent | Real browser -> HTTP -> disk confirms allowlisted campaign, footer/hero dedup, consent-off zero writes, withdrawal and small-cell suppression. Synthetic proof only. |
-| Privacy | Default-off preserved; owner/purpose/processor/active-store/backup facts documented. **Blocked:** no verified private contact route is published for people unable to sign in; public issues accept non-sensitive bugs only. Also unresolved: provider log/identity retention, jurisdiction-specific obligations and verified backup recovery/deletion-marker preservation. |
+| Privacy | Default-off preserved; owner/purpose/processor and verified implementation/configuration facts documented. **Owner decisions:** product owner to provide or approve a verified private contact route for people unable to sign in and confirm applicable jurisdiction-specific obligations. **Evidence gaps:** service/project owner to confirm provider log/identity retention; Acceptance evidence owner (not yet assigned); project owner to designate, to verify whether deletion markers survive configured cloud-backup restore. Synthetic file-backed app/API restart tests do not establish cloud-restore behavior. Public issues accept non-sensitive bugs only. |
 | Production collection / console | Local synthetic preview is usable. **Unverified:** approved live deployment, Functions/OIDC/Admin roles, deployed collector/readback, retention/erasure operations and hosting logs/billing facts. No new paid resources provisioned. |
 | Download / install / first launch | Existing preview.12 pointer unchanged. **Blocked:** protected acceptance of the intended composed artifact and unresolved launch CI. The withdrawn PR26 `b58ba7fc` candidate was Defender-quarantined (`Behavior:Win32/DefenseEvasion.A!ml`) and remains excluded; this does not characterize every artifact on PR26. See the artifact-specific evidence below. |
 | App activation / retention | Existing separate account reports, not website or campaign conversion. Revenue and referral-delivery/attributed activation remain unsupported. |
@@ -178,10 +179,24 @@ minimal replay-protection markers. Anonymous counts cannot be individually locat
 retroactive deletion of aggregate counts. Active deletion does not remove exports, identity-provider accounts
 or existing backups instantly. Exact log/identity/email retention and tested recovery are unknown.
 
-PR35 owner confirms current production has no third-party vendor code; separately deployed keyless staging
-loads none of GA4/Clarity/Cloudflare/PostHog and has no API. GA4 proposed save/configuration and vendor retention
-are not verified; Aptabase/Sentry are gated debug prototypes, not enabled release processors. Do not list six
-vendors as active processors or infer live first-party collector success from staging SDK tests.
+PR35 owner confirms current production has no third-party vendor code. A separate, noindex staging site loads
+GA4 only after opt-in; an authenticated GA4 standard report on 12 October 2026 verified ingestion from test
+visits. This proves staging collection only, not production collection, customer adoption, artifact attribution
+or conversions. Clarity/Cloudflare/PostHog remain unconfigured there; Aptabase/Sentry are gated debug
+prototypes, not enabled release processors. Do not list those vendors as active processors or infer production
+collection from staging evidence.
+
+Account garden, feedback and settings records are retained until the user deletes them, with no automatic
+inactivity expiry (product-owner decision, 12 October 2026). App raw events expire 396 days after their
+original timestamp; website daily counts and visit-test records expire within 90 days; API audit records and
+daily aggregate snapshots expire after 30 days. Account/record deletion removes active content but keeps
+minimal replay-protection markers. The verified Cosmos backup configuration (four-hour interval, eight-hour
+retention setting, geo-redundant storage) does not establish backup deletion timing, restore-point availability,
+or deletion-marker survival. Synthetic file-backed adapter tests prove tombstones persist across app/API
+restart; they do not test the configured Azure backup restore. Restore-marker preservation and resurrection
+risk remain unknown, V1 has no guaranteed recovery service or deadline, and no live-customer deletion
+acceptance or cloud restore test has been run. The evidence owner is not yet assigned; the project owner must
+designate one.
 
 ## Reproduce the public UX/collector evidence
 

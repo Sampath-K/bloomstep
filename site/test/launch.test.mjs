@@ -29,7 +29,17 @@ test('launch path discloses prerequisites and support/privacy limits without col
   assert.match(releases, /href="\/#privacy-notice"/);
   assert.match(home, /Sampath Kumar's personal independent project/);
   assert.match(home, /not operated by Microsoft/);
-  assert.match(home, /periodic backups every four hours with an eight-hour retention setting/);
+  assert.match(privacyNotice, /production vendor analytics are off/);
+  assert.match(privacyNotice, /staging sandbox loads GA4 only after an affirmative opt-in/);
+  assert.match(privacyNotice, /GA4 ingestion from test visits has been verified/);
+  assert.match(privacyNotice, /does not establish production collection, customer adoption, attribution to an installed artifact or conversions/);
+  assert.match(privacyNotice, /Garden records, feedback and settings are kept until you use the applicable deletion control/);
+  assert.match(privacyNotice, /they do not automatically expire due to inactivity/);
+  assert.match(privacyNotice, /V1 has no guaranteed recovery service or recovery deadline/);
+  assert.match(privacyNotice, /deletion timing in provider backups is unknown/);
+  assert.match(privacyNotice, /configured Azure backup restore and marker preservation through restore have not been tested/);
+  assert.match(privacyNotice, /Whether a restore could reintroduce deleted content is unknown/);
+  assert.match(privacyNotice, /periodic backups every four hours, an eight-hour retention setting and geo-redundant backup storage/);
   assert.match(home, /396 days/);
   assert.match(home, /30-day lifetime/);
   assert.doesNotMatch(home, /hotmail\.com|microsoft\.com">[^<]*support|GDPR compliant|certified safe/);
