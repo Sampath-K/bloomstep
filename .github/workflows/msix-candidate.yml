@@ -1,0 +1,78 @@
+name: signed-msix-candidate
+
+on:
+  workflow_dispatch:
+    inputs:
+      ci_run_id:
+        description: 'Successful ci run on this exact commit with native release artifacts'
+        required: true
+      version:
+        description: 'Exact release version already bound into those payload receipts (no leading v)'
+        required: true
+
+permissions:
+  contents: read
+  actions: read
+
+jobs:
+  candidate:
+    runs-on: windows-latest
+    environment: msix-signing
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Require exact successful CI and configured approved publisher
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RUN_ID: ${{ inputs.ci_run_id }}
+          PUBLISHER: ${{ vars.BLOOMSTEP_MSIX_PUBLISHER }}
+          THUMBPRINT: ${{ vars.BLOOMSTEP_MSIX_CERTIFICATE_THUMBPRINT }}
+        run: |
+          if ($env:RUN_ID -notmatch '^\d+$') { throw 'Invalid CI run ID.' }
+          $run = gh api "repos/$env:GITHUB_REPOSITORY/actions/runs/$env:RUN_ID" | ConvertFrom-Json
+          if ($LASTEXITCODE -ne 0) { throw 'CI run lookup failed.' }
+          if ($run.head_sha -ne $env:GITHUB_SHA -or $run.conclusion -ne 'success' -or $run.path -ne '.github/workflows/ci.yml') {
+            throw 'A successful exact-source CI run is required; no bypass of existing launch gates.'
+          }
+          if (-not $env:PUBLISHER -or $env:THUMBPRINT -notmatch '^[0-9a-fA-F]{40}$') {
+            throw 'Approved publisher and certificate thumbprint have not been provisioned.'
+          }
+      - uses: actions/download-artifact@v4
+        with:
+          github-token: ${{ github.token }}
+          run-id: ${{ inputs.ci_run_id }}
+          pattern: bloomstep-windows-*
+          path: artifacts
+      - name: Sign and validate candidate packages (never install or publish)
+        shell: pwsh
+        env:
+          PFX_BASE64: ${{ secrets.BLOOMSTEP_MSIX_PFX_BASE64 }}
+          PFX_PASSWORD: ${{ secrets.BLOOMSTEP_MSIX_PFX_PASSWORD }}
+          PUBLISHER: ${{ vars.BLOOMSTEP_MSIX_PUBLISHER }}
+          THUMBPRINT: ${{ vars.BLOOMSTEP_MSIX_CERTIFICATE_THUMBPRINT }}
+          RELEASE_VERSION: ${{ inputs.version }}
+        run: |
+          $ErrorActionPreference = 'Stop'
+          if (-not $env:PFX_BASE64 -or -not $env:PFX_PASSWORD) { throw 'Signing credentials are absent.' }
+          $pfx = Join-Path $env:RUNNER_TEMP 'bloomstep-signing.pfx'
+          $cert = $null
+          try {
+            [IO.File]::WriteAllBytes($pfx, [Convert]::FromBase64String($env:PFX_BASE64))
+            $cert = Import-PfxCertificate -FilePath $pfx -CertStoreLocation Cert:\CurrentUser\My -Password (ConvertTo-SecureString $env:PFX_PASSWORD -AsPlainText -Force)
+            if ($cert.Thumbprint -ne $env:THUMBPRINT -or $cert.Subject -cne $env:PUBLISHER) { throw 'Signing identity mismatch.' }
+            & .\tool\build_msix.ps1 -Artifacts "$PWD\artifacts" -Version $env:RELEASE_VERSION -SourceSha $env:GITHUB_SHA -Publisher $env:PUBLISHER -CertificateThumbprint $env:THUMBPRINT -Output "$PWD\msix-output"
+          } finally {
+            if (Test-Path -LiteralPath $pfx) { Remove-Item -LiteralPath $pfx }
+            if ($cert) { Remove-Item -LiteralPath "Cert:\CurrentUser\My\$($cert.Thumbprint)" }
+          }
+      - uses: actions/upload-artifact@v4
+        with:
+          name: signed-msix-candidate-NOT-DEPLOYED
+          path: |
+            msix-output/*.msixbundle
+            msix-output/Bloomstep.appinstaller
+            msix-output/candidate-receipt.json
+          if-no-files-found: error

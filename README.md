@@ -121,6 +121,11 @@ and their persisted receipts are observed; synthetic JWT tests do not replace it
 CI tests and packages per-user unsigned Windows ARM64 and x64 preview installers
 using Inno Setup. Tag releases are explicitly prereleases with checksums.
 
+[Automatic updates](docs/automatic-updates.md) documents automatic release
+discovery and the optional signed MSIX/App Installer apply path. Existing Inno
+customers do **not** auto-update; trusted signing, enrollment and verified
+data-preserving bootstrap remain production gates. The public download is unchanged.
+
 ```powershell
 cd api
 npm ci
