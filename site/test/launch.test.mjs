@@ -5,7 +5,7 @@ import { classifyAttribution } from '../customer.mjs';
 
 const home = readFileSync(new URL('../index.html', import.meta.url), 'utf8');
 const releases = readFileSync(new URL('../releases/index.html', import.meta.url), 'utf8');
-test('launch path discloses prerequisites and a public support/privacy contact without collecting contact details', () => {
+test('launch path discloses prerequisites and support/privacy limits without collecting contact details', () => {
   const download = /<section id="download"[\s\S]*?<\/section>/.exec(home)[0];
   assert.match(download, /id="download-prerequisites"[\s\S]*64-bit Windows[\s\S]*sign-in[\s\S]*ages 16[\s\S]*unsigned/);
   assert.match(download, /id="website-measurement"/);
@@ -17,11 +17,12 @@ test('launch path discloses prerequisites and a public support/privacy contact w
   assert.doesNotMatch(home, /type="email"|<form/);
   assert.match(home, /id="privacy-notice"/);
   const privacyNotice = /<details id="privacy-notice">[\s\S]*?<\/details>/.exec(home)[0];
-  assert.match(privacyNotice, /href="mailto:store-developer@outlook\.com">store-developer@outlook\.com<\/a>/);
+  assert.doesNotMatch(privacyNotice, /mailto:/);
   assert.match(privacyNotice, /For support or a request about access, correction or deletion/);
   assert.match(privacyNotice, /not guaranteed within a stated period/);
-  assert.doesNotMatch(privacyNotice, /private contact accessible without signing in is prepared for owner review but is not published/);
-  assert.equal((releases.match(/href="mailto:store-developer@outlook\.com">store-developer@outlook\.com<\/a>/g) ?? []).length, 2);
+  assert.match(privacyNotice, /No verified private contact route without sign-in is currently published/);
+  assert.doesNotMatch(releases, /mailto:/);
+  assert.match(releases, /bloomstep\/issues/);
   assert.match(releases, /href="\/#privacy-notice"/);
   assert.match(home, /Sampath Kumar's personal independent project/);
   assert.match(home, /not operated by Microsoft/);

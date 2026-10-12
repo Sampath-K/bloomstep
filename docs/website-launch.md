@@ -57,15 +57,14 @@ A download click is intent, **not a qualified lead**. There is no lead count or 
 initial free self-service preview, a mailing list is not essential to the product funnel. In-app private feedback
 is now explicitly discoverable in the FAQ, but it requires successful sign-in and has no response-time guarantee.
 
-The owner-authorized public support/privacy contact `store-developer@outlook.com` is published as a `mailto:`
-link in the shared homepage privacy notice and referenced on the releases page. The notice identifies
-Sampath Kumar's personal project, lists actual services and processing purposes, and documents verified
-active-store/backup retention without universal legal-basis guarantees. The in-app private feedback route
-requires sign-in; public GitHub issues remain for non-sensitive bugs, not privacy requests. No web contact
-form or lead-capture flow was added, and no response time is guaranteed. Email/provider retention and
-mailbox handling are not verified or promised. If the owner wants lead capture later, first agree purpose,
-qualification, fields, consent, access, storage, retention/deletion, response ownership and abuse protection.
-Existing aggregate telemetry cannot substitute for that agreement.
+The shared homepage privacy notice identifies Sampath Kumar's personal project, lists actual services and
+processing purposes, and documents verified active-store/backup retention without universal legal-basis
+guarantees. The in-app private feedback route requires sign-in; public GitHub issues are available for
+non-sensitive bugs only, not privacy requests. No verified sign-in-independent private contact is currently
+published. This remains a launch limitation; do not invent or publish an unverified address. No web contact
+form or lead-capture flow was added, and no response time is guaranteed. If the owner wants lead capture later,
+first agree purpose, qualification, fields, consent, access, storage, retention/deletion, response ownership
+and abuse protection. Existing aggregate telemetry cannot substitute for that agreement.
 
 ## Gates and owner decisions
 
@@ -74,7 +73,7 @@ Existing aggregate telemetry cannot substitute for that agreement.
 | Value proposition / audience | Concrete Windows routine, labeled app illustration; no clinical or efficacy claim. Owner approves initial audience/channel. |
 | Responsive / keyboard / static download | Isolated real-browser 1280/390/320 reflow, skip link, keyboard FAQ, no-JS links; customer-site CI checks Lighthouse, both entry pages and warning/help surfaces. |
 | Acquisition / intent | Real browser -> HTTP -> disk confirms allowlisted campaign, footer/hero dedup, consent-off zero writes, withdrawal and small-cell suppression. Synthetic proof only. |
-| Privacy | Default-off preserved; owner/purpose/processor/active-store/backup facts documented; the owner-authorized public support/privacy email is linked from the homepage notice and releases page. **Unresolved:** provider log/identity/email retention, jurisdiction-specific obligations and verified backup recovery/deletion-marker preservation. |
+| Privacy | Default-off preserved; owner/purpose/processor/active-store/backup facts documented. **Blocked:** no verified private contact route is published for people unable to sign in; public issues accept non-sensitive bugs only. Also unresolved: provider log/identity retention, jurisdiction-specific obligations and verified backup recovery/deletion-marker preservation. |
 | Production collection / console | Local synthetic preview is usable. **Unverified:** approved live deployment, Functions/OIDC/Admin roles, deployed collector/readback, retention/erasure operations and hosting logs/billing facts. No new paid resources provisioned. |
 | Download / install / first launch | Existing preview.12 pointer unchanged. **Blocked:** protected acceptance of the intended composed artifact and unresolved launch CI. The withdrawn PR26 `b58ba7fc` candidate was Defender-quarantined (`Behavior:Win32/DefenseEvasion.A!ml`) and remains excluded; this does not characterize every artifact on PR26. See the artifact-specific evidence below. |
 | App activation / retention | Existing separate account reports, not website or campaign conversion. Revenue and referral-delivery/attributed activation remain unsupported. |
@@ -149,10 +148,10 @@ public download pointer or describing a candidate as independently safety-accept
 
 ### Privacy evidence (read-only, 10 October 2026)
 
-`site/index.html#privacy-notice` is the shared public draft notice; the releases page links to it and
-references the same support/privacy address. The owner explicitly authorized publishing
-`store-developer@outlook.com` as Bloomstep's public support and privacy contact. No new mailbox, account,
-mailing list or binding terms were created.
+`site/index.html#privacy-notice` is the shared public draft notice; the releases page links to it. No
+sign-in-independent private contact is verified or published; the known personal-address draft remains
+private and must not be disclosed without scoped authorization. No mailbox, account, mailing list or binding
+terms were created.
 
 Verified Azure metadata for the existing personal `bloomstep-free` resource group:
 `bloomstep-free` Static Web Apps, `bloomstep-free-261004` Cosmos DB, `bloomstepcustomers261004` External ID
