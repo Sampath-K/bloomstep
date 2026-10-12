@@ -51,10 +51,14 @@ test('GA4 withdrawal disables transport synchronously before consent update and 
 });
 
 test('production site is free of vendor code and domains', assertProductionClean);
-test('production scanner permits the unchanged plain-text privacy disclosure', async () => {
+test('production scanner permits the factual production-off and staging-only privacy disclosure', async () => {
   const html = await readFile(new URL('../site/index.html', import.meta.url), 'utf8');
-  const disclosure = html.match(/<p>The production site has no GA4,[\s\S]*?<\/p>/)?.[0];
+  const disclosure = html.match(/<p>The public production site has no GA4,[\s\S]*?<\/p>/)?.[0];
   assert.ok(disclosure, 'The production privacy disclosure must remain present');
+  assert.match(disclosure, /production vendor analytics are off/);
+  assert.match(disclosure, /separate, noindex staging sandbox loads GA4 only after an affirmative opt-in/);
+  assert.match(disclosure, /GA4 ingestion from test visits has been verified/);
+  assert.match(disclosure, /does not establish production collection/);
   assert.doesNotThrow(() => assertProductionSourceClean(disclosure, 'disclosure.html'));
 });
 test('production scanner rejects vendor resources, domains and executable SDK markers', () => {
