@@ -1,0 +1,43 @@
+name: Production two-account isolation acceptance
+on:
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: bloomstep-production-isolation
+  cancel-in-progress: false
+jobs:
+  acceptance:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    defaults:
+      run:
+        working-directory: site
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: site/package-lock.json
+      - run: npm ci --ignore-scripts --no-audit --no-fund
+      - run: npx playwright install --with-deps chromium
+      - name: Real hosted sign-in and partition-boundary acceptance
+        run: node production-isolation.mjs
+        env:
+          BLOOMSTEP_AUTOMATION_CLIENT_ID: ${{ vars.BLOOMSTEP_AUTOMATION_CLIENT_ID }}
+          BLOOMSTEP_AUTOMATION_PROVISIONING_RECEIPT: ${{ vars.BLOOMSTEP_AUTOMATION_PROVISIONING_RECEIPT }}
+          BLOOMSTEP_TEST_A_EMAIL: ${{ secrets.BLOOMSTEP_TEST_A_EMAIL }}
+          BLOOMSTEP_TEST_A_PASSWORD: ${{ secrets.BLOOMSTEP_TEST_A_PASSWORD }}
+          BLOOMSTEP_TEST_B_EMAIL: ${{ secrets.BLOOMSTEP_TEST_B_EMAIL }}
+          BLOOMSTEP_TEST_B_PASSWORD: ${{ secrets.BLOOMSTEP_TEST_B_PASSWORD }}
+          BLOOMSTEP_TEST_ADMIN_EMAIL: ${{ secrets.BLOOMSTEP_TEST_ADMIN_EMAIL }}
+          BLOOMSTEP_TEST_ADMIN_PASSWORD: ${{ secrets.BLOOMSTEP_TEST_ADMIN_PASSWORD }}
+      - name: Sanitized acceptance evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: production-isolation-evidence
+          path: site/production-isolation-evidence.json
+          if-no-files-found: error
+          retention-days: 14

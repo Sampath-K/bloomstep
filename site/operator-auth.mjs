@@ -45,7 +45,7 @@ export function createOperatorAuth(client, rawConfig, origin, initialized = fals
 }
 
 export async function operatorRequest(auth, origin, path, options = {}, fetcher = fetch) {
-  if(new URL(origin).protocol!=='https:' || !/^\/api\/team\/(?:metrics|feedback)(?:[/?]|$)/.test(path) || path.includes('\\')) throw Error('Invalid same-origin operator route.');
+  if(new URL(origin).protocol!=='https:' || !(path === '/api/account/isolation' || /^\/api\/team\/(?:metrics|feedback|website|operational-status|operational-resume)(?:[/?]|$)/.test(path)) || path.includes('\\') || path.includes('..')) throw Error('Invalid same-origin operator route.');
   const token=await auth.token();
   const response=await fetcher(origin+path,{
     ...options,credentials:'same-origin',redirect:'error',cache:'no-store',
@@ -53,7 +53,9 @@ export async function operatorRequest(auth, origin, path, options = {}, fetcher 
   });
   if(!response.ok) {
     if(response.status===401) throw Error('API rejected authentication (HTTP 401). Sign in again.');
-    if(response.status===403) throw Error('API denied access (HTTP 403). Explicit customer Bloomstep.Admin assignment is required.');
+    if(response.status===403) throw Error(path === '/api/account/isolation'
+      ? 'API denied isolation access (HTTP 403). A customer Garden.ReadWrite session is required.'
+      : 'API denied access (HTTP 403). Explicit customer Bloomstep.Admin assignment is required.');
     throw Error(`API request failed (HTTP ${response.status}). Private response details omitted.`);
   }
   return response.json();

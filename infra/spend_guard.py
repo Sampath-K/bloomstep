@@ -9,6 +9,9 @@ from urllib.error import HTTPError
 from urllib.parse import urlencode, urlsplit, quote
 from urllib.request import Request, build_opener, HTTPRedirectHandler
 
+# Extra Free SWAs (e.g. staging) are tolerated only when each SKU is read back as Free.
+MAX_ADDITIONAL_STATIC_SITES = 3
+
 
 def actual_cost(data):
     props = data.get("properties", {})
@@ -35,6 +38,12 @@ def evaluate(data, cost):
     cosmos = data.get("cosmos", {}).get("properties", {})
     throughputs = data.get("throughputs", [])
     inventory = [kind.lower() for kind in data.get("inventory", [])]
+    swa_type = "microsoft.web/staticsites"
+    extra_swas = data.get("additionalStaticSites", [])
+    extras_free = (isinstance(extra_swas, list) and len(extra_swas) <= MAX_ADDITIONAL_STATIC_SITES and
+                   all(isinstance(site, dict) and isinstance(site.get("sku"), dict) and
+                       site["sku"].get("name") == "Free" for site in extra_swas) and
+                   inventory.count(swa_type) == 1 + len(extra_swas))
     directory = data.get("customerDirectory", {})
     directory_name = data.get("customerDirectoryName")
     if (data.get("swa", {}).get("sku", {}).get("name") != "Free" or
@@ -46,8 +55,9 @@ def evaluate(data, cost):
             item.get("properties", {}).get("resource", {}).get("autoscaleSettings") for item in throughputs) or
         not directory_name or directory.get("name") != directory_name or
         directory.get("sku", {}).get("name") != "Base" or directory.get("sku", {}).get("tier") != "A0" or
-        sorted(inventory) != sorted(["microsoft.web/staticsites", "microsoft.documentdb/databaseaccounts",
-                                     "microsoft.azureactivedirectory/ciamdirectories"])):
+        not extras_free or
+        sorted(kind for kind in inventory if kind != swa_type) != sorted(["microsoft.documentdb/databaseaccounts",
+                                                                          "microsoft.azureactivedirectory/ciamdirectories"])):
         reason = reason or "paid_sku"
     if cost is not None and cost > 0:
         reason = reason or "positive_cost"
@@ -130,7 +140,14 @@ def run():
         if resources.get("nextLink") or len(resources.get("value", [])) > 20:
             raise ValueError("Resource inventory cap")
         data["inventory"] = [row["type"] for row in resources["value"]]
-        data["swa"] = arm(rg + "/providers/Microsoft.Web/staticSites/" + quote(os.environ["GUARD_SWA_NAME"], safe=""), "2023-12-01")
+        primary_swa = os.environ["GUARD_SWA_NAME"]
+        extra_names = [row["name"] for row in resources["value"] if str(row["type"]).lower() == "microsoft.web/staticsites"
+                       and str(row["name"]).lower() != primary_swa.lower()]
+        if len(extra_names) > MAX_ADDITIONAL_STATIC_SITES:
+            raise ValueError("Additional static site cap")
+        data["swa"] = arm(rg + "/providers/Microsoft.Web/staticSites/" + quote(primary_swa, safe=""), "2023-12-01")
+        data["additionalStaticSites"] = [arm(rg + "/providers/Microsoft.Web/staticSites/" + quote(str(name), safe=""), "2023-12-01")
+                                         for name in extra_names]
         data["customerDirectoryName"] = os.environ["GUARD_CUSTOMER_DIRECTORY_NAME"]
         data["customerDirectory"] = arm(rg + "/providers/Microsoft.AzureActiveDirectory/ciamDirectories/" +
                                         quote(data["customerDirectoryName"], safe=""), "2023-05-17-preview")

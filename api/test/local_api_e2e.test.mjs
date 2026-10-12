@@ -9,6 +9,7 @@ import { once } from 'node:events';
 import { fileURLToPath } from 'node:url';
 import { SignJWT } from 'jose';
 import { createLocalTestServer } from './support/local_api_server.mjs';
+import { accountKey } from '../src/contracts.mjs';
 
 const issuer = 'https://bloomstep.test';
 const audience = 'bloomstep-test-api';
@@ -112,6 +113,50 @@ async function startServerProcess(databasePath, key, reuseDatabase = false) {
     },
   };
 }
+
+test('signed two-account isolation receipts survive a server restart without peer content', async () => {
+  const root = await mkdtemp(join(tmpdir(), 'bloomstep-it-'));
+  const databasePath = join(root, 'server.json'), key = secret();
+  let server = await createLocalTestServer({ databasePath, key });
+  const aId = accountKey(issuer, 'synthetic-alice'), bId = accountKey(issuer, 'synthetic-bob');
+  const alice = await sign(key, 'synthetic-alice'), bob = await sign(key, 'synthetic-bob');
+  const call = (token, method = 'GET', body) => fetch(`${server.url}/api/account/isolation`, {
+    method, headers: { 'x-bloomstep-authorization': `Bearer ${token}`, 'content-type': 'application/json' },
+    ...(body ? { body: JSON.stringify(body) } : {}),
+  });
+  try {
+    assert.equal((await fetch(`${server.url}/api/account/isolation`)).status, 401);
+    assert.equal((await call(await sign(secret(), 'synthetic-alice'))).status, 401);
+    const receipts = [];
+    for (const [token, userId, peerUserId] of [[alice, aId, bId], [bob, bId, aId]]) {
+      assert.deepEqual(await (await call(token)).json(), { userId });
+      const response = await call(token, 'POST', { peerUserId });
+      assert.equal(response.status, 200);
+      const proof = await response.json();
+      assert.equal(proof.userId, userId);
+      assert.deepEqual(proof.checks, { ownRead: 200, ownEmptySync: 200, foreignRead: 400, foreignWrite: 400, teamFeedback: 403 });
+      assert.deepEqual(proof.counts, { habits: 0, checkins: 0, reflections: 0, voice: 0, settings: 0 });
+      assert.equal(JSON.stringify(proof).includes(peerUserId), false);
+      receipts.push(proof);
+    }
+    await server.close(); server = null;
+    server = await createLocalTestServer({ databasePath, key, reuseDatabase: true });
+    const stored = JSON.parse(await readFile(databasePath, 'utf8'));
+    for (const receipt of receipts) {
+      const audit = stored.documents.find(doc => doc.id === receipt.auditId);
+      assert.equal(audit.userId, receipt.userId);
+      assert.equal(audit.partition, receipt.userId);
+      assert.deepEqual(audit.checks, receipt.checks);
+      assert.equal(audit.action, 'data_isolation_check');
+      assert.equal(audit.record, undefined);
+      assert.equal(audit.peerUserId, undefined);
+      assert.equal(audit.counts, undefined);
+    }
+  } finally {
+    await server?.close();
+    await rm(root, { recursive: true, force: true });
+  }
+});
 
 test('test-key auth runs production sync and deletion handlers on restartable disposable owner partitions', async () => {
   const root = await mkdtemp(join(tmpdir(), 'bloomstep-it-'));
