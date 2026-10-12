@@ -15,6 +15,9 @@ jobs:
           node-version: 22
       - run: npm --prefix site ci --ignore-scripts
       - run: npm --prefix site test && npm --prefix site run build
+      - run: npm --prefix api ci --ignore-scripts
+      - name: Verify public CTA intent and consent with real isolated collector
+        run: CHROME_PATH=/usr/bin/google-chrome EVIDENCE_DIR=/tmp/public-launch node site/verify-launch.mjs
       - name: Measure mobile public-page quality
         run: |
           python3 -m http.server 8080 --directory site > /tmp/bloomstep-site.log 2>&1 &
@@ -37,3 +40,4 @@ jobs:
           path: |
             /tmp/lighthouse-*.json
             /tmp/customer-browser/
+            /tmp/public-launch/

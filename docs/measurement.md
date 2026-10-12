@@ -1,10 +1,21 @@
 # Consent-scoped observation contracts
 
+For the additive private AARRR overview, exact account-only denominators,
+privacy/completeness boundaries and isolated HTTP/disk/render acceptance,
+see [aarrr-dashboard.md](aarrr-dashboard.md). Anonymous acquisition remains
+a separate event-count unit; no automatic browser-to-account journey is
+inferred.
+
 This source is instrumentation, not proof of users, a complete funnel, a
 crash-free population or a completed experiment. Verified `v0.1.0-preview.3`
 contains these controls; preview.2 predates receipt import.
 
 ## Source of truth and explicit linkage
+
+Current customer website collection and independent browser-to-account
+receipt/HTTP proof are mapped in [`funnel-telemetry.md`](funnel-telemetry.md).
+The main customer page has a separate default-off anonymous count endpoint;
+the historical browser-storage receipt flow below is not its collection path.
 
 The website has no product-analytics upload endpoint. Optional local consent is
 unchecked unless a valid prior consented receipt is present. The browser-owned

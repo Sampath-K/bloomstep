@@ -120,5 +120,12 @@ jobs:
           if not isinstance(result, dict) or not isinstance(result.get("snapshots"), list):
               fail("Unexpected aggregate response; body omitted.")
           print("Completed prior-UTC-day aggregate request; snapshots: " + str(len(result["snapshots"])))
+          tick = call(Request(origin + "/api/internal/experiments/tick", data=b"{}", method="POST", headers={
+              "Content-Type": "application/json",
+              "X-Bloomstep-Authorization": "Bearer " + access_token
+          }), "Bounded experiment tick")
+          if not isinstance(tick, dict) or tick.get("status") not in ("disabled", "ok"):
+              fail("Unexpected experiment tick response; body omitted.")
+          print("Experiment tick status: " + tick["status"] + ("" if tick["status"] == "ok" else " (" + str(tick.get("reason", ""))[:80] + ")"))
           print("Real worker token rejected by garden and team routes; issuer/role isolation verified.")
           PY

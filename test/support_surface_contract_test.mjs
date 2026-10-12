@@ -28,7 +28,8 @@ test('support export does not migrate SQLite or introduce a separate unpurged co
   assert.match(store, /deletedVoiceIds\(\) => _deletedRecordIds\('voice'\)/);
   assert.doesNotMatch(store, /CREATE TABLE.*(?:support|receipt)/i);
   const backend = readFileSync(new URL('../api/src/backend.mjs', import.meta.url), 'utf8');
-  assert.match(backend, /IIF\(IS_ARRAY\(STRINGTOARRAY\(c\.record\.replies\)\) AND NOT EXISTS\(SELECT VALUE r FROM r IN STRINGTOARRAY\(c\.record\.replies\) WHERE NOT IS_STRING\(r\) OR LENGTH\(r\) > 2100\), ARRAY_LENGTH\(STRINGTOARRAY\(c\.record\.replies\)\) > 0, null\) AS hasResponses/);
+  assert.match(backend, /JOIN \(SELECT VALUE \{ a: STRINGTOARRAY\(c\.record\.replies\) \}\) w WHERE c\.type = "voice"/);
+  assert.match(backend, /IIF\(IS_ARRAY\(w\.a\) AND NOT EXISTS\(SELECT VALUE r FROM r IN w\.a WHERE NOT IS_STRING\(r\) OR LENGTH\(r\) > 2100\), ARRAY_LENGTH\(w\.a\) > 0, null\) AS hasResponses/);
   const projection = backend.split('async function rawSupport(scan)')[1].split('async function')[0];
   assert.doesNotMatch(projection, /c\.record\.body|SELECT.*c\.record\.replies\s*,/);
   assert.match(backend, /Array\.from\(reply\)\.length > 2100/);

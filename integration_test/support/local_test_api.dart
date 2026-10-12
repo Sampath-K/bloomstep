@@ -33,6 +33,7 @@ class LocalTestApi {
   static Future<LocalTestApi> start({
     required Directory runRoot,
     required String secret,
+    bool telemetry = false,
   }) async {
     final database = File(p.join(runRoot.path, 'server.json'));
     if (await database.exists()) {
@@ -51,6 +52,7 @@ class LocalTestApi {
       'BLOOMSTEP_TEST_DATABASE': database.path,
       'BLOOMSTEP_TEST_PORT': '0',
       'BLOOMSTEP_TEST_REUSE_DATABASE': 'false',
+      'BLOOMSTEP_TEST_TELEMETRY': '$telemetry',
     };
     final process = await Process.start(
       'node',

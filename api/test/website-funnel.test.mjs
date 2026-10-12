@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { createWebsiteHandlers, validateWebPayload, summarizeWebCounts, linkedWebFunnel } from '../src/website-funnel.mjs';
+import { createWebsiteHandlers, validateWebPayload, summarizeWebCounts, linkedWebFunnel, attributedActivationJourneys } from '../src/website-funnel.mjs';
 
 const payload = { channel: 'web', event: 'landing_view', source: 'search', architecture: 'unknown',
   eventId: '00000000-0000-4000-8000-000000000001', synthetic: false };
@@ -167,6 +167,43 @@ test('linked web cohorts require correct receipt origins, ordered stages and 50 
   const missingReceipt = linkedWebFunnel(rows.map(row => ({ ...row,
     record: { ...row.record, properties: { ...row.record.properties, measurementSource: undefined } } })), '2026-10-05', '2026-10-05');
   assert.equal(missingReceipt.stages.landing_view, null);
+});
+test('website-attributed activation reaches planted habit and same-habit completion without installer receipts', () => {
+  const rows = [];
+  const id = (user, index) => `00000000-0000-4000-8000-${(user * 10 + index).toString(16).padStart(12, '0')}`;
+  const web = { measurementSource: 'website_receipt', channel: 'website', platform: 'web' };
+  for (let user = 1; user <= 51; user++) {
+    const habitId = `10000000-0000-4000-8000-${user.toString(16).padStart(12, '0')}`;
+    rows.push({ userId: `user-${user}`, record: { id: id(user, 0), name: 'landing_view', ts: '2026-10-05T09:00:00.000Z', properties: web } });
+    rows.push({ userId: `user-${user}`, record: { id: id(user, 1), name: 'download_click', ts: '2026-10-05T09:01:00.000Z', properties: web } });
+    rows.push({ userId: `user-${user}`, record: { id: id(user, 2), name: 'recipe_created', ts: '2026-10-05T10:00:00.000Z',
+      properties: { habitId, localDay: '2026-10-05', platform: 'windows' } } });
+    // A first skip must not hide a later real completion; a different habit's completion never counts.
+    rows.push({ userId: `user-${user}`, record: { id: id(user, 3), name: 'checkin', ts: '2026-10-05T10:30:00.000Z',
+      properties: { habitId, result: 'skip', localDay: '2026-10-05', platform: 'windows' } } });
+    if (user <= 50) rows.push({ userId: `user-${user}`, record: { id: id(user, 4), name: 'checkin', ts: '2026-10-05T11:00:00.000Z',
+      properties: { habitId: user === 50 ? id(user, 9) : habitId, result: 'did', localDay: '2026-10-05', platform: 'windows' } } });
+  }
+  // Recipe before the website download is not attributable to that download.
+  rows.push({ userId: 'early', record: { id: id(70, 1), name: 'download_click', ts: '2026-10-05T12:00:00.000Z', properties: web } });
+  rows.push({ userId: 'early', record: { id: id(70, 2), name: 'recipe_created', ts: '2026-10-05T08:00:00.000Z',
+    properties: { habitId: id(70, 5), localDay: '2026-10-05', platform: 'windows' } } });
+  const linked = linkedWebFunnel(rows, '2026-10-05', '2026-10-05');
+  assert.equal(linked.stages.install_completed, null, 'Old installer-ordered contract stays unchanged.');
+  const activation = linked.activation;
+  assert.equal(activation.schemaVersion, 1);
+  assert.equal(activation.minimumContributors, 50);
+  assert.deepEqual(Object.keys(activation.stages), ['website_receipt_download', 'recipe_created', 'first_completion']);
+  assert.deepEqual(activation.stages, { website_receipt_download: 52, recipe_created: 51, first_completion: null });
+  assert.deepEqual(activation.steps.map(step => step.rate), [51 / 52, null]);
+  assert.deepEqual(activation.unobservable, ['download_completed', 'install_completed', 'first_launch_time', 'signin_succeeded']);
+  const journeys = attributedActivationJourneys(rows, '2026-10-05', '2026-10-05');
+  assert.equal(journeys.get('user-1').firstCompletion, '2026-10-05T11:00:00.000Z');
+  assert.equal(journeys.get('user-50').firstCompletion, null);
+  assert.equal(journeys.get('early').recipeCreated, null);
+  const unlinked = linkedWebFunnel(rows.map(row => ({ ...row, record: { ...row.record,
+    properties: { ...row.record.properties, measurementSource: undefined } } })), '2026-10-05', '2026-10-05');
+  assert.deepEqual(unlinked.activation.stages, { website_receipt_download: null, recipe_created: null, first_completion: null });
 });
 test('production synthetic proof is aggregate-worker-only and does not expose real daily cells', async () => {
   const f = fixture();

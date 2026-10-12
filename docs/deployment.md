@@ -24,6 +24,41 @@ not committed config. Creation is authorized separately from enabling public use
 
 ## Identity
 
+### Synthetic-only nonproduction storage binding
+
+The API defaults remain Cosmos database `bloomstep`, container `data`. A separate
+target requires both `COSMOS_DATABASE_NAME` and `COSMOS_CONTAINER_NAME`; partial,
+empty or invalid names fail startup rather than falling back to production.
+Set `BLOOMSTEP_SYNTHETIC_ACCEPTANCE=enabled` for acceptance deployments. In this
+mode both names must start with `synthetic-` (for example database
+`synthetic-pr34`, container `synthetic-data`); the production database or container
+is rejected before storage access or route registration. Any other value for
+the acceptance flag is rejected; leave it unset for normal deployments.
+
+This is a naming/startup guard, not a credential, account, network or data
+isolation guarantee. Verify that the selected resource contains synthetic data
+only and the deployment cannot access production customer records before use.
+Do not supply a production account-wide key as proof of isolated access. The
+binding creates no resources or permissions and enables no workers or experiments.
+Provisioning, credentials, exact SPA callback and existing approved customer
+identities remain prerequisites; a static-only staging site is not an API target.
+
+The existing Free analytics staging default slot must not be overwritten by this
+acceptance deployment. A proposed additional Free SWA needs its own managed API
+and verified storage binding. A separate synthetic database with manual shared
+400 RU/s on the existing account would share its account-level free allowance,
+storage, credentials and failure domain; it is not an isolated Cosmos account.
+Verify total throughput, storage below the free allowance and least-privilege
+access before provisioning. Do not infer zero cost from the Free flag alone.
+
+Provider periodic-backup restore is separate from local restart/tombstone tests.
+It restores to a new account through Azure support and cannot restore only a
+subset of containers from a shared-throughput database. Only one Cosmos Free
+account is allowed per subscription. No free restore target or production-data
+restore is authorized or established by these source contracts.
+See Microsoft's [periodic restore contract](https://learn.microsoft.com/en-us/azure/cosmos-db/periodic-backup-restore-introduction)
+and [Free tier limits](https://learn.microsoft.com/en-us/azure/cosmos-db/free-tier).
+
 External tenant ARM resource:
 `Microsoft.AzureActiveDirectory/ciamDirectories@2023-05-17-preview`,
 location `Asia Pacific` (operator can choose before creation),

@@ -1,5 +1,12 @@
 # Customer acquisition and website funnel contract
 
+The current additive bounded attribution, distributed timestamped retry
+contract and independently persisted browser/app acceptance are specified in
+[`funnel-telemetry.md`](funnel-telemetry.md). That foundation supersedes the
+older categories-only/no-stored-campaign/transient-dedup description below.
+First/last touch still means one consented page epoch, never unique visitors or
+automatic account linkage.
+
 The customer site explains Bloomstep without presenting operator tooling as a
 product feature. `/releases/` preserves the release evidence and checksums;
 `/console.html` is a separate noindex operator surface. Downloads remain ordinary

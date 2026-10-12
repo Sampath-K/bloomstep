@@ -1,0 +1,40 @@
+name: Isolated telemetry functional acceptance
+on:
+  workflow_dispatch:
+  pull_request:
+    paths: ['api/**', 'site/**', 'lib/**', 'test/telemetry*', 'tool/verify_telemetry.ps1', '.github/workflows/telemetry.yml']
+permissions:
+  contents: read
+jobs:
+  telemetry:
+    runs-on: windows-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.47.6'
+          channel: stable
+      - name: Restore existing dependencies
+        shell: pwsh
+        run: |
+          npm --prefix api ci --ignore-scripts --no-audit --no-fund
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          npm --prefix site ci --no-audit --no-fund
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          flutter pub get
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+      - name: Verify browser to disk and app to disk, never an installer
+        shell: pwsh
+        run: |
+          .\tool\verify_telemetry.ps1 -EvidenceDir (Join-Path $env:RUNNER_TEMP 'bloomstep-telemetry-evidence')
+      - name: Preserve source-bound synthetic evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: isolated-telemetry-NOT-CUSTOMER-ACCEPTANCE
+          path: ${{ runner.temp }}/bloomstep-telemetry-evidence/
+          if-no-files-found: error

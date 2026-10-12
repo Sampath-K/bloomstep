@@ -3,6 +3,7 @@ import { mkdir, writeFile, readFile } from 'node:fs/promises';
 import { validatePublicConfig } from './operator-auth.mjs';
 import { fileURLToPath } from 'node:url';
 import { validateRelease, renderDownloads } from './release-downloads.mjs';
+import { applyPromotionsToHtml } from '../api/src/experiment-policy.mjs';
 
 const values=['CONSOLE_CLIENT_ID','OIDC_ISSUER','OIDC_API_SCOPE','API_ORIGIN'].map(key=>process.env[key]);
 if(values.some(Boolean) && !values.every(Boolean)) throw Error('All public console deployment identifiers are required together.');
@@ -25,9 +26,13 @@ const customer = JSON.parse(await readFile(new URL('./customer-config.json',impo
 const origin = new URL(customer.origin);
 if(origin.protocol !== 'https:' || origin.origin !== customer.origin) throw Error('Canonical origin must be an HTTPS origin.');
 validateRelease(customer.release);
+// Experiment winners reach the public page only through a reviewed draft PR editing this file, never live mutation.
+const promotions = JSON.parse(await readFile(new URL('./experiment-promotions.json',import.meta.url),'utf8'));
+if (promotions.schemaVersion !== 1 || !Array.isArray(promotions.promotions)) throw Error('Invalid experiment promotions file.');
 for (const page of ['index.html','releases/index.html']) {
   const url = new URL(`./${page}`,import.meta.url);
   let html = await readFile(url,'utf8');
+  if (page === 'index.html') html = applyPromotionsToHtml(html, promotions.promotions);
   html = renderDownloads(html, customer.release);
   html = html.replaceAll('https://brave-plant-02c10e800.5.azurestaticapps.net',customer.origin);
   for (const arch of ['arm64','x64']) {
