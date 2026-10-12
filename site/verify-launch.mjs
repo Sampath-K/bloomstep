@@ -102,7 +102,8 @@ try {
   }
   for (const path of ['/', '/releases/']) {
     await page.setJavaScriptEnabled(false);
-    await page.goto(server.url + path, { waitUntil: 'networkidle0' });
+    const response = await page.goto(server.url + path, { waitUntil: 'networkidle0' });
+    assert.equal(response.status(), 200, `Customer entry page ${path}`);
     const contacts = await page.$$eval('a[href^="mailto:"]', nodes =>
       nodes.map(node => ({ href: node.getAttribute('href'), text: node.textContent })));
     assert.ok(contacts.length > 0, `Public contact on ${path} without JavaScript`);

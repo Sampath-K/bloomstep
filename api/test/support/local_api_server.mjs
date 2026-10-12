@@ -79,6 +79,7 @@ export async function createLocalTestServer({
     } }) : null;
   const assets = telemetry ? {
     '/': await readFile(new URL('../../../site/index.html', import.meta.url)),
+    '/releases/': await readFile(new URL('../../../site/releases/index.html', import.meta.url)),
     '/assets/customer.js': await readFile(new URL('../../../site/assets/customer.js', import.meta.url)),
   } : {};
   if (telemetry) {
