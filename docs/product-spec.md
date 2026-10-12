@@ -38,6 +38,10 @@ action small enough for a difficult day, attach it to a routine I already do,
 and adjust it without feeling that I have failed." The action should be useful
 even if the person never records it.
 
+Product priority: success should eventually need less support from the app, not
+more attention to it. This is an intended direction, not a validated or
+implemented outcome.
+
 The existing north star of habits graduated per activated user at 30/60/90 days
 is a candidate outcome measure, not proof that the product is useful or that a
 habit became automatic. Preserve its existing operational definitions below
