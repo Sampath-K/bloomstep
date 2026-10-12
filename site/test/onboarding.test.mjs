@@ -36,7 +36,7 @@ test('unsigned installer wording is neutral, factual, safely bounded and linked 
   assert.match(page, /Only for an unknown-reputation prompt,[\s\S]*SHA-256 match,[\s\S]*policy permits[\s\S]*accept the risk/);
   assert.match(page, /Cancellation is always an option/);
   assert.doesNotMatch(page, /disable (?:Microsoft Defender )?SmartScreen|turn off (?:Edge|browser|Windows) protection|bypass (?:your |managed )?policy|run as administrator to get past/i);
-  assert.match(page, /href="https:\/\/learn\.microsoft\.com\/en-us\/deployedge\/microsoft-edge-security-smartscreen"/);
+  assert.doesNotMatch(page, /href="https:\/\/learn\.microsoft\.com\/en-us\/deployedge\//);
   assert.match(page, /href="https:\/\/support\.microsoft\.com\/en-us\/edge\/how-can-smartscreen-help-protect-me-in-microsoft-edge"/);
   assert.match(page, /href="https:\/\/support\.mozilla\.org\/en-US\/kb\/where-find-and-manage-downloaded-files-firefox"/);
 });
@@ -90,6 +90,7 @@ test('both customer entry paths explain the early-preview limits and official le
   const home = read('index.html');
   const releases = read('releases/index.html');
   assert.ok(home.includes(limited));
+  assert.ok(releases.includes(limited));
   for (const page of [home, releases]) {
     assert.match(page, /Early preview — not yet verified for general use/);
     assert.match(page, /owner-test candidate, not a general customer release/);
