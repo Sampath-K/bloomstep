@@ -24,7 +24,7 @@ const request = (method, data, query = {}, params = {}) => ({
   text: async () => JSON.stringify(data),
 });
 
-function harness({ roles = ['Bloomstep.Admin'], scopes = ['Garden.ReadWrite'], actorUserId, disabled = false, apiDisabled = false, aggregatesDisabled = false, invitationsDisabled = false, limits = {}, beforeBatch, failAudit = false, beforeQuery, clock = () => new Date(now) } = {}) {
+function harness({ roles = ['Bloomstep.Admin'], scopes = ['Garden.ReadWrite'], actorUserId, disabled = false, apiDisabled = false, aggregatesDisabled = false, invitationsDisabled = false, limits = {}, beforeBatch, failAudit = false, beforeQuery, beforeRead, clock = () => new Date(now) } = {}) {
   const documents = new Map();
   const writes = [];
   let revision = 0;
@@ -37,7 +37,7 @@ function harness({ roles = ['Bloomstep.Admin'], scopes = ['Garden.ReadWrite'], a
   const read = (id, partition) => structuredClone(documents.get(key(id, partition)));
   const store = {
     item: (id, partition) => ({
-      read: async () => ({ resource: read(id, partition) }),
+      read: async () => { await beforeRead?.(id, partition); return { resource: read(id, partition) }; },
       replace: async (document, options) => {
         if (options?.accessCondition?.condition !== read(id, partition)?._etag) throw { code: 412 };
         return { resource: put(document) };
@@ -65,7 +65,7 @@ function harness({ roles = ['Bloomstep.Admin'], scopes = ['Garden.ReadWrite'], a
       },
       query: (spec, options = {}) => ({
         fetchAll: async () => {
-          await beforeQuery?.(spec, { put, read });
+          await beforeQuery?.(spec, { put, read }, options);
           const parameters = Object.fromEntries((spec.parameters ?? []).map(p => [p.name, p.value]));
           let rows = [...documents.values()].filter(row => !options.partitionKey || row.userId === options.partitionKey);
           if (spec.query.includes('c.type IN')) rows = rows.filter(row => ['habits', 'checkins', 'reflections', 'voice', 'settings'].includes(row.type));
@@ -107,6 +107,60 @@ function harness({ roles = ['Bloomstep.Admin'], scopes = ['Garden.ReadWrite'], a
 }
 
 const friendId = 'c'.repeat(64);
+test('isolation acceptance runs both directions without reading or changing the peer partition', async () => {
+  const reads = [];
+  const h = harness({ roles: [], actorUserId: userId,
+    beforeRead: (_id, partition) => reads.push(partition),
+    beforeQuery: (_spec, _store, options) => reads.push(options.partitionKey),
+  });
+  const peer = friendHandlers(h);
+  for (const [handlers, id] of [[h, userId], [peer, friendId]]) {
+    await handlers.sync(request('POST', payload({ voice: [voice()] })));
+    assert.deepEqual((await handlers.isolationCheck(request('GET'))).jsonBody, { userId: id });
+  }
+  for (const [handlers, id, other] of [[h, userId, friendId], [peer, friendId, userId]]) {
+    reads.length = 0;
+    const before = [...h.documents.values()].filter(doc => doc.userId === other);
+    const result = (await handlers.isolationCheck(request('POST', { peerUserId: other }))).jsonBody;
+    assert.equal(result.userId, id);
+    assert.equal(result.counts.voice, 1);
+    assert.deepEqual(result.checks, { ownRead: 200, ownEmptySync: 200, foreignRead: 400, foreignWrite: 400, teamFeedback: 403 });
+    assert.deepEqual([...h.documents.values()].filter(doc => doc.userId === other), before);
+    assert.ok(reads.length > 0);
+    assert.ok(reads.every(partition => partition === id || partition === '__preview_budget'), 'all reads must be caller-bound or operational budget reads');
+    const audit = h.read(result.auditId, id);
+    assert.deepEqual(Object.keys(audit).sort(), ['_etag','action','checks','id','partition','ts','ttl','type','userId'].sort());
+    assert.equal(audit.partition, id);
+    assert.equal(audit.action, 'data_isolation_check');
+    assert.deepEqual(audit.checks, result.checks);
+  }
+});
+
+test('isolation proof rejects invalid inputs and never succeeds when evidence storage fails', async () => {
+  const h = harness({ roles: [], actorUserId: userId });
+  for (const data of [{}, { peerUserId: userId }, { peerUserId: 'raw-subject' }, { peerUserId: friendId, extra: true }]) {
+    await assert.rejects(h.isolationCheck(request('POST', data)), error => error.status === 400);
+  }
+  assert.equal(h.documents.size, 0);
+  const noScope = harness({ roles: [], scopes: [] });
+  await assert.rejects(noScope.isolationCheck(request('GET')), error => error.status === 403);
+  const worker = harness({ roles: ['Bloomstep.AggregateWriter'] });
+  await assert.rejects(worker.isolationCheck(request('GET')), error => error.status === 403);
+  const failed = harness({ roles: [], failAudit: true });
+  await assert.rejects(failed.isolationCheck(request('POST', { peerUserId: friendId })), /Audit storage failed/);
+  const admin = harness();
+  assert.equal((await admin.isolationCheck(request('POST', { peerUserId: friendId }))).jsonBody.checks.teamFeedback, 'admin-authorized-not-tested');
+});
+
+test('sync rejects partition selectors before store access on both read and write', async () => {
+  const h = harness({ roles: [] });
+  for (const query of [{ userId: friendId }, { partitionKey: friendId }]) {
+    await assert.rejects(h.sync(request('GET', null, query)), error => error.status === 400);
+  }
+  await assert.rejects(h.sync(request('POST', payload({ userId: friendId }))), error => error.status === 400);
+  assert.equal(h.documents.size, 0);
+});
+
 const friendHandlers = (h, id = friendId, roles = [], scopes = ['Garden.ReadWrite']) => createHandlers({
   container: () => h.store, authenticate: async () => ({ userId: id, roles, scopes }),
   clock: h.clock,

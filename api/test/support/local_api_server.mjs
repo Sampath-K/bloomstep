@@ -71,9 +71,10 @@ export async function createLocalTestServer({
       response.end('{"ready":true}');
       return;
     }
-    if (incoming.url !== '/api/sync' ||
+    const route = new URL(incoming.url ?? '/', 'http://127.0.0.1').pathname;
+    if (!['/api/sync', '/api/account/isolation'].includes(route) ||
         !['GET', 'POST'].includes(incoming.method ?? '')) {
-      response.writeHead(incoming.url === '/api/sync' ? 405 : 404, headers);
+      response.writeHead(['/api/sync', '/api/account/isolation'].includes(route) ? 405 : 404, headers);
       response.end();
       return;
     }
@@ -97,7 +98,7 @@ export async function createLocalTestServer({
       text: async () => rawBody,
     };
     try {
-      const result = await handlers.sync(request);
+      const result = await (route === '/api/account/isolation' ? handlers.isolationCheck : handlers.sync)(request);
       const status = result.status ?? 200;
       response.writeHead(status, {
         ...headers,

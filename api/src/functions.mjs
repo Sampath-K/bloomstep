@@ -60,6 +60,7 @@ function guarded(handler) {
 }
 
 app.http('sync', { route: 'sync', methods: ['GET', 'POST'], authLevel: 'anonymous', handler: guarded(handlers.sync) });
+app.http('isolationCheck', { route: 'account/isolation', methods: ['GET', 'POST'], authLevel: 'anonymous', handler: guarded(handlers.isolationCheck) });
 app.http('deleteAccount', { route: 'account', methods: ['DELETE'], authLevel: 'anonymous', handler: guarded(handlers.deleteAccount) });
 app.http('adminFeedback', { route: 'team/feedback/{userId?}', methods: ['GET', 'POST'], authLevel: 'anonymous', handler: guarded(handlers.admin) });
 app.http('adminMetrics', { route: 'team/metrics', methods: ['GET'], authLevel: 'anonymous', handler: guarded(handlers.metrics) });
