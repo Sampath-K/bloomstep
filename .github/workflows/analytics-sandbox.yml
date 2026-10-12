@@ -1,0 +1,35 @@
+name: Offline analytics sandbox proof
+on:
+  pull_request:
+  push:
+    branches: ['**']
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  website:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - run: npm ci --prefix site --ignore-scripts
+      - run: npm run build --prefix site
+      - run: node --test test/analytics_sandbox_test.mjs
+      - run: node tool/analytics_sandbox_check.mjs
+        env:
+          CHROME_PATH: /usr/bin/google-chrome
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: analytics-sandbox-offline-proof
+          path: analytics-evidence/
+      - name: Record keyless staging artifact provenance
+        run: |
+          node --input-type=module -e "import {writeFile} from 'node:fs/promises'; await writeFile('build/analytics-site/build-receipt.json', JSON.stringify({commit:process.env.GITHUB_SHA,runId:process.env.GITHUB_RUN_ID,mode:'keyless-staging-artifact',deployed:false}, null, 2));"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: analytics-staging-keyless-site
+          path: build/analytics-site/
+          retention-days: 7

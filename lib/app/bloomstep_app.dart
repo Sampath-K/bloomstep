@@ -9,6 +9,7 @@ import '../services/invitation_intent.dart';
 import '../services/session_diagnostics.dart';
 import '../services/auth_observations.dart';
 import '../services/installer_measurement.dart';
+import '../services/analytics_sandbox.dart';
 import 'theme.dart';
 import 'session_boundary.dart';
 
@@ -117,10 +118,24 @@ class _SignInScreenState extends State<SignInScreen> {
       },
     );
     identity.observations = observations;
+    final sandbox = analyticsSandboxEnabled
+        ? AnalyticsSandbox(
+            productConsent: () async =>
+                await store.setting('analytics') == 'true',
+            onError: (message) {
+              debugPrint(message);
+              if (mounted) {
+                ScaffoldMessenger.of(context)
+                    .showSnackBar(SnackBar(content: Text(message)));
+              }
+            },
+          )
+        : null;
     try {
       await observations.run(AuthStage.sessionEntry, () async {
         await diagnostics.start(authenticatedNow: authenticatedNow);
         diagnostics.attach();
+        sandbox?.attach();
       });
       if (!mounted) return;
       await Navigator.of(context).push(
@@ -136,6 +151,7 @@ class _SignInScreenState extends State<SignInScreen> {
               invitationInbox: widget.invitationInbox,
               diagnostics: diagnostics,
               installerMeasurement: widget.measurement,
+              analyticsSandbox: sandbox,
             ),
           ),
         ),
@@ -145,6 +161,7 @@ class _SignInScreenState extends State<SignInScreen> {
       if (identical(identity.observations, observations)) {
         identity.observations = null;
       }
+      await sandbox?.close();
       await diagnostics.close();
       await store.close();
     }
@@ -214,6 +231,12 @@ class _SignInScreenState extends State<SignInScreen> {
                 textAlign: TextAlign.center,
               ),
               const SizedBox(height: 32),
+              if (analyticsSandboxEnabled)
+                const SelectableText(
+                  'Staging sandbox: website referral code BS-SANDBOX. '
+                  'After sign-in, enter it in Settings with both analytics '
+                  'choices enabled. No automatic visitor/account matching.',
+                ),
               const Text(
                 'Your garden is private. Sign in to plant, celebrate and keep it safe across devices.',
               ),
