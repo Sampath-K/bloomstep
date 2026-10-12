@@ -2,6 +2,12 @@
 
 ## 0.1.0 engineering preview
 
+- Review-only bounded V1 small-win surprises: six hidden action-based badges,
+  earned-only on-device collection and optional rules-driven coach capped at one
+  suggestion/day and three/rolling week. No notifications, AI, rank labels or
+  streak penalties; three active recipes stop add-habit suggestions. Static
+  reduced-motion reveals, export/erasure and separate device/account state.
+
 - SQLite recipe/check-in journal, idempotent local-day check-ins and append-only
   edits/undo; attained growth never decreases.
 - Five starter recipes, celebration-first builder, three vector plant species and

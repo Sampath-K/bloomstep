@@ -124,7 +124,9 @@ test('release entrypoint does not import the test auth harness or contain a test
   assert.match(functions, /createRemoteJWKSet\(new URL\(jwks\)\)/);
   assert.match(functions, /jwks\?\.startsWith\('https:\/\/'\)/);
   assert.match(workflow, /BLOOMSTEP_TEST_BUILD=true/);
-  const releaseBuild = workflow.slice(workflow.indexOf('name: Build real sign-in-gated release'));
+  const releaseStep = workflow.indexOf('name: Build real provider-backed release');
+  assert.notEqual(releaseStep, -1, 'Production build step must exist.');
+  const releaseBuild = workflow.slice(releaseStep);
   assert.doesNotMatch(releaseBuild, /BLOOMSTEP_TEST_BUILD|BLOOMSTEP_TEST_AUTH_SECRET/);
   assert.match(releaseBuild, /build\/windows\/\$\{\{ matrix\.arch \}\}\/runner\/Release/);
   assert.doesNotMatch(releaseBuild, /integration_test|testkit|BLOOMSTEP_TEST/);

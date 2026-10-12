@@ -16,8 +16,16 @@ flutter build windows --release
 ## Status
 
 **Engineering preview, not the complete MVP.** The persistent garden and core
-widget flows are implemented. Public builds are sign-in gated until real personal
-identity/cloud services are provisioned and verified; there is no fake login.
+widget flows are implemented. The first garden screen has a compact profile;
+signed-out users can plant into a separate device-only garden without sync or
+analytics. Real provider sign-in opens the account-owned garden; there is no fake
+login or automatic transfer of device habits. Provider/cloud acceptance remains
+an independent gate.
+
+A genuinely fresh, empty device garden opens the dismissible first-habit flow
+automatically, once. Each step accepts typed Anchor, Action and Celebration
+values or suggestions. After saving, a brief seed-to-sprout preview explains
+growth; reduced motion shows a static plant. Returning gardens are not interrupted.
 
 See [product contract](docs/product-spec.md), [iteration/edge ledger](docs/status.md)
 and [deployment prerequisites](docs/deployment.md). The current

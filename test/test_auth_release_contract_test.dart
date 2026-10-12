@@ -5,6 +5,8 @@ import 'package:path/path.dart' as p;
 import 'package:bloomstep/core/garden_store.dart';
 import 'package:bloomstep/services/identity.dart';
 import 'package:bloomstep/services/sync_service.dart';
+import 'package:bloomstep/app/bloomstep_app.dart';
+import 'package:flutter/material.dart';
 
 import '../integration_test/support/test_only_app.dart';
 
@@ -42,6 +44,15 @@ void main() {
       findsOneWidget,
     );
     expect(find.byKey(TestOnlyAuthGate.usernameFieldKey), findsNothing);
+  });
+
+  testWidgets('normal builds reject profile identity and storage adapters', (
+    tester,
+  ) async {
+    await tester.pumpWidget(
+      MaterialApp(home: HabitHome(testIdentity: IdentityService())),
+    );
+    expect(tester.takeException(), isA<StateError>());
   });
 
   test('normal builds reject injected clocks and test API origins', () async {

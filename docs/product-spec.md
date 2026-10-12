@@ -5,6 +5,56 @@ MVP. The older PWA/Tauri install, push and AI proposals are superseded. No priva
 account details, subscription identifiers, identity secrets or Store research
 belong in this repository.
 
+## Habit-first profile
+
+The first plant-a-habit screen is the only profile/account entry point. There is
+no separate sign-in screen or garden Back navigation. Planting stays primary.
+Signed-out users can save into `device-guest.sqlite`, scoped to the installing OS
+user, with analytics disabled and no cloud sync. This is a local device garden,
+not a fabricated authenticated identity. It is not encrypted account storage;
+anyone with access to the same OS user can see that device garden.
+Legacy installers' separately opted-in, expiring local receipts may still record
+the first rendered signed-out sign-in affordance as `signin_view`; this is not
+guest/account analytics, authentication success or automatic account linking.
+No receipt means no measurement. The receipt can be cleared in profile Settings.
+
+Sign-in keeps the configured Microsoft personal/Google/other hosted choices in
+the trusted system browser. Signed-in status and any name/email/provider come
+only from the validated ID token; missing claims stay absent. No avatar or
+upstream provider is inferred from an account hash or broker issuer.
+The profile also owns the Settings/privacy entry for export and deletion.
+Existing account-hash SQLite ownership, authenticated offline deadline,
+consent and sync boundaries remain unchanged. Sign-out warns about unsynced
+account data and clears account-local data/authentication before returning to
+the separate device garden. Session expiry preserves the saved account garden
+but removes access and returns to the device garden.
+
+**First-pass boundary:** device habits remain separate when signing in; inline
+copy states that nothing was transferred. No import, linking or migration
+occurs. A future "Bring them / Keep separate" flow needs explicit consent,
+idempotent local import, rollback and failure tests before enabling it. This
+branch does not release or merge the UX.
+
+## First-habit invitation and planting
+
+After authentication restoration finishes, a genuinely first-run, empty device
+garden automatically opens the existing accessible, dismissible recipe builder.
+An atomic SQLite preference records the invitation before presenting it. Existing
+habits or a previous interaction make a garden ineligible; account gardens never
+auto-open. Dismissal stays remembered across restarts and local habit clearing.
+Authentication initialization and another active route prevent interruption.
+The "Plant a habit" button remains available for later visits and subsequent habits.
+
+Anchor, Action and Celebration each have an always-visible custom text field
+alongside suggestions, with the existing 200-character limit and trimmed,
+nonempty validation. Keyboard Next/Done and Back preserve the current choices;
+labels stay above typed values even during focus/value transitions. Cancel saves
+nothing. Optional aspiration/species and celebration practice stay
+optional. A successful SQLite save supplies the actual saved habit to "Your seed
+is planted", which shows a 1.4-second seed-to-sprout growth preview. It never
+changes the saved seed stage, blocks continuation, or appears on save failure.
+App or platform reduced motion uses a static sprout with semantic success feedback.
+
 ## Outcome and trust
 
 Help people make one tiny behavior natural and eventually graduate it. The north
@@ -20,6 +70,75 @@ Content is original, with factual attribution to behavior design research.
 Do not use a third party's trademark in the product name or marketing headline.
 No copied book exercises or validated questionnaire wording without verified
 licensing. Self-reflection wording must not be described as clinically validated.
+
+## Bounded V1: small-win surprises and a quiet coach
+
+**Implementation for review, not a merge/release or customer-validation claim.**
+Hidden action-based badges celebrate identity and effort, never a novice/beginner
+rank. There are no locked badges, unlock meters, points, random rewards,
+leaderboards, streak requirements or losses. The earned-only collection is
+available from `Your small wins` in the garden.
+
+| Small win | First qualifying action |
+| --- | --- |
+| First seed | A successfully saved recipe |
+| Growing possibilities | Two currently saved recipes |
+| Tiny step, real win | A saved positive practice |
+| Roots taking hold | Three distinct practice days for one recipe, not consecutive |
+| Thoughtful gardener | A saved weekly or naturalness reflection |
+| Making it yours | A saved change to anchor, action or celebration |
+
+`Did it` and `Did more` qualify equally; repeated same-day check-ins do not
+multiply practice days. Earned moments survive rest, undo and recipe deletion,
+without retaining a recipe ID or its text. Existing gardens quietly backfill
+observable milestones into the collection; historical adjustments are not
+inferred. Device and signed-in gardens remain separate.
+
+Planting surprises appear inside the existing saved-seed confirmation, never a
+second forced modal. Practice surprises wait for the user's personal
+celebration to finish and take precedence over a rating invitation. Other small
+wins appear in a dismissible inline card. Finite silent fades are immediately
+actionable; reduced motion at app or platform level uses static content.
+Semantic announcements, keyboard controls, scrolling and scalable text remain
+independent of animation. No sound, background notification or route auto-open.
+
+The deterministic offline coach prioritizes explicitly recorded friction,
+optional weekly reflection after practice, an empty-garden invitation, an
+optional additional recipe after three practice days, then an anchor reminder.
+It reuses Recipe Doctor and the recipe/reflection flows, not AI or inferred
+health/personality/skill. Suggestions to add a recipe stop at three active
+recipes; the existing manually chosen `Plant another` path remains available.
+Existing first-habit onboarding is not interrupted.
+
+An atomic exposure claim caps suggestions at one local calendar day, three
+within the preceding 168 hours, and seven days per rule. Later/dismissal consumes
+the exposure; reopening the app does not reset it. Clock rollback stays quiet.
+There is at most one suggestion per garden-screen visit; ineligible or busy
+moments are skipped, not queued into a catch-up shower. Settings independently
+disable `Gentle coach suggestions` and `Surprise moments`; earning remains
+available quietly in the collection.
+
+**Source of truth:** the typed versioned catalog/rules live in
+`lib/core/coach.dart`; account-scoped `quietCoach.v1` SQLite settings retain
+only badge IDs/timestamps, preferences and bounded exposure records. State is
+local to this device, included in export, erased with its garden and deliberately
+excluded from preference sync. It never links/imports device habits into an
+account. No new telemetry, dashboard pipeline, remote configuration or backend
+data is added; existing event/feedback consent boundaries remain unchanged.
+
+**Customer-first stop rule:** prioritize a small usable V1 in front of customers
+for validation rather than expanding a wish list. The hypothesis is that a
+quiet, unexpected acknowledgment makes the first tiny step feel satisfying and
+supports another *manageable* recipe, without pressure. The smallest feedback
+check, after owner-approved delivery, is to watch a customer plant one recipe,
+practice it, and encounter one optional suggestion; ask whether the moment felt
+encouraging, whether Later was clear, and whether another recipe felt welcome or
+pressured. Use the existing `Help us grow` feedback path if they choose.
+Rendered synthetic fixtures prove rendering/behavior, not customer usefulness,
+habit outcomes, native installation or permission to release. Stop building
+the catalog/coach at this V1; keep it if feedback supports the hypothesis,
+iterate or disable a pushy/confusing moment first, and defer AI, broader learning,
+North-Star instrumentation and new reward mechanics until feedback warrants them.
 
 ## Planned enhancement workstream: confident habit building
 
@@ -138,11 +257,11 @@ kill switch must be verified before production launch.
 
 | Loop | Approved minimum |
 | --- | --- |
-| Habit | Sign in; primary three-step anchor, tiny-action and celebration picker using the five original recipes; zero required typing; visible progress and live full-recipe preview; Back retains choices; optional custom text/aspiration and three species. Incomplete actions explain why. Celebration practice is optional, never a creation/edit gate. Plant into persistent SQLite, then show a recipe-specific next step and a clear garden continuation. First habit target <90s; first check-in is optional, not creation acceptance. Recommend one habit initially; soft cap three with explicit override. |
+| Habit | Plant without sign-in; first-run empty device garden opens the dismissible three-step anchor, tiny-action and celebration picker once. Five original suggestion recipes and visible custom text at each step; zero required typing; visible progress and live full-recipe preview; Back retains choices; optional aspiration and three species. Incomplete actions explain why. Celebration practice is optional, never a creation/edit gate. Plant into persistent SQLite, then show saved-recipe seed-growth feedback and a clear garden continuation, honoring reduced motion. First habit target <90s; first check-in is optional, not creation acceptance. Recommend one habit initially; soft cap three with explicit override. |
 | Check-in | Did it / Did more / Not today; optional forgot/too hard/anchor absent/motivation reason; no response is no data. Personal celebration within 300ms; persistent client event IDs; one effective result per habit per **local** date; edits and undo append events; sync retries idempotent. |
 | Garden | Five stages: seed, sprout at 3, sapling at 10, budding at 21, bloom at 30 practice days plus score >=4/7. No negative stage changes after rest or corrected data. Permanent Grove after graduation. Deterministic species/plant variation, vector visuals, screen-reader labels and reduced motion. Optional day/night, seasons, decor, pollinators and return celebration, never a penalty. |
 | Reminders | Real Windows local toasts and tray actions; opt-in permission/context; optional autostart; chosen local time, quiet hours default 21:30-07:30; <=1 prompt/habit/day and <=3 notifications/app/day; snooze/fewer/off. Three ignored halves frequency, seven pauses with in-app explanation. Device scheduling, not paid service. Respect OS settings/Focus; never use urgent bypass. Re-evaluate local time/DST/travel. Median of last 14 check-in times after five samples, rounded 15m. |
-| Identity | Real OIDC broker with Microsoft account/work-school, Google and email OTP; system browser authorization code + PKCE, unpredictable state and nonce; validate token signature/issuer/audience/expiry/nonce. Never embedded browser or fake sign-in. Provider/platform capabilities verified, not assumed. Refresh credentials in OS secure storage. Authenticated offline sessions; per-account isolation; sign-out clears device data with unsynced-data warning. No silent email-based linking. |
+| Identity | Real OIDC broker with Microsoft account/work-school, Google and email OTP; system browser authorization code + PKCE, unpredictable state and nonce; validate token signature/issuer/audience/expiry/nonce. Never embedded browser or fake sign-in. Provider/platform capabilities verified, not assumed. Refresh credentials in OS secure storage. Inline profile on the habit screen; separate device-only guest garden with no analytics/sync/migration. Authenticated offline sessions; per-account isolation; sign-out clears account-local device data with unsynced-data warning and returns to the device garden. No silent email-based linking. |
 | Sync | Functions JWT verification on **every** endpoint, server-derived partition `/userId`, Cosmos persistent records, retry, append-event union and last-writer-wins recipe/settings with deterministic conflicts. Never accept client-selected account identity. Two-device verification including offline edits/restarts. |
 | User learning | Weekly reflection under 60s; four 1-7 naturalness items every 14 days; explain deterministic Recipe Doctor based on check-in reasons (specific/reliable anchor, smaller behavior, reconsider aspiration/celebration). Two consecutive naturalness scores >=5.5 plus practice >=60% of last 28 days graduates, not a fixed day count. Original content. AI features, if added, will be explained and optional. |
 | Reconnect | Gentle absence nudges at 3 then 7 days, maximum two per absence episode, then stop until return. Opt-out, ignored-reminder backoff, never guilt. Return earns a positive celebration. Windows background/tray/next-open delivery must actually be observed before claiming success. |

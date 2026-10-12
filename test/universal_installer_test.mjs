@@ -1,7 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync, mkdtempSync, mkdirSync, writeFileSync, rmSync, symlinkSync } from 'node:fs';
-import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { execFileSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
@@ -16,6 +15,7 @@ test('universal installer bundles exclusive native OS payloads without bootstrap
   assert.match(source, /function UseArm64Payload[\s\S]*Result := ProcessorArchitecture = paArm64/);
   assert.match(source, /PrivilegesRequired=lowest/);
   assert.match(source, /postinstall skipifsilent runasoriginaluser/);
+  assert.doesNotMatch(source, /ExecAsOriginalUser/);
   assert.doesNotMatch(source, /DownloadTemporaryFile|dontverifychecksum|skipifsourcedoesntexist|PrivilegesRequired=admin/);
 });
 test('universal packaging remains required and source-pinned, recovery exception is exact preview12 only', () => {
@@ -24,7 +24,8 @@ test('universal packaging remains required and source-pinned, recovery exception
   assert.match(workflow, /universal-native-proof:/);
   assert.match(workflow, /release_payload\.mjs verify/);
   assert.match(workflow, /payload-manifest-/);
-  assert.match(workflow, /needs: \[api, test-and-build-windows, installer-launch-evidence, universal-native-proof, universal-app-launch-evidence\]/);
+  assert.match(workflow, /needs: \[api, test-and-build-windows, protected-installer-lifecycle, installer-launch-evidence, universal-native-proof, universal-app-launch-evidence\]/);
+  assert.match(workflow, /needs\.protected-installer-lifecycle\.result == 'success'/);
   assert.match(workflow, /github\.ref_name == 'v0\.1\.0-preview\.10'/);
   assert.match(workflow, /needs\.universal-app-launch-evidence\.result == 'success' \|\| github\.ref_name == 'v0\.1\.0-preview\.12'/);
   assert.doesNotMatch(workflow, /github\.ref_name == 'v0\.1\.0-preview\.13'/);
@@ -33,7 +34,7 @@ test('universal packaging remains required and source-pinned, recovery exception
 });
 test('release inputs require exact source, version, architecture, inventory and byte hashes', async () => {
   const { createPayloadManifest, verifyPayloadManifest } = await import('../tool/release_payload.mjs');
-  const root = mkdtempSync(join(tmpdir(), 'bloomstep-payload-contract-'));
+  const root = mkdtempSync(fileURLToPath(new URL('../.bloomstep-payload-contract-', import.meta.url)));
   const source = 'a'.repeat(40), version = '0.1.0-preview.11';
   const pe = Buffer.alloc(128); pe.write('MZ'); pe.writeUInt32LE(64, 60);
   pe.write('PE\0\0', 64); pe.writeUInt16LE(0xaa64, 68);
@@ -171,10 +172,11 @@ test('next universal release requires genuine app launch evidence independently 
   assert.match(proof, /GITHUB_ACTIONS/);
   assert.match(proof, /installerSha256/);
   assert.match(proof, /ProcessTokenProbe\]::Elevated\(\$PID\)/);
-  assert.match(proof, /checked-launch','unchecked-launch/);
+  assert.match(proof, /checked-launch','unchecked-launch','silent-no-launch/);
   assert.match(proof, /ProcessTokenProbe\]::Sid/);
   assert.match(proof, /ProcessTokenProbe\]::Elevated\(\$app\.Id\)/);
-  assert.match(proof, /default checked/);
+  assert.match(proof, /Assert-StandardWizardJourney/);
+  assert.match(proof, /Start-ProtectedInstallerProof/);
   assert.doesNotMatch(proof, /continue-on-error|inert-journey-fixture-v1/);
 });
 test('genuine outcome oracle rejects transient apps and unsuccessful installer exits (no app execution)', () => {
@@ -182,13 +184,18 @@ test('genuine outcome oracle rejects transient apps and unsuccessful installer e
   const script = `$ErrorActionPreference='Stop'; . '${helper}';
     Assert-GenuineLaunchOutcome 'checked-launch' 0 0 1 $true $true;
     Assert-GenuineLaunchOutcome 'unchecked-launch' 0 0 0 $false $false;
+    Assert-GenuineLaunchOutcome 'silent-no-launch' 0 0 0 $false $false;
     foreach ($bad in @(
       @('checked-launch',0,0,1,$false,$false),
       @('checked-launch',0,0,1,$true,$false),
       @('checked-launch',1,0,1,$true,$true),
       @('checked-launch',0,1,1,$true,$true),
+      @('unchecked-launch',0,0,1,$true,$true),
       @('unchecked-launch',1,0,0,$false,$false),
-      @('unchecked-launch',0,0,1,$true,$true)
+      @('automatic-launch',0,0,1,$true,$true),
+      @('unknown-mode',0,0,0,$false,$false),
+      @('silent-no-launch',1,0,0,$false,$false),
+      @('silent-no-launch',0,0,1,$true,$true)
     )) {
       $rejected = $false;
       try { Assert-GenuineLaunchOutcome @bad } catch { $rejected = $true }
@@ -201,6 +208,116 @@ test('genuine outcome oracle rejects transient apps and unsuccessful installer e
   assert.match(proof, /sameExactTargetAppAlive/);
   assert.match(proof, /ownedAppWindowVisible/);
   assert.match(proof, /wizardExitCode/);
+});
+
+test('one-click wizard driver verifies Install/Finish and freely toggleable default-checked launch without an installer', () => {
+  const helper = fileURLToPath(new URL('../tool/universal_integrity_contract.ps1', import.meta.url)).replaceAll("'", "''");
+  const script = `$ErrorActionPreference='Stop'; . '${helper}';
+    Add-Type @'
+using System;
+public static class OnboardingWizard {
+  public static int Choice = 1;
+  public static string Describe(IntPtr h) {
+    return new [] { "", "Welcome", "Select Destination Location", "Ready to Install", "Installing", "Completing" }[(int)h];
+  }
+  public static IntPtr Find(IntPtr h, string caption) {
+    int page = (int)h;
+    return ((page == 5 && caption == "Finish") || (page == 3 && caption == "Install") ||
+      ((page == 1 || page == 2) && caption == "Next >")) ? new IntPtr(99) : IntPtr.Zero;
+  }
+  public static int LaunchChoiceState(IntPtr h) { return Choice; }
+  public static void ToggleLaunchChoice(IntPtr h) { Choice = 1 - Choice; }
+  public static bool PostMessage(IntPtr h, uint m, IntPtr w, IntPtr l) { return true; }
+}
+'@
+    foreach ($checked in @($false,$true)) {
+      [OnboardingWizard]::Choice = 1;
+      $journey = New-StandardWizardJourney;
+      foreach ($page in 3..5) {
+        Invoke-StandardWizardStep ([IntPtr]$page) $journey $checked | Out-Null;
+        Invoke-StandardWizardStep ([IntPtr]$page) $journey $checked | Out-Null;
+      }
+      Assert-StandardWizardJourney $journey $checked;
+      if ($journey.launchSelected -ne $checked) { throw 'Choice mismatch' }
+    }
+    foreach ($pages in @(@(2),@(1,3),@(3,5),@(3,4,3))) {
+      $rejected = $false;
+      try {
+        $journey = New-StandardWizardJourney;
+        foreach ($page in $pages) { Invoke-StandardWizardStep ([IntPtr]$page) $journey | Out-Null }
+      } catch { $rejected=$true }
+      if (-not $rejected) { throw 'Skipped or reversed page accepted' }
+    }
+    foreach ($choice in @(0,-1)) {
+      [OnboardingWizard]::Choice = $choice;
+      $rejected = $false;
+      try {
+        $journey = New-StandardWizardJourney;
+        foreach ($page in 3..5) { Invoke-StandardWizardStep ([IntPtr]$page) $journey $true | Out-Null }
+      } catch { $rejected=$true }
+      if (-not $rejected) { throw 'Default-off or missing explicit checkbox accepted' }
+    }
+    'PASS'`;
+  assert.match(execFileSync('pwsh', ['-NoProfile', '-NonInteractive', '-Command', script], { encoding: 'utf8' }), /PASS/);
+});
+
+test('owned PowerShell proof scripts parse on every CI platform', () => {
+  const scripts = ['verify_onboarding_wizard', 'verify_install_progress', 'verify_installer_journey',
+    'verify_universal_app_launch', 'universal_integrity_contract', 'setup_defender_test_vm', 'verify_universal_installer'];
+  const paths = scripts.map(name => `'${fileURLToPath(new URL(`../tool/${name}.ps1`, import.meta.url)).replaceAll("'", "''")}'`);
+  const script = `$ErrorActionPreference='Stop';
+    foreach ($file in @(${paths.join(',')})) {
+      $tokens=$null; $errors=$null;
+      [System.Management.Automation.Language.Parser]::ParseFile($file,[ref]$tokens,[ref]$errors) | Out-Null;
+      if ($errors.Count -ne 0) { throw ($errors | Out-String) }
+    }
+    'PASS'`;
+  assert.match(execFileSync('pwsh', ['-NoProfile', '-NonInteractive', '-Command', script], { encoding: 'utf8' }), /PASS/);
+});
+
+test('Windows native accessibility helpers compile without installer execution',
+  { skip: process.platform !== 'win32' }, () => {
+    const helper = fileURLToPath(new URL('../tool/verify_onboarding_wizard.ps1', import.meta.url)).replaceAll("'", "''");
+    const script = `$ErrorActionPreference='Stop'; & '${helper}' -Installer 'never-executed' -EvidenceDir '.' -LoadHelpersOnly; 'PASS'`;
+    assert.match(execFileSync('pwsh', ['-NoProfile', '-NonInteractive', '-Command', script], { encoding: 'utf8' }), /PASS/);
+  });
+
+test('Defender proof refuses new detections or changed protection and preserves sanitized receipt (mocked, no installer)', () => {
+  const helper = fileURLToPath(new URL('../tool/universal_integrity_contract.ps1', import.meta.url)).replaceAll("'", "''");
+  const root = mkdtempSync(fileURLToPath(new URL('../.bloomstep-protection-contract-', import.meta.url)));
+  const script = `$ErrorActionPreference='Stop'; . '${helper}';
+    $script:protection = $true; $script:detections = @();
+    function Get-MpComputerStatus {
+      [pscustomobject]@{ AntivirusEnabled=$true; RealTimeProtectionEnabled=$script:protection; BehaviorMonitorEnabled=$true;
+        AMServiceEnabled=$true; AntispywareEnabled=$true; IoavProtectionEnabled=$true; NISEnabled=$true }
+    }
+    function Get-MpThreatDetection { $script:detections }
+    $context = @{ baseline=(Get-InstallerProtectionSnapshot); evidenceDir='${root.replaceAll("'", "''")}'; installerSha256=('a'*64) };
+    Assert-InstallerProtectionUnchanged $context;
+    $script:detections = @([pscustomobject]@{ DetectionID='PRIVATE-ID'; ThreatID=1; LastThreatStatusChangeTime='now'; ThreatStatusID=1 });
+    $rejected=$false; try { Assert-InstallerProtectionUnchanged $context } catch { $rejected=$true }
+    if (-not $rejected) { throw 'New detection accepted' }
+    $body = Get-Content (Join-Path $context.evidenceDir 'defender-proof-receipt.json') -Raw;
+    if ($body.Contains('PRIVATE-ID') -or ($body | ConvertFrom-Json).outcome -ne 'FAIL') { throw 'Receipt is not sanitized failed evidence' }
+    $script:detections=@(); $script:protection=$false;
+    $rejected=$false; try { Assert-InstallerProtectionUnchanged $context } catch { $rejected=$true }
+    if (-not $rejected) { throw 'Protection disabled accepted' }
+    'PASS'`;
+  try {
+    assert.match(execFileSync('pwsh', ['-NoProfile', '-NonInteractive', '-Command', script], { encoding: 'utf8' }), /PASS/);
+  } finally { rmSync(root, { recursive: true, force: true }); }
+  const contract = read('tool/universal_integrity_contract.ps1');
+  assert.match(contract, /setup_defender_test_vm\.ps1" -Mode ScanCandidate -Installer \$Installer/);
+  assert.match(contract, /-ExpectedSha256 \$ExpectedSha256/);
+  for (const name of ['verify_onboarding_wizard', 'verify_install_progress', 'verify_installer_journey', 'verify_universal_app_launch']) {
+    const proof = read(`tool/${name}.ps1`);
+    assert.match(proof, /Start-ProtectedInstallerProof/);
+    assert.match(proof, /Assert-InstallerProtectionUnchanged/);
+    const firstExecution = /(?:Start-Process(?: -FilePath)? \$(?:Installer|installer)|Start-CaptureProcess \$(?:Installer|installer))/.exec(proof);
+    assert.ok(firstExecution, `${name}: installer dispatch is auditable`);
+    assert.ok(proof.indexOf('Start-ProtectedInstallerProof') < firstExecution.index,
+      `${name}: candidate scan must precede execution`);
+  }
 });
 test('genuine Inno product authority permits only trailing ASCII resource padding', () => {
   const helper = fileURLToPath(new URL('../tool/universal_integrity_contract.ps1', import.meta.url)).replaceAll("'", "''");
@@ -222,7 +339,8 @@ test('owned Cancel and other modal wizard clicks cannot block the evidence deadl
   for (const name of ['tool/verify_universal_installer.ps1', 'tool/verify_universal_app_launch.ps1']) {
     const proof = read(name);
     assert.doesNotMatch(proof, /SendMessage\([^;\n]*0x00F5/);
-    assert.match(proof, /PostMessage\([^;\n]*0x00F5/);
+    const driver = name.endsWith('verify_universal_app_launch.ps1') ? read('tool/universal_integrity_contract.ps1') : proof;
+    assert.match(driver, /PostMessage\([^;\n]*0x00F5/);
   }
   const proof = read('tool/verify_universal_installer.ps1');
   assert.match(proof, /cancel-dispatch/);
