@@ -9,6 +9,7 @@ import { registryVersion } from './event_registry.g.mjs';
 import { dailySnapshotRecordSchema, snapshotMetadataSchema } from './snapshot-contracts.mjs';
 import { createInvitations } from './invitations.mjs';
 import { z } from 'zod';
+import azureFunctions from '@azure/functions';
 
 export class ServiceError extends Error {
   /** @param {number} status @param {string} message */
@@ -318,6 +319,7 @@ export function createHandlers({ container, authenticate, authenticateAggregate 
   /** @param {import('@azure/functions').HttpRequest} request */
   async function sync(request) {
     const { userId } = await gardenActor(request);
+    if ([...request.query.keys()].length) throw new ServiceError(400, 'Sync does not accept account or partition selectors.');
     const parsed = request.method === 'GET' ? null : syncSchema.safeParse(await body(request));
     if (parsed && !parsed.success) throw new ServiceError(400, 'Sync payload failed validation.');
     const deletionOnly = parsed?.success && parsed.data.deletions.length > 0 &&
@@ -709,7 +711,52 @@ export function createHandlers({ container, authenticate, authenticateAggregate 
     container, clock, active: assertActive, batch, reserve, gateBody, ServiceError,
     actor: invitationActor, body, rateLimit, readGarden,
   });
-  return { sync, deleteAccount, admin, metrics, aggregates, operationalPause, operationalResume, operationalStatus,
+  /** @param {import('@azure/functions').HttpRequest} request */
+  async function isolationCheck(request) {
+    const actor = await gardenActor(request);
+    if (!actor.scopes?.includes('Garden.ReadWrite')) throw new ServiceError(403, 'Customer Garden.ReadWrite scope required.');
+    if ([...request.query.keys()].length) throw new ServiceError(400, 'Isolation check does not accept query parameters.');
+    if (request.method === 'GET') return { jsonBody: { userId: actor.userId } };
+    const parsed = z.strictObject({ peerUserId: z.string().regex(/^[a-f0-9]{64}$/) }).safeParse(await body(request));
+    if (!parsed.success || parsed.data.peerUserId === actor.userId) throw new ServiceError(400, 'A different account userId hash is required.');
+    apiEnabled();
+    await operationalEnabled();
+    const empty = { habits: [], checkins: [], reflections: [], voice: [], events: [] };
+    // Reuse the actual sync boundary with the caller's verified transport, never the peer's identity.
+    const probe = (/** @type {string} */ method, /** @type {Record<string, unknown> | undefined} */ data = undefined,
+      /** @type {string} */ query = '') => new azureFunctions.HttpRequest({
+        method, url: `https://bloomstep.invalid/api/sync${query}`,
+        headers: Object.fromEntries(request.headers),
+        ...(data ? { body: { string: JSON.stringify(data) } } : {}),
+      });
+    const own = await sync(probe('GET'));
+    await sync(probe('POST', empty));
+    const rejected = async (/** @type {() => Promise<unknown>} */ operation, /** @type {number} */ status) => {
+      try { await operation(); }
+      catch (error) {
+        if (error instanceof ServiceError && error.status === status) return status;
+        throw error;
+      }
+      throw new ServiceError(409, 'Isolation boundary did not reject the probe; no successful evidence recorded.');
+    };
+    const checks = {
+      ownRead: 200, ownEmptySync: 200,
+      foreignRead: await rejected(() => sync(probe('GET', undefined, `?userId=${parsed.data.peerUserId}`)), 400),
+      foreignWrite: await rejected(() => sync(probe('POST', { ...empty, userId: parsed.data.peerUserId })), 400),
+      teamFeedback: isAdmin(actor.roles) ? 'admin-authorized-not-tested' : await rejected(() => admin(probe('GET')), 403),
+    };
+    const counts = Object.fromEntries(['habits', 'checkins', 'reflections', 'voice', 'settings'].map(key => {
+      const rows = own.jsonBody[key];
+      if (!Array.isArray(rows)) throw new ServiceError(503, 'Own-data count unavailable; no successful evidence recorded.');
+      return [key, rows.length];
+    }));
+    await reserve(1);
+    const auditId = randomUUID();
+    await container().items.create({ id: auditId, userId: actor.userId, partition: actor.userId,
+      type: 'audit', action: 'data_isolation_check', checks, ts: clock().toISOString(), ttl: auditTtl });
+    return { jsonBody: { userId: actor.userId, counts, checks, auditId } };
+  }
+  return { sync, deleteAccount, admin, metrics, aggregates, operationalPause, operationalResume, operationalStatus, isolationCheck,
     createInvitation: invitations.createInvitation, redeemInvitation: invitations.redeemInvitation,
     invitationStatus: invitations.invitationStatus };
 }

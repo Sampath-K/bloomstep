@@ -21,10 +21,10 @@
   <header><a href="/">Bloomstep</a></header>
   <main>
     <h1>Private operator console</h1>
-    <p>For authorized operators only. Server-assigned Bloomstep.Admin is required. No private data is fetched before a request. Tokens stay in page memory; temporary sign-in state uses session storage.</p>
+    <p>Customer data-isolation checks do not require Admin. Team tools require server-assigned Bloomstep.Admin. No private data is fetched before a request. Tokens stay in page memory; temporary sign-in state uses session storage.</p>
     <form id="admin">
       <label>This deployed HTTPS API origin<input id="origin" type="url" required readonly></label>
-      <button id="signin-console" type="button">Sign in to Bloomstep operator console</button>
+      <button id="signin-console" type="button">Sign in to Bloomstep console</button>
       <button type="submit">Load private feedback</button>
       <button id="next-feedback" type="button" disabled>Next private feedback page</button>
       <label>UTC measurement days<input id="metric-days" type="number" min="1" max="30" value="7"></label>
@@ -32,6 +32,15 @@
       <button id="clear-console" type="button">Sign out and clear private data</button>
     </form>
     <p id="admin-status" role="status"></p>
+    <section aria-labelledby="isolation-title">
+      <h2 id="isolation-title">My data isolation (no Admin required)</h2>
+      <p>Open this console in two tabs and sign in once per tab with different accounts. Show each account hash, paste the other tab's hash here, then verify in both tabs. Do not share tokens or credentials.</p>
+      <button id="isolation-identity" type="button">Show my account hash</button>
+      <label>Other signed-in account's userId hash<input id="isolation-peer" type="text" maxlength="64" autocomplete="off" spellcheck="false"></label>
+      <p class="small">Verification performs an own-data read and empty sync, rejects peer read/write selectors, and saves a content-free audit receipt. It changes no garden or feedback records. It consumes bounded API quota and may initialize an empty own account. Admin team feedback access is intentionally authorized, not a customer isolation failure.</p>
+      <button id="isolation-check" type="button">Verify my data isolation</button>
+      <p id="isolation-status" role="status"></p>
+    </section>
     <section aria-labelledby="pause-title">
       <h2 id="pause-title">Spending review pause</h2>
       <p class="small">Admin only. The spending guard pauses remote writes and team data when it cannot verify free-tier configuration. Review Azure before resuming; a later guard run pauses again if anything paid appears.</p>
