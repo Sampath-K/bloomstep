@@ -70,6 +70,7 @@ function guarded(handler) {
 }
 
 app.http('sync', { route: 'sync', methods: ['GET', 'POST'], authLevel: 'anonymous', handler: guarded(handlers.sync) });
+app.http('isolationCheck', { route: 'account/isolation', methods: ['GET', 'POST'], authLevel: 'anonymous', handler: guarded(handlers.isolationCheck) });
 app.http('deleteAccount', { route: 'account', methods: ['DELETE'], authLevel: 'anonymous', handler: guarded(handlers.deleteAccount) });
 app.http('adminFeedback', { route: 'team/feedback/{userId?}', methods: ['GET', 'POST'], authLevel: 'anonymous', handler: guarded(handlers.admin) });
 app.http('adminMetrics', { route: 'team/metrics', methods: ['GET'], authLevel: 'anonymous', handler: guarded(handlers.metrics) });
@@ -79,6 +80,7 @@ app.http('redeemInvitation', { route: 'invitations/redeem', methods: ['POST'], a
 app.http('invitationStatus', { route: 'invitations/status', methods: ['GET'], authLevel: 'anonymous', handler: guarded(handlers.invitationStatus) });
 app.http('operationalPause', { route: 'internal/operational-pause', methods: ['POST'], authLevel: 'anonymous', handler: guarded(handlers.operationalPause) });
 app.http('operationalResume', { route: 'team/operational-resume', methods: ['POST'], authLevel: 'anonymous', handler: guarded(handlers.operationalResume) });
+app.http('operationalStatus', { route: 'team/operational-status', methods: ['GET'], authLevel: 'anonymous', handler: guarded(handlers.operationalStatus) });
 app.http('websiteEvents', { route: 'web/events', methods: ['POST'], authLevel: 'anonymous', handler: guarded(website.ingest) });
 app.http('websiteMetrics', { route: 'team/website', methods: ['GET'], authLevel: 'anonymous', handler: guarded(website.metrics) });
 app.http('websiteSyntheticProof', { route: 'internal/website-proof', methods: ['GET'], authLevel: 'anonymous', handler: guarded(website.proof) });

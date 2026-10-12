@@ -91,10 +91,11 @@ experiments disabled; monetization is outside this launch.
    API, customer-site, telemetry, console-preview and composed-loop receipts and hosted artifacts. Obtain
    protected install/launch acceptance for that exact installer on each advertised architecture; a prior
    owner's ARM64 trial does not cover another build or x64. Failed or missing runtime evidence blocks promotion.
-2. Close privacy/contact and identity gates before merging: the owner-authorized public support/privacy
-   email is now published and no mailbox was created. Verify applicable provider retention/recovery
-   boundaries and actual customer authentication/explicit operator roles. Public GitHub issues remain a
-   non-sensitive bug alternative, not a private rights-request route.
+2. Close privacy/contact and identity gates before merging. **No verified private contact is published**;
+   the known personal address remains undisclosed and no mailbox was created. This is an unresolved
+   public-launch blocker. Verify applicable provider retention/recovery boundaries and actual customer
+   authentication/explicit operator roles. Public GitHub issues remain a non-sensitive bug alternative,
+   not a private rights-request route.
 3. Record the existing production revision, public site hashes/download manifest, approved runtime settings
    and resource metadata before change, without exporting credentials or customer data. Build the approved
    revision with production operator configuration through `azure.yml`; never upload the loopback preview
@@ -119,6 +120,17 @@ experiments disabled; monetization is outside this launch.
 Live readback may expose missing production configuration. Resolve only verified dependencies; do not weaken
 authentication, enable broad experiments, provision paid resources, or present a pending gate as complete.
 Public demand starts after accepted download/support paths exist, not during this change order.
+
+### Composed-candidate requirement traceability
+
+| Requirement | Implemented surface / evidence | Candidate boundary |
+| --- | --- | --- |
+| Website measurement is optional, consented, bounded and revocable. | `site/customer.mjs`, `api/src/website-funnel.mjs`, `site/verify-telemetry.mjs`; default-off and real browser-to-persisted synthetic acceptance. | No visitor/account denominator or live customer readback is inferred. |
+| Acquisition remains separate from account activation. | `api/src/website-funnel.mjs`, `site/website-panels.mjs`, `docs/backend-contracts.md`; source/referrer/campaign event margins and explicit linked-activation contract. | Marginal website events are not unique people, qualified leads or campaign-attributed accounts. |
+| AARRR outcomes use supported account evidence and explicit unknown states. | `api/src/aarrr.mjs`, `site/aarrr-panels.mjs`, `site/verify-aarrr.mjs`; synthetic 150/100/50 oracle and withheld unsupported revenue. | Retention, referral delivery and revenue remain unavailable where the source contract does not support them. |
+| Website experiments cannot infer outcomes from clicks or repeatedly peek at active cohorts. | `api/src/experiment-policy.mjs`, `api/src/experiments.mjs`, `site/experiment-panels.mjs`, `tool/experiment_acceptance.mjs`; fixed-horizon evaluation, exposure ordering, withdrawal, harm rollback and kill acceptance. | Isolated synthetic loop only; production/public experiments remain OFF. |
+| Customer isolation and free-tier spending controls survive composition. | `api/src/backend.mjs`, `site/isolation-check.mjs`, `site/operational-review.mjs`, `.github/workflows/production-isolation.yml`; route/API contracts and bounded acceptance. | Local candidate tests do not replace exact-head hosted checks or authorize deployment. |
+| Public privacy/support claims match verified facts. | `site/index.html#privacy-notice`, `site/test/launch.test.mjs`, this launch checklist. | No verified sign-in-independent private contact is published; public launch remains blocked. |
 
 ### Measurement availability at this handoff
 

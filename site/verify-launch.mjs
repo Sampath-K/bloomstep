@@ -89,12 +89,10 @@ try {
       await page.$eval('#privacy-notice summary', node => node.focus());
       await page.keyboard.press('Space');
       assert.equal(await page.$eval('#privacy-notice', node => node.open), true);
-      assert.match(await page.$eval('#privacy-notice', node => node.textContent), /Sampath Kumar's personal independent project/);
-      assert.equal(await page.$eval('a[href="mailto:store-developer@outlook.com"]', node =>
-        node.getBoundingClientRect().width > 0 && node.textContent === 'store-developer@outlook.com'), true);
-      await page.keyboard.press('Tab');
-      assert.equal(await page.evaluate(() => document.activeElement.href),
-        'mailto:store-developer@outlook.com', 'the public contact is reachable from the privacy notice by keyboard');
+      const notice = await page.$eval('#privacy-notice', node => node.textContent);
+      assert.match(notice, /Sampath Kumar's personal independent project/);
+      assert.match(notice, /No verified private contact route without sign-in is currently published/);
+      assert.equal(await page.$eval('#privacy-notice', node => node.querySelectorAll('a[href^="mailto:"]').length), 0);
       await shot(`launch-privacy-${width}`, '#privacy-notice');
     }
     await shot(`launch-home-${width}-${js ? 'js' : 'no-js'}`);

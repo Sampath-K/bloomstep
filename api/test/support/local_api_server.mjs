@@ -105,11 +105,14 @@ export async function createLocalTestServer({
       return;
     }
     const route = incoming.url === '/api/sync' && ['GET', 'POST'].includes(incoming.method ?? '') ? handlers.sync :
+      url.pathname === '/api/account/isolation' && ['GET', 'POST'].includes(incoming.method ?? '') ? handlers.isolationCheck :
       telemetry && url.pathname === '/api/web/events' && incoming.method === 'POST' ? website.ingest :
       telemetry && url.pathname === '/api/team/website' && incoming.method === 'GET' ? website.metrics :
       telemetry && url.pathname === '/api/account' && incoming.method === 'DELETE' ? handlers.deleteAccount : null;
     if (!route) {
-      response.writeHead(incoming.url === '/api/sync' ? 405 : 404, headers);
+      const known = ['/api/sync', '/api/account/isolation'].includes(url.pathname) ||
+        telemetry && ['/api/web/events', '/api/team/website', '/api/account'].includes(url.pathname);
+      response.writeHead(known ? 405 : 404, headers);
       response.end();
       return;
     }

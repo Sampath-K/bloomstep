@@ -2,6 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { randomUUID } from 'node:crypto';
 import { createHash } from 'node:crypto';
+import { readFileSync } from 'node:fs';
 import { createHandlers, ServiceError } from '../src/backend.mjs';
 import { aggregateEvents, previewLimits } from '../src/engagement.mjs';
 import { newerSetting } from '../src/contracts.mjs';
@@ -23,7 +24,7 @@ const request = (method, data, query = {}, params = {}) => ({
   text: async () => JSON.stringify(data),
 });
 
-function harness({ roles = ['Bloomstep.Admin'], scopes = ['Garden.ReadWrite'], actorUserId, disabled = false, apiDisabled = false, aggregatesDisabled = false, invitationsDisabled = false, limits = {}, beforeBatch, failAudit = false, beforeQuery, clock = () => new Date(now) } = {}) {
+function harness({ roles = ['Bloomstep.Admin'], scopes = ['Garden.ReadWrite'], actorUserId, disabled = false, apiDisabled = false, aggregatesDisabled = false, invitationsDisabled = false, limits = {}, beforeBatch, failAudit = false, beforeQuery, beforeRead, clock = () => new Date(now) } = {}) {
   const documents = new Map();
   const writes = [];
   let revision = 0;
@@ -36,7 +37,7 @@ function harness({ roles = ['Bloomstep.Admin'], scopes = ['Garden.ReadWrite'], a
   const read = (id, partition) => structuredClone(documents.get(key(id, partition)));
   const store = {
     item: (id, partition) => ({
-      read: async () => ({ resource: read(id, partition) }),
+      read: async () => { await beforeRead?.(id, partition); return { resource: read(id, partition) }; },
       replace: async (document, options) => {
         if (options?.accessCondition?.condition !== read(id, partition)?._etag) throw { code: 412 };
         return { resource: put(document) };
@@ -64,7 +65,7 @@ function harness({ roles = ['Bloomstep.Admin'], scopes = ['Garden.ReadWrite'], a
       },
       query: (spec, options = {}) => ({
         fetchAll: async () => {
-          await beforeQuery?.(spec, { put, read });
+          await beforeQuery?.(spec, { put, read }, options);
           const parameters = Object.fromEntries((spec.parameters ?? []).map(p => [p.name, p.value]));
           let rows = [...documents.values()].filter(row => !options.partitionKey || row.userId === options.partitionKey);
           if (spec.query.includes('c.type IN')) rows = rows.filter(row => ['habits', 'checkins', 'reflections', 'voice', 'settings'].includes(row.type));
@@ -106,6 +107,60 @@ function harness({ roles = ['Bloomstep.Admin'], scopes = ['Garden.ReadWrite'], a
 }
 
 const friendId = 'c'.repeat(64);
+test('isolation acceptance runs both directions without reading or changing the peer partition', async () => {
+  const reads = [];
+  const h = harness({ roles: [], actorUserId: userId,
+    beforeRead: (_id, partition) => reads.push(partition),
+    beforeQuery: (_spec, _store, options) => reads.push(options.partitionKey),
+  });
+  const peer = friendHandlers(h);
+  for (const [handlers, id] of [[h, userId], [peer, friendId]]) {
+    await handlers.sync(request('POST', payload({ voice: [voice()] })));
+    assert.deepEqual((await handlers.isolationCheck(request('GET'))).jsonBody, { userId: id });
+  }
+  for (const [handlers, id, other] of [[h, userId, friendId], [peer, friendId, userId]]) {
+    reads.length = 0;
+    const before = [...h.documents.values()].filter(doc => doc.userId === other);
+    const result = (await handlers.isolationCheck(request('POST', { peerUserId: other }))).jsonBody;
+    assert.equal(result.userId, id);
+    assert.equal(result.counts.voice, 1);
+    assert.deepEqual(result.checks, { ownRead: 200, ownEmptySync: 200, foreignRead: 400, foreignWrite: 400, teamFeedback: 403 });
+    assert.deepEqual([...h.documents.values()].filter(doc => doc.userId === other), before);
+    assert.ok(reads.length > 0);
+    assert.ok(reads.every(partition => partition === id || partition === '__preview_budget'), 'all reads must be caller-bound or operational budget reads');
+    const audit = h.read(result.auditId, id);
+    assert.deepEqual(Object.keys(audit).sort(), ['_etag','action','checks','id','partition','ts','ttl','type','userId'].sort());
+    assert.equal(audit.partition, id);
+    assert.equal(audit.action, 'data_isolation_check');
+    assert.deepEqual(audit.checks, result.checks);
+  }
+});
+
+test('isolation proof rejects invalid inputs and never succeeds when evidence storage fails', async () => {
+  const h = harness({ roles: [], actorUserId: userId });
+  for (const data of [{}, { peerUserId: userId }, { peerUserId: 'raw-subject' }, { peerUserId: friendId, extra: true }]) {
+    await assert.rejects(h.isolationCheck(request('POST', data)), error => error.status === 400);
+  }
+  assert.equal(h.documents.size, 0);
+  const noScope = harness({ roles: [], scopes: [] });
+  await assert.rejects(noScope.isolationCheck(request('GET')), error => error.status === 403);
+  const worker = harness({ roles: ['Bloomstep.AggregateWriter'] });
+  await assert.rejects(worker.isolationCheck(request('GET')), error => error.status === 403);
+  const failed = harness({ roles: [], failAudit: true });
+  await assert.rejects(failed.isolationCheck(request('POST', { peerUserId: friendId })), /Audit storage failed/);
+  const admin = harness();
+  assert.equal((await admin.isolationCheck(request('POST', { peerUserId: friendId }))).jsonBody.checks.teamFeedback, 'admin-authorized-not-tested');
+});
+
+test('sync rejects partition selectors before store access on both read and write', async () => {
+  const h = harness({ roles: [] });
+  for (const query of [{ userId: friendId }, { partitionKey: friendId }]) {
+    await assert.rejects(h.sync(request('GET', null, query)), error => error.status === 400);
+  }
+  await assert.rejects(h.sync(request('POST', payload({ userId: friendId }))), error => error.status === 400);
+  assert.equal(h.documents.size, 0);
+});
+
 const friendHandlers = (h, id = friendId, roles = [], scopes = ['Garden.ReadWrite']) => createHandlers({
   container: () => h.store, authenticate: async () => ({ userId: id, roles, scopes }),
   clock: h.clock,
@@ -245,7 +300,11 @@ test('private support metrics use bounded server-only metadata, share raw scan c
   const projection = queryLog.find(sql => sql.includes('AS kind'));
   assert.ok(projection);
   assert.doesNotMatch(projection, /c\.record\.body|c\.record\.replies\s*,|SELECT.*\*/);
-  assert.match(projection, /IIF\(IS_ARRAY\(STRINGTOARRAY\(c\.record\.replies\)\) AND NOT EXISTS\(SELECT VALUE r FROM r IN STRINGTOARRAY\(c\.record\.replies\) WHERE NOT IS_STRING\(r\) OR LENGTH\(r\) > 2100\), ARRAY_LENGTH\(STRINGTOARRAY\(c\.record\.replies\)\) > 0, null\) AS hasResponses/);
+  // Cosmos rejects subqueries iterating a function result (`r IN STRINGTOARRAY(...)`) with HTTP 400 -> metrics 500.
+  // Verified against the live engine: parse once via a subquery JOIN, then iterate the alias.
+  assert.doesNotMatch(projection, /\bIN\s+[A-Z_]+\s*\(/i);
+  assert.match(projection, /JOIN \(SELECT VALUE \{ a: STRINGTOARRAY\(c\.record\.replies\) \}\) w WHERE c\.type = "voice"/);
+  assert.match(projection, /IIF\(IS_ARRAY\(w\.a\) AND NOT EXISTS\(SELECT VALUE r FROM r IN w\.a WHERE NOT IS_STRING\(r\) OR LENGTH\(r\) > 2100\), ARRAY_LENGTH\(w\.a\) > 0, null\) AS hasResponses/);
   for (let i = 0; i < 2; i++) {
     const event = { id: randomUUID(), name: 'session_started', ts: '2026-08-30T12:00:00.000Z' };
     h.put({ id: `events:${event.id}`, userId, type: 'events', record: event, ttl: 3600 });
@@ -618,10 +677,19 @@ test('spend pause is isolated, bounded, one-way and idempotent; garden/team paus
   assert.equal((await guard.deleteAccount(deletion)).status, 204);
   assert.equal((await guard.operationalPause(request('POST', { requestId: randomUUID(), reason: 'spending_limit_off' }))).jsonBody.paused, true);
   await assert.rejects(guard.operationalResume(request('POST', {})), e => e.status === 403);
+  await assert.rejects(guard.operationalStatus(request('GET')), e => e.status === 403);
+  const adminWithoutGarden = createHandlers({ container: () => h.store,
+    authenticate: async () => ({ userId: teamId, roles: ['Bloomstep.Admin'], scopes: [] }), clock: () => new Date(now) });
+  await assert.rejects(adminWithoutGarden.operationalStatus(request('GET')), e => e.status === 403);
+  const current = h.read('budget', '__preview_budget').operationalPause;
+  assert.deepEqual((await h.operationalStatus(request('GET'))).jsonBody,
+    { paused: true, requestId: current.requestId, reason: current.reason, pausedAt: current.pausedAt });
+  assert.equal(current.requestId, data.requestId);
   await assert.rejects(h.operationalResume(request('POST', { requestId: randomUUID(), reviewedPauseRequestId: data.requestId })), e => e.status === 400);
   const review = { requestId: randomUUID(), reviewedPauseRequestId: data.requestId, confirmation: 'reviewed-free-tier-and-spending-limit' };
   assert.equal((await h.operationalResume(request('POST', review))).jsonBody.paused, false);
   assert.equal((await h.operationalResume(request('POST', review))).jsonBody.paused, false);
+  assert.deepEqual((await h.operationalStatus(request('GET'))).jsonBody, { paused: false });
   await h.metrics(request('GET'));
   const newPause = { requestId: randomUUID(), reason: 'positive_cost' };
   await guard.operationalPause(request('POST', newPause));
@@ -1564,4 +1632,19 @@ test('alternate authenticator is invoked only for the internal aggregate route',
   assert.equal(alternateCalls, 0);
   await handlers.aggregates(request('POST', {}));
   assert.equal(alternateCalls, 1);
+});
+
+test('no Cosmos SQL subquery iterates a function result (engine rejects it with 400, surfacing as 500)', () => {
+  for (const file of ['backend.mjs', 'website-funnel.mjs', 'invitations.mjs', 'support.mjs']) {
+    const source = readFileSync(new URL(`../src/${file}`, import.meta.url), 'utf8');
+    assert.doesNotMatch(source, /FROM\s+\w+\s+IN\s+[A-Z_]+\s*\(/i, file);
+  }
+});
+
+test('empty production-shaped dataset returns 200 metrics with suppressed/unavailable counts, not 500', async () => {
+  const h = harness();
+  const data = (await h.metrics(request('GET', null, { days: '7' }))).jsonBody;
+  assert.equal(data.supportMetrics.source, 'server_voice_receipts');
+  assert.ok(data.dailySnapshots.days.every(day => day.status === 'unavailable'));
+  assert.ok(Array.isArray(data.limitations));
 });

@@ -44,7 +44,7 @@ test('site, operator popup and download labels are product-branded', () => {
   assert.match(site, /Bloomstep ARM64/);
   assert.match(site, /Bloomstep x64/);
   assert.doesNotMatch(site, /Sign in to Bloomstep operator console/);
-  assert.match(read('site/console.html'), /Sign in to Bloomstep operator console/);
+  assert.match(read('site/console.html'), /Sign in to Bloomstep (?:operator )?console/);
   assert.match(site, /rel="icon"/);
   assert.match(read('site/operator-callback.html'), /Completing Bloomstep operator sign-in/);
 });

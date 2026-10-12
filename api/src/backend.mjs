@@ -10,6 +10,7 @@ import { registryVersion } from './event_registry.g.mjs';
 import { dailySnapshotRecordSchema, snapshotMetadataSchema } from './snapshot-contracts.mjs';
 import { createInvitations } from './invitations.mjs';
 import { z } from 'zod';
+import azureFunctions from '@azure/functions';
 
 export class ServiceError extends Error {
   /** @param {number} status @param {string} message */
@@ -109,6 +110,14 @@ export function createHandlers({ container, authenticate, authenticateAggregate 
     try { await item.replace(document, { accessCondition: { type: 'IfMatch', condition: resource._etag } }); }
     catch (error) { if (conflict(error)) throw new ServiceError(409, 'Pause changed during review.'); throw error; }
     return { jsonBody: { paused: false } };
+  }
+  /** @param {import('@azure/functions').HttpRequest} request */
+  async function operationalStatus(request) {
+    const actor = await gardenActor(request);
+    if (!isAdmin(actor.roles) || !actor.scopes?.includes('Garden.ReadWrite')) throw new ServiceError(403, 'Selected customer Admin and Garden scope required.');
+    const pause = (await container().item('budget', budgetPartition).read()).resource?.operationalPause;
+    if (pause?.paused !== true) return { jsonBody: { paused: false } };
+    return { jsonBody: { paused: true, requestId: pause.requestId, reason: pause.reason, pausedAt: pause.pausedAt } };
   }
   /** @param {number} records @param {number} accounts @param {keyof typeof limits.adminActions | undefined} action */
   async function reserve(records = 0, accounts = 0, action = undefined) {
@@ -311,6 +320,7 @@ export function createHandlers({ container, authenticate, authenticateAggregate 
   /** @param {import('@azure/functions').HttpRequest} request */
   async function sync(request) {
     const { userId } = await gardenActor(request);
+    if ([...request.query.keys()].length) throw new ServiceError(400, 'Sync does not accept account or partition selectors.');
     const parsed = request.method === 'GET' ? null : syncSchema.safeParse(await body(request));
     if (parsed && !parsed.success) throw new ServiceError(400, 'Sync payload failed validation.');
     const deletionOnly = parsed?.success && parsed.data.deletions.length > 0 &&
@@ -495,7 +505,8 @@ export function createHandlers({ container, authenticate, authenticateAggregate 
   /** @param {{remaining:number}} scan */
   async function rawSupport(scan) {
     const { resources } = await container().items.query({
-      query: `SELECT TOP ${scan.remaining + 1} c.userId, c.id, c.support, c.record.kind AS kind, c.record.rating AS rating, IIF(IS_ARRAY(STRINGTOARRAY(c.record.replies)) AND NOT EXISTS(SELECT VALUE r FROM r IN STRINGTOARRAY(c.record.replies) WHERE NOT IS_STRING(r) OR LENGTH(r) > 2100), ARRAY_LENGTH(STRINGTOARRAY(c.record.replies)) > 0, null) AS hasResponses FROM c WHERE c.type = "voice"`,
+      // Cosmos rejects `r IN STRINGTOARRAY(...)` in a subquery; parse once via a subquery JOIN (always one object row).
+      query: `SELECT TOP ${scan.remaining + 1} c.userId, c.id, c.support, c.record.kind AS kind, c.record.rating AS rating, IIF(IS_ARRAY(w.a) AND NOT EXISTS(SELECT VALUE r FROM r IN w.a WHERE NOT IS_STRING(r) OR LENGTH(r) > 2100), ARRAY_LENGTH(w.a) > 0, null) AS hasResponses FROM c JOIN (SELECT VALUE { a: STRINGTOARRAY(c.record.replies) }) w WHERE c.type = "voice"`,
     }).fetchAll();
     if (resources.length > scan.remaining) throw new ServiceError(429, 'Combined metrics scan cap exceeded; no partial counts returned.');
     scan.remaining -= resources.length;
@@ -702,7 +713,52 @@ export function createHandlers({ container, authenticate, authenticateAggregate 
     container, clock, active: assertActive, batch, reserve, gateBody, ServiceError,
     actor: invitationActor, body, rateLimit, readGarden,
   });
-  return { sync, deleteAccount, admin, metrics, aggregates, operationalPause, operationalResume,
+  /** @param {import('@azure/functions').HttpRequest} request */
+  async function isolationCheck(request) {
+    const actor = await gardenActor(request);
+    if (!actor.scopes?.includes('Garden.ReadWrite')) throw new ServiceError(403, 'Customer Garden.ReadWrite scope required.');
+    if ([...request.query.keys()].length) throw new ServiceError(400, 'Isolation check does not accept query parameters.');
+    if (request.method === 'GET') return { jsonBody: { userId: actor.userId } };
+    const parsed = z.strictObject({ peerUserId: z.string().regex(/^[a-f0-9]{64}$/) }).safeParse(await body(request));
+    if (!parsed.success || parsed.data.peerUserId === actor.userId) throw new ServiceError(400, 'A different account userId hash is required.');
+    apiEnabled();
+    await operationalEnabled();
+    const empty = { habits: [], checkins: [], reflections: [], voice: [], events: [] };
+    // Reuse the actual sync boundary with the caller's verified transport, never the peer's identity.
+    const probe = (/** @type {string} */ method, /** @type {Record<string, unknown> | undefined} */ data = undefined,
+      /** @type {string} */ query = '') => new azureFunctions.HttpRequest({
+        method, url: `https://bloomstep.invalid/api/sync${query}`,
+        headers: Object.fromEntries(request.headers),
+        ...(data ? { body: { string: JSON.stringify(data) } } : {}),
+      });
+    const own = await sync(probe('GET'));
+    await sync(probe('POST', empty));
+    const rejected = async (/** @type {() => Promise<unknown>} */ operation, /** @type {number} */ status) => {
+      try { await operation(); }
+      catch (error) {
+        if (error instanceof ServiceError && error.status === status) return status;
+        throw error;
+      }
+      throw new ServiceError(409, 'Isolation boundary did not reject the probe; no successful evidence recorded.');
+    };
+    const checks = {
+      ownRead: 200, ownEmptySync: 200,
+      foreignRead: await rejected(() => sync(probe('GET', undefined, `?userId=${parsed.data.peerUserId}`)), 400),
+      foreignWrite: await rejected(() => sync(probe('POST', { ...empty, userId: parsed.data.peerUserId })), 400),
+      teamFeedback: isAdmin(actor.roles) ? 'admin-authorized-not-tested' : await rejected(() => admin(probe('GET')), 403),
+    };
+    const counts = Object.fromEntries(['habits', 'checkins', 'reflections', 'voice', 'settings'].map(key => {
+      const rows = own.jsonBody[key];
+      if (!Array.isArray(rows)) throw new ServiceError(503, 'Own-data count unavailable; no successful evidence recorded.');
+      return [key, rows.length];
+    }));
+    await reserve(1);
+    const auditId = randomUUID();
+    await container().items.create({ id: auditId, userId: actor.userId, partition: actor.userId,
+      type: 'audit', action: 'data_isolation_check', checks, ts: clock().toISOString(), ttl: auditTtl });
+    return { jsonBody: { userId: actor.userId, counts, checks, auditId } };
+  }
+  return { sync, deleteAccount, admin, metrics, aggregates, operationalPause, operationalResume, operationalStatus, isolationCheck,
     createInvitation: invitations.createInvitation, redeemInvitation: invitations.redeemInvitation,
     invitationStatus: invitations.invitationStatus };
 }

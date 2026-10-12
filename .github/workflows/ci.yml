@@ -76,6 +76,7 @@ jobs:
       - run: npm run check
       - run: npm test
       - run: node ../tool/generate_event_registry.mjs --check
+      - run: node --test ../infra/test-automation-provisioning.mjs
       - run: node --test ../test/universal_installer_test.mjs ../test/release_bundle_test.mjs
       - run: node --test ../test/site_console_test.mjs ../test/measurement_packaging_test.mjs ../test/installer_onboarding_test.mjs ../test/installer_journey_test.mjs ../test/public_claims_test.mjs ../test/identity_callbacks_test.mjs ../test/branding_contract_test.mjs ../test/synthetic_native_contract_test.mjs
       - name: Verify bundled operator authentication

@@ -5,6 +5,7 @@ import { classifyAttribution } from '../customer.mjs';
 
 const home = readFileSync(new URL('../index.html', import.meta.url), 'utf8');
 const releases = readFileSync(new URL('../releases/index.html', import.meta.url), 'utf8');
+const launchVerifier = readFileSync(new URL('../verify-launch.mjs', import.meta.url), 'utf8');
 test('launch path discloses prerequisites and support/privacy limits without collecting contact details', () => {
   const download = /<section id="download"[\s\S]*?<\/section>/.exec(home)[0];
   assert.match(download, /id="download-prerequisites"[\s\S]*64-bit Windows[\s\S]*sign-in[\s\S]*ages 16[\s\S]*unsigned/);
@@ -21,6 +22,8 @@ test('launch path discloses prerequisites and support/privacy limits without col
   assert.match(privacyNotice, /For support or a request about access, correction or deletion/);
   assert.match(privacyNotice, /not guaranteed within a stated period/);
   assert.match(privacyNotice, /No verified private contact route without sign-in is currently published/);
+  assert.match(launchVerifier, /No verified private contact route without sign-in is currently published/);
+  assert.doesNotMatch(launchVerifier, /store-developer@outlook\.com/);
   assert.doesNotMatch(releases, /mailto:/);
   assert.match(releases, /bloomstep\/issues/);
   assert.match(releases, /href="\/#privacy-notice"/);
