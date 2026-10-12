@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 import { websiteConfig } from '../tool/analytics_config.mjs';
-import { assertProductionClean } from '../tool/analytics_site_build.mjs';
+import { assertProductionClean, assertProductionSourceClean } from '../tool/analytics_site_build.mjs';
 import { snapshot } from '../tool/acquisition_snapshot.mjs';
 import { browserLaunchOptions, collectionEvents } from '../tool/analytics_ga4_staging_check.mjs';
 import { initializeSandbox } from '../tool/analytics_browser.mjs';
@@ -51,6 +51,44 @@ test('GA4 withdrawal disables transport synchronously before consent update and 
 });
 
 test('production site is free of vendor code and domains', assertProductionClean);
+test('production scanner permits the unchanged plain-text privacy disclosure', async () => {
+  const html = await readFile(new URL('../site/index.html', import.meta.url), 'utf8');
+  const disclosure = html.match(/<p>The production site has no GA4,[\s\S]*?<\/p>/)?.[0];
+  assert.ok(disclosure, 'The production privacy disclosure must remain present');
+  assert.doesNotThrow(() => assertProductionSourceClean(disclosure, 'disclosure.html'));
+});
+test('production scanner rejects vendor resources, domains and executable SDK markers', () => {
+  const examples = [
+    ['script.html', '<script src="https://www.googletagmanager.com/gtag/js?id=G-TEST"></script>'],
+    ['script.html', '<script src="/assets/posthog.js"></script>'],
+    ['link.html', '<link rel="preconnect" href="https://eu.i.posthog.com">'],
+    ['img.html', '<img src="https://www.google-analytics.com/collect">'],
+    ['iframe.html', '<iframe src="https://www.clarity.ms/tag/test"></iframe>'],
+    ['fetch.html', '<script>fetch("https://static.cloudflareinsights.com/beacon.min.js")</script>'],
+    ['domain.html', '<p>https://eu.i.posthog.com</p>'],
+    ['domain.html', '<p>https://api.aptabase.com</p>'],
+    ['domain.html', '<p>https://ingest.sentry.io</p>'],
+    ['domain.html', '<p>https://browser.sentry-cdn.com</p>'],
+    ['inline.html', '<script>gtag("config", "G-TEST");</script>'],
+    ['inline.html', '<script>posthog.init("phc_test");</script>'],
+    ['inline.html', '<script>clarity("start");</script>'],
+    ['inline.html', '<script>window["posthog"] = [];</script>'],
+    ['inline.html', '<script>window.dataLayer = [];</script>'],
+    ['attribute.html', '<button onclick="gtag(\'event\', \'click\')">Click</button>'],
+    ['style.html', '<style>body { background: url("/assets/posthog.png"); }</style>'],
+    ['quoted-attribute.html', '<img alt=">" src="https://eu.i.posthog.com/pixel">'],
+    ['unclosed.html', '<script>window.posthog = [];'],
+    ['vendor.mjs', 'import * as Sentry from "@sentry/browser";'],
+    ['vendor.js', 'window.gtag = function () {};'],
+    ['vendor.js', 'window.clarity = function () {};'],
+    ['vendor.json', '{"sdk":"aptabase"}'],
+    ['sandbox.html', '<input id="sandbox-consent">'],
+  ];
+  for (const [path, source] of examples) {
+    assert.throws(() => assertProductionSourceClean(source, path),
+      /Production contains third-party analytics/, `${path}: ${source}`);
+  }
+});
 test('missing keys disable each vendor and invalid IDs fail explicitly', () => {
   assert.equal(websiteConfig({}).GA4_ID, '');
   assert.equal(websiteConfig({}).POSTHOG_REGION, 'EU');
