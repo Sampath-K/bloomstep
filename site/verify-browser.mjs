@@ -27,7 +27,7 @@ try {
     assert.equal(posts.length, 0, 'New website measurement is default-off');
     if (output) await page.screenshot({ path: join(output, `customer-default-${width}.png`), fullPage: true });
     if (!await page.$eval('#website-consent', node => node.disabled)) await page.click('#website-consent');
-    await page.waitForFunction(() => document.getElementById('website-status').textContent.includes('active'));
+    await page.waitForFunction(() => document.getElementById('website-status').textContent.includes('counts are on'));
     assert.equal(posts[0].event, 'landing_view');
     assert.equal(posts[0].channel, 'web');
     assert.equal(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), true);
@@ -70,7 +70,7 @@ try {
     await page.click('#website-consent');
     await page.click('#primary-cta');
     assert.equal(requests, 0);
-    assert.match(await page.$eval('#website-status', node => node.textContent), /Privacy signal honoured/);
+    assert.match(await page.$eval('#website-status', node => node.textContent), /Your browser privacy setting is on/);
     await page.close();
   }
   const offline = await browser.newPage();
@@ -86,7 +86,7 @@ try {
   assert.equal(links.length, unified ? 3 : 2);
   if (unified) {
     assert.equal(await offline.$eval('[data-universal-download] a', link => link.dataset.download), 'unknown');
-    assert.equal(await offline.$eval('[data-universal-download] a', link => link.textContent.trim()), 'Download Bloomstep for Windows');
+    assert.equal(await offline.$eval('[data-universal-download] a', link => link.textContent.trim()), 'Owner-test download (designated testers only)');
   }
   assert.ok(links.every(link => link.startsWith('https://github.com/Sampath-K/bloomstep/releases/download/')));
   await offline.click('#primary-cta');
@@ -120,7 +120,9 @@ try {
       await page.goto(origin + path, { waitUntil: 'networkidle0' });
       assert.equal(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), true,
         `${path} must reflow in ${scenario.name}`);
-      assert.match(await page.$eval('main', node => node.textContent), /Limited preview — Bloomstep/);
+      const previewText = await page.$eval('main', node => node.textContent);
+      assert.match(previewText, /This version is for designated owner testing only; it has not been verified for general use/);
+      assert.match(previewText, /Early preview — not yet verified for general use/);
       assert.equal(await page.$$eval('a[href="https://tinyhabits.com/book/"]', links => links.length), 1);
       const images = await page.$$eval('img', images => images.filter(image => image.loading !== 'lazy')
         .map(image => ({ complete: image.complete, width: image.naturalWidth })));
@@ -149,7 +151,7 @@ try {
           images.length === 5 && images.every(image => image.complete && image.naturalWidth > 0)), true,
           'All five genuine warning assets load after explicit help expansion');
         assert.equal(await page.$$eval('#download-help figcaption', captions => captions.filter(caption =>
-          caption.textContent.includes('Real customer-provided preview.8 ARM64 screenshot, not CI')).length), 5);
+          caption.textContent.includes('User-shared warning from preview.8 on an ARM64 Windows device')).length), 5);
         assert.equal(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), true);
         if (scenario.forced) assert.equal(await page.$eval('.teaching-art', node => getComputedStyle(node).display), 'none');
         await page.keyboard.press('Tab');

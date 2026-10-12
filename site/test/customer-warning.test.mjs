@@ -60,10 +60,13 @@ test('five actual customer warning images preserve source and transformed hashes
 
 test('genuine warning captions bound evidence and conditional actions without a benign fallback', () => {
   const page = read('index.html');
-  assert.equal((page.match(/Real customer-provided preview\.8 ARM64 screenshot, not CI/g) ?? []).length, 5);
-  assert.match(page, /Browser and OS versions unknown; safety and universal warning behavior are not established/);
-  assert.match(page, /Screenshots do not prove the binary's SHA-256, successful execution or app acceptance/);
-  assert.match(page, /\(1\).*duplicate-download suffix/);
+  assert.equal((page.match(/User-shared warning from preview\.8 on an ARM64 Windows device/g) ?? []).length, 5);
+  assert.match(page, /The browser and Windows versions are unknown; your warning may differ/);
+  assert.match(page, /This example does not prove the file is safe/);
+  assert.match(page, /This image does not show that the app opens or works correctly/);
+  assert.doesNotMatch(page, /not CI|execution success or app acceptance/);
+  assert.match(page, /These examples do not establish the current installer's safety or show that it starts successfully/);
+  assert.match(page, /“\(1\)” is added by the browser for a repeated download; it does not identify a different release/);
   const edge = /<details><summary>Microsoft Edge on Windows<\/summary>([\s\S]*?)<\/details>/.exec(page)?.[1];
   assert.ok(edge);
   assert.match(edge, /Only for an unknown-reputation prompt,[\s\S]*exact source[\s\S]*SHA-256 match[\s\S]*policy permits[\s\S]*accept the risk/);

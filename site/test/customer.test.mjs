@@ -38,7 +38,7 @@ test('customer and engineering surfaces are separated with honest SEO', () => {
   const read = file => readFileSync(new URL('../' + file, import.meta.url), 'utf8');
   const home = read('index.html'), releases = read('releases/index.html'), consolePage = read('console.html');
   assert.doesNotMatch(home, /Growing in public|Product team console|SHA-256:|Windows engineering preview/);
-  assert.match(home, /Get Bloomstep for Windows/);
+  assert.match(home, /Check preview availability/);
   assert.match(home, /More info/);
   assert.match(home, /Run anyway/);
   assert.match(releases, /SHA-256/);
@@ -53,7 +53,7 @@ test('customer and engineering surfaces are separated with honest SEO', () => {
   assert.match(home, /SoftwareApplication/);
   assert.doesNotMatch(home, /aggregateRating/);
 });
-test('public Windows downloads match the verified preview.12 universal release', () => {
+test('owner-test downloads match the exact preview.12 release without implying general availability', () => {
   const read = file => readFileSync(new URL('../' + file, import.meta.url), 'utf8');
   const config = JSON.parse(read('customer-config.json'));
   const home = read('index.html'), releases = read('releases/index.html');
@@ -87,9 +87,13 @@ test('public Windows downloads match the verified preview.12 universal release',
     assert.equal((page.match(/data-universal-download/g) ?? []).length, 1);
     assert.match(page, /21\.54 MB \(21,542,145 bytes\)/);
     assert.doesNotMatch(page, /href="[^"]*download\/v0\.1\.0-preview\.9/);
+    assert.match(page, /Early preview — not yet verified for general use/);
+    assert.match(page, /owner-test candidate, not a general customer release/);
+    assert.match(page, /Owner-test download \(designated testers only\)/);
   }
-  assert.match(releases, /Launch after Finish remains unverified/);
-  assert.match(releases, /0\.1\.0-preview\.8 - fresh-consent app reminder observations/);
+  assert.match(releases, /Launch after installation and the complete sign-in and app journey have not been verified/);
+  assert.match(releases, /Recent preview changes/);
+  assert.doesNotMatch(releases, /owner-trial-checklist|docs\/status\.md|launch gates|elevated worker|\bCI\b|worker/i);
 });
 test('website panel separates event conversion and receipt cohorts, rejects substitute zeros', () => {
   const data = { schemaVersion: 1, channel: 'web', synthetic: false, definition: 'Events, not people.',

@@ -40,7 +40,7 @@ test('stable Windows storage is installed before instance, invitations and crede
 
 test('site, operator popup and download labels are product-branded', () => {
   const site = read('site/index.html');
-  assert.match(site, /Download Bloomstep for Windows/);
+  assert.match(site, /Owner-test download \(designated testers only\)/);
   assert.match(site, /Bloomstep ARM64/);
   assert.match(site, /Bloomstep x64/);
   assert.doesNotMatch(site, /Sign in to Bloomstep operator console/);
@@ -49,32 +49,17 @@ test('site, operator popup and download labels are product-branded', () => {
   assert.match(read('site/operator-callback.html'), /Completing Bloomstep operator sign-in/);
 });
 
-test('current preview12 downloads keep preview8 and preview9 evidence historical without implying customer acceptance', () => {
+test('customer release page makes the owner-test restriction clear and excludes operator evidence', () => {
   const site = read('site/releases/index.html');
   for (const arch of ['arm64', 'x64', 'universal']) {
     assert.ok(site.includes(`releases/download/v0.1.0-preview.12/Bloomstep-0.1.0-preview.12-windows-${arch}-setup.exe`));
   }
-  assert.ok(site.includes('releases/tag/v0.1.0-preview.12'));
   assert.ok(site.includes('fe115a7ada87858a55ba2610f778888079ee01a242f9ff74e18120a359292858'));
-  assert.match(site, /0\.1\.0-preview\.9 - historical Windows downloads/);
-  assert.match(site, /Launch after Finish remains unverified/);
-  assert.match(site, /does not create or modify an app build, tag or release/);
-  assert.match(site, /0\.1\.0-preview\.8 - fresh-consent app reminder observations/);
-  assert.match(site, /0\.1\.0-preview\.8 - fresh-consent app reminder observations/);
-  assert.match(site, /original OS notification disable goal remains unavailable/i);
-  assert.match(site, /does not establish real-user consent, OS permission\/delivery, private cohort acceptance/i);
-  assert.match(site, /experiment stays OFF/);
-  assert.match(site, /0\.1\.0-preview\.7 - private support receipts/);
-  assert.match(site, /No customer upgrade, authenticated operator acceptance or live private-record acceptance is claimed/);
-  assert.match(site, /0\.1\.0-preview\.6 - safe schema recovery/);
-  assert.match(site, /future schema versions unchanged/i);
-  assert.match(site, /installed preview\.5 remains preserved/);
-  assert.match(site, /new private export and fresh authenticated sync passed/);
-  assert.match(site, /0\.1\.0-preview\.5 - owner-scoped record deletion/);
-  assert.match(site, /live fixture acceptance remains pending/i);
-  assert.match(site, /minimal ID-only record markers/);
-  assert.match(site, /0\.1\.0-preview\.4 - Bloomstep identity and Windows branding/);
-  assert.match(site, /not the full MVP/);
+  assert.match(site, /Early preview — not yet verified for general use/);
+  assert.match(site, /The files are publicly reachable, but download them only if you are the designated tester/);
+  assert.match(site, /Launch after installation and the complete sign-in and app journey have not been verified/);
+  assert.match(site, /Recent preview changes/);
+  assert.doesNotMatch(site, /owner-trial-checklist|docs\/status\.md|\bCI\b|elevated worker|launch gates|support receipts|stale-device|API audit/i);
 });
 
 test('branding assets have genuine binary formats and do not replace protocol identifiers', () => {
