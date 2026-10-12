@@ -99,9 +99,9 @@ test('prioritization uses only publishable step rates and never repeats or overr
 });
 
 test('build-time promotions only accept reviewed catalog winners against exact control markup', () => {
-  const html = '<h2 id="download-title">Bring a tiny garden to your Windows day.</h2>';
+  const html = '<h2 id="download-title">Current preview status</h2>';
   const record = { key: 'download-heading-v1', experimentId: 'download-heading-v1.20261001T000000', definitionHash: 'a'.repeat(64), decision: 'promote' };
-  assert.equal(applyPromotionsToHtml(html, [record]), '<h2 id="download-title">Download Bloomstep for your Windows PC.</h2>');
+  assert.equal(applyPromotionsToHtml(html, [record]), '<h2 id="download-title">Preview limits and owner-test files</h2>');
   assert.throws(() => applyPromotionsToHtml(html, [{ ...record, decision: 'inconclusive' }]));
   assert.throws(() => applyPromotionsToHtml('<h2 id="download-title">Edited</h2>', [record]));
 });

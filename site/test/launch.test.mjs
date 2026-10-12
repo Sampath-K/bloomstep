@@ -26,6 +26,10 @@ test('launch path discloses prerequisites and support/privacy limits without col
   assert.match(privacyNotice, /A response time is not guaranteed/);
   assert.match(privacyNotice, /You do not need to sign in to email/);
   assert.match(launchVerifier, /mailto:store-developer@outlook\.com/);
+  assert.match(launchVerifier, /counts are on/);
+  assert.doesNotMatch(launchVerifier, /textContent\.includes\('active'\)/);
+  assert.match(launchVerifier, /renderedLinkReview/);
+  assert.match(readFileSync(new URL('../verify-browser.mjs', import.meta.url), 'utf8'), /counts are on/);
   assert.ok(releases.includes(contactLink));
   assert.ok(/<details id="feedback-help">[\s\S]*?<\/details>/.exec(home)[0].includes(contactLink));
   for (const page of [home, releases]) {
@@ -47,7 +51,10 @@ test('launch path discloses prerequisites and support/privacy limits without col
   assert.match(privacyNotice, /restoring from Azure backups and keeping those markers after a restore have not been tested/);
   assert.match(privacyNotice, /We do not know whether restoring a backup could bring back deleted information/);
   assert.match(privacyNotice, /backups every four hours, an eight-hour retention setting and storage in more than one geographic region/);
-  assert.match(home, /396 days/);
+  assert.match(privacyNotice, /396 days from when the activity originally happened/);
+  assert.match(home, /used for up to five minutes to avoid duplicate counts, then removed during subsequent service activity/);
+  assert.match(home, /Review history is limited to 500 entries and 50 completed comparisons/);
+  assert.match(home, /not a promise that every record is deleted within 90 days/);
   assert.match(home, /daily summaries are kept for 30 days/);
   assert.doesNotMatch(home, /hotmail\.com|microsoft\.com">[^<]*support|GDPR compliant|certified safe/);
 });

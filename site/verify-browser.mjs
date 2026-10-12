@@ -27,7 +27,7 @@ try {
     assert.equal(posts.length, 0, 'New website measurement is default-off');
     if (output) await page.screenshot({ path: join(output, `customer-default-${width}.png`), fullPage: true });
     if (!await page.$eval('#website-consent', node => node.disabled)) await page.click('#website-consent');
-    await page.waitForFunction(() => document.getElementById('website-status').textContent.includes('active'));
+    await page.waitForFunction(() => document.getElementById('website-status').textContent.includes('counts are on'));
     assert.equal(posts[0].event, 'landing_view');
     assert.equal(posts[0].channel, 'web');
     assert.equal(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), true);

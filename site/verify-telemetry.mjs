@@ -107,7 +107,8 @@ try {
   await click('#primary-cta'); await waitCount(2);
   await page.$eval('[data-download="unknown"]', link => link.click()); await waitCount(3);
   await page.$eval('#receipt-export', button => button.click());
-  assert.match(await page.$eval('#receipt-status', node => node.textContent), /Receipt export requested/);
+  assert.match(await page.$eval('#receipt-status', node => node.textContent),
+    /Your browser was asked to download the receipt\. Adding it in app Settings is a separate choice\./);
   const exported = join(temporary, 'bloomstep-website-measurement.json');
   for (let i = 0; i < 100; i++) {
     try { await access(exported); break; } catch (error) {
