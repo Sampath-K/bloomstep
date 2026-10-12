@@ -17,7 +17,7 @@ test('universal rendering fixture never changes the verified preview12 config', 
   assert.equal(current.release.universal.sha256, 'fe115a7ada87858a55ba2610f778888079ee01a242f9ff74e18120a359292858');
   assert.equal(current.release.universal.bytes, 21542145);
 });
-test('both download surfaces render a single primary with collapsed support links and are idempotent', () => {
+test('both customer pages mark the current downloads as owner-test only and preserve the verified pointers', () => {
   for (const name of ['index.html', 'releases/index.html']) {
     const original = readFileSync(new URL(`../${name}`, import.meta.url), 'utf8');
     assert.equal(renderDownloads(original, current.release), original);
@@ -25,13 +25,15 @@ test('both download surfaces render a single primary with collapsed support link
     assert.equal(renderDownloads(unified, fixture), unified);
     assert.equal((unified.match(/data-universal-download/g) ?? []).length, 1);
     assert.match(unified, /data-download="unknown"/);
-    assert.match(unified, /<details><summary>Other downloads \(troubleshooting\)/);
-    assert.doesNotMatch(unified, /<details open><summary>Other downloads/);
-    assert.match(unified, /Both payloads are included/);
-    assert.match(unified, /Unsupported 32-bit Windows cannot install/);
+    assert.match(unified, /Owner-test download \(designated testers only\)/);
+    assert.match(unified, /<details><summary>Other files \(owner testing only\)/);
+    assert.doesNotMatch(unified, /<details open><summary>Other files/);
+    assert.match(unified, /designated testers/);
+    assert.match(unified, /32-bit Windows is not supported/);
     if (name.startsWith('releases/')) {
       assert.match(unified, /Universal SHA-256: a{64}/);
-      assert.match(unified, /Secondary installer checksums/);
+      assert.match(unified, /Other owner-test file fingerprints/);
+      assert.doesNotMatch(unified, /href="https:\/\/github\.com\/Sampath-K\/bloomstep\/releases\/tag\//);
     }
   }
 });
@@ -49,12 +51,13 @@ test('published universal size is rendered exactly and malformed sizes fail clos
     }), /Verified release size/);
   }
 });
-test('default download copy is plain language with technical facts only in closed troubleshooting', () => {
+test('download pointers are labeled for owner testing, with platform details in closed troubleshooting', () => {
   const original = readFileSync(new URL('../index.html', import.meta.url), 'utf8');
   const html = renderDownloads(original, current.release);
   const intro = /<p id="architecture-guidance">([^<]+)<\/p>/.exec(html)[1];
-  assert.match(intro, /automatically chooses the right version/);
+  assert.match(intro, /chooses the right version for your PC/);
   assert.doesNotMatch(intro, /x64|ARM64|emulation|32-bit|bytes/);
   assert.match(html, /Download size: 21\.54 MB\.<\/p>/);
-  assert.match(html, /<details><summary>Other downloads \(troubleshooting\)[\s\S]*?Unsupported 32-bit[\s\S]*?21,542,145 bytes/);
+  assert.match(html, /Owner-test download \(designated testers only\)/);
+  assert.match(html, /<details><summary>Other files \(owner testing only\)[\s\S]*?32-bit Windows is not supported[\s\S]*?21,542,145 bytes/);
 });

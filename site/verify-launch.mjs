@@ -11,7 +11,7 @@ const out = resolve(process.env.EVIDENCE_DIR ?? join(tmpdir(), 'bloomstep-public
 await mkdir(out, { recursive: true });
 const temp = await mkdtemp(join(tmpdir(), 'bloomstep-it-launch-'));
 const databasePath = join(temp, 'website.json');
-const errors = [], requests = [], screenshots = {};
+const errors = [], requests = [], screenshots = {}, linkReview = [];
 let server, browser;
 try {
   server = await createLocalTestServer({ databasePath, key: randomBytes(32), telemetry: true,
@@ -37,7 +37,7 @@ try {
   await page.click('[data-universal-download] a');
   assert.equal(requests.length, 0, 'CTA and downloads do not require consent or issue observations when off');
   await page.click('#website-consent');
-  await page.waitForFunction(() => document.querySelector('#website-status').textContent.includes('active'));
+  await page.waitForFunction(() => document.querySelector('#website-status').textContent.includes('counts are on'));
   await page.click('[data-primary-cta="footer"]');
   await page.click('#primary-cta');
   await page.click('[data-universal-download] a');
@@ -109,6 +109,33 @@ try {
     assert.ok(contacts.length > 0, `Public contact on ${path} without JavaScript`);
     assert.ok(contacts.every(contact => contact.href === 'mailto:store-developer@outlook.com'
       && contact.text === 'store-developer@outlook.com'));
+    const links = await page.$$eval('a[href]', nodes => nodes.map(node => ({
+      href: node.getAttribute('href'), text: node.textContent.trim().replace(/\s+/g, ' '),
+    })));
+    for (const link of links) {
+      const target = new URL(link.href, page.url());
+      if (target.protocol === 'mailto:') {
+        assert.equal(target.href, 'mailto:store-developer@outlook.com');
+        linkReview.push({ page: path, ...link, result: 'approved-contact' });
+      } else if (target.origin === server.url) {
+        const resolution = await page.evaluate(async href => {
+          const url = new URL(href, location.href);
+          const response = await fetch(url.pathname, { credentials: 'omit' });
+          const documentText = await response.text();
+          const hasFragment = !url.hash || new DOMParser().parseFromString(documentText, 'text/html')
+            .getElementById(decodeURIComponent(url.hash.slice(1))) !== null;
+          return { status: response.status, hasFragment };
+        }, link.href);
+        assert.equal(resolution.status, 200, `${path} link ${link.href}`);
+        assert.equal(resolution.hasFragment, true, `${path} link ${link.href} has a destination`);
+        linkReview.push({ page: path, ...link, result: 'local-http-200', fragmentVerified: true });
+      } else {
+        assert.equal(target.protocol, 'https:', `${path} external link ${link.href} uses HTTPS`);
+        assert.ok(target.hostname, `${path} external link ${link.href} has a destination`);
+        linkReview.push({ page: path, ...link, result: 'external-https-destination' });
+      }
+    }
+    await shot(path === '/' ? 'launch-home-no-js-contact' : 'launch-releases-no-js-contact');
   }
   assert.deepEqual(errors, []);
   const sources = {};
@@ -122,6 +149,7 @@ try {
     downloadRequestsExecuted: false, qualifiedLeads: 'unobservable', experimentsEnabled: false,
     publicContact: { address: 'store-developer@outlook.com', renderedLinksVerified: true,
       signInRequired: false, mailboxDeliveryTested: false },
+    renderedLinkReview: { count: linkReview.length, links: linkReview },
     sources, screenshots }, null, 2));
   console.log(`Public launch UX/HTTP/disk verification passed: ${out}`);
 } finally {

@@ -106,9 +106,9 @@ test('unified customer download is fail-closed after the owner-authorized previe
   assert.equal(renderDownloads(original, current.release), original);
   const html = renderDownloads(original, release);
   assert.match(html, /data-universal-download/);
-  assert.match(html, /data-download="unknown"[^>]*>Download Bloomstep for Windows/);
-  assert.match(html, /Windows selects the native x64 or ARM64 payload/);
-  assert.match(html, /<details[^>]*>[\s\S]*Other downloads \(troubleshooting\)/);
+  assert.match(html, /data-download="unknown"[^>]*>Owner-test download \(designated testers only\)/);
+  assert.match(html, /secondary x64 and ARM64 installers are for troubleshooting by designated testers/);
+  assert.match(html, /<details><summary>Other files \(owner testing only\)<\/summary>[\s\S]*secondary x64 and ARM64 installers are for troubleshooting by designated testers/);
   assert.doesNotMatch(html, /data-universal-download[\s\S]*?<div class="choices"/);
 });
 test('actual proof requires package and native machine authority, cancel, installed hashes and corrupt rollback', () => {
