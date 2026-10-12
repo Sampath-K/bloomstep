@@ -38,6 +38,42 @@ The small static website lives in `site`; authenticated Functions live in `api`.
 
 ## Production two-account isolation acceptance
 
+**Preferred automated path:** dispatch **Production two-account isolation
+acceptance** (`production-isolation.yml`). Dedicated `bloomstep-test-a`,
+`bloomstep-test-b` and `bloomstep-test-admin` local customer accounts use only the
+separate `bloomstep-test-email-password` flow and assignment-required
+**Bloomstep automation test client**. Production OTP, Google and MSA providers
+are unchanged. The test client is a native public client with a localhost
+callback; headless Chromium uses hosted sign-in plus authorization-code PKCE,
+never ROPC, saved browser sessions or owner credentials.
+
+The workflow obtains credentials from the six `BLOOMSTEP_TEST_*` GitHub secrets,
+and the public client ID/provisioning receipt from repository variables.
+`infra/provision-automation.mjs` is the source provisioning contract: approved
+cached customer-tenant Graph access creates a temporary confidential principal
+with only EventListener.ReadWrite.All, IdentityProvider.Read.All and Policy.Read.All;
+its credential lives in memory for at most 45 minutes. All temporary role
+assignments, SP and app are deleted in `finally`, with application readback.
+Passwords go to GitHub through `gh secret set` stdin only after genuine hosted
+sign-in and API verification. No credentials are printed, committed or saved
+to disk. Security defaults remain on and customer policies are never modified.
+Any extra-verification/MFA prompt fails the helper; it is not bypassed.
+
+The acceptance run writes colliding habit/feedback IDs with different fixture
+content into A and B's own partitions, verifies each account's own readback,
+rejects peer selectors in both directions, requires 403 on ordinary team routes,
+and requires 200 for Admin metrics. It saves server isolation receipts, then
+deletes only its own test fixtures via the existing sync deletion contract and
+verifies removal. Normal quota reservations and bounded deletion tombstones
+remain; it does not delete accounts or directly write Cosmos. Cleanup failure
+fails acceptance. The readable `production-isolation-evidence` artifact contains
+only labels, outcomes, audit IDs and sanitized provisioning/cleanup metadata,
+not tokens, emails, subjects, user hashes, content, screenshots or browser traces.
+GitHub secrets/variables and the tagged directory test objects are the persistent
+automation source of truth; no reusable login credential is stored in scripts.
+Provider acceptance is pending until a real workflow run and its receipts pass.
+
+**Optional owner-driven path (no credentials handed over):**
 In the production `/console.html`, open two tabs, sign in once in each
 (1081c6f4 ordinary MSA in A; 067a5c60 ordinary MSA in B).
 Click **Show my account hash** in each. Exchange only those displayed hashes
