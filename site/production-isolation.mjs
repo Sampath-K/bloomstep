@@ -192,7 +192,10 @@ async function main() {
       delete process.env[`BLOOMSTEP_TEST_${label}_PASSWORD`];
     }
     browser = await createAutomationBrowser();
-    for (const account of accounts) tokens.set(account.label, await signIn(browser, account, process.env.BLOOMSTEP_AUTOMATION_CLIENT_ID));
+    for (const account of accounts) {
+      evidence.phase = `sign-in-${account.label}`;
+      tokens.set(account.label, await signIn(browser, account, process.env.BLOOMSTEP_AUTOMATION_CLIENT_ID));
+    }
     evidence = await runIsolationAcceptance(async (label, route, method = 'GET', body) => {
       if (!tokens.has(label) || !/^\/api\/(?:sync(?:\?userId=[a-f0-9]{64})?|account\/isolation|team\/(?:feedback\?limit=1|metrics\?days=1|website\?days=1|operational-status))$/.test(route)) {
         throw Error('Automation API route rejected.');

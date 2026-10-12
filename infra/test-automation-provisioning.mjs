@@ -33,8 +33,9 @@ test('temporary credentials and assignments are removed even when policy preflig
     if (path.endsWith('/appRoleAssignments')) return { id: `role-${calls.length}` };
     if (path.endsWith('/addPassword')) {
       assert.equal(Date.parse(body.passwordCredential.endDateTime) - clock().getTime(), 45 * 60000);
-      return { secretText: 'synthetic-temporary-credential' };
+      return { secretText: 'synthetic-temporary-credential', keyId: 'synthetic-key-id' };
     }
+    if (path.endsWith('/removePassword')) return;
     if (path.includes('SecurityDefaults')) return { isEnabled: true };
     if (path.includes('conditionalAccess')) return { value: [{ state: 'enabled' }] };
     if (path.includes('identityProviders')) return { value: [{ id: 'EmailPassword-OAUTH', identityProviderType: 'EmailPassword' }] };
@@ -50,5 +51,6 @@ test('temporary credentials and assignments are removed even when policy preflig
   assert.equal(calls.filter(c => c.method === 'DELETE' && c.path.includes('appRoleAssignments')).length, 3);
   assert.ok(calls.some(c => c.method === 'DELETE' && c.path === '/servicePrincipals/temp-sp'));
   assert.ok(calls.some(c => c.method === 'DELETE' && c.path === '/applications/temp-app'));
+  assert.ok(calls.some(c => c.method === 'POST' && c.path === '/applications/temp-app/removePassword' && c.body.keyId === 'synthetic-key-id'));
   assert.equal(calls.some(c => ['PATCH', 'PUT'].includes(c.method)), false);
 });

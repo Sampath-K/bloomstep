@@ -20,7 +20,7 @@ export function provisioningPreflight({ organization, defaults, policies, provid
 
 export async function provisionAutomation({ graph, authenticateTemporary, verifySignIn, secret, variable, clock = () => new Date() }) {
   const evidence = { passed: false, stage: 'tenant-preflight', temporaryCreated: false, temporaryDeleted: false, users: 0 };
-  let temporaryApp, temporarySp;
+  let temporaryApp, temporarySp, temporaryCredentialKey;
   const assignments = [];
   let failure;
   try {
@@ -44,6 +44,7 @@ export async function provisionAutomation({ graph, authenticateTemporary, verify
     const credential = await graph('POST', `/applications/${temporaryApp.id}/addPassword`, {
       passwordCredential: { displayName: 'one-run-only', endDateTime: new Date(clock().getTime() + 45 * 60000).toISOString() },
     });
+    temporaryCredentialKey = credential.keyId;
     await authenticateTemporary(temporaryApp.appId, credential.secretText);
     credential.secretText = '';
     evidence.stage = 'mfa-and-provider-preflight';
@@ -108,7 +109,9 @@ export async function provisionAutomation({ graph, authenticateTemporary, verify
     for (const label of ['a', 'b', 'admin']) {
       const email = `bloomstep-test-${label}@${domain}`;
       const old = await graph('GET', `/users?$filter=identities/any(c:c/issuerAssignedId eq '${email}' and c/issuer eq '${domain}')&$select=id,displayName,identities`);
-      if (old.value?.length > 1 || old.value?.[0] && old.value[0].displayName !== `bloomstep-test-${label}`) throw Error('Test user ownership unverified.');
+      if (old.value?.length > 1 || old.value?.[0] && (old.value[0].displayName !== `bloomstep-test-${label}` ||
+          !old.value[0].identities?.some(identity => identity.signInType === 'emailAddress' &&
+            identity.issuer === domain && identity.issuerAssignedId === email))) throw Error('Test user ownership unverified.');
       let password = `Aa7!${randomBytes(32).toString('base64url')}`;
       const profile = { password, forceChangePasswordNextSignIn: false };
       const user = old.value?.[0] ?? await graph('POST', '/users', { accountEnabled: true, displayName: `bloomstep-test-${label}`,
@@ -140,6 +143,10 @@ export async function provisionAutomation({ graph, authenticateTemporary, verify
     evidence.passed = false;
   } finally {
     const clean = async (path) => { try { await graph('DELETE', path); } catch { evidence.temporaryCleanupFailed = true; } };
+    if (temporaryApp && temporaryCredentialKey) {
+      try { await graph('POST', `/applications/${temporaryApp.id}/removePassword`, { keyId: temporaryCredentialKey }); }
+      catch { evidence.temporaryCleanupFailed = true; }
+    }
     if (temporarySp) {
       for (const assignment of assignments) await clean(`/servicePrincipals/${temporarySp.id}/appRoleAssignments/${assignment.id}`);
       await clean(`/servicePrincipals/${temporarySp.id}`);
