@@ -36,15 +36,25 @@ export async function buildSandbox(values) {
   }));
   return output;
 }
+export function assertProductionSourceClean(source, path) {
+  const forbiddenDomain = /googletagmanager|google-analytics|clarity\.ms|cloudflareinsights|\b(?:posthog|aptabase|sentry)[.-][a-z]|sandbox-consent/i;
+  const forbiddenCode = /\b(?:posthog|aptabase|sentry|gtag|dataLayer|clarity)\b/i;
+  // Ignore only HTML text nodes, retaining attributes and complete raw script/style bodies.
+  const code = /\.html$/i.test(String(path))
+    ? (source.match(/<(script|style)\b(?:[^"'<>]|"[^"]*"|'[^']*')*>[\s\S]*?(?:<\/\1\s*>|$)|<(?:[^"'<>]|"[^"]*"|'[^']*')*>/gi) ?? []).join('\n')
+    : source;
+  if (forbiddenDomain.test(source) || forbiddenCode.test(code)) {
+    throw Error(`Production contains third-party analytics: ${path}`);
+  }
+}
 export async function assertProductionClean() {
-  const forbidden = /googletagmanager|google-analytics|clarity\.ms|cloudflareinsights|posthog|aptabase|sentry|sandbox-consent/i;
   async function scan(directory) {
     for (const entry of await readdir(directory, { withFileTypes: true })) {
       if (['node_modules', 'test', 'package-lock.json', 'package.json'].includes(entry.name)) continue;
       const path = new URL(entry.name + (entry.isDirectory() ? '/' : ''), directory);
       if (entry.isDirectory()) await scan(path);
-      else if (/\.(html|js|mjs|json|css)$/.test(entry.name) && forbidden.test(await readFile(path, 'utf8'))) {
-        throw Error(`Production contains third-party analytics: ${path}`);
+      else if (/\.(html|js|mjs|json|css)$/.test(entry.name)) {
+        assertProductionSourceClean(await readFile(path, 'utf8'), path);
       }
     }
   }

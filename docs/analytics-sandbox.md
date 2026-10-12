@@ -511,6 +511,12 @@ Noindex is not access control: use restricted staging access when necessary.
 The existing `site\build.mjs` remains the production builder. It imports no
 sandbox module. A test scans production HTML, JS, MJS, JSON and CSS recursively
 for vendor code/domains (excluding Node tooling manifests/dependencies and tests).
+Plain-text HTML disclosures may name vendors without enabling them. The scanner
+still rejects vendor domains anywhere, vendor references in HTML tags/attributes
+and script/style bodies, and SDK globals/calls such as `gtag`, `dataLayer`,
+`clarity` and `posthog.init`. Non-HTML code/configuration retains whole-file
+scanning. Regression tests cover the unchanged disclosure and forbidden resource
+URLs, inline SDKs and bundled/imported vendor code.
 No production HTML, telemetry, AARRR, aggregate or experiment logic is changed.
 
 ## Accounts the owner must create
