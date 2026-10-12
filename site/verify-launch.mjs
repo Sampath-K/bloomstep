@@ -91,12 +91,23 @@ try {
       assert.equal(await page.$eval('#privacy-notice', node => node.open), true);
       const notice = await page.$eval('#privacy-notice', node => node.textContent);
       assert.match(notice, /Sampath Kumar's personal independent project/);
-      assert.match(notice, /No verified private contact route without sign-in is currently published/);
-      assert.equal(await page.$eval('#privacy-notice', node => node.querySelectorAll('a[href^="mailto:"]').length), 0);
+      assert.match(notice, /You do not need to sign in to email/);
+      assert.deepEqual(await page.$$eval('#privacy-notice a[href^="mailto:"]', nodes =>
+        nodes.map(node => ({ href: node.getAttribute('href'), text: node.textContent }))),
+      [{ href: 'mailto:store-developer@outlook.com', text: 'store-developer@outlook.com' }]);
       await shot(`launch-privacy-${width}`, '#privacy-notice');
     }
     await shot(`launch-home-${width}-${js ? 'js' : 'no-js'}`);
     await shot(`launch-download-${width}-${js ? 'js' : 'no-js'}`, '#download');
+  }
+  for (const path of ['/', '/releases/']) {
+    await page.setJavaScriptEnabled(false);
+    await page.goto(server.url + path, { waitUntil: 'networkidle0' });
+    const contacts = await page.$$eval('a[href^="mailto:"]', nodes =>
+      nodes.map(node => ({ href: node.getAttribute('href'), text: node.textContent })));
+    assert.ok(contacts.length > 0, `Public contact on ${path} without JavaScript`);
+    assert.ok(contacts.every(contact => contact.href === 'mailto:store-developer@outlook.com'
+      && contact.text === 'store-developer@outlook.com'));
   }
   assert.deepEqual(errors, []);
   const sources = {};
@@ -108,6 +119,8 @@ try {
     sourceDirty: !!execFileSync('git', ['status', '--porcelain'], { encoding: 'utf8' }).trim(),
     actualPersistedObservations: daily.accepted, campaign: 'linkedin/social/tiny_habits',
     downloadRequestsExecuted: false, qualifiedLeads: 'unobservable', experimentsEnabled: false,
+    publicContact: { address: 'store-developer@outlook.com', renderedLinksVerified: true,
+      signInRequired: false, mailboxDeliveryTested: false },
     sources, screenshots }, null, 2));
   console.log(`Public launch UX/HTTP/disk verification passed: ${out}`);
 } finally {

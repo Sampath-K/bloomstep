@@ -60,9 +60,10 @@ is now explicitly discoverable in the FAQ, but it requires successful sign-in an
 The shared homepage privacy notice identifies Sampath Kumar's personal project, lists actual services and
 processing purposes, and distinguishes verified active-store TTLs and backup configuration from unresolved
 restore behavior without universal legal-basis guarantees. The owner-approved account-content policy is
-retention until the user deletes the records, with no automatic inactivity expiry. The in-app private feedback route requires sign-in; public GitHub issues are available for
-non-sensitive bugs only, not privacy requests. No verified sign-in-independent private contact is currently
-published. This remains a launch limitation; do not invent or publish an unverified address. No web contact
+retention until the user deletes the records, with no automatic inactivity expiry. The owner-approved
+public support/privacy contact is `store-developer@outlook.com`, linked on the homepage and releases page
+without requiring sign-in. Mailbox delivery has not been tested; no response deadline is promised.
+Private in-app feedback requires sign-in; public GitHub issues are for non-sensitive bugs, not privacy requests. No web contact
 form or lead-capture flow was added, and no response time is guaranteed. If the owner wants lead capture later,
 first agree purpose, qualification, fields, consent, access, storage, retention/deletion, response ownership
 and abuse protection. Existing aggregate telemetry cannot substitute for that agreement.
@@ -74,7 +75,7 @@ and abuse protection. Existing aggregate telemetry cannot substitute for that ag
 | Value proposition / audience | Concrete Windows routine, labeled app illustration; no clinical or efficacy claim. Owner approves initial audience/channel. |
 | Responsive / keyboard / static download | Isolated real-browser 1280/390/320 reflow, skip link, keyboard FAQ, no-JS links; customer-site CI checks Lighthouse, both entry pages and warning/help surfaces. |
 | Acquisition / intent | Real browser -> HTTP -> disk confirms allowlisted campaign, footer/hero dedup, consent-off zero writes, withdrawal and small-cell suppression. Synthetic proof only. |
-| Privacy | Default-off preserved; owner/purpose/processor and verified implementation/configuration facts documented. **Owner decisions:** product owner to provide or approve a verified private contact route for people unable to sign in and confirm applicable jurisdiction-specific obligations. **Evidence gaps:** service/project owner to confirm provider log/identity retention; Acceptance evidence owner (not yet assigned); project owner to designate, to verify whether deletion markers survive configured cloud-backup restore. Synthetic file-backed app/API restart tests do not establish cloud-restore behavior. Public issues accept non-sensitive bugs only. |
+| Privacy | Default-off preserved; owner-approved public contact `store-developer@outlook.com` is linked without sign-in (mailbox delivery untested; no response deadline). **Owner decisions:** product owner to confirm applicable jurisdiction-specific obligations. **Evidence gaps:** service/project owner to confirm provider log/identity retention; coordinating project session `b3eaa24c-99fa-4b3f-b6e8-d0601e0b6ea8` owns future isolated restore-marker verification coordination. Synthetic file-backed app/API restart tests do not establish cloud-restore behavior. Public issues accept non-sensitive bugs only. |
 | Production collection / console | Local synthetic preview is usable. **Unverified:** approved live deployment, Functions/OIDC/Admin roles, deployed collector/readback, retention/erasure operations and hosting logs/billing facts. No new paid resources provisioned. |
 | Download / install / first launch | Existing preview.12 pointer unchanged. **Blocked:** protected acceptance of the intended composed artifact and unresolved launch CI. The withdrawn PR26 `b58ba7fc` candidate was Defender-quarantined (`Behavior:Win32/DefenseEvasion.A!ml`) and remains excluded; this does not characterize every artifact on PR26. See the artifact-specific evidence below. |
 | App activation / retention | Existing separate account reports, not website or campaign conversion. Revenue and referral-delivery/attributed activation remain unsupported. |
@@ -92,9 +93,9 @@ experiments disabled; monetization is outside this launch.
    API, customer-site, telemetry, console-preview and composed-loop receipts and hosted artifacts. Obtain
    protected install/launch acceptance for that exact installer on each advertised architecture; a prior
    owner's ARM64 trial does not cover another build or x64. Failed or missing runtime evidence blocks promotion.
-2. Close privacy/contact and identity gates before merging. **No verified private contact is published**;
-   the known personal address remains undisclosed and no mailbox was created. This is an unresolved
-   public-launch blocker. Verify applicable provider retention/recovery boundaries and actual customer
+2. Verify the owner-approved public contact is rendered as `mailto:store-developer@outlook.com` on both
+   customer entry pages before merging. Publication approval does not establish mailbox delivery or a
+   response deadline; no mailbox was created. Verify applicable provider retention/recovery boundaries and actual customer
    authentication/explicit operator roles. Public GitHub issues remain a non-sensitive bug alternative,
    not a private rights-request route.
 3. Record the existing production revision, public site hashes/download manifest, approved runtime settings
@@ -131,7 +132,7 @@ Public demand starts after accepted download/support paths exist, not during thi
 | AARRR outcomes use supported account evidence and explicit unknown states. | `api/src/aarrr.mjs`, `site/aarrr-panels.mjs`, `site/verify-aarrr.mjs`; synthetic 150/100/50 oracle and withheld unsupported revenue. | Retention, referral delivery and revenue remain unavailable where the source contract does not support them. |
 | Website experiments cannot infer outcomes from clicks or repeatedly peek at active cohorts. | `api/src/experiment-policy.mjs`, `api/src/experiments.mjs`, `site/experiment-panels.mjs`, `tool/experiment_acceptance.mjs`; fixed-horizon evaluation, exposure ordering, withdrawal, harm rollback and kill acceptance. | Isolated synthetic loop only; production/public experiments remain OFF. |
 | Customer isolation and free-tier spending controls survive composition. | `api/src/backend.mjs`, `site/isolation-check.mjs`, `site/operational-review.mjs`, `.github/workflows/production-isolation.yml`; route/API contracts and bounded acceptance. | Local candidate tests do not replace exact-head hosted checks or authorize deployment. |
-| Public privacy/support claims match verified facts. | `site/index.html#privacy-notice`, `site/test/launch.test.mjs`, this launch checklist. | No verified sign-in-independent private contact is published; public launch remains blocked. |
+| Public privacy/support claims match verified facts. | `site/index.html#privacy-notice`, `site/test/launch.test.mjs`, `site/verify-launch.mjs`, this launch checklist. | Owner-approved public contact is linked without sign-in; mailbox delivery untested. Provider retention and Azure restore limitations remain disclosed, not passed technical gates. |
 
 ### Measurement availability at this handoff
 
@@ -161,10 +162,12 @@ public download pointer or describing a candidate as independently safety-accept
 
 ### Privacy evidence (read-only, 10 October 2026)
 
-`site/index.html#privacy-notice` is the shared public draft notice; the releases page links to it. No
-sign-in-independent private contact is verified or published; the known personal-address draft remains
-private and must not be disclosed without scoped authorization. No mailbox, account, mailing list or binding
-terms were created.
+`site/index.html#privacy-notice` is the shared public draft notice; the releases page links to it.
+The owner explicitly authorized publication of `store-developer@outlook.com` as Bloomstep's support and
+privacy contact. Both customer entry pages link that exact address without sign-in. The parent coordinator
+confirmed the scoped publication approval and owner monitoring, relayed on 12 October 2026.
+Rendered-link verification is not mailbox-delivery testing. No mailbox,
+account, mailing list, response deadline or binding terms were created.
 
 Verified Azure metadata for the existing personal `bloomstep-free` resource group:
 `bloomstep-free` Static Web Apps, `bloomstep-free-261004` Cosmos DB, `bloomstepcustomers261004` External ID
@@ -195,8 +198,9 @@ retention setting, geo-redundant storage) does not establish backup deletion tim
 or deletion-marker survival. Synthetic file-backed adapter tests prove tombstones persist across app/API
 restart; they do not test the configured Azure backup restore. Restore-marker preservation and resurrection
 risk remain unknown, V1 has no guaranteed recovery service or deadline, and no live-customer deletion
-acceptance or cloud restore test has been run. The evidence owner is not yet assigned; the project owner must
-designate one.
+acceptance or cloud restore test has been run. Coordinating project session
+`b3eaa24c-99fa-4b3f-b6e8-d0601e0b6ea8` owns future isolated restore-marker verification coordination;
+no restore, new resource, customer-data access or expenditure is authorized by this notice work.
 
 ## Reproduce the public UX/collector evidence
 

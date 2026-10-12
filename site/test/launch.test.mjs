@@ -18,13 +18,19 @@ test('launch path discloses prerequisites and support/privacy limits without col
   assert.doesNotMatch(home, /type="email"|<form/);
   assert.match(home, /id="privacy-notice"/);
   const privacyNotice = /<details id="privacy-notice">[\s\S]*?<\/details>/.exec(home)[0];
-  assert.doesNotMatch(privacyNotice, /mailto:/);
+  const contactLink = '<a href="mailto:store-developer@outlook.com">store-developer@outlook.com</a>';
+  assert.ok(privacyNotice.includes(contactLink));
   assert.match(privacyNotice, /For support or a request about access, correction or deletion/);
   assert.match(privacyNotice, /not guaranteed within a stated period/);
-  assert.match(privacyNotice, /No verified private contact route without sign-in is currently published/);
-  assert.match(launchVerifier, /No verified private contact route without sign-in is currently published/);
-  assert.doesNotMatch(launchVerifier, /store-developer@outlook\.com/);
-  assert.doesNotMatch(releases, /mailto:/);
+  assert.match(privacyNotice, /You do not need to sign in to email/);
+  assert.match(launchVerifier, /mailto:store-developer@outlook\.com/);
+  assert.ok(releases.includes(contactLink));
+  assert.ok(/<details id="feedback-help">[\s\S]*?<\/details>/.exec(home)[0].includes(contactLink));
+  for (const page of [home, releases]) {
+    assert.doesNotMatch(page, /private contact route without sign-in is (?:not currently|currently not) published|No verified private contact route/);
+    assert.deepEqual([...page.matchAll(/href="mailto:([^"]+)"/g)].map(match => match[1]),
+      Array((page.match(/href="mailto:/g) ?? []).length).fill('store-developer@outlook.com'));
+  }
   assert.match(releases, /bloomstep\/issues/);
   assert.match(releases, /href="\/#privacy-notice"/);
   assert.match(home, /Sampath Kumar's personal independent project/);
