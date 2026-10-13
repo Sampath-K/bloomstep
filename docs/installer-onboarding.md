@@ -351,6 +351,23 @@ containing only exact recognized errors; missing/malformed/unknown entries
 or incorrect lifecycle exits still fail. An explicit failed-preview11 local
 audit validates its original bytes/receipts without authorizing publication.
 
+On 13 October 2026, the coordinator separately authorized standalone
+publication of exact `v0.1.0-preview.14` for the owner and designated testers,
+following the owner's 10 October instruction to defer protected VM validation.
+This does not change the automatic validator's later-preview launch requirements
+or any protected tests/contracts. Source
+`7552b520e183d219f668fbdc02005d8acb20758f` includes PR26's bounded native
+one-click flow, PR28/PR31 profile/first-habit fixes and PR47's account Settings
+correction. Exact tag-run `38331127153` passed hosted API/x64/ARM64,
+synthetic funnel and universal compilation; publication attaches original
+same-run packages, checksum/payload/universal manifests and a truthful separate
+owner-trial manifest. Original compilation manifests are not rewritten.
+Protected install/security/lifecycle and genuine checked/unchecked launch
+remain **UNVERIFIED**; overall CI remains queued, not green. There is no
+warning bypass, protection change, installed-customer acceptance or future
+release waiver. Preview.13 remains immutable and unpublished; preview.12
+remains immutable and is superseded by the new trial bytes.
+
 The GitHub prerelease is publicly accessible, not a private distribution.
 It is intended only for the owner manual checklist, not recruitment or
 customer-ready acceptance. Keep preview.10 immutable and the public pointer

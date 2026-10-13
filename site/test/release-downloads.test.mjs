@@ -12,10 +12,10 @@ const fixture = {
     sha256: 'a'.repeat(64),
   }])),
 };
-test('universal rendering fixture never changes the verified preview12 config', () => {
-  assert.equal(current.release.tag, 'v0.1.0-preview.12');
-  assert.equal(current.release.universal.sha256, 'fe115a7ada87858a55ba2610f778888079ee01a242f9ff74e18120a359292858');
-  assert.equal(current.release.universal.bytes, 21542145);
+test('universal rendering fixture never changes the verified preview14 config', () => {
+  assert.equal(current.release.tag, 'v0.1.0-preview.14');
+  assert.equal(current.release.universal.sha256, '7ad56cc3c71a40d78dd7cb043b43aa42ea884cb0484da982cffa386c9384b094');
+  assert.equal(current.release.universal.bytes, 22261590);
 });
 test('both customer pages mark the current downloads as owner-test only and preserve the verified pointers', () => {
   for (const name of ['index.html', 'releases/index.html']) {
@@ -44,8 +44,8 @@ test('malformed unified entry cannot silently fall back to architecture download
 });
 test('published universal size is rendered exactly and malformed sizes fail closed', () => {
   const original = readFileSync(new URL('../index.html', import.meta.url), 'utf8');
-  assert.match(renderDownloads(original, current.release), /21\.54 MB \(21,542,145 bytes\)/);
-  for (const bytes of [0, -1, 1.5, '21542145', null]) {
+  assert.match(renderDownloads(original, current.release), /22\.26 MB \(22,261,590 bytes\)/);
+  for (const bytes of [0, -1, 1.5, '22261590', null]) {
     assert.throws(() => validateRelease({
       ...current.release, universal: { ...current.release.universal, bytes },
     }), /Verified release size/);
@@ -57,7 +57,7 @@ test('download pointers are labeled for owner testing, with platform details in 
   const intro = /<p id="architecture-guidance">([^<]+)<\/p>/.exec(html)[1];
   assert.match(intro, /chooses the right version for your PC/);
   assert.doesNotMatch(intro, /x64|ARM64|emulation|32-bit|bytes/);
-  assert.match(html, /Download size: 21\.54 MB\.<\/p>/);
+  assert.match(html, /Download size: 22\.26 MB\.<\/p>/);
   assert.match(html, /Owner-test download \(designated testers only\)/);
-  assert.match(html, /<details><summary>Other files \(owner testing only\)[\s\S]*?32-bit Windows is not supported[\s\S]*?21,542,145 bytes/);
+  assert.match(html, /<details><summary>Other files \(owner testing only\)[\s\S]*?32-bit Windows is not supported[\s\S]*?22,261,590 bytes/);
 });

@@ -53,39 +53,41 @@ test('customer and engineering surfaces are separated with honest SEO', () => {
   assert.match(home, /SoftwareApplication/);
   assert.doesNotMatch(home, /aggregateRating/);
 });
-test('owner-test downloads match the exact preview.12 release without implying general availability', () => {
+test('owner-test downloads match the exact preview.14 release without implying general availability', () => {
   const read = file => readFileSync(new URL('../' + file, import.meta.url), 'utf8');
   const config = JSON.parse(read('customer-config.json'));
   const home = read('index.html'), releases = read('releases/index.html');
   const assets = {
     arm64: {
       label: 'ARM64',
-      sha256: '31652169df65a9e7decdc9d6418d06f6f6ce3448dffa4e186835dcf7375f8370',
+      sha256: 'c9750eb5985e97f99282b8bb958235c86d597eefb4e14ba18801795c92eb723d',
     },
     x64: {
       label: 'x64',
-      sha256: '398d493157a4456c85cd6432707f0fe1a9e7c43c84da6cd1e25981bb9d9051db',
+      sha256: 'f452014788d88eed80f1609180dc89660fe26dceec5598e843d2ec51a088b9cf',
     },
     universal: {
       label: 'Universal',
-      sha256: 'fe115a7ada87858a55ba2610f778888079ee01a242f9ff74e18120a359292858',
+      sha256: '7ad56cc3c71a40d78dd7cb043b43aa42ea884cb0484da982cffa386c9384b094',
     },
   };
-  assert.equal(config.release.tag, 'v0.1.0-preview.12');
-  assert.equal(config.release.universal.bytes, 21542145);
+  assert.equal(config.release.tag, 'v0.1.0-preview.14');
+  assert.equal(config.release.universal.bytes, 22261590);
   for (const [architecture, asset] of Object.entries(assets)) {
-    const filename = `Bloomstep-0.1.0-preview.12-windows-${architecture}-setup.exe`;
-    const url = `https://github.com/Sampath-K/bloomstep/releases/download/v0.1.0-preview.12/${filename}`;
+    const filename = `Bloomstep-0.1.0-preview.14-windows-${architecture}-setup.exe`;
+    const url = `https://github.com/Sampath-K/bloomstep/releases/download/v0.1.0-preview.14/${filename}`;
     assert.equal(config.release[architecture].url, url);
     assert.equal(config.release[architecture].sha256, asset.sha256);
     assert.ok(home.includes(url));
     assert.ok(releases.includes(url));
     assert.ok(releases.includes(`${asset.label} SHA-256: ${asset.sha256}`));
   }
-  assert.match(home, /id="download-version">0\.1\.0-preview\.12</);
+  assert.match(home, /id="download-version">0\.1\.0-preview\.14</);
   for (const page of [home, releases]) {
     assert.equal((page.match(/data-universal-download/g) ?? []).length, 1);
-    assert.match(page, /21\.54 MB \(21,542,145 bytes\)/);
+    assert.match(page, /22\.26 MB \(22,261,590 bytes\)/);
+    assert.match(page, /Version 0\.1\.0-preview\.12 is an older, superseded owner-test build/);
+    assert.doesNotMatch(page, /href="[^"]*download\/v0\.1\.0-preview\.12/);
     assert.doesNotMatch(page, /href="[^"]*download\/v0\.1\.0-preview\.9/);
     assert.match(page, /Early preview — not yet verified for general use/);
     assert.match(page, /owner-test candidate, not a general customer release/);

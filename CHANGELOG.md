@@ -1,5 +1,21 @@
 # Changelog
 
+## 0.1.0-preview.14 - owner trial only
+
+- Native one-click Install page, progress and Finish with a freely toggleable,
+  default-checked Launch Bloomstep option; no automatic wizard advances.
+- Inline profile, separate device-only garden, avatar and Sign out for accounts,
+  and a dismissible first-habit invitation once per empty garden per app launch.
+- Custom Anchor/Action/Celebration fields and save-before-success growth feedback.
+- Restored account app-bar Settings access to export, deletion and consent.
+- Exact source `7552b520e183d219f668fbdc02005d8acb20758f`; original x64,
+  ARM64 and offline universal packages from tag-run `38331127153`.
+- Separately authorized unsigned designated-tester prerelease, not general
+  availability. Protected install/security/lifecycle and genuine
+  launch-after-Finish remain **UNVERIFIED**, pending protected owner manual trial.
+  Existing guards and automatic publication requirements remain unchanged.
+- Preview.12 is superseded; preview.13 remains immutable and unpublished.
+
 ## 0.1.0 engineering preview
 
 - SQLite recipe/check-in journal, idempotent local-day check-ins and append-only

@@ -56,9 +56,9 @@ test('site, operator popup and download labels are product-branded', () => {
 test('customer release page makes the owner-test restriction clear and excludes operator evidence', () => {
   const site = read('site/releases/index.html');
   for (const arch of ['arm64', 'x64', 'universal']) {
-    assert.ok(site.includes(`releases/download/v0.1.0-preview.12/Bloomstep-0.1.0-preview.12-windows-${arch}-setup.exe`));
+    assert.ok(site.includes(`releases/download/v0.1.0-preview.14/Bloomstep-0.1.0-preview.14-windows-${arch}-setup.exe`));
   }
-  assert.ok(site.includes('fe115a7ada87858a55ba2610f778888079ee01a242f9ff74e18120a359292858'));
+  assert.ok(site.includes('7ad56cc3c71a40d78dd7cb043b43aa42ea884cb0484da982cffa386c9384b094'));
   assert.match(site, /Early preview — not yet verified for general use/);
   assert.match(site, /The files are publicly reachable, but download them only if you are the designated tester/);
   assert.match(site, /Launch after installation and the complete sign-in and app journey have not been verified/);

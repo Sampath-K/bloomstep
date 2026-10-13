@@ -28,17 +28,43 @@ PR38 badges/coach. PR26's later `c118ecd` badge/coach composition is deliberatel
 not included. These are not needed to correct the reported installer/profile
 defects; no new feature approval is implied.
 
-**Shipping remains blocked, not ready.** Repository runner readback found no
-self-hosted runners. Required protected standard-user interactive x64/ARM64
-install/lifecycle and genuine checked/unchecked launch evidence remain
-**UNVERIFIED**. No runner registration, VM provisioning, elevation, security
-warning bypass or protection change is authorized by this composition.
-The existing release job/validator remains unchanged: preview13 or later cannot
-be published using preview12's historical exception. No new tag, release,
-download checksum, production pointer or site deployment follows from source
-composition alone. Preview12 remains the older downloadable owner-trial build;
-it does not contain these fixes. Historical notes below refer to their named
-revisions, not this composition.
+**13 October 2026: exact preview.14 published for designated owner testing only.**
+PR46 merged as `d0c3ad1dbaa8a2f42a6f9dcb8277d94b1d749603`; PR47 then
+restored account Settings/export/deletion/consent access, reproduced by a
+production HabitHome regression. The immutable preview.14 source is
+`7552b520e183d219f668fbdc02005d8acb20758f`.
+[Tag-run 38331127153](https://github.com/Sampath-K/bloomstep/actions/runs/38331127153)
+passed API, both hosted native architecture test/build jobs, isolated synthetic
+funnel acceptance and offline universal compilation. Original same-run native
+payload inventories/PE architectures, installer checksums, universal source,
+version and payload-manifest bindings were verified before publication.
+
+[The prerelease](https://github.com/Sampath-K/bloomstep/releases/tag/v0.1.0-preview.14)
+contains the exact manifests, checksums and a separately labeled
+`owner-trial-manifest.json`. GitHub asset digest/size readback matches the
+original bytes: universal `7ad56cc3c71a40d78dd7cb043b43aa42ea884cb0484da982cffa386c9384b094`
+(22,261,590 bytes), x64
+`f452014788d88eed80f1609180dc89660fe26dceec5598e843d2ec51a088b9cf`
+(12,644,702 bytes), ARM64
+`c9750eb5985e97f99282b8bb958235c86d597eefb4e14ba18801795c92eb723d`
+(11,759,926 bytes).
+
+**Protected acceptance and genuine launch remain UNVERIFIED, not ready.**
+Repository runner readback still found zero self-hosted runners. Protected
+standard-user interactive x64/ARM64 install/lifecycle/security and genuine
+checked/unchecked launch jobs remain queued; overall CI is not claimed green.
+The owner explicitly deferred VM/protected-runtime validation on 10 October;
+the coordinator authorized standalone publication of only this exact preview.14
+after hosted compilation. The release job/validator and all protected tests,
+contracts and guards remain unchanged. This does not reuse preview12's
+automatic-validator exception or authorize future releases, runner registration,
+VM provisioning, elevation, security-warning bypass or protection changes.
+Original compilation manifests retain their compilation-time UNPUBLISHED field.
+Preview12's bytes remain immutable and are older/superseded; preview13's tag
+remains immutable and unpublished after the Settings regression was found.
+Only download metadata/version/older labels are updated through the existing
+Azure deployment path. Historical notes below describe their named revisions,
+not current distribution or acceptance.
 
 **PR26 security hold and standard wizard redesign (draft, unpublished):** previous
 zero-click bytes are withdrawn after severe Defender behavior quarantine.
