@@ -10,6 +10,34 @@ import 'package:uuid/uuid.dart';
 
 import 'auth_observations.dart';
 
+class IdentityProfile {
+  const IdentityProfile({this.displayName, this.email, this.provider});
+  final String? displayName;
+  final String? email;
+  final String? provider;
+
+  factory IdentityProfile.fromClaims(Map<String, dynamic> claims) {
+    String? text(dynamic value) =>
+        value is String && value.trim().isNotEmpty ? value.trim() : null;
+    final emails = claims['emails'];
+    final provider =
+        text(claims['idp']) ??
+        text(claims['identity_provider']) ??
+        text(claims['iss']);
+    return IdentityProfile(
+      displayName: text(claims['name']),
+      email:
+          text(claims['email']) ??
+          (emails is List && emails.isNotEmpty ? text(emails.first) : null),
+      provider: switch (provider) {
+        'google.com' || 'https://accounts.google.com' => 'Google',
+        'live.com' || 'https://login.live.com' => 'Microsoft personal account',
+        _ => provider,
+      },
+    );
+  }
+}
+
 class IdentityService {
   AuthObservations? observations;
   static const issuerUrl = String.fromEnvironment('OIDC_ISSUER');
@@ -26,6 +54,9 @@ class IdentityService {
   DateTime? _lastObservedAt;
   Future<void> _storageTail = Future<void>.value();
   String? account;
+  IdentityProfile? get profile => hasValidSession
+      ? IdentityProfile.fromClaims(_credential!.idToken.claims.toJson())
+      : null;
   DateTime? get sessionExpiresAt => _validatedAt?.add(const Duration(days: 30));
   bool get hasValidSession {
     final now = DateTime.now().toUtc();
@@ -249,14 +280,26 @@ class IdentityService {
           'Identity token validation failed. Sign-in was not saved.',
         );
       }
+      final previousCredential = _credential;
+      final previousAccount = account;
+      final previousValidated = _validatedAt;
+      final previousObserved = _lastObservedAt;
       _credential = credential;
       account = sha256
           .convert(utf8.encode('${claims['iss']}|${claims['sub']}'))
           .toString();
-      await guardAuthStep(
-        AuthStep.save,
-        () => _save(DateTime.now().toUtc().toIso8601String()),
-      );
+      try {
+        await guardAuthStep(
+          AuthStep.save,
+          () => _save(DateTime.now().toUtc().toIso8601String()),
+        );
+      } catch (_) {
+        _credential = previousCredential;
+        account = previousAccount;
+        _validatedAt = previousValidated;
+        _lastObservedAt = previousObserved;
+        rethrow;
+      }
     } finally {
       await subscription.cancel();
       await server.close(force: true);

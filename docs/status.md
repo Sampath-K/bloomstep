@@ -4,6 +4,30 @@
 cloud deployment and native background behavior require integration evidence.
 This ledger is updated with verified outcomes, not inferred from source code.
 
+**PR26 security hold and standard wizard redesign (draft, unpublished):** previous
+zero-click bytes are withdrawn after severe Defender behavior quarantine.
+The owner-directed correction preserves static Anchor/Action/Celebrate art but
+removes extra Next pages: one visible native Ready page with Install, default
+per-user location, progress, then Finish with a default-checked, freely toggleable
+**Launch Bloomstep** checkbox. No automatic navigation,
+forced launch, timers or artificial holds. This design is not proof of the
+detection cause or a clean security outcome. Protected genuine/fixture launch
+jobs require an owner-prepared disposable non-admin interactive Hyper-V VM with
+Defender real-time and behavior protection already enabled, optionally registered
+as an ephemeral `defender-interactive` runner. Without it they remain queued.
+The owner reports baseline922da67/hash0ef50e8f installed on ARM64 with real-time
+and behavior protection enabled and no detections in the preceding hour. This
+bounded owner observation is not protected-VM acceptance or evidence for new bytes.
+See [the exact owner VM steps](defender-test-vm.md). Installer
+observations remain absent; legacy owner-matched cleanup is preserved.
+PR28 app changes are composed into this source branch: fresh empty device
+gardens invite first-habit creation once without a button click; returning/account
+gardens are untouched. Anchor, Action and Celebration accept visible custom text.
+Saved-habit confirmation previews seed-to-sprout growth with reduced-motion and
+save-failure contracts. New standard-flow build/native evidence and protected
+behavior acceptance remain pending; this source change does not establish genuine provider/launch
+acceptance. Immutable preview.12 and the public website remain unchanged.
+
 **Frozen v1 merged and published for owner trial (PR21):** merge
 `45efbf2da0cb8363675321e5e257d5dd66391f04` is the immutable
 `v0.1.0-preview.10` source. Real
@@ -462,7 +486,9 @@ identified PIDs gracefully, never kill a process name.
 Developer Mode stays **off by user choice**. Use GitHub CI ARM64 builds, download
 artifacts and launch locally. A separate CI-only `tool/preview.dart` profile target
 is labeled synthetic, uses its own temporary SQLite store and never authenticates,
-syncs, or enters release installers. Normal `lib/main.dart` is always sign-in gated.
+syncs, or enters release installers. The habit-first profile branch replaces the
+normal sign-in gate with a separate device-only guest garden (no sync/analytics);
+account gardens still require a valid provider session. This is not fake login.
 The preview rejects release mode. Native captures use its Flutter repaint boundary,
 not desktop capture, so other applications and login screens cannot leak.
 

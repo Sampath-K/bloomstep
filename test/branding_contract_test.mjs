@@ -22,7 +22,8 @@ test('native user-visible titles and publisher do not retain scaffold identifier
 });
 
 test('native sign-in and both callback outcomes identify Bloomstep without hiding security errors', () => {
-  assert.match(read('lib/app/bloomstep_app.dart'), /ciamlogin\.com is Microsoft's sign-in service for Bloomstep/);
+  assert.match(read('lib/app/bloomstep_app.dart'), /profile_section\.dart/);
+  assert.match(read('lib/features/garden/profile_section.dart'), /Microsoft hosts Bloomstep sign-in at ciamlogin\.com/);
   assert.match(read('lib/services/identity.dart'), /Bloomstep sign-in response is invalid/);
   assert.match(read('lib/services/identity.dart'), /Return to Bloomstep/);
   assert.match(read('lib/features/garden/garden_screen.dart'), /A tiny step together with Bloomstep/);
