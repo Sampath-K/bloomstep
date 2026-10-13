@@ -1619,7 +1619,7 @@ class _GardenScreenState extends State<GardenScreen> {
             onPressed: working ? null : _voice,
             icon: const Icon(Icons.chat_bubble_outline),
           ),
-          if (widget.profileBuilder == null)
+          if (widget.profileBuilder == null || !widget.deviceGuest)
             IconButton(
               tooltip: 'Settings and privacy',
               onPressed: working ? null : _settings,

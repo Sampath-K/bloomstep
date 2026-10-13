@@ -11,6 +11,11 @@ additional scopes, persist the URL, or copy additional identity data into the
 garden. If the claim is absent, malformed, or its image cannot load, show a
 polished initials avatar and keep the sign-out action intact.
 
+Account gardens retain the existing app-bar **Settings and privacy** action,
+independently of the minimal profile card. Export, local/account deletion and
+consent controls must remain reachable after restoration and sign-in. Device
+gardens keep the existing inline Settings action without adding a duplicate.
+
 Personal Microsoft accounts federated through the customer tenant do not provide
 a usable Graph photo token to this app. A direct Microsoft public-client photo
 connection with delegated `User.Read` and additional consent is a separate
