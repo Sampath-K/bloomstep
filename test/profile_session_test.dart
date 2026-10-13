@@ -325,6 +325,7 @@ void main() {
       ),
     );
     await _ready(tester, find.text('Did it'));
+    expect(find.byTooltip('Settings and privacy'), findsOneWidget);
     await _screenshot(tester, boundaryKey, 'profile-signed-out.png');
     await tester.tap(find.text('Sign in with Microsoft or Google'));
     await _ready(tester, find.text('ST'));
@@ -334,6 +335,7 @@ void main() {
     expect(find.textContaining('Google'), findsNothing);
     expect(find.textContaining('unknown'), findsNothing);
     expect(find.text('ST'), findsOneWidget);
+    expect(find.byTooltip('Settings and privacy'), findsOneWidget);
     expect(find.text('Did it'), findsNothing);
     expect(find.textContaining('kept separate'), findsOneWidget);
     expect(find.byType(BackButton), findsNothing);
@@ -373,6 +375,46 @@ void main() {
       await owned.close();
     });
   });
+
+  testWidgets(
+    'signed-in HabitHome retains export deletion and consent settings',
+    (tester) async {
+      await tester.binding.setSurfaceSize(const Size(1200, 950));
+      addTearDown(() => tester.binding.setSurfaceSize(null));
+      final root = (await tester.runAsync(
+        () => Directory.systemTemp.createTemp('bloomstep-profile-'),
+      ))!;
+      addTearDown(() => tester.runAsync(() => root.delete(recursive: true)));
+      await tester.pumpWidget(
+        MaterialApp(
+          home: HabitHome(
+            testIdentity: _SyntheticIdentity()..restoreOffline = true,
+            testOpenStore: (account) =>
+                GardenStore.open(p.join(root.path, '$account.sqlite'), account),
+          ),
+        ),
+      );
+      await _ready(tester, find.text('ST'));
+      expect(find.byTooltip('Settings and privacy'), findsOneWidget);
+      await tester.tap(find.byTooltip('Settings and privacy'));
+      await _ready(tester, find.text('Your garden, your choices'));
+      expect(find.text('Export my data (JSON)'), findsOneWidget);
+      expect(find.text('Delete local garden'), findsOneWidget);
+      expect(find.text('Delete account data everywhere'), findsOneWidget);
+      final consent = find.widgetWithText(
+        SwitchListTile,
+        'Share product event counts',
+      );
+      expect(tester.widget<SwitchListTile>(consent).onChanged, isNotNull);
+      await tester.tap(find.text('Done'));
+      await tester.pumpAndSettle();
+      expect(find.text('Sign out'), findsOneWidget);
+      await tester.pumpWidget(const SizedBox());
+      await tester.runAsync(
+        () => Future<void>.delayed(const Duration(milliseconds: 150)),
+      );
+    },
+  );
 
   for (final category in ['cancelled', 'network', 'validation']) {
     testWidgets('$category sign-in leaves guest editable and unchanged', (
