@@ -1,5 +1,23 @@
 # Installer and customer onboarding contract
 
+## Current shipping boundary
+
+The owner-trial composition takes PR26 through `f7552cf`, all seven PR28
+app fixes through `adb51b3`, and PR31 through `7e7b7d1`, without PR26's later
+PR38 badges/coach. See [the current composition ledger](status.md#current-owner-trial-shipping-composition)
+for inclusion/exclusion and the preserved main baseline.
+Empty device and account gardens now invite the builder once per app launch,
+not only on a fresh device's first run. The signed-in profile shows an avatar
+and Sign out; device/account gardens remain separate.
+
+The downloadable preview12 does not contain this composition. A new preview
+requires the existing protected native x64/ARM64 lifecycle and checked/unchecked
+genuine app-launch gates. No registered self-hosted runner was available at
+shipping investigation; those runtime gates remain **UNVERIFIED**.
+This is not a new publication exception, safety claim or permission to execute
+the installer on the owner host. No release or site-pointer change is made
+until the required exact-source/package evidence exists.
+
 ## WITHDRAWN: Defender-blocked private candidate
 
 On 9 October 2026 Windows Defender reported the severe threat

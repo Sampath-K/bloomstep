@@ -4,6 +4,42 @@
 cloud deployment and native background behavior require integration evidence.
 This ledger is updated with verified outcomes, not inferred from source code.
 
+## Current owner-trial shipping composition
+
+This source composes PR26 only through native one-click commit
+`f7552cfe75207f5fee61356ea22c6c6fb48d1398`, including the seven PR28
+profile/first-habit fixes through `adb51b30da43e0629efd5ee6db5b0d545f625150`,
+then PR31's `010659c`, `e0530ee` and `7e7b7d1` refinements. It is based on
+main `ed1b0b29b4497fa0f9a77e9583024afdff1582a3` and preserves its approved
+product review, deployed contact/privacy copy, site and experiment defaults.
+Main's optional staging sandbox remains account-only, with independent consent
+and cleanup on garden ownership changes.
+
+The intended visible changes are one native Install page followed by progress
+and freely toggleable default-checked Finish launch; inline profile and a separate
+device-only garden; an avatar plus Sign out for authenticated users; and a
+dismissible builder for empty device/account gardens once per garden per app
+launch. Custom Anchor/Action/Celebration inputs and post-save reduced-motion-aware
+growth feedback are retained.
+
+Excluded: PR27 signing/automatic updates, PR29 weekly growth, PR30 optional
+recovery guidance, PR33 private dashboard, PR36 blocked photo connection and
+PR38 badges/coach. PR26's later `c118ecd` badge/coach composition is deliberately
+not included. These are not needed to correct the reported installer/profile
+defects; no new feature approval is implied.
+
+**Shipping remains blocked, not ready.** Repository runner readback found no
+self-hosted runners. Required protected standard-user interactive x64/ARM64
+install/lifecycle and genuine checked/unchecked launch evidence remain
+**UNVERIFIED**. No runner registration, VM provisioning, elevation, security
+warning bypass or protection change is authorized by this composition.
+The existing release job/validator remains unchanged: preview13 or later cannot
+be published using preview12's historical exception. No new tag, release,
+download checksum, production pointer or site deployment follows from source
+composition alone. Preview12 remains the older downloadable owner-trial build;
+it does not contain these fixes. Historical notes below refer to their named
+revisions, not this composition.
+
 **PR26 security hold and standard wizard redesign (draft, unpublished):** previous
 zero-click bytes are withdrawn after severe Defender behavior quarantine.
 The owner-directed correction preserves static Anchor/Action/Celebrate art but

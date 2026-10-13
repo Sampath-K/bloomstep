@@ -146,7 +146,8 @@ class _HabitHomeState extends State<HabitHome> {
         nextObservations = AuthObservations(next, onWriteError: _writeError);
         nextSandbox = analyticsSandboxEnabled
             ? AnalyticsSandbox(
-                productConsent: () async => await next.setting('analytics') == 'true',
+                productConsent: () async =>
+                    await next.setting('analytics') == 'true',
                 onError: _writeError,
               )
             : null;

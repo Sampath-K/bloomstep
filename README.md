@@ -22,10 +22,11 @@ analytics. Real provider sign-in opens the account-owned garden; there is no fak
 login or automatic transfer of device habits. Provider/cloud acceptance remains
 an independent gate.
 
-A genuinely fresh, empty device garden opens the dismissible first-habit flow
-automatically, once. Each step accepts typed Anchor, Action and Celebration
+An empty device or account garden opens the dismissible first-habit flow
+automatically, once per garden per app launch. Each step accepts typed Anchor, Action and Celebration
 values or suggestions. After saving, a brief seed-to-sprout preview explains
-growth; reduced motion shows a static plant. Returning gardens are not interrupted.
+growth; reduced motion shows a static plant. Existing habits and other active
+routes are not interrupted; cancellation does not loop in the same launch.
 
 See [product contract](docs/product-spec.md), [iteration/edge ledger](docs/status.md)
 and [deployment prerequisites](docs/deployment.md). The current

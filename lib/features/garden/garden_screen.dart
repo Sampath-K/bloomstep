@@ -1161,7 +1161,9 @@ class _GardenScreenState extends State<GardenScreen> {
                               await widget.store.setSetting('analytics', '$v');
                               await widget.diagnostics?.consentChanged();
                               if (!v) {
-                                await widget.analyticsSandbox?.consentChanged(false);
+                                await widget.analyticsSandbox?.consentChanged(
+                                  false,
+                                );
                                 await widget.installerMeasurement?.clear();
                               }
                             });

@@ -43,9 +43,10 @@ guest/account analytics, authentication success or automatic account linking.
 No receipt means no measurement. The receipt can be cleared in profile Settings.
 
 Sign-in keeps the configured Microsoft personal/Google/other hosted choices in
-the trusted system browser. Signed-in status and any name/email/provider come
-only from the validated ID token; missing claims stay absent. No avatar or
-upstream provider is inferred from an account hash or broker issuer.
+the trusted system browser. The signed-in profile shows an avatar and Sign out,
+not identity text. Validated token claims supply initials/accessibility or an
+existing HTTPS OIDC picture; absent claims are not invented. No extra photo
+scopes, account connection or persistent photo storage are added.
 The profile also owns the Settings/privacy entry for export and deletion.
 Existing account-hash SQLite ownership, authenticated offline deadline,
 consent and sync boundaries remain unchanged. Sign-out warns about unsynced
@@ -53,19 +54,19 @@ account data and clears account-local data/authentication before returning to
 the separate device garden. Session expiry preserves the saved account garden
 but removes access and returns to the device garden.
 
-**First-pass boundary:** device habits remain separate when signing in; inline
-copy states that nothing was transferred. No import, linking or migration
+**First-pass boundary:** device habits remain separate when signing in; a one-time
+notice states that nothing was transferred. No import, linking or migration
 occurs. A future "Bring them / Keep separate" flow needs explicit consent,
 idempotent local import, rollback and failure tests before enabling it. This
-branch does not release or merge the UX.
+contract does not itself establish released-build or installed-launch acceptance.
 
 ## First-habit invitation and planting
 
-After authentication restoration finishes, a genuinely first-run, empty device
-garden automatically opens the existing accessible, dismissible recipe builder.
-An atomic SQLite preference records the invitation before presenting it. Existing
-habits or a previous interaction make a garden ineligible; account gardens never
-auto-open. Dismissal stays remembered across restarts and local habit clearing.
+After authentication restoration and garden loading finish, an empty device or
+account garden automatically opens the existing accessible, dismissible recipe
+builder once per garden per app launch. Existing habits suppress the invitation;
+previous visits and legacy dismissal settings do not suppress a new launch.
+Cancellation does not loop within that launch.
 Authentication initialization and another active route prevent interruption.
 The "Plant a habit" button remains available for later visits and subsequent habits.
 
@@ -244,7 +245,7 @@ kill switch must be verified before production launch.
 
 | Loop | Approved minimum |
 | --- | --- |
-| Habit | Plant without sign-in; first-run empty device garden opens the dismissible three-step anchor, tiny-action and celebration picker once. Five original suggestion recipes and visible custom text at each step; zero required typing; visible progress and live full-recipe preview; Back retains choices; optional aspiration and three species. Incomplete actions explain why. Celebration practice is optional, never a creation/edit gate. Plant into persistent SQLite, then show saved-recipe seed-growth feedback and a clear garden continuation, honoring reduced motion. First habit target <90s; first check-in is optional, not creation acceptance. Recommend one habit initially; soft cap three with explicit override. |
+| Habit | Plant without sign-in; empty device or account gardens open the dismissible three-step anchor, tiny-action and celebration picker once per garden per app launch. Five original suggestion recipes and visible custom text at each step; zero required typing; visible progress and live full-recipe preview; Back retains choices; optional aspiration and three species. Incomplete actions explain why. Celebration practice is optional, never a creation/edit gate. Plant into persistent SQLite, then show saved-recipe seed-growth feedback and a clear garden continuation, honoring reduced motion. First habit target <90s; first check-in is optional, not creation acceptance. Recommend one habit initially; soft cap three with explicit override. |
 | Check-in | Did it / Did more / Not today; optional forgot/too hard/anchor absent/motivation reason; no response is no data. Personal celebration within 300ms; persistent client event IDs; one effective result per habit per **local** date; edits and undo append events; sync retries idempotent. |
 | Garden | Five stages: seed, sprout at 3, sapling at 10, budding at 21, bloom at 30 practice days plus score >=4/7. No negative stage changes after rest or corrected data. Permanent Grove after graduation. Deterministic species/plant variation, vector visuals, screen-reader labels and reduced motion. Optional day/night, seasons, decor, pollinators and return celebration, never a penalty. |
 | Reminders | Real Windows local toasts and tray actions; opt-in permission/context; optional autostart; chosen local time, quiet hours default 21:30-07:30; <=1 prompt/habit/day and <=3 notifications/app/day; snooze/fewer/off. Three ignored halves frequency, seven pauses with in-app explanation. Device scheduling, not paid service. Respect OS settings/Focus; never use urgent bypass. Re-evaluate local time/DST/travel. Median of last 14 check-in times after five samples, rounded 15m. |
