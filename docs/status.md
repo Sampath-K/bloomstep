@@ -66,6 +66,22 @@ Only download metadata/version/older labels are updated through the existing
 Azure deployment path. Historical notes below describe their named revisions,
 not current distribution or acceptance.
 
+**Production download receipt, 13 October 2026 at 01:56 UTC:**
+site metadata commit `4ed42220c521b4464446e9fd6d579c5792e70566` deployed
+successfully through unchanged
+[Azure run 38334280792](https://github.com/Sampath-K/bloomstep/actions/runs/38334280792),
+including protected-route 401 readback. Customer quality run `38334280826`
+also passed. Live [home](https://brave-plant-02c10e800.5.azurestaticapps.net/)
+and [preview details](https://brave-plant-02c10e800.5.azurestaticapps.net/releases/)
+returned HTTP 200 with all three exact preview.14 download URLs, the
+22,261,590-byte universal size, preview.12 older/superseded label, designated
+tester restriction, unverified-launch disclosure and approved contact.
+The details page matched all three GitHub API asset digests; no active
+preview.12 download links remain. Apart from authorized release metadata
+and the older-version label, both source pages are byte-identical to their
+approved predecessors. Preview.12's original published digests/sizes were
+read back unchanged; preview.13 remains unpublished. No installer was executed.
+
 **PR26 security hold and standard wizard redesign (draft, unpublished):** previous
 zero-click bytes are withdrawn after severe Defender behavior quarantine.
 The owner-directed correction preserves static Anchor/Action/Celebrate art but
