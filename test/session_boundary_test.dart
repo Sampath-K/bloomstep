@@ -3,6 +3,27 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
+  testWidgets('profile rebuild immediately rejects an invalid session', (
+    tester,
+  ) async {
+    var valid = true;
+    var expirations = 0;
+    Widget app() => MaterialApp(
+      home: SessionBoundary(
+        expiresAt: DateTime.now().add(const Duration(days: 30)),
+        isValid: () => valid,
+        onExpired: (_) async => expirations++,
+        child: const Text('Private test garden'),
+      ),
+    );
+    await tester.pumpWidget(app());
+    valid = false;
+    await tester.pumpWidget(app());
+    expect(find.text('Private test garden'), findsNothing);
+    expect(expirations, 1);
+    await tester.pumpWidget(const SizedBox());
+  });
+
   testWidgets(
     'failed session clock checkpoint hides data and reports the failure',
     (tester) async {

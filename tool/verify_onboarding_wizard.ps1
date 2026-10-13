@@ -22,15 +22,18 @@ if (-not $LoadHelpersOnly) {
       $compiledFixture.installerSha256 -ne (Get-FileHash -LiteralPath $Installer).Hash.ToLower()) {
     throw 'Only the exact hash-authorized compile-only onboarding fixture may be captured; never a customer installer.'
   }
-  $env:BLOOMSTEP_SOURCE_REVISION = $compiledFixture.sourceRevision
 }
 Add-Type -AssemblyName System.Drawing
 Add-Type -AssemblyName UIAutomationClient, UIAutomationTypes
-Add-Type @'
+Add-Type -AssemblyName Accessibility
+Add-Type -CompilerOptions '/nowarn:1701' -ReferencedAssemblies @(
+  [Accessibility.IAccessible].Assembly.Location, (Join-Path $PSHOME 'ref\System.Collections.dll')
+) @'
 using System;
 using System.Collections.Generic;
 using System.Runtime.InteropServices;
 using System.Text;
+using Accessibility;
 public static class OnboardingWizard {
   delegate bool EnumProc(IntPtr h, IntPtr p);
   [DllImport("user32.dll")] static extern bool EnumWindows(EnumProc p, IntPtr x);
@@ -48,9 +51,69 @@ public static class OnboardingWizard {
   [DllImport("user32.dll")] public static extern uint GetDpiForWindow(IntPtr h);
   [DllImport("user32.dll")] public static extern bool SetForegroundWindow(IntPtr h);
   [DllImport("user32.dll")] public static extern IntPtr GetForegroundWindow();
+  [DllImport("user32.dll")] static extern bool ScreenToClient(IntPtr h, ref Point point);
+  public struct Point { public int X, Y; }
+  [DllImport("oleacc.dll")] static extern int AccessibleObjectFromWindow(
+    IntPtr h, uint id, ref Guid iid, [MarshalAs(UnmanagedType.Interface)] out IAccessible accessible);
+  static IntPtr LaunchListHandle(IntPtr owner) {
+    IntPtr list = IntPtr.Zero;
+    EnumChildWindows(owner, (h,p) => {
+      if (IsWindowVisible(h) && ClassName(h).Contains("CheckListBox")) list = h;
+      return true;
+    }, IntPtr.Zero);
+    return list;
+  }
+  static IAccessible LaunchList(IntPtr owner) {
+    var list = LaunchListHandle(owner);
+    if (list == IntPtr.Zero) return null;
+    var iid = new Guid("618736E0-3C3D-11CF-810C-00AA00389B71");
+    IAccessible accessible;
+    if (AccessibleObjectFromWindow(list, 0xFFFFFFFC, ref iid, out accessible) != 0 || accessible == null)
+      throw new InvalidOperationException("Native launch checklist accessibility unavailable; no inferred checkbox state.");
+    return accessible;
+  }
+  static int LaunchChild(IAccessible accessible) {
+    for (int child = 1; child <= accessible.accChildCount; child++) {
+      if (accessible.get_accName(child) == "Launch Bloomstep") return child;
+    }
+    throw new InvalidOperationException("Exact Launch Bloomstep accessibility item unavailable.");
+  }
+  public static int LaunchChoiceState(IntPtr owner) {
+    var accessible = LaunchList(owner);
+    if (accessible == null) return -1;
+    int state = Convert.ToInt32(accessible.get_accState(LaunchChild(accessible)));
+    if ((state & (1 | 0x8000)) != 0) throw new InvalidOperationException("Launch choice disabled or invisible.");
+    return (state & 0x10) != 0 ? 1 : 0;
+  }
+  public static void ToggleLaunchChoice(IntPtr owner) {
+    var accessible = LaunchList(owner);
+    if (accessible == null) throw new InvalidOperationException("Native launch choice unavailable.");
+    // Inno's MSAA checklist exposes state but intentionally has no default action.
+    int left, top, width, height;
+    accessible.accLocation(out left, out top, out width, out height, LaunchChild(accessible));
+    if (width < 16 || height < 1) throw new InvalidOperationException("Native launch choice bounds unavailable.");
+    var point = new Point { X = left + 8, Y = top + height / 2 };
+    var list = LaunchListHandle(owner);
+    if (!ScreenToClient(list, ref point)) throw new InvalidOperationException("Launch choice client bounds unavailable.");
+    var coordinates = new IntPtr((point.Y << 16) | (point.X & 0xFFFF));
+    if (!PostMessage(list, 0x0201, new IntPtr(1), coordinates) ||
+        !PostMessage(list, 0x0202, IntPtr.Zero, coordinates))
+      throw new InvalidOperationException("Owned launch checkbox click dispatch failed.");
+  }
   public struct Rect { public int Left, Top, Right, Bottom; }
   public static string ClassName(IntPtr h) {
     var b = new StringBuilder(256); GetClassName(h,b,b.Capacity); return b.ToString();
+  }
+  public static string GetWindowTitle(IntPtr h) {
+    var b = new StringBuilder(4096); GetWindowText(h,b,b.Capacity); return b.ToString();
+  }
+  public static bool HasVisibleChildren(IntPtr owner) {
+    bool found = false;
+    EnumChildWindows(owner,(h,p) => {
+      if (IsWindowVisible(h)) found = true;
+      return true;
+    },IntPtr.Zero);
+    return found;
   }
   public static IntPtr[] Windows() {
     var a = new List<IntPtr>();
@@ -87,173 +150,78 @@ public static class OnboardingWizard {
 }
 '@
 if ($LoadHelpersOnly) { return }
-if (-not [OnboardingWizard]::SetProcessDpiAwarenessContext([IntPtr](-4))) {
-  throw 'Capture process could not use per-monitor DPI coordinates; do not claim a clipped screenshot.'
-}
+if ($env:GITHUB_ACTIONS -ne 'true') { throw 'Native fixture capture is restricted to disposable CI.' }
 New-Item -ItemType Directory -Path $EvidenceDir -Force | Out-Null
-$target = Join-Path $EvidenceDir 'NEVER-INSTALL'
-if (Test-Path $target) { throw 'Capture target must not exist.' }
-$setup = Start-Process -FilePath $Installer -ArgumentList "/SP- /NORESTART /DIR=`"$target`"" -PassThru
-$owned = [Collections.Generic.HashSet[int]]::new()
-[void]$owned.Add($setup.Id)
-$states = [Collections.Generic.List[object]]::new()
-$seen = [Collections.Generic.HashSet[string]]::new()
-$ready = $false
-$backVerified = $null
-$keyboardAvailable = $true
-$expectedOrder = @('Welcome', 'recipe', 'grow', 'destination', 'optional-observations', 'ready')
+. "$PSScriptRoot\universal_integrity_contract.ps1"
+$protection = Start-ProtectedInstallerProof $Installer $compiledFixture.installerSha256 $EvidenceDir
+. "$PSScriptRoot\installer_owned_capture.ps1" -Installer $Installer -EvidenceDir $EvidenceDir
+if (-not [OnboardingWizard]::SetProcessDpiAwarenessContext([IntPtr](-4))) {
+  throw 'Capture process could not use per-monitor DPI coordinates.'
+}
+$target = Join-Path $env:LOCALAPPDATA 'Programs\Bloomstep'
 $receipt = Join-Path $env:LOCALAPPDATA 'Bloomstep\measurement\installer-receipt.json'
-if (Test-Path $receipt) { throw 'Capture refuses an existing installer receipt.' }
+if ((Test-Path $target) -or (Test-Path $receipt)) { throw 'Capture refuses existing installation/receipt state.' }
+$states = [Collections.Generic.List[object]]::new()
+$report = @{ sourceRevision = $compiledFixture.sourceRevision; installerSha256 = $compiledFixture.installerSha256;
+  expectedOrder = @('ready'); states = $states; installed = $false; outcome = 'running';
+  proofAutomation = 'Explicit test-driver Cancel only; Install never selected' }
 try {
-  $deadline = (Get-Date).AddSeconds(40)
-  while ((Get-Date) -lt $deadline -and -not $ready) {
-    $processes = Get-CimInstance Win32_Process
-    foreach ($process in $processes) {
-      if ($owned.Contains([int]$process.ParentProcessId)) { [void]$owned.Add([int]$process.ProcessId) }
-    }
-    foreach ($window in [OnboardingWizard]::Windows()) {
-      [uint32]$owner = 0
-      [void][OnboardingWizard]::GetWindowThreadProcessId($window, [ref]$owner)
-      if (-not $owned.Contains([int]$owner)) { continue }
-      if ([OnboardingWizard]::ClassName($window) -ne 'TWizardForm') { continue }
+  $setup = Start-CaptureProcess $Installer '/SP- /NORESTART' 'destination-fixture'
+  $observed = $false
+  $cancelled = $false
+  $deadline = $captureClock.ElapsedMilliseconds + 40000
+  while (-not $cancelled -and $captureClock.ElapsedMilliseconds -lt $deadline) {
+    Update-CaptureTree
+    foreach ($window in Get-CaptureWindows) {
       $text = [OnboardingWizard]::Describe($window)
-      if (-not $seen.Add($text)) { continue }
-      if ($states.Count -eq 0 -and -not $text.Contains('Welcome to Bloomstep')) {
-        throw 'First observed wizard page was not Welcome.'
-      }
-      $step = if ($text.Contains('Welcome to Bloomstep')) { 'Welcome' }
-        elseif ($text.Contains('A tiny recipe')) { 'recipe' }
-        elseif ($text.Contains('Watch it become a garden')) { 'grow' }
-        elseif ($text.Contains('Optional local installation observations')) { 'optional-observations' }
-        elseif ($text.Contains('Ready to install this unsigned Bloomstep preview')) { 'ready' }
-        elseif ($text.Contains('Select Destination Location')) { 'destination' }
-        else { throw "Unexpected wizard page: $text" }
-      if ($step -ne $expectedOrder[$states.Count]) { throw "Unexpected page order: $step" }
-      $checkbox = [OnboardingWizard]::Find($window, 'Save optional local observations (unchecked by default)')
-      if ($checkbox -ne [IntPtr]::Zero) {
-        if ([OnboardingWizard]::SendMessage($checkbox, 0x00F0, [IntPtr]::Zero, [IntPtr]::Zero).ToInt32() -ne 0) {
-          throw 'Consent checkbox was not unchecked.'
+      if (-not $observed -and [OnboardingWizard]::ClassName($window) -eq 'TWizardForm') {
+        if ((Get-StandardWizardStage $window) -ne 'ready') {
+          throw 'First observed wizard page was not the one-click Ready.'
+        }
+        foreach ($caption in @('Install', 'Cancel')) {
+          if ([OnboardingWizard]::Find($window, $caption) -eq [IntPtr]::Zero) { throw "Ready control missing: $caption" }
+        }
+        if ([OnboardingWizard]::Find($window, 'Next >') -ne [IntPtr]::Zero -or
+            [OnboardingWizard]::Find($window, 'Next') -ne [IntPtr]::Zero) { throw 'One-click Ready unexpectedly offers Next.' }
+        $frame = Save-CaptureFrame $window 'fixture-ready.png'
+        $frame.step = 'ready'
+        $root = [Windows.Automation.AutomationElement]::FromHandle($window)
+        $controls = $root.FindAll([Windows.Automation.TreeScope]::Descendants, [Windows.Automation.Condition]::TrueCondition)
+        $frame.accessibility = @($controls | ForEach-Object {
+          if (-not $_.Current.IsOffscreen -and $_.Current.Name) {
+            @{ name = $_.Current.Name; keyboardFocusable = $_.Current.IsKeyboardFocusable; type = $_.Current.ControlType.ProgrammaticName }
+          }
+        })
+        $states.Add($frame)
+        Invoke-CaptureButton ([OnboardingWizard]::Find($window, 'Cancel')) 'destination-cancel'
+        $observed = $true
+      } elseif ($observed -and $text -match 'Exit Setup|Setup is not complete|If you exit now') {
+        $yes = [OnboardingWizard]::Find($window, 'Yes')
+        if ($yes -ne [IntPtr]::Zero) {
+          Invoke-CaptureButton $yes 'destination-cancel-confirmation'
+          $cancelled = $true
         }
       }
-      $rectangle = New-Object OnboardingWizard+Rect
-      if (-not [OnboardingWizard]::GetWindowRect($window, [ref]$rectangle)) { throw 'Could not read owned wizard bounds.' }
-      $width = $rectangle.Right - $rectangle.Left
-      $height = $rectangle.Bottom - $rectangle.Top
-      if ($width -lt 100 -or $height -lt 100) { throw "Invalid owned wizard size: ${width}x${height}" }
-      $bitmap = [Drawing.Bitmap]::new($width, $height)
-      $graphics = [Drawing.Graphics]::FromImage($bitmap)
-      $dc = $graphics.GetHdc()
-      try {
-        if (-not [OnboardingWizard]::PrintWindow($window, $dc, 2)) { throw 'Owned wizard capture failed.' }
-      } finally { $graphics.ReleaseHdc($dc) }
-      $filename = 'fixture-wizard-' + $states.Count + '.png'
-      try { $bitmap.Save((Join-Path $EvidenceDir $filename), [Drawing.Imaging.ImageFormat]::Png) }
-      finally { $graphics.Dispose(); $bitmap.Dispose() }
-      $root = [Windows.Automation.AutomationElement]::FromHandle($window)
-      $controls = $root.FindAll([Windows.Automation.TreeScope]::Descendants, [Windows.Automation.Condition]::TrueCondition)
-      $accessible = @($controls | ForEach-Object {
-        if (-not $_.Current.IsOffscreen -and $_.Current.Name) {
-          @{ name = $_.Current.Name; keyboardFocusable = $_.Current.IsKeyboardFocusable; type = $_.Current.ControlType.ProgrammaticName }
-        }
-      })
-      $states.Add(@{ step = $step; caption = $text; image = $filename; fixture = $true;
-        installed = $false; dpi = [OnboardingWizard]::GetDpiForWindow($window);
-        accessibility = $accessible; screenshotSha256 = (Get-FileHash (Join-Path $EvidenceDir $filename)).Hash.ToLower() })
-      if ($text.Contains('Ready to install this unsigned Bloomstep preview')) {
-        $memo = [OnboardingWizard]::Memo($window)
-        if ($memo -eq [IntPtr]::Zero) { throw 'Native ready memo missing.' }
-        [void][OnboardingWizard]::SendMessage($memo, 0x0115, [IntPtr]7, [IntPtr]::Zero)
-        Start-Sleep -Milliseconds 300
-        $bitmap = [Drawing.Bitmap]::new($width, $height)
-        $graphics = [Drawing.Graphics]::FromImage($bitmap)
-        $dc = $graphics.GetHdc()
-        try {
-          if (-not [OnboardingWizard]::PrintWindow($window, $dc, 2)) { throw 'Ready teaching capture failed.' }
-        } finally { $graphics.ReleaseHdc($dc) }
-        try { $bitmap.Save((Join-Path $EvidenceDir 'fixture-ready-teaching.png'), [Drawing.Imaging.ImageFormat]::Png) }
-        finally { $graphics.Dispose(); $bitmap.Dispose() }
-        $ready = $true
-        break
-      }
-      $next = [OnboardingWizard]::Find($window, '&Next')
-      if ($next -eq [IntPtr]::Zero) { $next = [OnboardingWizard]::Find($window, '&Next >') }
-      if ($next -eq [IntPtr]::Zero) { throw "Unexpected capture step; will not click Install or Finish: $text" }
-      if ($keyboardAvailable -and [OnboardingWizard]::GetForegroundWindow() -ne $window -and
-          -not [OnboardingWizard]::SetForegroundWindow($window)) {
-        if (-not $AllowUnavailableKeyboard) { throw 'Owned wizard could not obtain keyboard focus.' }
-        Write-Warning 'Native keyboard coverage UNKNOWN: this isolated host cannot grant foreground. Capturing actual pages via owned controls; not a keyboard acceptance pass.'
-        $keyboardAvailable = $false
-      }
-      $shell = New-Object -ComObject WScript.Shell
-      if ($keyboardAvailable -and $step -eq 'recipe') {
-        $shell.SendKeys('%b')
-        Start-Sleep -Milliseconds 200
-        if (-not [OnboardingWizard]::Describe($window).Contains('Welcome to Bloomstep')) { throw 'Keyboard Back did not return to Welcome.' }
-        $shell.SendKeys('%n')
-        Start-Sleep -Milliseconds 200
-        if (-not [OnboardingWizard]::Describe($window).Contains('A tiny recipe')) { throw 'Keyboard Next did not restore recipe teaching.' }
-        $backVerified = $true
-      }
-      if ($keyboardAvailable) { $shell.SendKeys('%n') }
-      else { [void][OnboardingWizard]::SendMessage($next, 0x00F5, [IntPtr]::Zero, [IntPtr]::Zero) }
-      Start-Sleep -Milliseconds 300
     }
-    Start-Sleep -Milliseconds 200
+    Start-Sleep -Milliseconds 150
   }
-  if (-not $ready) { throw 'Owned fixture did not reach Ready within bounded capture deadline.' }
-  if (($states.step -join ',') -ne ($expectedOrder -join ',')) { throw 'Incomplete educational/options order.' }
-  if (Test-Path $receipt) { throw 'Pre-consent educational capture wrote an installer receipt.' }
-  @{
-    sourceRevision = $env:BLOOMSTEP_SOURCE_REVISION
-    workflowRevision = $env:GITHUB_SHA
-    installerSha256 = (Get-FileHash $Installer).Hash.ToLower()
-    expectedOrder = $expectedOrder
-    states = $states
-    receiptAbsent = $true
-    targetAbsent = -not (Test-Path $target)
-    keyboardNavigation = if ($keyboardAvailable) { 'Actual Alt+N on owned native wizard; Install and Finish never selected' }
-      else { 'UNKNOWN: isolated host cannot grant foreground; native owned Next controls invoked, not a keyboard pass' }
-    keyboardBackVerified = $backVerified
-    screenReaderAcceptance = 'Not established; UI Automation names recorded, not a Narrator acceptance claim'
-    automationRolesEstablished = $false
-    automationInterpretation = 'Provider exposed generic Pane names/false focusability; semantic roles and screen-reader order are UNKNOWN'
-    installed = $false
-  } | ConvertTo-Json -Depth 8 | Set-Content (Join-Path $EvidenceDir 'fixture-wizard-proof.json') -Encoding utf8
+  if (-not $cancelled) { Save-CaptureStage 'destination-timeout'; throw 'Actual destination/Cancel confirmation not observed before deadline.' }
+  Wait-CaptureTree 'destination-cancel' 20
+  if ($setup.ExitCode -ne 2) { throw 'Actual destination Cancel launcher did not exit2.' }
+  if ((Test-Path $target) -or (Test-Path $receipt)) { throw 'Destination Cancel created install/observation content.' }
+  $report.receiptAbsent = $true
+  $report.targetAbsent = $true
+  $report.cancelExit = $setup.ExitCode
+  $report.outcome = 'actual-one-click-Ready-Cancel; Install never selected'
+  $report.keyboardNavigation = 'UNKNOWN; native Install/Cancel controls and UIA names captured, not keyboard or Narrator acceptance'
+} catch {
+  $report.outcome = 'FAIL; actual destination evidence incomplete'
+  Save-CaptureStage 'destination-proof-failed'
+  throw
 } finally {
-  if (-not $ready) {
-    @{
-      sourceRevision = $env:BLOOMSTEP_SOURCE_REVISION
-      workflowRevision = $env:GITHUB_SHA
-      installerSha256 = (Get-FileHash $Installer).Hash.ToLower()
-      outcome = 'incomplete native capture; see failing CI step, not an acceptance pass'
-      states = $states
-      installed = $false
-      screenReaderAcceptance = 'UNKNOWN'
-    } | ConvertTo-Json -Depth 8 | Set-Content (Join-Path $EvidenceDir 'fixture-wizard-proof.json') -Encoding utf8
-  }
-  foreach ($window in [OnboardingWizard]::Windows()) {
-    [uint32]$owner = 0
-    [void][OnboardingWizard]::GetWindowThreadProcessId($window, [ref]$owner)
-    if ($owned.Contains([int]$owner)) {
-      [void][OnboardingWizard]::PostMessage($window, 0x0010, [IntPtr]::Zero, [IntPtr]::Zero)
-    }
-  }
-  Start-Sleep -Milliseconds 300
-  foreach ($window in [OnboardingWizard]::Windows()) {
-    [uint32]$owner = 0
-    [void][OnboardingWizard]::GetWindowThreadProcessId($window, [ref]$owner)
-    if ($owned.Contains([int]$owner)) {
-      $yes = [OnboardingWizard]::Find($window, '&Yes')
-      if ($yes -ne [IntPtr]::Zero) {
-        [void][OnboardingWizard]::PostMessage($yes, 0x00F5, [IntPtr]::Zero, [IntPtr]::Zero)
-      }
-    }
-  }
-  Start-Sleep -Milliseconds 300
-  foreach ($id in $owned) {
-    $process = Get-Process -Id $id -ErrorAction SilentlyContinue
-    if ($null -ne $process) { Stop-Process -Id $id -ErrorAction SilentlyContinue }
+  try { Stop-CaptureTree }
+  finally {
+    $report | ConvertTo-Json -Depth 10 | Set-Content (Join-Path $EvidenceDir 'fixture-wizard-proof.json') -Encoding utf8
+    Assert-InstallerProtectionUnchanged $protection
   }
 }
-if (Test-Path $target) { throw 'Capture unexpectedly created installation content.' }
-Write-Output 'Captured native fixture directory, unchecked consent and Ready steps; never clicked Install or Finish.'

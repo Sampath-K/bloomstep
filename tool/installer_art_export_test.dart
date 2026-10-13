@@ -77,106 +77,106 @@ class _RecipeIcon extends CustomPainter {
   bool shouldRepaint(_RecipeIcon oldDelegate) => kind != oldDelegate.kind;
 }
 
-Widget recipeCard(bool laptop) => Container(
-  width: 470,
-  height: 390,
+Widget stepCircle(int kind) => Container(
+  width: 190,
+  height: 190,
+  padding: const EdgeInsets.all(42),
   decoration: BoxDecoration(
-    color: Colors.white,
-    border: Border.all(color: const Color(0xFFD5DFCF), width: 2),
-    borderRadius: BorderRadius.circular(24),
+    color: const Color(0xFFEAF0E3),
+    shape: BoxShape.circle,
+    border: Border.all(color: const Color(0xFFD5DFCF), width: 3),
   ),
-  padding: const EdgeInsets.symmetric(horizontal: 26, vertical: 14),
-  child: Column(
+  child: kind == 1
+      ? const PlantArt(stage: GrowthStage.sprout, species: 'Cosmos')
+      : CustomPaint(painter: _RecipeIcon(kind)),
+);
+
+class _Arrow extends CustomPainter {
+  const _Arrow();
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final ink = Paint()
+      ..color = const Color(0xFF8BA889)
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 6
+      ..strokeCap = StrokeCap.round
+      ..strokeJoin = StrokeJoin.round;
+    final y = size.height / 2;
+    canvas.drawLine(Offset(6, y), Offset(size.width - 8, y), ink);
+    canvas.drawPath(
+      Path()
+        ..moveTo(size.width - 26, y - 16)
+        ..lineTo(size.width - 8, y)
+        ..lineTo(size.width - 26, y + 16),
+      ink,
+    );
+  }
+
+  @override
+  bool shouldRepaint(_Arrow oldDelegate) => false;
+}
+
+Widget arrow() => const SizedBox(
+  width: 90,
+  height: 60,
+  child: CustomPaint(painter: _Arrow()),
+);
+
+Widget illustration(String name) {
+  if (name == 'welcome-steps') {
+    // Anchor (familiar routine), tiny action (seed sprouting), celebrate.
+    // Centers sit at thirds so native word labels align beneath each step.
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+      children: [stepCircle(0), arrow(), stepCircle(1), arrow(), stepCircle(4)],
+    );
+  }
+  // One plant grows with practice; more anchors grow a garden.
+  return Row(
     children: [
-      SizedBox(
-        height: 174,
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.spaceAround,
+      const SizedBox(width: 20),
+      for (final stage in GrowthStage.values)
+        SizedBox(
+          width: 82,
+          height: 200,
+          child: PlantArt(stage: stage, species: 'Cosmos'),
+        ),
+      arrow(),
+      Expanded(
+        child: Stack(
           children: [
-            for (final kind in [laptop ? 1 : 0, laptop ? 3 : 2, 4])
-              Container(
-                padding: const EdgeInsets.all(16),
-                decoration: const BoxDecoration(
-                  color: Color(0xFFEAF0E3),
-                  shape: BoxShape.circle,
-                ),
-                child: CustomPaint(
-                  size: const Size(48, 48),
-                  painter: _RecipeIcon(kind),
+            Positioned(
+              left: 0,
+              right: 20,
+              bottom: 22,
+              child: Container(
+                height: 70,
+                decoration: BoxDecoration(
+                  color: const Color(0xFFE4EDDA),
+                  borderRadius: BorderRadius.circular(60),
                 ),
               ),
-            const SizedBox(
-              width: 80,
-              height: 140,
-              child: PlantArt(stage: GrowthStage.seed, species: 'Cosmos'),
             ),
+            for (var i = 0; i < 5; i++)
+              Positioned(
+                left: i * 72.0,
+                top: i.isEven ? 20 : 60,
+                child: SizedBox(
+                  width: 130,
+                  height: 200,
+                  child: PlantArt(
+                    stage: GrowthStage.bloom,
+                    species: ['Cosmos', 'Fern', 'Sunflower'][i % 3],
+                  ),
+                ),
+              ),
           ],
         ),
       ),
     ],
-  ),
-);
-
-Widget illustration(String name) {
-  if (name == 'education-recipe') {
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-      children: [recipeCard(false), recipeCard(true)],
-    );
-  }
-  if (name == 'education-seed') {
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-      children: [
-        for (final stage in GrowthStage.values)
-          Container(
-            width: 180,
-            height: 360,
-            decoration: BoxDecoration(
-              color: stage == GrowthStage.seed
-                  ? const Color(0xFFE4EDDA)
-                  : Colors.white,
-              borderRadius: BorderRadius.circular(24),
-              border: Border.all(color: const Color(0xFFD5DFCF), width: 2),
-            ),
-            padding: const EdgeInsets.only(top: 28, bottom: 88),
-            child: PlantArt(stage: stage, species: 'Cosmos'),
-          ),
-      ],
-    );
-  }
-  final hero = name == 'education-hero';
-  return Stack(
-    children: [
-      Positioned(
-        left: 35,
-        right: 35,
-        bottom: 10,
-        child: Container(
-          height: hero ? 120 : 170,
-          decoration: BoxDecoration(
-            color: const Color(0xFFE4EDDA),
-            borderRadius: BorderRadius.circular(100),
-          ),
-        ),
-      ),
-      for (var i = 0; i < 9; i++)
-        Positioned(
-          left: 10 + i * 95,
-          top: hero ? (i.isEven ? -2 : 38) : (i.isEven ? 50 : 134),
-          child: SizedBox(
-            width: 210,
-            height: 220,
-            child: PlantArt(
-              stage: i % 4 == 0 ? GrowthStage.budding : GrowthStage.bloom,
-              species: ['Cosmos', 'Fern', 'Sunflower'][i % 3],
-            ),
-          ),
-        ),
-    ],
   );
 }
-
 Uint8List bitmap(Uint8List rgba, int width, int height) {
   final stride = ((width * 3 + 3) ~/ 4) * 4;
   final bytes = Uint8List(54 + stride * height);
@@ -217,7 +217,7 @@ void main() {
         'kind': 'authored-illustrations-not-installer-screenshots',
         'sourceNormalization': 'UTF-8 text with LF line endings',
         'renderer': 'Flutter PlantArt, supported seed/sprout/sapling/budding/bloom; original vector recipe icons',
-        'textEquivalents': 'Native wizard labels describe the stages, sample recipes and garden; no text baked into these illustrations.',
+        'textEquivalents': 'Native wizard labels Anchor, Action and Celebrate name the three steps; no text baked into these illustrations.',
         'sources': <Object>[],
         'assets': <Object>[],
       };
@@ -240,12 +240,10 @@ void main() {
         }
       });
       for (final name in [
-        'education-seed',
-        'education-recipe',
-        'education-growth',
-        'education-hero',
+        'welcome-steps',
+        'welcome-garden',
       ]) {
-        final height = name == 'education-hero' ? 260 : 420;
+        final height = name == 'welcome-steps' ? 200 : 300;
         await tester.binding.setSurfaceSize(Size(1000, height.toDouble()));
         final key = GlobalKey();
         await tester.pumpWidget(

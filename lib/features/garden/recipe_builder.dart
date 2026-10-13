@@ -26,8 +26,13 @@ class RecipeBuilder extends StatefulWidget {
 }
 
 class PlantedRecipeDialog extends StatelessWidget {
-  const PlantedRecipeDialog({super.key, required this.recipe});
-  final RecipeDraft recipe;
+  const PlantedRecipeDialog({
+    super.key,
+    required this.habit,
+    this.reducedMotion = false,
+  });
+  final Habit habit;
+  final bool reducedMotion;
 
   @override
   Widget build(BuildContext context) => AlertDialog(
@@ -41,29 +46,35 @@ class PlantedRecipeDialog extends StatelessWidget {
           children: [
             Center(
               child: SizedBox(
-                width: 180,
-                height: 150,
-                child: Center(
+                width: 192,
+                height: 192,
+                child: Align(
+                  alignment: Alignment.bottomCenter,
                   child: Transform.scale(
                     scale: 2,
                     alignment: Alignment.bottomCenter,
                     child: SizedBox(
                       width: 96,
                       height: 96,
-                      child: PlantArt(
-                        stage: GrowthStage.seed,
-                        species: recipe.species,
+                      child: SeedGrowthPreview(
+                        species: habit.species,
+                        reducedMotion: reducedMotion,
                       ),
                     ),
                   ),
                 ),
               ),
             ),
-            const Text('One small beginning. Your garden has room to grow.'),
+            const Text(
+              'One small beginning. Tiny actions help your seed grow.',
+            ),
+            const Text(
+              'A glimpse of growth to come. Your new habit starts as a seed; practice grows it.',
+            ),
             const SizedBox(height: 16),
             Text(
-              'Your next step:\nAfter I ${recipe.anchor}, I will ${recipe.behavior}. '
-              'Then I celebrate: ${recipe.celebration}.',
+              'Your next step:\nAfter I ${habit.anchor}, I will ${habit.behavior}. '
+              'Then I celebrate: ${habit.celebration}.',
             ),
             const SizedBox(height: 12),
             const Text(
@@ -82,6 +93,100 @@ class PlantedRecipeDialog extends StatelessWidget {
   );
 }
 
+class SeedGrowthPreview extends StatefulWidget {
+  const SeedGrowthPreview({
+    super.key,
+    required this.species,
+    required this.reducedMotion,
+  });
+  final String species;
+  final bool reducedMotion;
+
+  @override
+  State<SeedGrowthPreview> createState() => _SeedGrowthPreviewState();
+}
+
+class _SeedGrowthPreviewState extends State<SeedGrowthPreview>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController growth = AnimationController(
+    vsync: this,
+    duration: const Duration(milliseconds: 1400),
+  );
+  bool get reduce =>
+      widget.reducedMotion || MediaQuery.disableAnimationsOf(context);
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    if (reduce) {
+      growth.stop();
+      growth.value = 1;
+    } else if (growth.value == 0 && !growth.isAnimating) {
+      growth.forward();
+    }
+  }
+
+  @override
+  void didUpdateWidget(SeedGrowthPreview oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (reduce) {
+      growth.stop();
+      growth.value = 1;
+    }
+  }
+
+  @override
+  void dispose() {
+    growth.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) => Semantics(
+    liveRegion: true,
+    label: 'Seed planted. Tiny actions and practice help your plant grow.',
+    child: ExcludeSemantics(
+      child: reduce
+          ? PlantArt(
+              key: const ValueKey('growth-static-sprout'),
+              stage: GrowthStage.sprout,
+              species: widget.species,
+            )
+          : AnimatedBuilder(
+              animation: growth,
+              builder: (context, _) {
+                final progress = Curves.easeInOutCubic.transform(growth.value);
+                return Stack(
+                  fit: StackFit.expand,
+                  children: [
+                    Opacity(
+                      opacity: 1 - progress,
+                      child: PlantArt(
+                        key: const ValueKey('growth-seed'),
+                        stage: GrowthStage.seed,
+                        species: widget.species,
+                      ),
+                    ),
+                    Opacity(
+                      key: const ValueKey('growth-sprout-opacity'),
+                      opacity: progress,
+                      child: Transform.scale(
+                        alignment: Alignment.bottomCenter,
+                        scale: .2 + .8 * progress,
+                        child: PlantArt(
+                          stage: GrowthStage.sprout,
+                          species: widget.species,
+                        ),
+                      ),
+                    ),
+                  ],
+                );
+              },
+            ),
+    ),
+  );
+}
+
 class _RecipeBuilderState extends State<RecipeBuilder> {
   final form = GlobalKey<FormState>();
   final scroll = ScrollController();
@@ -90,6 +195,7 @@ class _RecipeBuilderState extends State<RecipeBuilder> {
   bool practiced = false;
   bool celebrationObserved = false;
   int step = 0;
+  final customFocus = List.generate(3, (_) => FocusNode());
   @override
   void initState() {
     super.initState();
@@ -104,6 +210,9 @@ class _RecipeBuilderState extends State<RecipeBuilder> {
   @override
   void dispose() {
     scroll.dispose();
+    for (final focus in customFocus) {
+      focus.dispose();
+    }
     for (final controller in [aspiration, anchor, behavior, celebration]) {
       controller.dispose();
     }
@@ -142,6 +251,20 @@ class _RecipeBuilderState extends State<RecipeBuilder> {
         celebrationPracticed: celebrationObserved,
       ),
     );
+  }
+
+  void _next() {
+    final current = [anchor, behavior, celebration][step];
+    if (current.text.trim().isEmpty || current.text.trim().length > 200) return;
+    if (step == 2) {
+      save();
+      return;
+    }
+    if (scroll.hasClients) scroll.jumpTo(0);
+    setState(() => step++);
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) customFocus[step].requestFocus();
+    });
   }
 
   Widget _pickerDialog(BuildContext context) {
@@ -256,6 +379,32 @@ class _RecipeBuilderState extends State<RecipeBuilder> {
                 ][step],
               ),
               const SizedBox(height: 12),
+              TextFormField(
+                key: ValueKey(
+                  [
+                    'custom-anchor',
+                    'custom-action',
+                    'custom-celebration',
+                  ][step],
+                ),
+                controller: current,
+                focusNode: customFocus[step],
+                maxLength: 200,
+                textInputAction: step < 2
+                    ? TextInputAction.next
+                    : TextInputAction.done,
+                decoration: InputDecoration(
+                  labelText: labels[step],
+                  floatingLabelBehavior: FloatingLabelBehavior.always,
+                  hintText: 'Type your own or choose a suggestion below',
+                ),
+                onFieldSubmitted: (_) => _next(),
+                onChanged: (_) => setState(() {
+                  practiced = false;
+                  celebrationObserved = false;
+                }),
+              ),
+              const SizedBox(height: 12),
               LayoutBuilder(
                 builder: (context, constraints) {
                   final width = constraints.maxWidth >= 480
@@ -283,6 +432,7 @@ class _RecipeBuilderState extends State<RecipeBuilder> {
                                     : null,
                               ),
                               onPressed: () => setState(() {
+                                FocusScope.of(context).unfocus();
                                 current.text = choices[i];
                                 if (step == 0) {
                                   aspiration.text =
@@ -308,45 +458,37 @@ class _RecipeBuilderState extends State<RecipeBuilder> {
                 },
               ),
               const SizedBox(height: 8),
-              ExpansionTile(
-                key: ValueKey('custom-$step'),
-                tilePadding: EdgeInsets.zero,
-                title: const Text('Make it my own (optional)'),
-                children: [
-                  TextFormField(
-                    controller: current,
-                    maxLength: 200,
-                    decoration: InputDecoration(labelText: labels[step]),
-                    onChanged: (_) => setState(() {
-                      practiced = false;
-                      celebrationObserved = false;
-                    }),
-                  ),
-                  if (step == 2) ...[
-                    TextFormField(
-                      controller: aspiration,
-                      maxLength: 200,
-                      decoration: const InputDecoration(
-                        labelText: 'I want more...',
+              if (step == 2)
+                ExpansionTile(
+                  key: ValueKey('custom-$step'),
+                  tilePadding: EdgeInsets.zero,
+                  title: const Text('Make it my own (optional)'),
+                  children: [
+                    if (step == 2) ...[
+                      TextFormField(
+                        controller: aspiration,
+                        maxLength: 200,
+                        decoration: const InputDecoration(
+                          labelText: 'I want more...',
+                        ),
+                        onChanged: (_) => setState(() {}),
                       ),
-                      onChanged: (_) => setState(() {}),
-                    ),
-                    DropdownButtonFormField<String>(
-                      initialValue: species,
-                      decoration: const InputDecoration(
-                        labelText: 'Your plant',
+                      DropdownButtonFormField<String>(
+                        initialValue: species,
+                        decoration: const InputDecoration(
+                          labelText: 'Your plant',
+                        ),
+                        items: [
+                          for (final value in ['Cosmos', 'Sunflower', 'Fern'])
+                            DropdownMenuItem(value: value, child: Text(value)),
+                        ],
+                        onChanged: (value) {
+                          if (value != null) setState(() => species = value);
+                        },
                       ),
-                      items: [
-                        for (final value in ['Cosmos', 'Sunflower', 'Fern'])
-                          DropdownMenuItem(value: value, child: Text(value)),
-                      ],
-                      onChanged: (value) {
-                        if (value != null) setState(() => species = value);
-                      },
-                    ),
+                    ],
                   ],
-                ],
-              ),
+                ),
               if (step == 2)
                 CheckboxListTile(
                   contentPadding: EdgeInsets.zero,

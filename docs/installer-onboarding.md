@@ -1,5 +1,232 @@
 # Installer and customer onboarding contract
 
+## Current shipping boundary
+
+The owner-trial composition takes PR26 through `f7552cf`, all seven PR28
+app fixes through `adb51b3`, and PR31 through `7e7b7d1`, without PR26's later
+PR38 badges/coach. See [the current composition ledger](status.md#current-owner-trial-shipping-composition)
+for inclusion/exclusion and the preserved main baseline.
+Empty device and account gardens now invite the builder once per app launch,
+not only on a fresh device's first run. The signed-in profile shows an avatar
+and Sign out; device/account gardens remain separate.
+
+The downloadable preview12 does not contain this composition. A new preview
+requires the existing protected native x64/ARM64 lifecycle and checked/unchecked
+genuine app-launch gates. No registered self-hosted runner was available at
+shipping investigation; those runtime gates remain **UNVERIFIED**.
+This is not a new publication exception, safety claim or permission to execute
+the installer on the owner host. No release or site-pointer change is made
+until the required exact-source/package evidence exists.
+
+## WITHDRAWN: Defender-blocked private candidate
+
+On 9 October 2026 Windows Defender reported the severe threat
+`Behavior:Win32/DefenseEvasion.A!ml` and successfully quarantined private
+zero-click candidate SHA-256
+`b58ba7fc3f39d66c7d3afc9022cbbeec2036fb58c0677940e20f1b036e4e2be5`
+from source `3cd29f0b635e5fdce2a2f9ade939024416216401`, artifact
+`11568545878` in run `37815203643`.
+
+**Do not download, restore, distribute, or run this candidate.** This is a
+malware/behavior detection, not an unknown-reputation warning. Do not use
+Keep anyway, Run anyway, exclusions, protection changes, or quarantine
+restoration. It is not established as a false positive.
+
+Defender attributed events to an Inno temporary installer process before
+quarantine; partial-install state is unknown. The presence of an existing
+installed executable/protocol is not evidence that the attempted installation
+completed. Preserve existing customer installation and data; no cleanup,
+uninstall, or retry on that machine is authorized by this incident.
+
+Earlier installation-only CI and hash consistency do not establish a clean
+security outcome. The historical hosted security gate failed closed because
+real-time and behavior protection were unavailable (run `37859130228`, receipt
+`11585685771`). That workflow is now retired and explicitly refuses further
+withdrawn-binary access; historical source/receipts are retained. The new standard
+candidate's VM gate verifies enabled protection and exact hashes, preserving
+versions, scan outcomes and detections. Missing protection or detections fail closed.
+Even a clean static scan does not override the observed local behavior
+quarantine or establish non-elevated launch acceptance. No vendor sample
+submission or third-party binary upload is authorized.
+
+## Active native one-click correction (unpublished, not security accepted)
+
+The owner rejected extra Next screens in the conventional baseline. The corrected
+source shows one visible native **Ready** page with the same branded value-prop
+art and **Install**, uses the default per-user location (existing installs retain
+their folder), then progress and Finish. **Launch Bloomstep** is **checked by
+default** on Finish and the user can freely untick it before selecting Finish.
+No destination choice is required; standard settings disable Welcome, directory
+and program-group pages and the Ready memo. Cancel remains native.
+There are no timer callbacks,
+automatic page advances/clicks, hidden/minimized windows, artificial holds or
+custom message pumps. Original Anchor/Action/Celebrate artwork remains static.
+The source continues per-user `PrivilegesRequired=lowest`, offline native
+architecture routing and absent/zero installer observations. Checked launch is
+withheld for silent, elevated, suppressed or non-interactive contexts.
+
+This is a legitimate design change, **not an established Defender remediation**.
+The possible link between zero-click behavior and detection remains an untested
+hypothesis. The new build is CI-only and unpublished. Old candidate withdrawal
+remains in force; no owner-machine execution, merge, release/tag or site promotion.
+
+Launch-after-install and genuine-app evidence require the protected disposable
+standard-user interactive VM runner labelled `defender-interactive`. Until the
+owner supplies it, those jobs remain queued, not passing. See
+[owner VM preparation, runner registration and teardown](defender-test-vm.md).
+Hosted workers compile only; installer execution, native screenshots, lifecycle
+and privacy proofs are explicitly withheld there and routed to the protected VM.
+
+### Owner-reported clean baseline, not replacement acceptance
+
+The owner reported running exact baseline source
+`922da673552c3a6534d1a563d1e23521aff17e65` installer SHA-256
+`0ef50e8f261adc55eaa05cd28c9a5368af6be859411e9b8a98feaf46902c1db8`
+on their ARM64 machine: installation succeeded with Defender real-time and
+behavior protection enabled and no detections in the preceding hour.
+This is one owner-reported host observation, not independently inspected event
+receipts, protected-VM acceptance, provider/full-journey or launch-token proof.
+It does not transfer to the new one-click bytes or invalidate the older
+zero-click withdrawal. No agent retry on that machine was performed.
+
+PR28's six app commits through
+`2753a6203f97923557f2de669c5f66cd3fdf70a6`, plus the rendered custom-field
+label/value overlap correction at exact PR28 head
+`adb51b30da43e0629efd5ee6db5b0d545f625150`, are composed into this branch.
+The final source includes the seven app commits in order:
+`cfa46b75`, `298735c7`, `625ec537`, `67f1bf17`, `dd959648`, `2753a620`,
+`adb51b30`.
+inline profile/device garden, once-only first-run habit-builder invitation,
+custom text on all three steps, and post-save seed growth with reduced motion.
+The composed executable still needs exact-head native evidence; source
+composition does not establish genuine launch or account acceptance.
+
+## Historical autonomous designs (superseded; not instructions)
+
+User-directed after testing: the setup steps that each required Next were not
+interesting and had too much text. Both variants below build from the same
+source (`/DInstallFlow=oneclick` default, `/DInstallFlow=zeroclick` experiment).
+No release, tag, signing, site promotion or merge is authorized by this work.
+
+**One picture, three words.** One original visual (exported from the app's own
+`PlantArt`, see `education-art-provenance.json`) shows a cup (anchor), a sprout
+(action) and a smile (celebrate) with the native words **Anchor**, **Action**
+and **Celebrate** as the only text, then a plant growing through five stages and
+a garden of five blooms (more anchors, more habits, a bigger garden). The words
+are real native labels so screen readers announce them; the pictures carry no
+baked-in text.
+
+**One-click (default).** The visual shows for 4 seconds with only Cancel, then
+moves on by itself to the destination page (per-user default, Browse). **Install**
+is the only click. There is no Ready page, no Finish page and no launch
+checkbox. After a successful interactive install Setup closes and opens
+Bloomstep as the original, non-elevated installing user (`ExecAsOriginalUser`).
+
+**Zero-click (private experiment).** Double-clicking the installer shows the
+same visual while installing to the default per-user folder with no pages and
+no clicks; the visual is held until about 5 seconds have passed (a requested
+brand hold, not install work), then Bloomstep opens. Upgrades reuse the
+previous folder. Interactive Inno Setup always shows one pre-install page; the
+zero-click build puts the same visual on it and advances on the first timer
+tick without a click, so the generic Inno welcome text never appears.
+
+Historical behavior and limitations (the standard redesign above is authoritative):
+
+- SmartScreen and Mark-of-the-Web: an unsigned download from the internet still
+  shows "Windows protected your PC" (More info, then Run anyway only for the
+  exact verified file). This is not bypassed and signing is deferred.
+- no UAC: setup is per-user with `PrivilegesRequired=lowest`; it never asks for
+  elevation. If someone runs it as administrator anyway, the app is not opened
+  elevated; a message asks them to open Bloomstep from the Start menu.
+- Error, disk, close-running-app and cancel dialogs stay visible and actionable.
+  Silent installs never open the app.
+
+**Reduced motion.** With Windows animations off the picture is held still; the
+4-second auto-advance and 5-second hold still apply. A subtle drift is the only
+motion when animations are on.
+
+**Options moved out of setup.** The launch checkbox is gone because the app now
+always opens after an interactive install. Settings already has
+"launch at Windows sign-in"; setup never had shortcut or analytics choices, and
+no new default-on collection is added. Installer observations stay disabled.
+
+**First launch in the app (code evidence only).** A fresh user lands on the
+empty garden ("Your garden is ready to grow") whose primary action is
+**Plant a habit**; returning users keep their per-account garden. This is from
+app code and tests, not an installed-app observation; a separate session owns
+the sign-in/profile change on that screen.
+
+**Evidence and honest gaps.** Disposable CI captures the actual compiled
+welcome, destination, installing frames, timings, DPI and installer SHA-256 for
+both variants. Hosted CI runners are elevated, so automatic launch is
+withheld there by design: genuine non-elevated automatic launch is UNVERIFIED.
+144 DPI is uncovered unless actually observed. x64 hosted runners report the
+static (reduced-motion) preference, which is not motion evidence.
+
+## Earlier destination-first source increment (superseded)
+
+User-directed follow-up after immutable preview.12: destination/Browse is the
+only preinstall decision, retaining the per-user default and upgrade location.
+The native button is explicitly **Install**, not Next. Welcome, teaching,
+observations and Ready pages are removed. Existing authored seed/recipe/garden
+BMPs move to real installing progress with a native `CreateCallback`/`SetTimer`
+callback and a small bounded drift. Following actual1.5-2.1second installations,
+parent-directed cadence is600ms: seed, recipe, then garden at1200ms, retaining
+the last panel rather than repeatedly cycling. It runs only while installing,
+never delays completion, and does not guarantee all panels on faster installs.
+These brief visual transitions are not a guarantee that users read every caption.
+Windows reduced-motion continues to keep scene0 static, not rapidly swap scenes.
+CI's exact Inno6.7.1 `CreateCallback` returns `LongWord` (32-bit setup callback
+address), not the `NativeInt` used by newer online help. The declaration is
+bound to that engine's supported signature on both native OS hosts.
+Inno's actual progress bar remains authoritative; scenes are not progress percentages.
+There is no sleep, minimum dwell, network host, WebView or added dependency.
+Windows `SPI_GETCLIENTAREAANIMATION` is queried read-only; disabled or unavailable
+preferences produce static art. Page changes, completion, modal interruptions
+and setup disposal stop the callback. Finish says **Bloomstep is ready** and
+**Open Bloomstep to create your first tiny habit**; existing successful,
+interactive, non-elevated checked/unchecked/silent launch guards are unchanged.
+
+Installer observations are **disabled**, including silent installs: no prompt,
+receipt/event/UUID generation, owner marker or replacement consent. Upgrade
+still removes an old owner marker, never adopts its consent, and preserves
+unmatched existing legacy receipts. Legacy uninstall still removes only receipts
+and `.pending` files whose first event matches that installation's owner marker.
+An unmatched old receipt remains subject to the existing app's seven-day
+next-access expiry/privacy controls; app-side compatibility and separate consent
+flows are not changed.
+
+Contract RED evidence precedes implementation. Disposable CI records exact
+package/source hashes, actual destination/Cancel, timed real-install frames,
+Finish, timer disposal and bounded owned-process stage/exit state. It records
+actual DPI and missing coverage rather than labeling enlarged/static source art
+as high-DPI motion proof. Fast installs may legitimately show fewer scenes;
+three-scene/reduced-motion/high-DPI evidence and parent pixel review remain
+mandatory before merge, not inferred from a green capture script. Genuine
+non-elevated checked/unchecked launch/full journey acceptance remains pending.
+Receipts distinguish `seed-to-flower`, `routine-action-celebration` and
+`growing-garden`: different committed artwork hashes, actual native captions,
+captured PNG hashes and first-observed transition timestamps. Missing scenes
+are explicitly listed; timer logs distinguish initialization from installing.
+Exact PR run37627423101 reached Finish in1526ms (x64 static preference) and
+2104ms (ARM64 motion preference), both at96DPI. Only scene0 was visible;
+scene1/2 transitions and144DPI remain absent in that earlier3000ms-cadence run.
+New600ms source needs its own actual compiled evidence. These fast installs are not slowed
+to obtain screenshots. This passing lifecycle capture is not full pixel approval.
+The website promotion belongs to a separate PR. Preview.12's bytes/tag are
+unchanged; this source increment does not authorize a new public release.
+
+References: [Inno last-page Install caption](https://jrsoftware.org/ishelp/topic_setup_disablereadypage.htm),
+[supported native timer callback](https://jrsoftware.org/ishelp/topic_isxfunc_createcallback.htm),
+[supported native controls](https://jrsoftware.org/ishelp/topic_scriptclasses.htm),
+[Windows animation preference](https://learn.microsoft.com/en-us/windows/win32/api/winuser/nf-winuser-systemparametersinfow).
+Microsoft's [billboard](https://learn.microsoft.com/en-us/windows/win32/msi/billboard-control)
+and [progress UX](https://learn.microsoft.com/en-us/windows/win32/uxguide/progress-bars)
+(Windows 7-era guidance) are pattern references only, not a new MSI dependency
+or accessibility certification.
+
+The sections below describe earlier iterations and publication boundaries.
+
 Authorized source increment from main `30fd380194bed46686c5483accfa71ff06c9f068`.
 The original source increment did not authorize a release. On 7 October 2026,
 the owner separately authorized website promotion of the already published
