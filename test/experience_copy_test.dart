@@ -4,7 +4,54 @@ import 'package:bloomstep/services/experience_experiments.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
+class _OfflineResolver implements ExperienceResolver {
+  @override
+  final ValueNotifier<int> changes = ValueNotifier(0);
+  @override
+  Duration get remainingEnrollment => Duration.zero;
+  @override
+  Future<void> followup() async {}
+  @override
+  Future<ExperienceAssignment> resolve(ExperienceSurface surface) async =>
+      throw StateError('Synthetic offline provider configuration');
+  @override
+  Future<bool> rendered(ExperienceAssignment assignment) async =>
+      throw StateError('Must not expose unresolved copy');
+  @override
+  Future<bool> outcome(
+    ExperienceAssignment assignment,
+    ExperienceOutcome outcome,
+  ) async => false;
+}
+
 void main() {
+  testWidgets(
+    'replacement resolver failure surfaces error and leaves semantic control without exposure',
+    (tester) async {
+      final resolver = _OfflineResolver();
+      addTearDown(resolver.changes.dispose);
+      ExperienceAssignment? observed;
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: ExperienceCopy(
+              experiments: resolver,
+              surface: ExperienceSurface.invitationHeading,
+              onAssignment: (value) => observed = value,
+              builder: (context, copy) =>
+                  Semantics(header: true, child: Text(copy)),
+            ),
+          ),
+        ),
+      );
+      await tester.pump();
+      expect(tester.takeException(), isA<StateError>());
+      expect(find.text('A little growth, together'), findsOneWidget);
+      expect(observed, isNull);
+      await tester.pumpWidget(const SizedBox());
+    },
+  );
+
   testWidgets(
     'actual visible render records once; withdrawal restores control immediately',
     (tester) async {

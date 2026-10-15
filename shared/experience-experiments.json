@@ -1,5 +1,6 @@
 {
   "policyVersion": "app_experience_v1",
+  "provider": "growthbook",
   "unit": "consented installation within one account and consent epoch; no cross-device joining",
   "catalog": [
     {
@@ -25,7 +26,7 @@
     "familySize": 2,
     "alphaPerStudy": 0.025,
     "power": 0.8,
-    "planning": "Conservative normal approximation at maximum Bernoulli variance 0.25: ceil(2*(2.241403+0.841621)^2*0.25/0.05^2)=1902 per arm; rounded up to 2000. Not a guarantee of power under clustering/missingness.",
+    "planning": "Conservative normal approximation at maximum Bernoulli variance 0.25: ceil(2*(2.241403+0.841621)^2*0.25/0.05^2)=1902 per arm; rounded up to 2000. This plans 80% power to reject zero lift at true 0.05 lift, not to prove the 0.05 practical bound. The stricter lower-confidence-bound promotion rule needs roughly 0.10 true lift for that power. Not a guarantee under clustering/missingness.",
     "enrollmentDays": 28,
     "followupDays": 7,
     "lateArrivalDays": 7,

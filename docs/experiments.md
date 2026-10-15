@@ -3,6 +3,9 @@
 Status: **implemented, isolated acceptance passing, production OFF.** No live efficacy claim is made: no real
 customer cohort exists, and every result below comes from synthetic or labeled fixture inputs in an isolated store.
 
+The separate default-off Flutter extension and its vendor-neutral UI seam, withdrawal contract, evidence
+limits and build-versus-buy checkpoint are documented in [App experience experiment contract](app-experiments.md).
+
 ## What the loop does
 
 `POST /api/internal/experiments/tick` (worker role `Bloomstep.AggregateWriter`, same token as the daily aggregates
