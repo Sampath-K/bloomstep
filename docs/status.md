@@ -43,18 +43,35 @@ cloud-disclosed copy confirmation and the copied habit; they are not provider
 or installed-customer acceptance. The unchanged release/security/branding
 source contracts pass (28 tests).
 
-The full suite has 280 passes, one existing skip and one **pre-existing failure**:
+The initial continuity full-suite run had 280 passes, one existing skip and one
+**pre-existing failure**:
 `reminder_scheduler_test.dart:588`, "seven actual unanswered requests pause with
 alternate-day backoff", expects two reconnect requests but observes one.
 The same failure was reproduced from pristine main
 `a778a66560b8a7b3ee9449d8e00af876c41461ec` on 15 October using its original
 `lib/`, test, pubspec and assets with existing resolved dependencies:
 `flutter test --no-pub --dart-define=BLOOMSTEP_TEST_BUILD=true test/reminder_scheduler_test.dart --plain-name "seven actual unanswered requests pause with alternate-day backoff"`.
-The fixture advances reminder time through 4–20 October while recipe interaction
-uses the real clock; this is separate from continuity and has not been weakened
-or fixed here. Full CI is not claimed green. Exact-head Windows compilation,
-protected native lifecycle/security/launch, real-provider claims and a separately
-authorized installed-candidate trial/release remain distinct pending gates.
+The fixture advanced reminder time through 4–20 October while recipe interaction
+used the real clock. The original failure was reproduced again on 15 October at
+continuity head `0a094e92e2f14a4ab4f59dd5b07a7cc0aa25f2b3` before the distinct
+test-only follow-up below.
+
+The reminder fixture now supplies the same mutable clock to `GardenStore.open`
+and `DesktopReminders`, using the existing test-build-only injection API; no
+production API or reminder policy changed. Planting must record exactly that
+injected timestamp. The unchanged seven-request, two-reconnect and seven-ignored
+outcomes and exact request dates are asserted for the original 4 October start,
+a year boundary (28 December 2025), a non-leap February boundary (26 February
+2027), and a leap-day boundary (26 February 2028). These calendar cases retain
+the existing even-day backoff rule, including its behavior across month changes.
+All 30 reminder tests pass; analyzer is clean. The subsequent full app suite
+passes with 284 tests and the same one existing skip, using
+`flutter test --no-pub --concurrency 1 --dart-define=BLOOMSTEP_TEST_BUILD=true`.
+The follow-up added three calendar cases and resolved the original failed case;
+no test was skipped or weakened. Full CI is not claimed green.
+Exact-head Windows compilation, protected native
+lifecycle/security/launch, real-provider claims and a separately authorized
+installed-candidate trial/release remain distinct pending gates.
 
 ## Current owner-trial shipping composition
 
