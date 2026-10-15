@@ -43,8 +43,12 @@ guest/account analytics, authentication success or automatic account linking.
 No receipt means no measurement. The receipt can be cleared in profile Settings.
 
 Sign-in keeps the configured Microsoft personal/Google/other hosted choices in
-the trusted system browser. The signed-in profile shows an avatar and Sign out,
-not identity text. Validated token claims supply initials/accessibility or an
+the trusted system browser. Following the owner's 15 October preview.14 trial
+feedback, the signed-in profile shows a usable provider-supplied name, an avatar
+and Sign out. Validated standard `name`, or `given_name`/`family_name`, claims
+supply the name; absent names show "Signed-in account" and explain that the
+provider did not supply a name, never an invented name, email or U-only identity.
+Validated claims supply initials/accessibility or an
 existing HTTPS OIDC picture; absent claims are not invented. No extra photo
 scopes, account connection or persistent photo storage are added.
 The profile also owns the Settings/privacy entry for export and deletion.
@@ -54,11 +58,25 @@ account data and clears account-local data/authentication before returning to
 the separate device garden. Session expiry preserves the saved account garden
 but removes access and returns to the device garden.
 
-**First-pass boundary:** device habits remain separate when signing in; a one-time
-notice states that nothing was transferred. No import, linking or migration
-occurs. A future "Bring them / Keep separate" flow needs explicit consent,
-idempotent local import, rollback and failure tests before enabling it. This
-contract does not itself establish released-build or installed-launch acceptance.
+**Owner-directed continuity correction (15 October 2026):** signing in still
+does not upload or merge device habits automatically. Persistent account-garden
+messaging identifies the selected garden and the preserved device habits.
+"View device garden" and "Return to account garden" let users inspect the
+separate gardens without destructive sign-out. Existing Settings/export/delete/
+consent controls stay reachable. Authentication expiry still removes account access.
+
+Only an explicit "Copy to this account" confirmation, disclosing possible cloud
+sync, copies device recipes and their check-in/reflection history to the displayed
+account. Keep separate, dismissal or cancellation writes nothing. Originals stay
+unchanged locally. Settings, reminders, consent, telemetry and feedback are never
+copied. Stable per-account copy identities make retries atomic/idempotent and
+preserve account edits and deletion markers; this is a one-time copy, not ongoing
+linking or reconciliation. A failed transaction leaves no partial copy and exposes
+a retryable error. Account/session changes invalidate the transaction. No
+account-to-account copy exists. When saved device habits need this decision,
+the empty-account automatic builder must not obscure it; manual planting remains
+available. This source contract is not released-build/installed-launch acceptance,
+and does not establish the state of the owner's uninspected local database.
 
 ## First-habit invitation and planting
 
@@ -249,7 +267,7 @@ kill switch must be verified before production launch.
 | Check-in | Did it / Did more / Not today; optional forgot/too hard/anchor absent/motivation reason; no response is no data. Personal celebration within 300ms; persistent client event IDs; one effective result per habit per **local** date; edits and undo append events; sync retries idempotent. |
 | Garden | Five stages: seed, sprout at 3, sapling at 10, budding at 21, bloom at 30 practice days plus score >=4/7. No negative stage changes after rest or corrected data. Permanent Grove after graduation. Deterministic species/plant variation, vector visuals, screen-reader labels and reduced motion. Optional day/night, seasons, decor, pollinators and return celebration, never a penalty. |
 | Reminders | Real Windows local toasts and tray actions; opt-in permission/context; optional autostart; chosen local time, quiet hours default 21:30-07:30; <=1 prompt/habit/day and <=3 notifications/app/day; snooze/fewer/off. Three ignored halves frequency, seven pauses with in-app explanation. Device scheduling, not paid service. Respect OS settings/Focus; never use urgent bypass. Re-evaluate local time/DST/travel. Median of last 14 check-in times after five samples, rounded 15m. |
-| Identity | Real OIDC broker with Microsoft account/work-school, Google and email OTP; system browser authorization code + PKCE, unpredictable state and nonce; validate token signature/issuer/audience/expiry/nonce. Never embedded browser or fake sign-in. Provider/platform capabilities verified, not assumed. Refresh credentials in OS secure storage. Inline profile on the habit screen; separate device-only guest garden with no analytics/sync/migration. Authenticated offline sessions; per-account isolation; sign-out clears account-local device data with unsynced-data warning and returns to the device garden. No silent email-based linking. |
+| Identity | Real OIDC broker with Microsoft account/work-school, Google and email OTP; system browser authorization code + PKCE, unpredictable state and nonce; validate token signature/issuer/audience/expiry/nonce. Never embedded browser or fake sign-in. Provider/platform capabilities verified, not assumed. Refresh credentials in OS secure storage. Inline profile with provider-supplied name or honest missing-name explanation; separate device-only garden with no analytics/sync or automatic migration. Explicitly confirmed, atomic/idempotent copy preserves originals and account isolation. Authenticated offline sessions; per-account isolation; sign-out clears account-local device data with unsynced-data warning and returns to the device garden. No silent email-based linking. |
 | Sync | Functions JWT verification on **every** endpoint, server-derived partition `/userId`, Cosmos persistent records, retry, append-event union and last-writer-wins recipe/settings with deterministic conflicts. Never accept client-selected account identity. Two-device verification including offline edits/restarts. |
 | User learning | Weekly reflection under 60s; four 1-7 naturalness items every 14 days; explain deterministic Recipe Doctor based on check-in reasons (specific/reliable anchor, smaller behavior, reconsider aspiration/celebration). Two consecutive naturalness scores >=5.5 plus practice >=60% of last 28 days graduates, not a fixed day count. Original content. AI features, if added, will be explained and optional. |
 | Reconnect | Gentle absence nudges at 3 then 7 days, maximum two per absence episode, then stop until return. Opt-out, ignored-reminder backoff, never guilt. Return earns a positive celebration. Windows background/tray/next-open delivery must actually be observed before claiming success. |

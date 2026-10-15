@@ -20,8 +20,12 @@ class IdentityProfile {
         value is String && value.trim().isNotEmpty ? value.trim() : null;
     final picture = text(claims['picture']);
     final pictureUri = picture == null ? null : Uri.tryParse(picture);
+    final parts = [
+      text(claims['given_name']),
+      text(claims['family_name']),
+    ].whereType<String>().join(' ');
     return IdentityProfile(
-      displayName: text(claims['name']),
+      displayName: text(claims['name']) ?? (parts.isEmpty ? null : parts),
       photoUrl:
           pictureUri != null &&
               pictureUri.scheme == 'https' &&

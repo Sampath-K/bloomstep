@@ -416,7 +416,7 @@ void main() {
   }
 
   testWidgets(
-    'sign-in opens empty account builder once after ownership changes',
+    'saved device habits show continuity choice before the empty account builder',
     (tester) async {
       final root = (await tester.runAsync(
         () => Directory.systemTemp.createTemp('bloomstep-signin-empty-'),
@@ -448,9 +448,13 @@ void main() {
       await ready(tester, find.text('Did it'));
       expect(find.byType(RecipeBuilder), findsNothing);
       await tester.tap(find.text('Sign in with Microsoft or Google'));
-      await ready(tester, find.byType(RecipeBuilder));
+      await ready(tester, find.text('Copy device habits to this account'));
       expect(identity.hasValidSession, isTrue);
+      expect(find.byType(RecipeBuilder), findsNothing);
       expect(find.text('Did it'), findsNothing);
+      await tester.tap(find.text('Plant a habit'));
+      await tester.pumpAndSettle();
+      expect(find.byType(RecipeBuilder), findsOneWidget);
       await tester.tap(find.text('Cancel'));
       await tester.pumpAndSettle();
       expect(find.byType(RecipeBuilder), findsNothing);

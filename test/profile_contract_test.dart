@@ -16,6 +16,20 @@ void main() {
     final absent = IdentityProfile.fromClaims({'sub': 'private-subject'});
     expect(absent.displayName, isNull);
     expect(absent.photoUrl, isNull);
+    expect(
+      IdentityProfile.fromClaims({
+        'given_name': 'Ada',
+        'family_name': 'Lovelace',
+      }).displayName,
+      'Ada Lovelace',
+    );
+    expect(
+      IdentityProfile.fromClaims({
+        'email': 'private@example.invalid',
+        'sub': 'private-subject',
+      }).displayName,
+      isNull,
+    );
     for (final picture in [
       'http://images.example.invalid/profile.png',
       'javascript:alert(1)',
@@ -98,7 +112,7 @@ void main() {
       ),
     );
     expect(find.text('Signed in'), findsNothing);
-    expect(find.text('Synthetic Garden Tester'), findsNothing);
+    expect(find.text('Synthetic Garden Tester'), findsOneWidget);
     expect(find.textContaining('synthetic@example.invalid'), findsNothing);
     expect(find.textContaining('Google'), findsNothing);
     expect(find.textContaining('login.live.com'), findsNothing);
@@ -127,12 +141,40 @@ void main() {
         ),
       ),
     );
-    expect(find.text('Ada Lovelace'), findsNothing);
+    expect(find.text('Ada Lovelace'), findsOneWidget);
     expect(find.text('AL'), findsOneWidget);
     expect(find.text('Signed in'), findsNothing);
     expect(find.text('Sign out'), findsOneWidget);
     expect(find.byType(Image), findsNothing);
   });
+
+  testWidgets(
+    'absent name explains the provider gap without invented initials',
+    (tester) async {
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: ProfileSection(
+              signedIn: true,
+              profile: IdentityProfile.fromClaims({'sub': 'private-subject'}),
+              configured: true,
+              busy: false,
+              onSignIn: () async {},
+              onSignOut: () async {},
+            ),
+          ),
+        ),
+      );
+      expect(find.text('Signed-in account'), findsOneWidget);
+      expect(
+        find.text('Your sign-in provider did not supply a name.'),
+        findsOneWidget,
+      );
+      expect(find.text('U'), findsNothing);
+      expect(find.text('private-subject'), findsNothing);
+      expect(find.text('Sign out'), findsOneWidget);
+    },
+  );
 
   testWidgets('unavailable claimed photo leaves the initials fallback', (
     tester,
@@ -158,6 +200,43 @@ void main() {
     expect(find.text('AL'), findsOneWidget);
     await tester.pumpAndSettle();
     expect(find.text('AL'), findsOneWidget);
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('compact large-text profile keeps name and actions readable', (
+    tester,
+  ) async {
+    await tester.binding.setSurfaceSize(const Size(360, 600));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+    await tester.pumpWidget(
+      MaterialApp(
+        builder: (context, child) => MediaQuery(
+          data: MediaQuery.of(context)
+              .copyWith(textScaler: const TextScaler.linear(2)),
+          child: child!,
+        ),
+        home: Scaffold(
+          body: SingleChildScrollView(
+            child: ProfileSection(
+              signedIn: true,
+              profile: const IdentityProfile(
+                displayName: 'Synthetic Garden Tester',
+              ),
+              configured: true,
+              busy: false,
+              notice:
+                  'Viewing your account garden. Device habits stay separate.',
+              onSignIn: () async {},
+              onSignOut: () async {},
+              onCopyDeviceGarden: () async {},
+              onSwitchGarden: () async {},
+            ),
+          ),
+        ),
+      ),
+    );
+    expect(find.text('Synthetic Garden Tester'), findsOneWidget);
+    await tester.ensureVisible(find.text('View device garden'));
     expect(tester.takeException(), isNull);
   });
 

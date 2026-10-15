@@ -19,6 +19,7 @@ class GardenStore {
   final DateTime Function() _clock;
   String _account;
   String get account => _account;
+  String get storagePath => _db.path;
   int _syncGeneration = 0;
   int get syncGeneration => _syncGeneration;
   int _analyticsGeneration = 0;
@@ -268,6 +269,79 @@ class GardenStore {
   }
 
   Future<void> close() => _db.close();
+
+  Future<int> copyDeviceGardenFrom(
+    GardenStore device, {
+    required bool Function() authorized,
+  }) async {
+    final owner = _account;
+    final generation = _syncGeneration;
+    final deviceGeneration = device.syncGeneration;
+    void requireCopyAuthority() {
+      requireSyncSession(owner, generation);
+      device.requireSyncSession('device-guest', deviceGeneration);
+      if (owner == 'device-guest' || !authorized()) {
+        throw StateError(
+          'Garden copy authorization ended. Nothing was copied; retry from the account garden.',
+        );
+      }
+    }
+
+    requireCopyAuthority();
+    final snapshot = await device._db.transaction((txn) async {
+      final rows = <String, List<Map<String, Object?>>>{};
+      for (final table in ['habits', 'checkins', 'reflections']) {
+        rows[table] = await txn.query(
+          table,
+          where: 'account = ?',
+          whereArgs: ['device-guest'],
+        );
+      }
+      return rows;
+    });
+    String copyId(String table, String id) => _uuid.v5(
+      Namespace.url.value,
+      'bloomstep/device-garden-copy/v1/$owner/$table/$id',
+    );
+    return _db.transaction((txn) async {
+      requireCopyAuthority();
+      var copied = 0;
+      for (final habit in snapshot['habits']!) {
+        final originalId = habit['id'] as String;
+        final id = copyId('habits', originalId);
+        final existing = await txn.query(
+          'habits',
+          columns: ['id'],
+          where: 'id = ?',
+          whereArgs: [id],
+        );
+        final deleted = await txn.query(
+          'deletions',
+          columns: ['id'],
+          where: 'account = ? AND type = ? AND recordId = ?',
+          whereArgs: [owner, 'habits', id],
+        );
+        // Retries do not overwrite account edits or resurrect deleted copies.
+        if (existing.isNotEmpty || deleted.isNotEmpty) continue;
+        await txn.insert('habits', {...habit, 'id': id, 'account': owner});
+        for (final table in ['checkins', 'reflections']) {
+          for (final row in snapshot[table]!.where(
+            (row) => row['habitId'] == originalId,
+          )) {
+            await txn.insert(table, {
+              ...row,
+              'id': copyId(table, row['id'] as String),
+              'account': owner,
+              'habitId': id,
+            });
+          }
+        }
+        copied++;
+      }
+      requireCopyAuthority();
+      return copied;
+    });
+  }
 
   Future<bool> claimFirstHabitInvitation() => _db.transaction((txn) async {
     if (_account != 'device-guest' ||

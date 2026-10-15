@@ -4,6 +4,58 @@
 cloud deployment and native background behavior require integration evidence.
 This ledger is updated with verified outcomes, not inferred from source code.
 
+## 15 October preview-trial continuity correction (source only)
+
+Owner feedback: device habits appeared to vanish after sign-in; the profile did
+not display a name. Source tracing and isolated SQLite/production HabitHome
+fixtures show that preview.14 deliberately selected a separate account file,
+leaving device habits stored; its minimal profile hid identity text and its
+signed-in branch omitted the persistent notice. The owner's actual database
+and actual provider claims were not inspected; data preservation/name availability
+on that installation remain unconfirmed.
+
+The bounded correction follows the owner-directed spec amendment: persistent
+garden messaging, non-destructive garden viewing, explicit cloud-disclosed opt-in
+copy preserving originals/history and isolation, transactional rollback and
+idempotent retries, visible authoritative name or honest missing-name fallback.
+Settings/export/deletion/consent are retained. This is PR/source work, not a
+new release, installed-candidate acceptance or production site promotion.
+Preview.14 and its assets remain immutable.
+
+Existing in-app live-region errors, pending/sync status, confirmation dialogs
+and snackbars can explain next steps without enabling OS notifications. Native
+Windows reminders already exist in `desktop_reminders.dart`, surfaced as
+`Gentle Windows reminders` in Settings: opt-in, app/tray must remain running,
+chosen local time and default quiet hours 21:30–07:30, daily caps, Later/fewer/off
+and ignored-reminder backoff. `windows_toast_history.dart` checks Windows
+notification permission rather than enabling it. Focus/OS policy can suppress
+delivery; initialization/request success is not proof of delivery, and installed
+owner/native delivery remains unverified. No permission, startup choice or
+notification was changed or sent for this correction.
+
+Validation on 15 October: analyzer clean; all 44 targeted copy/profile/session/
+first-habit contracts pass, including cancellation, visible storage failure and
+retry, transaction rollback on lost authority, concurrent/restart idempotency,
+account edits/deletions/isolation, preserved originals/history, Settings and
+200% compact layout/session expiry. Synthetic production-HabitHome frames
+show the authoritative fixture name, persistent garden explanation, actual
+cloud-disclosed copy confirmation and the copied habit; they are not provider
+or installed-customer acceptance. The unchanged release/security/branding
+source contracts pass (28 tests).
+
+The full suite has 280 passes, one existing skip and one **pre-existing failure**:
+`reminder_scheduler_test.dart:588`, "seven actual unanswered requests pause with
+alternate-day backoff", expects two reconnect requests but observes one.
+The same failure was reproduced from pristine main
+`a778a66560b8a7b3ee9449d8e00af876c41461ec` on 15 October using its original
+`lib/`, test, pubspec and assets with existing resolved dependencies:
+`flutter test --no-pub --dart-define=BLOOMSTEP_TEST_BUILD=true test/reminder_scheduler_test.dart --plain-name "seven actual unanswered requests pause with alternate-day backoff"`.
+The fixture advances reminder time through 4–20 October while recipe interaction
+uses the real clock; this is separate from continuity and has not been weakened
+or fixed here. Full CI is not claimed green. Exact-head Windows compilation,
+protected native lifecycle/security/launch, real-provider claims and a separately
+authorized installed-candidate trial/release remain distinct pending gates.
+
 ## Current owner-trial shipping composition
 
 This source composes PR26 only through native one-click commit

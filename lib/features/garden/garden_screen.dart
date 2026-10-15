@@ -55,6 +55,7 @@ class GardenScreen extends StatefulWidget {
     this.autoInviteFirstHabit = false,
     this.firstHabitInvitationReady = true,
     this.onFirstHabitInvited,
+    this.contentRevision = 0,
   });
   final GardenStore store;
   final IdentityService? identity;
@@ -77,6 +78,7 @@ class GardenScreen extends StatefulWidget {
   final bool autoInviteFirstHabit;
   final bool firstHabitInvitationReady;
   final VoidCallback? onFirstHabitInvited;
+  final int contentRevision;
   @override
   State<GardenScreen> createState() => _GardenScreenState();
 }
@@ -162,6 +164,12 @@ class _GardenScreenState extends State<GardenScreen> {
   @override
   void didUpdateWidget(GardenScreen oldWidget) {
     super.didUpdateWidget(oldWidget);
+    if (oldWidget.contentRevision != widget.contentRevision) {
+      unawaited(_load());
+      if (widget.identity != null && !widget.testDisableServices) {
+        unawaited(_sync());
+      }
+    }
     _scheduleFirstHabit();
   }
 
