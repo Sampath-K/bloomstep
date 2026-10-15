@@ -1,0 +1,37 @@
+{
+  "policyVersion": "app_experience_v1",
+  "unit": "consented installation within one account and consent epoch; no cross-device joining",
+  "catalog": [
+    {
+      "id": "invitation_heading_v1",
+      "surface": "invitationHeading",
+      "control": "A little growth, together",
+      "candidate": "Share a small beginning",
+      "hypothesis": "A clear invitation heading supports voluntary useful practice without increasing sharing pressure."
+    },
+    {
+      "id": "garden_prompt_v1",
+      "surface": "gardenPrompt",
+      "control": "A little is enough.",
+      "candidate": "One tiny step is enough.",
+      "hypothesis": "A concrete tiny-step prompt supports voluntary useful practice without increasing burden."
+    }
+  ],
+  "design": {
+    "primaryMetric": "effective voluntary did/didMore saved within 7 days after rendered exposure, observed at followup",
+    "practicalLift": 0.05,
+    "minimumPerArm": 2000,
+    "privacyFloor": 50,
+    "familySize": 2,
+    "alphaPerStudy": 0.025,
+    "power": 0.8,
+    "planning": "Conservative normal approximation at maximum Bernoulli variance 0.25: ceil(2*(2.241403+0.841621)^2*0.25/0.05^2)=1902 per arm; rounded up to 2000. Not a guarantee of power under clustering/missingness.",
+    "enrollmentDays": 28,
+    "followupDays": 7,
+    "lateArrivalDays": 7,
+    "taskHours": 24,
+    "stopping": "One fixed final analysis after enrollment+followup+late arrival; never promote at interim looks. Kill/control on errors at any time.",
+    "guardrails": ["error", "task_completed", "burden", "opt_out", "accessibility"],
+    "prohibited": ["dwell_time", "invite_delivery", "invite_volume", "addictive_retention"]
+  }
+}

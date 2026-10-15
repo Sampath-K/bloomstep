@@ -89,7 +89,7 @@ export const syncSchema = z.object({
   events: z.array(eventSchema).max(1000),
   settings: z.array(settingSchema).max(20).default([]),
   deletions: z.array(z.object({
-    id, type: z.enum(['habits', 'voice']), recordId: id, ts: timestamp,
+    id, type: z.enum(['habits', 'voice', 'experienceEvents']), recordId: id, ts: timestamp,
   }).strict()).max(100).default([]),
 }).strict();
 export const replySchema = z.object({

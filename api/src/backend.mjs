@@ -246,6 +246,8 @@ export function createHandlers({ container, authenticate, authenticateAggregate 
   function recordDeleted(gate, type, record) {
     const ledger = gate.deletedRecords ?? {};
     return !!ledger[`${type}:${record?.id}`] ||
+      type === 'events' && record?.name === 'experience_observation' &&
+        !!ledger[`experienceEvents:${record?.properties?.consentEpoch}`] ||
       !!ledger[`habits:${record?.habitId ?? record?.properties?.habitId}`] ||
       type === 'audit' && !!ledger[`voice:${record?.targetId}`];
   }
@@ -276,7 +278,7 @@ export function createHandlers({ container, authenticate, authenticateAggregate 
     };
     for (let page = 0; page < 100; page++) {
       const { resources } = await container().items.query({
-        query: 'SELECT TOP 100 * FROM c WHERE c.userId = @u AND c.type != "account" AND ((c.type = @targetType AND c.record.id = @target) OR (@targetType = "habits" AND (c.record.habitId = @target OR c.record.properties.habitId = @target)) OR (@targetType = "voice" AND c.type = "audit" AND c.targetId = @target))',
+        query: 'SELECT TOP 100 * FROM c WHERE c.userId = @u AND c.type != "account" AND ((c.type = @targetType AND c.record.id = @target) OR (@targetType = "habits" AND (c.record.habitId = @target OR c.record.properties.habitId = @target)) OR (@targetType = "voice" AND c.type = "audit" AND c.targetId = @target) OR (@targetType = "experienceEvents" AND c.type = "events" AND c.record.name = "experience_observation" AND c.record.properties.consentEpoch = @target))',
         parameters: [{ name: '@u', value: userId }, { name: '@target', value: deletion.recordId }, { name: '@targetType', value: deletion.type }],
       }, { partitionKey: userId }).fetchAll();
       if (!resources.length) { await finished(); return; }
