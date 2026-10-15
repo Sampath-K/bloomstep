@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'package:bloomstep/core/garden_store.dart';
 import 'package:bloomstep/core/models.dart';
 import 'package:bloomstep/services/experience_experiments.dart';
+import 'package:crypto/crypto.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 Future<List<Map<String, dynamic>>> observations(GardenStore store) async =>
@@ -32,6 +33,55 @@ void main() {
     );
   });
   tearDown(() => store.close());
+
+  test(
+    'closed config rejects missing, stale, drifted and unapproved activation',
+    () {
+      Map<String, dynamic> signed({bool enabled = false}) {
+        final values = <String, dynamic>{
+          'schemaVersion': 1,
+          'policyHash': experiencePolicyHash,
+          'version': 1,
+          'surface': 'gardenPrompt',
+          'startAt': start.toIso8601String(),
+          'endAt': start.add(ExperienceDefinition.enrollment).toIso8601String(),
+          'enabled': enabled,
+        };
+        final ordered = Map<String, dynamic>.fromEntries(
+          values.entries.toList()..sort((a, b) => a.key.compareTo(b.key)),
+        );
+        return {
+          ...values,
+          'checksum': sha256
+              .convert(utf8.encode(jsonEncode(ordered)))
+              .toString(),
+        };
+      }
+
+      expect(ExperienceConfig.parse(signed(), now: start).enabled, false);
+      for (final json in [
+        <String, dynamic>{},
+        {...signed(), 'extra': true},
+        {...signed(), 'checksum': 'invalid'},
+        {...signed(), 'version': 2},
+        signed(enabled: true),
+      ]) {
+        expect(
+          () => ExperienceConfig.parse(json, now: start),
+          throwsFormatException,
+        );
+      }
+      for (final at in [
+        start.subtract(const Duration(seconds: 1)),
+        start.add(const Duration(days: 28)),
+      ]) {
+        expect(
+          () => ExperienceConfig.parse(signed(), now: at),
+          throwsFormatException,
+        );
+      }
+    },
+  );
 
   test(
     'off, guest, expired and absent consent are noncollecting control',
@@ -198,6 +248,36 @@ void main() {
       'followup',
       'practice',
     ]);
+  });
+
+  test('late task, late followup and a changed config never attribute to old exposure', () async {
+    await store.setSetting('analytics', 'true');
+    final a = await experiments.resolve(ExperienceSurface.gardenPrompt);
+    await experiments.rendered(a);
+    now = start.add(const Duration(days: 2));
+    expect(
+      await experiments.outcome(a, ExperienceOutcome.taskCompleted),
+      false,
+    );
+    now = start.add(const Duration(days: 15));
+    await experiments.followup();
+    expect(await observations(store), hasLength(1));
+    ExperienceExperiments(
+      store,
+      config: ExperienceConfig.synthetic(
+        ExperienceSurface.gardenPrompt,
+        startAt: start,
+        version: 2,
+      ),
+    );
+    await store.plant(
+      aspiration: 'x',
+      anchor: 'x',
+      behavior: 'x',
+      celebration: 'x',
+      species: 'Fern',
+    );
+    expect(await observations(store), hasLength(1));
   });
 
   test(

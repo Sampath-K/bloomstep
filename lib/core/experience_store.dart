@@ -3,12 +3,17 @@ part of 'garden_store.dart';
 extension GardenExperienceStore on GardenStore {
   static const _stateKey = 'experienceExperimentState';
 
-  void configureExperiences(ExperienceConfig config) {
+  void configureExperiences(
+    ExperienceConfig config,
+    ExperienceAssignmentProvider provider,
+  ) {
     if (_experienceConfig.key == config.key &&
-        _experienceConfig.enabled == config.enabled) {
+        _experienceConfig.enabled == config.enabled &&
+        _experienceProvider?.id == provider.id) {
       return;
     }
     _experienceConfig = config;
+    _experienceProvider = provider;
     experienceChanges.value++;
   }
 
@@ -22,10 +27,29 @@ extension GardenExperienceStore on GardenStore {
     if (json is! Map<String, dynamic> ||
         json['schemaVersion'] != 1 ||
         json['policyHash'] != experiencePolicyHash ||
-        json['cohortId'] is! String ||
-        json['consentEpoch'] is! String ||
+        !RegExp(
+          r'^[a-f0-9]{8}-[a-f0-9]{4}-4[a-f0-9]{3}-[89ab][a-f0-9]{3}-[a-f0-9]{12}$',
+        ).hasMatch('${json['cohortId']}') ||
+        !RegExp(
+          r'^[a-f0-9]{8}-[a-f0-9]{4}-4[a-f0-9]{3}-[89ab][a-f0-9]{3}-[a-f0-9]{12}$',
+        ).hasMatch('${json['consentEpoch']}') ||
         json['configKey'] is! String ||
+        json['provider'] is! String ||
         json['events'] is! List ||
+        !(json['events'] as List).every(
+          (e) => const {
+            'rendered',
+            'task_completed',
+            'followup',
+            'practice',
+            'error',
+            'burden',
+          }.contains(e),
+        ) ||
+        json['configVersion'] is! int ||
+        DateTime.tryParse('${json['lastAt']}') == null ||
+        (json['exposedAt'] != null &&
+            DateTime.tryParse('${json['exposedAt']}') == null) ||
         !ExperienceSurface.values.any((s) => s.name == json['surface'])) {
       throw const FormatException(
         'Saved experiment scope is invalid. No experiment was rendered.',
@@ -54,18 +78,17 @@ extension GardenExperienceStore on GardenStore {
     final surface = ExperienceSurface.values.singleWhere(
       (s) => s.name == state['surface'],
     );
-    final hash = sha256
-        .convert(
-          utf8.encode(
-            '${state['configKey']}:${state['consentEpoch']}:${state['cohortId']}',
-          ),
-        )
-        .toString();
+    if (state['provider'] != _experienceProvider?.id) {
+      return ExperienceAssignment.control(surface);
+    }
+    final arm = _experienceProvider?.evaluate(
+      _experienceConfig,
+      '${state['consentEpoch']}:${state['cohortId']}',
+    );
+    if (arm == null) return ExperienceAssignment.control(surface);
     return ExperienceAssignment(
       surface: surface,
-      arm: int.parse(hash.substring(0, 8), radix: 16) % 10000 < 5000
-          ? ExperienceArm.control
-          : ExperienceArm.candidate,
+      arm: arm,
       active: true,
       cohortId: state['cohortId'] as String,
       consentEpoch: state['consentEpoch'] as String,
@@ -103,6 +126,7 @@ extension GardenExperienceStore on GardenStore {
       state ??= {
         'schemaVersion': 1,
         'policyHash': experiencePolicyHash,
+        'provider': _experienceProvider?.id,
         'cohortId': GardenStore._uuid.v4(),
         'consentEpoch': GardenStore._uuid.v4(),
         'surface': surface.name,
@@ -146,21 +170,21 @@ extension GardenExperienceStore on GardenStore {
       if (assignment.owner != account ||
           assignment.generation != syncGeneration ||
           assignment.consentGeneration != analyticsGeneration ||
+          config.key != _experienceConfig.key ||
+          !_experienceConfig.enabled ||
           await GardenStore._valueWith(txn, account, 'analytics') != 'true') {
         return false;
       }
       final state = await _experienceState(txn, account);
+      final expected = state == null
+          ? null
+          : _assignment(state, account, syncGeneration, analyticsGeneration);
       if (state == null ||
           state['configKey'] != config.key ||
           state['cohortId'] != assignment.cohortId ||
           state['consentEpoch'] != assignment.consentEpoch ||
-          _assignment(
-                state,
-                account,
-                syncGeneration,
-                analyticsGeneration,
-              ).arm !=
-              assignment.arm ||
+          expected?.active != true ||
+          expected?.arm != assignment.arm ||
           at.toUtc().isBefore(DateTime.parse(state['lastAt'] as String))) {
         return false;
       }
@@ -222,12 +246,21 @@ extension GardenExperienceStore on GardenStore {
       }
       final state = await _experienceState(txn, owner);
       if (state == null ||
+          state['configKey'] != _experienceConfig.key ||
+          state['provider'] != _experienceProvider?.id ||
           state['surface'] != ExperienceSurface.gardenPrompt.name ||
           state['exposedAt'] == null) {
         return;
       }
       final at = _clock().toUtc(),
           exposed = DateTime.parse(state['exposedAt'] as String);
+      final assigned = _assignment(
+        state,
+        owner,
+        generation,
+        analyticsGeneration,
+      );
+      if (!assigned.active) return;
       if (at.isBefore(DateTime.parse(state['lastAt'] as String)) ||
           at.difference(exposed) > ExperienceDefinition.taskWindow) {
         return;
@@ -236,7 +269,7 @@ extension GardenExperienceStore on GardenStore {
         txn,
         owner,
         state,
-        _assignment(state, owner, generation, analyticsGeneration).arm,
+        assigned.arm,
         'task_completed',
         at,
       );
@@ -258,6 +291,8 @@ extension GardenExperienceStore on GardenStore {
       }
       final state = await _experienceState(txn, owner);
       if (state == null ||
+          config.key != _experienceConfig.key ||
+          !_experienceConfig.enabled ||
           state['configKey'] != config.key ||
           state['exposedAt'] == null) {
         return;
@@ -282,17 +317,13 @@ extension GardenExperienceStore on GardenStore {
         if (ts.isBefore(exposed) || !ts.isBefore(end)) continue;
         effective['${row['habitId']}:${row['day']}'] = row;
       }
-      final arm = _assignment(
-        state,
-        owner,
-        generation,
-        analyticsGeneration,
-      ).arm;
-      await _experienceEvent(txn, owner, state, arm, 'followup', at);
+      final arm = _assignment(state, owner, generation, analyticsGeneration);
+      if (!arm.active) return;
+      await _experienceEvent(txn, owner, state, arm.arm, 'followup', at);
       if (effective.values.any(
         (r) => r['result'] == 'did' || r['result'] == 'didMore',
       )) {
-        await _experienceEvent(txn, owner, state, arm, 'practice', at);
+        await _experienceEvent(txn, owner, state, arm.arm, 'practice', at);
       }
       await _saveExperience(txn, owner, state);
     });

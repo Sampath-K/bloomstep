@@ -12,6 +12,11 @@ enum ExperienceArm { control, candidate }
 
 enum ExperienceOutcome { taskCompleted, error, burden }
 
+abstract interface class ExperienceAssignmentProvider {
+  String get id;
+  ExperienceArm? evaluate(ExperienceConfig config, String subject);
+}
+
 final _policy = jsonDecode(experiencePolicyJson) as Map<String, dynamic>;
 
 class ExperienceDefinition {

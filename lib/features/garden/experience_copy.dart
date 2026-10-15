@@ -18,7 +18,7 @@ class ExperienceCopy extends StatefulWidget {
     required this.builder,
     this.onAssignment,
   });
-  final ExperienceExperiments experiments;
+  final ExperienceResolver experiments;
   final ExperienceSurface surface;
   final ExperienceCopyBuilder builder;
   final ValueChanged<ExperienceAssignment?>? onAssignment;
@@ -34,7 +34,7 @@ class _ExperienceCopyState extends State<ExperienceCopy> {
   void initState() {
     super.initState();
     _assignment = ExperienceAssignment.control(widget.surface);
-    widget.experiments.store.experienceChanges.addListener(_scopeChanged);
+    widget.experiments.changes.addListener(_scopeChanged);
     _resolve();
   }
 
@@ -43,10 +43,8 @@ class _ExperienceCopyState extends State<ExperienceCopy> {
     super.didUpdateWidget(oldWidget);
     if (oldWidget.experiments != widget.experiments ||
         oldWidget.surface != widget.surface) {
-      oldWidget.experiments.store.experienceChanges.removeListener(
-        _scopeChanged,
-      );
-      widget.experiments.store.experienceChanges.addListener(_scopeChanged);
+      oldWidget.experiments.changes.removeListener(_scopeChanged);
+      widget.experiments.changes.addListener(_scopeChanged);
       _assignment = ExperienceAssignment.control(widget.surface);
       _resolve();
     }
@@ -85,7 +83,12 @@ class _ExperienceCopyState extends State<ExperienceCopy> {
             ModalRoute.of(context)?.isCurrent == false ||
             WidgetsBinding.instance.lifecycleState !=
                 AppLifecycleState.resumed ||
-            !TickerMode.of(context)) {
+            !TickerMode.valuesOf(context).enabled) {
+          if (mounted && generation == _generation) {
+            setState(
+              () => _assignment = ExperienceAssignment.control(widget.surface),
+            );
+          }
           return;
         }
         var hidden = false;
@@ -100,6 +103,9 @@ class _ExperienceCopyState extends State<ExperienceCopy> {
             !(box.localToGlobal(Offset.zero) & box.size).overlaps(
               Offset.zero & MediaQuery.sizeOf(context),
             )) {
+          setState(
+            () => _assignment = ExperienceAssignment.control(widget.surface),
+          );
           return;
         }
         try {
@@ -135,7 +141,7 @@ class _ExperienceCopyState extends State<ExperienceCopy> {
   void dispose() {
     _generation++;
     _expiry?.cancel();
-    widget.experiments.store.experienceChanges.removeListener(_scopeChanged);
+    widget.experiments.changes.removeListener(_scopeChanged);
     super.dispose();
   }
 

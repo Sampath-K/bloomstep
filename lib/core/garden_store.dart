@@ -28,6 +28,7 @@ class GardenStore {
   int get analyticsGeneration => _analyticsGeneration;
   final experienceChanges = ValueNotifier<int>(0);
   ExperienceConfig _experienceConfig = ExperienceConfig.off;
+  ExperienceAssignmentProvider? _experienceProvider;
   static const _uuid = Uuid();
 
   static Future<GardenStore> open(
