@@ -78,6 +78,117 @@ the empty-account automatic builder must not obscure it; manual planting remains
 available. This source contract is not released-build/installed-launch acceptance,
 and does not establish the state of the owner's uninspected local database.
 
+## Human-centered garden design and validation
+
+**Purpose:** Help people practice useful tiny habits voluntarily, eventually with
+less app support. Engagement is useful practice and autonomy, not time in app,
+compulsive checking, streak preservation or guilt. A prettier screen or higher
+expert score is not evidence of improved retention or habit outcomes.
+
+**Principles and guidelines (all existing and new surfaces):**
+
+- Give each view one clear primary decision/action. Use short welcoming labels,
+  consistent navigation and accessible progressive disclosure for secondary
+  explanation. Never hide permissions, recipients, shared fields, irreversible
+  effects, data boundaries or recovery actions behind illustration or disclosure.
+- Use original garden/plant imagery and existing semantic design tokens. Reuse
+  `PlantArt`; decorative growth is not earned practice/progress. Compact prominent
+  image-and-text actions retain readable labels, meaningful tooltips, hit areas
+  and discoverability; do not replace task names with ambiguous icons.
+- Use purposeful finite micro-animation for orientation/action feedback, never
+  ambient motion that competes with a task. Respect both app and OS reduced-motion
+  settings with an equivalent static state. Loading, hover, focus, pressed,
+  disabled, success and failure must remain understandable without animation.
+- Preserve keyboard order, visible focus, Enter/Space activation, Escape/cancel
+  and focus restoration; provide headings, names, roles and live feedback for
+  assistive technology. Check Narrator, light/dark/high contrast, 200% text,
+  small windows, Windows snap/resize and mixed-monitor DPI. Color, motion,
+  hover and decoration are never the sole carrier of meaning. Scroll must keep
+  all content/actions reachable without horizontal clipping.
+- Keep typography, spacing and hierarchy consistent. Never block the UI on
+  network/storage work; show honest pending/error/retry/offline states and
+  distinguish queued/requested/cached from received/delivered/fresh. Destructive
+  actions require explicit informed confirmation; cancellation has no side effect.
+- Use native capabilities only when they improve the current task and are
+  supported by the packaging. Share/composer/file-picker/deep-link actions remain
+  explicit; reminders/tray/startup retain opt-in, quiet hours and exit semantics.
+  Missing integrations are named gaps, not a reason to request new permissions.
+
+### Anchored quality scores and minimum bars
+
+Use the same five dimensions for **every affected surface and state**:
+discoverability/next action (D), hierarchy/cognitive load (H), coherent garden
+imagery/emotional tone (G), accessibility/responsiveness (A), and feedback,
+recovery/trust (T). Each score is an **expert heuristic assessment**, with source
+and rendered evidence, not a numeric usability certification.
+
+| Score | Anchor, applied separately to each dimension |
+|---|---|
+| 1 | Unusable, misleading or critical task blocked. |
+| 2 | Major friction or a material accessibility/trust defect. |
+| 3 | Usable for observed conditions, with notable documented gaps. |
+| 4 | Polished within the declared matrix and meets the defined checks. |
+| 5 | Exceptional refinement supported by independent task/accessibility evidence, not author opinion alone. |
+| NOT OBSERVED | No reliable rendered evidence for this condition; an open gate, not a pass or an averageable zero. |
+
+**Target bar:** each applicable dimension on every changed surface is >=4/5;
+there is no compensating average. A critical accessibility, privacy, data-loss
+or core-task blocker fails regardless of other scores. Preserve any evidenced
+baseline >4; lower scores require an explicit, reviewed tradeoff (never a
+waiver of a safety/privacy blocker). Unknowns remain open acceptance gates.
+Scores must name viewport/text scale, motion, input method and state; do not
+generalize a desktop screenshot to Narrator, DPI or 200% text.
+The current per-surface scores, evidence and gaps are maintained in
+[`visual-quality-review.md`](visual-quality-review.md), not declared achieved
+by this policy. State-specific acceptance is in
+[`invitation-dialog-contract.md`](invitation-dialog-contract.md).
+
+### Mandatory per-change validation / Definition of Done
+
+1. Inventory affected routes, dialogs, transient and empty/loading/error/offline/
+   success states; include native handoffs and cancellation, not just happy paths.
+   Capture measurable interaction/layout contracts and failing regression tests
+   **before** implementation.
+2. Compare actual rendered before/after surfaces where baseline is observable.
+   Record source revision, synthetic versus real data, viewport/text scale,
+   motion/input conditions, exact checks/results and limitations. Never award an
+   unobserved state an inferred grade. Inspect the images, not just file counts.
+3. Exercise keyboard/focus, labels/live regions/targets, 200% text and short/narrow
+   windows; light/dark/high contrast and reduced motion; error/retry, cancellation,
+   destructive consent and privacy boundaries. Run the smallest relevant
+   interaction/accessibility tests plus static analysis, extending coverage for
+   the real risk. Narrator and native DPI/OS behavior need actual native evidence.
+4. Preserve existing measurable performance targets: check-in celebration
+   **<300ms**, desktop cold start **<2s**, vector rendering **<16ms** (see
+   Nonfunctional below). Record hardware/build/method and measured results before
+   claiming attainment. Widget pump durations do not establish device latency,
+   frame budgets, cold start or release-build performance. Missing measurements
+   are explicit gates; do not invent achieved numbers.
+5. Maintain per-dimension/per-surface no-regression scores and evidence links in
+   the review. Explain any lower baseline or unresolved target; separate heuristic
+   assessment, functional tests, synthetic rendered evidence, native observation
+   and real-user/experimental outcomes. Assess telemetry necessity for each
+   change: reuse approved consented events or justify no new events; no ad-hoc
+   identifiers/free text. Experiment policy is owned separately in
+   [`app-experiments.md`](app-experiments.md); proposed/disabled experiments are
+   not measured outcomes.
+   The selected app experiment provider is **GrowthBook**, behind a replaceable
+   vendor-neutral resolver/adapter. UI code depends only on the existing
+   resolve/rendered/outcome contract, never vendor SDK/configuration types.
+   Consent, privacy, expiry, control fallback, actual-visible-render exposure and
+   quality bars are provider-independent invariants. Selection/source wiring is
+   not a configured hosted integration or permission to activate a study.
+6. Review only when changes are persistent, related documentation is updated,
+   required checks pass and remaining gates are explicit. An unobserved native
+   capability or missing real-user result cannot be relabelled "verified" merely
+   by documenting it. No release, flag activation or Store certification follows
+   from a visual PR.
+
+Authoritative platform references (guidance, not certification):
+[Windows accessibility](https://learn.microsoft.com/en-us/windows/apps/design/accessibility/accessibility-overview),
+[responsive design](https://learn.microsoft.com/en-us/windows/apps/design/layout/responsive-design),
+and [motion in practice](https://learn.microsoft.com/en-us/windows/apps/develop/motion/motion-in-practice).
+
 ## First-habit invitation and planting
 
 After authentication restoration and garden loading finish, an empty device or

@@ -10,6 +10,9 @@ import 'rules.dart';
 import 'event_registry.g.dart' as registry;
 import 'measurement_receipt.dart';
 import 'reminder_preference_episode.dart';
+import 'experience_policy.dart';
+
+part 'experience_store.dart';
 
 const _testBuild = bool.fromEnvironment('BLOOMSTEP_TEST_BUILD');
 
@@ -24,6 +27,9 @@ class GardenStore {
   int get syncGeneration => _syncGeneration;
   int _analyticsGeneration = 0;
   int get analyticsGeneration => _analyticsGeneration;
+  final experienceChanges = ValueNotifier<int>(0);
+  ExperienceConfig _experienceConfig = ExperienceConfig.off;
+  ExperienceAssignmentProvider? _experienceProvider;
   static const _uuid = Uuid();
 
   static Future<GardenStore> open(
@@ -203,6 +209,41 @@ class GardenStore {
     for (final deletion in rows) {
       final type = deletion['type'] as String;
       final id = deletion['recordId'] as String;
+      if (type == 'experienceEvents') {
+        final observations = await db.query(
+          'events',
+          where: 'account = ? AND name = ?',
+          whereArgs: [owner, 'experience_observation'],
+        );
+        for (final event in observations) {
+          final properties = jsonDecode(event['properties'] as String) as Map;
+          if (properties['consentEpoch'] == id) {
+            await db.delete(
+              'events',
+              where: 'account = ? AND id = ?',
+              whereArgs: [owner, event['id']],
+            );
+            await db.delete(
+              'sync_state',
+              where: 'account = ? AND tableName = ? AND recordId = ?',
+              whereArgs: [owner, 'events', event['id']],
+            );
+          }
+        }
+        final saved = await GardenStore._valueWith(
+          db,
+          owner,
+          'experienceExperimentState',
+        );
+        if (saved != null && (jsonDecode(saved) as Map)['consentEpoch'] == id) {
+          await db.delete(
+            'settings',
+            where: 'account = ? AND key = ?',
+            whereArgs: [owner, 'experienceExperimentState'],
+          );
+        }
+        continue;
+      }
       if (type == 'habits') {
         for (final table in ['checkins', 'reflections']) {
           await db.rawDelete(
@@ -258,6 +299,7 @@ class GardenStore {
   Future<void> switchAccount(String account) async {
     _syncGeneration++;
     _account = account;
+    experienceChanges.value++;
   }
 
   void requireSyncSession(String account, int generation) {
@@ -268,7 +310,10 @@ class GardenStore {
     }
   }
 
-  Future<void> close() => _db.close();
+  Future<void> close() async {
+    experienceChanges.dispose();
+    await _db.close();
+  }
 
   Future<int> copyDeviceGardenFrom(
     GardenStore device, {
@@ -403,6 +448,7 @@ class GardenStore {
     });
     await recordInteraction();
     await track('recipe_created', properties: properties);
+    await experienceTaskSaved();
     if (celebrationPracticed) {
       await track(
         'celebration_practiced',
@@ -969,6 +1015,26 @@ class GardenStore {
         'updated': _clock().toUtc().toIso8601String(),
       }, conflictAlgorithm: ConflictAlgorithm.replace);
       if (key == 'analytics' && value != 'true') {
+        final scope = await _valueWith(
+          txn,
+          account,
+          'experienceExperimentState',
+        );
+        if (scope != null) {
+          final state = jsonDecode(scope) as Map;
+          await txn.insert('deletions', {
+            'id': _uuid.v4(),
+            'account': account,
+            'type': 'experienceEvents',
+            'recordId': state['consentEpoch'],
+            'ts': _clock().toUtc().toIso8601String(),
+          }, conflictAlgorithm: ConflictAlgorithm.ignore);
+        }
+        await txn.delete(
+          'settings',
+          where: 'account = ? AND key = ?',
+          whereArgs: [account, 'experienceExperimentState'],
+        );
         await _purgeReminderObservation(txn, account);
         await txn.delete('events', where: 'account = ?', whereArgs: [account]);
         await txn.delete(
@@ -987,6 +1053,7 @@ class GardenStore {
         );
       }
     });
+    if (key == 'analytics') experienceChanges.value++;
   }
 
   static Future<String?> _valueWith(
@@ -1258,6 +1325,11 @@ class GardenStore {
     if (name == 'auth_observation') {
       throw StateError(
         'Authentication observations require a guarded account-consent scope.',
+      );
+    }
+    if (name == 'experience_observation') {
+      throw StateError(
+        'Experience observations require a rendered consent-scoped assignment.',
       );
     }
 
@@ -1746,7 +1818,7 @@ class GardenStore {
       }
       for (final raw in removals) {
         if (raw is! Map ||
-            !['habits', 'voice'].contains(raw['type']) ||
+            !['habits', 'voice', 'experienceEvents'].contains(raw['type']) ||
             raw.keys.toSet().difference({
               'id',
               'type',

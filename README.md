@@ -13,6 +13,20 @@ flutter run -d windows
 flutter build windows --release
 ```
 
+Before submitting a UI change, use the canonical
+[design and validation bar](docs/product-spec.md#human-centered-garden-design-and-validation):
+inventory affected surfaces/states; write failing behavior/accessibility contracts;
+inspect synthetic-labelled actual renders at small windows/200% text, light/dark
+and reduced motion; exercise keyboard/focus, errors/recovery and privacy;
+record per-dimension/per-surface baseline/after scores and exact checks with
+evidence. Preserve any higher evidenced baseline. Identify telemetry necessity
+without adding unconsented events, and mark native/Narrator/performance/real-user
+conditions **NOT OBSERVED** until actually checked. Scores are expert heuristics,
+not measured engagement or certification. The current
+[visual review](docs/visual-quality-review.md) records results and open gates.
+Use the [app experiment policy](docs/app-experiments.md) for the selected,
+replaceable GrowthBook adapter; source wiring is not hosted setup or activation.
+
 ## Status
 
 **Engineering preview, not the complete MVP.** The persistent garden and core
