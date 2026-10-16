@@ -107,23 +107,31 @@ The first pushed-head CI at `182924303aa4f3504b66c0886b80e1b47bc59861`
 reported a repository-level branding contract failure: it searched for the
 unchanged invitation subject in `garden_screen.dart` after the invite dialog
 extraction. The assertion now reads `invitation_dialog.dart`; the exact
-nine-file Node CI selection passes **47 tests**. The GitHub run's x64/ARM64
-build jobs were still in progress and its protected launch job queued when
-observed; corrected exact-head CI remains pending a new push.
+nine-file Node CI selection passes **47 tests**.
+
+On combined code/test SHA `6c95718acbfee8dc5a3822692084e04ded805a88`,
+[CI run 38833006325](https://github.com/Sampath-K/bloomstep/actions/runs/38833006325)
+passes API, x64 and ARM64 Windows test/build, funnel acceptance, and universal
+installer compilation. The customer-site run 38833006303, telemetry run
+38833006363, offline-sandbox run 38833006301, and website run 38833006301
+passed. The overall CI workflow remains queued because protected genuine
+launch-after-install, installer lifecycle and universal-native-proof jobs
+remain pending; they are not passes. This establishes hosted compilation only,
+not interactive installation, protected security lifecycle or launch.
 
 The primary **Did it** practice action is reachable after scrolling in both
 the 640x480 short view and 420x820/200% view. At 200%, the profile occupies the
 initial viewport and the practice action is below the fold; that hierarchy gap
 remains scored below target rather than being hidden by the after-scroll render.
 
-**Still open:** exact pushed-head GitHub CI and hosted x64/ARM64 compilation;
-native plugin/build/install/launch acceptance; protected VM security lifecycle;
-Windows Narrator/high contrast/keyboard/mixed-DPI review; real provider claims
-and installed-owner data readback. The continuity score is 4/3/4/3/4, with
-hierarchy and accessibility below the heuristic target. Existing in-app
-pending/error/status feedback can communicate next steps, but no OS permission
-was enabled and no notification was sent. No merge, tag, release, site update
-or owner-trial promotion is part of this integration.
+**Still open:** protected VM security/install/lifecycle/launch acceptance;
+local native plugin setup and owner-installed-candidate validation; Windows
+Narrator/high contrast/keyboard/mixed-DPI review; real provider claims and
+installed-owner data readback. The continuity score is 4/3/4/3/4, with hierarchy
+and accessibility below the heuristic target. Existing in-app pending/error/
+status feedback can communicate next steps, but no OS permission was enabled
+and no notification was sent. No merge, tag, release, site update or
+owner-trial promotion is part of this integration.
 
 ## Current owner-trial shipping composition
 

@@ -157,8 +157,16 @@ repository-level branding contract because it still searched for the invitation
 subject in `garden_screen.dart` after extraction; the contract path is corrected
 without weakening the expected branded text. That run's hosted x64/ARM64 jobs
 were still in progress and its protected VM launch job queued when recorded.
-The corrected exact-source CI is pending the next push. No merge, release, tag,
-site deployment or installed-candidate acceptance is included in this source
+On exact combined code/test SHA `6c95718acbfee8dc5a3822692084e04ded805a88`,
+[CI run 38833006325](https://github.com/Sampath-K/bloomstep/actions/runs/38833006325)
+passes API, x64 and ARM64 Windows test/build, funnel acceptance, and universal
+installer compilation. Customer-site run 38833006303, telemetry run 38833006363,
+and the offline-sandbox/website run 38833006301 pass. The overall CI workflow
+remains queued on protected genuine launch-after-install, installer lifecycle
+and universal-native-proof jobs. Those gates remain pending, not passed. A
+subsequent status/scorecard receipt is documentation-only and does not change
+the app/test source compiled at `6c95718`. No merge, release, tag, site
+deployment or installed-candidate acceptance is included in this source
 integration.
 
 ## Per-surface scorecard
