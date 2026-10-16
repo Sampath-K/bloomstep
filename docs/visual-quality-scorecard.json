@@ -24,8 +24,8 @@
       "id": "device-populated-large", "source": "lib/features/garden/garden_screen.dart + profile_section.dart", "conditions": "420x820, light, 200%, OS/app reduced motion; scrollable device profile",
       "validationResult": "PASS_OBSERVED_SCOPE",
       "baseline": {"status": "OBSERVED", "scores": {"D":3,"H":3,"G":2,"A":3,"T":4}, "evidence":["before-chrome-device-populated-large.png"]},
-      "current": {"status": "OBSERVED", "scores": {"D":3,"H":3,"G":4,"A":3,"T":4}, "evidence":["chrome-device-populated-large.png","combined-device-garden-populated-200.png"]},
-      "checks": ["garden_chrome_visual_test: no layout exceptions; persistent CTA reachable"], "gaps":["Native checks pending; garden remains below target hierarchy score at 200%"], "gate":"OPEN"
+      "current": {"status": "OBSERVED", "scores": {"D":3,"H":3,"G":4,"A":3,"T":4}, "evidence":["chrome-device-populated-large.png","combined-device-garden-populated-200.png","combined-device-garden-practice-200.png"]},
+      "checks": ["garden_chrome_visual_test: no layout exception; persistent CTA and Did it practice action are reachable after scrolling at 200%"], "gaps":["The profile occupies the initial 200% viewport, so Did it is not initially visible; hierarchy remains below target and native checks are pending"], "gate":"OPEN"
     },
     {
       "id": "account-empty-dark-small", "source": "lib/features/garden/garden_screen.dart", "conditions": "640x480, dark, 100%, reduced motion; synthetic account",
@@ -175,11 +175,19 @@
       "checks":["Fourth recipe requires explicit existing decision; canceled without planting"], "gaps":["Native assistive technology unobserved"], "gate":"OPEN"
     },
     {
-      "id":"continuity-profile-auth", "source":"Combined source 785cd5e + test/evidence commit 162572b; lib/app/bloomstep_app.dart + profile_section.dart + garden_screen.dart", "conditions":"1200x950 light synthetic identity and disposable SQLite gardens for sign-in/copy/view; 200% populated device garden; no live provider or owner data",
+      "id":"continuity-profile-auth", "source":"Combined source 785cd5e; capture harness 162572b; compact practice test/evidence f44f73e; branding contract path test 3d2deb1; lib/app/bloomstep_app.dart + profile_section.dart + garden_screen.dart", "conditions":"1200x950 light synthetic identity and disposable SQLite gardens for sign-in/copy/view; 200% populated device garden; no live provider or owner data",
       "validationResult": "PASS_OBSERVED_SCOPE",
       "baseline":{"status":"NOT OBSERVED","scores":null,"evidence":[]},
       "current":{"status":"OBSERVED","scores":{"D":4,"H":3,"G":4,"A":3,"T":4},"evidence":["combined-profile-before-copy-SYNTHETIC.png","combined-device-copy-confirmation-SYNTHETIC.png","combined-profile-view-device-SYNTHETIC.png","combined-profile-after-copy-SYNTHETIC.png"]},
-      "checks":["profile_session_test: 15 passed; synthetic authoritative name, persistent device/account distinction, opt-in copy confirmation, view-device and post-copy states rendered; copy failure/retry/idempotency and preserved local originals asserted"], "gaps":["Real owner database/provider claims were not inspected; external provider/MFA/error pages, keyboard/Narrator/high contrast and native DPI remain unobserved; accessibility score remains below target"], "gate":"OPEN"
+      "checks":["profile_session_test: 15 passed; synthetic authoritative name, persistent device/account distinction, opt-in copy confirmation, view-device and post-copy states rendered; copy failure/retry/idempotency and preserved local originals asserted"], "gaps":["Real owner database/provider claims were not inspected; at 200% the profile takes the initial viewport and practice requires scrolling; external provider/MFA/error pages, keyboard/Narrator/high contrast and native DPI remain unobserved; accessibility score remains below target"], "gate":"OPEN"
+    },
+    {
+      "id":"account-practice-short", "source":"Combined source 785cd5e; lib/features/garden/garden_screen.dart + garden_canopy.dart", "conditions":"640x480 light, populated synthetic account garden, standard text; screenshot after scrolling to practice",
+      "validationResult":"PASS_OBSERVED_SCOPE",
+      "baseline":{"status":"NOT OBSERVED","scores":null,"evidence":[]},
+      "current":{"status":"OBSERVED","scores":{"D":4,"H":3,"G":4,"A":3,"T":4},"evidence":["combined-account-garden-practice-short.png"]},
+      "checks":["garden_chrome_visual_test: Did it is hit-testable after scrolling and the screen has no layout exception"],
+      "gaps":["Practice is scroll-reachable rather than initially visible; hierarchy and native accessibility remain open"],"gate":"OPEN"
     },
     {
       "id":"reminders-native-timepicker", "source":"lib/services/desktop_reminders.dart + garden_screen.dart:_settings/_chooseMinute", "conditions":"Identity/gateway and OS surfaces not invoked by this review",

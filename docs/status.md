@@ -78,7 +78,10 @@ installed-candidate trial/release remain distinct pending gates.
 PR48 continuity is composed with the recovered visual/invitation/GrowthBook
 handoff. The source composition is `785cd5ebd97782baa3e9517e8c36597f2ea0406a`;
 test/render harness and synthetic evidence are committed at
-`162572b194554720eef3740052c5a7a1827d26a2`. The visual branch handoff was
+`162572b194554720eef3740052c5a7a1827d26a2`; compact practice test/evidence is
+`f44f73e38c731a6c697b39b1a1e29b72841a9dce`; the invitation branding source
+assertion now follows the unchanged subject into its extracted dialog in
+`3d2deb1e3902f1e9540cbf2e00d67b8f9cef353c`. The visual branch handoff was
 `b31d5ae66ccda42a97bc4358d11e0f9edd9495a7`. PR48's `contentRevision` reload
 hook, device/account isolation, explicit opt-in copy, persistent garden notice,
 name fallback, Settings, and invite behavior are retained. GrowthBook remains
@@ -91,13 +94,27 @@ fixtures and mock identity/services; the owner's installed database and provider
 were not inspected. Source and tests establish local preservation/copy behavior,
 not owner-data acceptance.
 
-Validation on the combined tree: **111 targeted tests passed**; the complete
-Flutter suite passed **314 tests with one existing skip**; Flutter analyzer
-clean; API suite **217 passed**; API TypeScript and generated registry checks
-passed. Client tests used `--no-test-assets`: Flutter's normal test-asset rebuild
-is blocked by the existing protected `build\\unit_test_assets` reparse point.
+Validation on the combined tree: garden chrome visual tests **6 passed**,
+profile-session tests **15 passed**, and the full Flutter suite passed
+**315 tests with one existing skip**; Flutter analyzer clean. The API suite
+passed **217 tests**; API TypeScript and generated registry checks passed.
+Client tests used `--no-test-assets`: Flutter's normal test-asset rebuild is
+blocked by the existing protected `build\\unit_test_assets` reparse point.
 The detached native validation checkout also reports the Flutter plugin
 symlink/Developer Mode prerequisite. Neither limitation was bypassed.
+
+The first pushed-head CI at `182924303aa4f3504b66c0886b80e1b47bc59861`
+reported a repository-level branding contract failure: it searched for the
+unchanged invitation subject in `garden_screen.dart` after the invite dialog
+extraction. The assertion now reads `invitation_dialog.dart`; the exact
+nine-file Node CI selection passes **47 tests**. The GitHub run's x64/ARM64
+build jobs were still in progress and its protected launch job queued when
+observed; corrected exact-head CI remains pending a new push.
+
+The primary **Did it** practice action is reachable after scrolling in both
+the 640x480 short view and 420x820/200% view. At 200%, the profile occupies the
+initial viewport and the practice action is below the fold; that hierarchy gap
+remains scored below target rather than being hidden by the after-scroll render.
 
 **Still open:** exact pushed-head GitHub CI and hosted x64/ARM64 compilation;
 native plugin/build/install/launch acceptance; protected VM security lifecycle;

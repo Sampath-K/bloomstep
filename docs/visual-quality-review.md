@@ -45,7 +45,13 @@ The combined-source renders `combined-profile-before-copy-SYNTHETIC.png`,
 name and explicit, cancellable device-to-account copy/view states. They do not
 read or mutate the owner's installed garden or database. The combined populated
 garden and invitation frames cover the visual integration, including a 200%
-device-garden and 200% invitation state.
+device-garden and 200% invitation state. The follow-up frames
+`combined-device-garden-practice-200.png` and
+`combined-account-garden-practice-short.png` are captured after scrolling to
+the primary practice action. The test verifies `Did it` is hit-testable at
+420x820/200% and 640x480; at 200% it is **not initially above the fold** because
+the profile consumes the first viewport. That hierarchy concern remains an
+explicit scored follow-up, not a claim of polish or an unreviewed late UI change.
 
 `before-chrome-*.png` show the initial `a778a66` chrome. The three
 `before-surface-*.png` preserve the existing Settings/form content before their
@@ -103,26 +109,26 @@ it can rewrite published page pointers. No tracked site asset/pointer changed.
 
 ## Validation receipt and limits
 
-The combined continuity/visual/reminder/GrowthBook targeted suite passes
-**111 tests**; the profile-session slice passes **15 tests**. The complete
-combined client suite passes **314 tests with one existing skip**; Flutter
-analysis reports no issues. The complete API suite passes **217 tests**, with
-API TypeScript and generated registry checks passing. Client tests used
-`--no-test-assets`; this validates Dart/widget behavior, not an asset-bundle
-rebuild. **116 current PNGs and seven baseline PNGs** are committed here; all
-eight original contact sheets were inspected, alongside full-size
-invitation/chrome/short-window and combined profile/device-copy/garden frames.
-These are actual Flutter renders, not installed-app acceptance. Screenshot
-counts do not establish quality. The suite was also run without screenshot
-capture so image-encoding delays cannot conceal interaction timing failures.
-QR completion waits for its rendered frame; subsequent actions wait for the
-actual enabled control, not a success label that precedes persistence.
+The compact garden visual test passes **6 tests**, including the 640x480 and
+420x820/200% practice-reachability checks; the profile-session slice passes
+**15 tests**. The complete combined client suite passes **315 tests with one
+existing skip**; Flutter analysis reports no issues. The complete API suite
+passes **217 tests**, with API TypeScript and generated registry checks passing.
+Client tests used `--no-test-assets`; this validates Dart/widget behavior, not
+an asset-bundle rebuild. **118 current PNGs and seven baseline PNGs** are
+committed here; all eight original contact sheets were inspected, alongside
+full-size invitation/chrome/short-window and combined profile/device-copy/
+garden frames. These are actual Flutter renders, not installed-app acceptance.
+Screenshot counts do not establish quality. The suite was also run without
+screenshot capture so image-encoding delays cannot conceal interaction timing
+failures. QR completion waits for its rendered frame; subsequent actions wait
+for the actual enabled control, not a success label that precedes persistence.
 
 Both real local SQLite-to-loopback HTTP journeys pass after restoring their
 existing prerequisites. The focused experiment API contracts pass (4 tests)
-and API type checking passes. The attempted broad API suite ended with child
-process `SIGTERM`/timeouts; it is **not claimed green** and must be rerun on a
-stable host for broad API acceptance. No customer/cloud service was contacted.
+and API type checking passes. A prior broad API attempt ended with child
+process `SIGTERM`/timeouts and was not counted; the full API suite was rerun to
+completion at **217 passing tests**. No customer/cloud service was contacted.
 The former date-sensitive reminder failure is addressed only by the imported
 test-clock fix, with no production reminder policy change.
 
@@ -137,13 +143,23 @@ target is met.
 
 ### Exact source and delivery gate
 
-The combined source was locally validated at capture/test-harness commit
-`162572b194554720eef3740052c5a7a1827d26a2`, whose parent composition commit is
-`785cd5ebd97782baa3e9517e8c36597f2ea0406a`. The full client and API suites
-reported above were run on that combined source. It is being delivered through
-the existing PR48 continuity branch; GitHub exact-head CI and hosted x64/ARM64
-compilation are not yet claimed. No merge, release, tag, site deployment or
-installed-candidate acceptance is included in this source integration.
+The combined source was locally validated through compact-practice test/evidence
+commit `f44f73e38c731a6c697b39b1a1e29b72841a9dce`; the invitation branding
+contract now follows the unchanged subject into its extracted dialog in
+`3d2deb1e3902f1e9540cbf2e00d67b8f9cef353c` (the exact nine-file Node CI
+selection passed all 47 tests). Its capture/test-harness
+commit is `162572b194554720eef3740052c5a7a1827d26a2`, and its parent composition
+commit is `785cd5ebd97782baa3e9517e8c36597f2ea0406a`. The full client suite and
+analyzer were rerun through `f44f73e`; the full API suite/type/registry checks
+were completed on the same combined source before this test-only follow-up.
+The PR run on pushed SHA `182924303aa4f3504b66c0886b80e1b47bc59861` failed its
+repository-level branding contract because it still searched for the invitation
+subject in `garden_screen.dart` after extraction; the contract path is corrected
+without weakening the expected branded text. That run's hosted x64/ARM64 jobs
+were still in progress and its protected VM launch job queued when recorded.
+The corrected exact-source CI is pending the next push. No merge, release, tag,
+site deployment or installed-candidate acceptance is included in this source
+integration.
 
 ## Per-surface scorecard
 
@@ -157,7 +173,8 @@ gaps. All current rows remain open against the full Windows quality bar.
 |---|---|---|
 | Device empty garden | 4/3/2/3/4 -> 4/4/4/3/4 | Garden identity and compact action improved; native checks open. |
 | Account populated garden | 4/3/3/3/4 -> 4/4/4/3/4 | Combined shell shown with synthetic profile; not live authentication. |
-| Device populated, 200% | 3/3/2/3/4 -> 3/3/4/3/4 | Combined source has no overflow; hierarchy remains below target and native checks are open. |
+| Device populated, 200% | 3/3/2/3/4 -> 3/3/4/3/4 | `Did it` is hit-testable after scrolling; profile consumes initial viewport, so hierarchy remains below target; native checks open. |
+| Account practice, 640x480 | N/O -> 4/3/4/3/4 | `Did it` is hit-testable after scrolling; no layout exception. |
 | Account empty, short/dark | 3/3/2/3/4 -> 4/4/4/3/4 | Persistent labelled action; native snap/DPI unknown. |
 | Canopy motion/static | N/O -> 4/4/4/3/4 | Finite animation tested, not device frame timing. |
 | Outbound invitation ready | N/O -> 4/4/4/3/4 | Clear primary, honest always-visible privacy. |
