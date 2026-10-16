@@ -93,8 +93,7 @@ light/dark, 200% text, short windows, finite/static motion, exact QR/platform
 arguments and consent withdrawal. **108 current PNGs and seven baseline PNGs**
 are committed here; all eight contact sheets were inspected, alongside
 full-size invitation/chrome/short-window examples. These are actual Flutter
-renders, not installed-app acceptance. Test logs and the exact clean source head
-are bound in the PR receipt; screenshot counts do not establish quality.
+renders, not installed-app acceptance. Screenshot counts do not establish quality.
 The complete composed client suite passes **304 tests with one existing skip**;
 Flutter analysis reports no issues. The suite was also run without screenshot
 capture so image-encoding delays cannot conceal interaction timing failures.
@@ -113,6 +112,23 @@ Native Windows compilation/installed observation is blocked by the host's
 plugin symlink/Developer Mode prerequisite. Narrator, high contrast, Windows
 snap/mixed DPI and device-measured performance are not observed. This bounded PR
 is reviewable source/evidence, not a declaration that every >=4 target is met.
+
+### Exact source and delivery gate
+
+Code, tests, scorecard and images are committed and pushed at
+`a97b28ab0b7fd961d7163cd206d243096ef20435` on
+`sampath-k-visual-invitation-dialog`. The full 304-pass/one-existing-skip client
+suite was rerun on that exact head with `sourceDirty=false` before and after.
+Its log SHA-256 is
+`75e7371d4538e734ac019c708fbcf78774c5eee2df427ad3a2f367a6def7b89d`.
+The final handoff commit adds only this documentation receipt, not app/test
+changes. This source identity is distinct from the uncomposed PR48 UI.
+
+**PR creation is blocked:** two app-native creation requests were cancelled
+before a response arrived. A GitHub branch query confirmed no PR persisted.
+The branch is available for review, but a reviewable PR remains an explicit
+delivery gate: retry creation from the app or create it manually from the pushed
+branch. No PR, merge, release or publication is claimed.
 
 ## Per-surface scorecard
 
