@@ -3,6 +3,21 @@
   "kind": "expert-heuristic-not-outcome-evidence",
   "targetPerDimension": 4,
   "dimensions": ["D", "H", "G", "A", "T"],
+  "accessibilityReleaseBlocker": {
+    "blocksRelease": true,
+    "mayBeDeferredAsFollowUp": false,
+    "primaryActionMustBeVisibleAndReachableInitially": [
+      "200_percent_text",
+      "short_window",
+      "high_dpi"
+    ],
+    "primaryActionMustPrecedeSecondaryDetailsIn": [
+      "keyboard_focus_order",
+      "assistive_technology_semantics"
+    ],
+    "minimumApplicableDimensionScore": 4,
+    "notObservedIsPass": false
+  },
   "sourceBase": "a778a66",
   "surfaces": [
     {

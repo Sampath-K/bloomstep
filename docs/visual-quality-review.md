@@ -6,6 +6,31 @@ GrowthBook result or Store certification. Target: **>=4 in every applicable
 dimension**, no compensating mean, no critical accessibility/privacy/task defect.
 The current matrix still has open gates; documenting the bar does not meet it.
 
+## Owner review before visual or copy implementation
+
+Visual changes require owner review of rendered mockups for the affected states,
+viewport sizes, text scales and input conditions before implementation. Copy that
+changes a dialog or screen must also be presented in a before/after editorial
+table and rendered in context. Do not treat a synthetic render as installed-app
+acceptance; approval of a proposal authorizes implementation, not release.
+
+The project-wide copy rules are in [`copy-guide.md`](copy-guide.md). They apply to
+all user-facing strings, not only the samples in the current proposal packet.
+The proposed copy and synthetic approval renders are intentionally separate
+from production source until the owner approves them.
+
+## Accessibility hierarchy is release-blocking
+
+Do not release or defer an accessibility or hierarchy defect of this grade as
+a follow-up. At 200% text, in short windows and at high DPI, the primary action
+must be visible and reachable in the initial viewport. Keyboard focus order and
+assistive-technology semantics must expose the primary action before secondary
+profile details. Every applicable score dimension must be at least 4; any lower
+score blocks release. `NOT_OBSERVED` is an open gate, never a pass. The
+scorecard contract test enforces the recorded release policy and prevents an
+unobserved or below-target surface from being marked closed; surface-specific
+widget tests must verify the action and input semantics where automatable.
+
 ## Source and evidence
 
 The visual source began at `a778a66` (preview14 pointers remain unchanged). Its

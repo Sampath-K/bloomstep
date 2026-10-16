@@ -14,6 +14,20 @@ void main() {
       ) as Map<String, dynamic>;
       expect(card['kind'], 'expert-heuristic-not-outcome-evidence');
       expect(card['targetPerDimension'], 4);
+      final accessibilityPolicy =
+          card['accessibilityReleaseBlocker'] as Map<String, dynamic>;
+      expect(accessibilityPolicy['blocksRelease'], isTrue);
+      expect(accessibilityPolicy['mayBeDeferredAsFollowUp'], isFalse);
+      expect(
+        accessibilityPolicy['primaryActionMustBeVisibleAndReachableInitially'],
+        ['200_percent_text', 'short_window', 'high_dpi'],
+      );
+      expect(
+        accessibilityPolicy['primaryActionMustPrecedeSecondaryDetailsIn'],
+        ['keyboard_focus_order', 'assistive_technology_semantics'],
+      );
+      expect(accessibilityPolicy['minimumApplicableDimensionScore'], 4);
+      expect(accessibilityPolicy['notObservedIsPass'], isFalse);
       final ids = <String>{};
       for (final surface in card['surfaces'] as List) {
         expect(ids.add(surface['id'] as String), isTrue);
@@ -27,6 +41,13 @@ void main() {
               : 'NOT_OBSERVED',
           reason: '${surface['id']}: exact scoped validation result required',
         );
+        if (surface['current']['status'] == 'NOT OBSERVED') {
+          expect(
+            surface['gate'],
+            'OPEN',
+            reason: '${surface['id']}: NOT_OBSERVED cannot pass release',
+          );
+        }
         for (final state in ['baseline', 'current']) {
           final assessment = surface[state] as Map;
           final scores = assessment['scores'];

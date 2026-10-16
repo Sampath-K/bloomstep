@@ -114,6 +114,24 @@ expert score is not evidence of improved retention or habit outcomes.
   explicit; reminders/tray/startup retain opt-in, quiet hours and exit semantics.
   Missing integrations are named gaps, not a reason to request new permissions.
 
+### Visual-change approval before implementation
+
+Before changing a screen's visual layout, hierarchy, or interaction presentation,
+prepare rendered mockups/prototypes for the affected states and relevant viewport,
+text-scale, and input conditions. Label synthetic content and unobserved behavior.
+Show the renders to the owner and wait for explicit approval before implementing
+the visual change; do not treat a written description or heuristic score as visual
+approval. This process requirement does not replace accessibility tests or
+acceptance gates.
+
+### Editorial copy approval before implementation
+
+Every new or changed user-facing string must pass the editorial gate in
+[`copy-guide.md`](copy-guide.md) before it is implemented or merged. Prepare
+before/after copy proposals and rendered dialog or screen mockups where copy
+changes layout; get owner approval before changing the application strings.
+Automated checks supplement, but do not replace, editorial review.
+
 ### Anchored quality scores and minimum bars
 
 Use the same five dimensions for **every affected surface and state**:
@@ -138,6 +156,15 @@ baseline >4; lower scores require an explicit, reviewed tradeoff (never a
 waiver of a safety/privacy blocker). Unknowns remain open acceptance gates.
 Scores must name viewport/text scale, motion, input method and state; do not
 generalize a desktop screenshot to Narrator, DPI or 200% text.
+
+**Accessibility hierarchy defects block release and are never deferred as
+follow-ups.** The primary action must be visible and reachable in the initial
+viewport at 200% text, in short windows and at high DPI. Keyboard focus order
+and assistive-technology semantics must not bury that action behind profile or
+secondary details. Any applicable dimension below 4/5 blocks release, and
+`NOT OBSERVED` remains an open gate rather than evidence of a pass. Automate
+these checks where the surface supports reliable widget or scorecard validation;
+automated checks do not replace native accessibility validation.
 The current per-surface scores, evidence and gaps are maintained in
 [`visual-quality-review.md`](visual-quality-review.md), not declared achieved
 by this policy. State-specific acceptance is in
