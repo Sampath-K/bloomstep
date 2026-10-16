@@ -16,15 +16,16 @@
       "id": "account-populated", "source": "lib/features/garden/garden_screen.dart + profile_section.dart", "conditions": "1100x900, light, 100%, synthetic account presentation; no live authentication",
       "validationResult": "PASS_OBSERVED_SCOPE",
       "baseline": {"status": "OBSERVED", "scores": {"D":4,"H":3,"G":3,"A":3,"T":4}, "evidence":["before-chrome-account-populated.png"]},
-      "current": {"status": "OBSERVED", "scores": {"D":4,"H":4,"G":4,"A":3,"T":4}, "evidence":["chrome-account-populated.png"]},
-      "checks": ["garden_chrome_visual_test: compact labelled CTA and Settings retained; Did it hit-testable in initial desktop viewport", "widget_test: actual plant/check-in/undo journey passes after populated-canopy compaction"], "gaps":["PR48 continuity notice/copy/name integration not in this base; real account and native accessibility unobserved"], "gate":"OPEN"
+      "current": {"status": "OBSERVED", "scores": {"D":4,"H":4,"G":4,"A":3,"T":4}, "evidence":["chrome-account-populated.png","combined-account-garden-populated.png"]},
+      "checks": ["garden_chrome_visual_test: compact labelled CTA and Settings retained; Did it hit-testable in initial desktop viewport", "widget_test: actual plant/check-in/undo journey passes after populated-canopy compaction"],
+      "gaps":["Real account and native accessibility unobserved; synthetic profile/copy states are assessed separately"], "gate":"OPEN"
     },
     {
       "id": "device-populated-large", "source": "lib/features/garden/garden_screen.dart + profile_section.dart", "conditions": "420x820, light, 200%, OS/app reduced motion; scrollable device profile",
       "validationResult": "PASS_OBSERVED_SCOPE",
       "baseline": {"status": "OBSERVED", "scores": {"D":3,"H":3,"G":2,"A":3,"T":4}, "evidence":["before-chrome-device-populated-large.png"]},
-      "current": {"status": "OBSERVED", "scores": {"D":3,"H":3,"G":4,"A":3,"T":4}, "evidence":["chrome-device-populated-large.png"]},
-      "checks": ["garden_chrome_visual_test: no layout exceptions; persistent CTA reachable"], "gaps":["Profile occupies first viewport at 200%; preserve continuity owner's layout and review after PR48 integration; native checks pending"], "gate":"OPEN"
+      "current": {"status": "OBSERVED", "scores": {"D":3,"H":3,"G":4,"A":3,"T":4}, "evidence":["chrome-device-populated-large.png","combined-device-garden-populated-200.png"]},
+      "checks": ["garden_chrome_visual_test: no layout exceptions; persistent CTA reachable"], "gaps":["Native checks pending; garden remains below target hierarchy score at 200%"], "gate":"OPEN"
     },
     {
       "id": "account-empty-dark-small", "source": "lib/features/garden/garden_screen.dart", "conditions": "640x480, dark, 100%, reduced motion; synthetic account",
@@ -174,11 +175,11 @@
       "checks":["Fourth recipe requires explicit existing decision; canceled without planting"], "gaps":["Native assistive technology unobserved"], "gate":"OPEN"
     },
     {
-      "id":"continuity-profile-auth", "source":"PR48 head0a094e92; lib/app/bloomstep_app.dart + profile_section.dart", "conditions":"Newer separate continuity branch, not composed into this base; external provider pages",
-      "validationResult": "NOT_OBSERVED",
+      "id":"continuity-profile-auth", "source":"Combined source 785cd5e + test/evidence commit 162572b; lib/app/bloomstep_app.dart + profile_section.dart + garden_screen.dart", "conditions":"1200x950 light synthetic identity and disposable SQLite gardens for sign-in/copy/view; 200% populated device garden; no live provider or owner data",
+      "validationResult": "PASS_OBSERVED_SCOPE",
       "baseline":{"status":"NOT OBSERVED","scores":null,"evidence":[]},
-      "current":{"status":"NOT OBSERVED","scores":null,"evidence":[]},
-      "checks":["Source ownership/integration boundary recorded; baseline device/account profile shown in chrome captures"], "gaps":["Persistent device-copy/view/name states and browser provider/MFA/errors require exact composed-source renders"], "gate":"OPEN"
+      "current":{"status":"OBSERVED","scores":{"D":4,"H":3,"G":4,"A":3,"T":4},"evidence":["combined-profile-before-copy-SYNTHETIC.png","combined-device-copy-confirmation-SYNTHETIC.png","combined-profile-view-device-SYNTHETIC.png","combined-profile-after-copy-SYNTHETIC.png"]},
+      "checks":["profile_session_test: 15 passed; synthetic authoritative name, persistent device/account distinction, opt-in copy confirmation, view-device and post-copy states rendered; copy failure/retry/idempotency and preserved local originals asserted"], "gaps":["Real owner database/provider claims were not inspected; external provider/MFA/error pages, keyboard/Narrator/high contrast and native DPI remain unobserved; accessibility score remains below target"], "gate":"OPEN"
     },
     {
       "id":"reminders-native-timepicker", "source":"lib/services/desktop_reminders.dart + garden_screen.dart:_settings/_chooseMinute", "conditions":"Identity/gateway and OS surfaces not invoked by this review",

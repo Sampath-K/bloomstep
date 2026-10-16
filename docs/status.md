@@ -73,6 +73,41 @@ Exact-head Windows compilation, protected native
 lifecycle/security/launch, real-provider claims and a separately authorized
 installed-candidate trial/release remain distinct pending gates.
 
+## Combined continuity and visual candidate (source only)
+
+PR48 continuity is composed with the recovered visual/invitation/GrowthBook
+handoff. The source composition is `785cd5ebd97782baa3e9517e8c36597f2ea0406a`;
+test/render harness and synthetic evidence are committed at
+`162572b194554720eef3740052c5a7a1827d26a2`. The visual branch handoff was
+`b31d5ae66ccda42a97bc4358d11e0f9edd9495a7`. PR48's `contentRevision` reload
+hook, device/account isolation, explicit opt-in copy, persistent garden notice,
+name fallback, Settings, and invite behavior are retained. GrowthBook remains
+default off; there is no hosted study or outcome claim.
+
+Synthetic renders now show the provider-supplied fixture name, explicit
+device-to-account copy confirmation, view-device state, copied profile, populated
+garden, and invite at desktop and large-text sizes. These use disposable SQLite
+fixtures and mock identity/services; the owner's installed database and provider
+were not inspected. Source and tests establish local preservation/copy behavior,
+not owner-data acceptance.
+
+Validation on the combined tree: **111 targeted tests passed**; the complete
+Flutter suite passed **314 tests with one existing skip**; Flutter analyzer
+clean; API suite **217 passed**; API TypeScript and generated registry checks
+passed. Client tests used `--no-test-assets`: Flutter's normal test-asset rebuild
+is blocked by the existing protected `build\\unit_test_assets` reparse point.
+The detached native validation checkout also reports the Flutter plugin
+symlink/Developer Mode prerequisite. Neither limitation was bypassed.
+
+**Still open:** exact pushed-head GitHub CI and hosted x64/ARM64 compilation;
+native plugin/build/install/launch acceptance; protected VM security lifecycle;
+Windows Narrator/high contrast/keyboard/mixed-DPI review; real provider claims
+and installed-owner data readback. The continuity score is 4/3/4/3/4, with
+hierarchy and accessibility below the heuristic target. Existing in-app
+pending/error/status feedback can communicate next steps, but no OS permission
+was enabled and no notification was sent. No merge, tag, release, site update
+or owner-trial promotion is part of this integration.
+
 ## Current owner-trial shipping composition
 
 This source composes PR26 only through native one-click commit

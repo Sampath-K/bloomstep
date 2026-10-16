@@ -8,14 +8,17 @@ The current matrix still has open gates; documenting the bar does not meet it.
 
 ## Source and evidence
 
-Base: `a778a66` (preview14 pointers remain unchanged). The separate experiment
-foundation was imported from `c1cf69b` as `dcb6898`, followed by official SDK
-replacement `de90e7b` as `51915de`. The selected provider is GrowthBook through a
-replaceable resolver, default off. Only the narrow test-clock portion of PR48
-`d8909a4` was composed as `bd368c9`; its continuity UI/status claims were not
-imported. The visual source uses
-only resolve/rendered/outcome hooks, not SDK types. Hosted setup, approved study
-configuration and real outcomes are not demonstrated.
+The visual source began at `a778a66` (preview14 pointers remain unchanged). Its
+separate experiment foundation was imported from `c1cf69b` as `dcb6898`,
+followed by official SDK replacement `de90e7b` as `51915de`. The selected
+provider is GrowthBook through a replaceable resolver, default off. The
+continuity branch's deterministic test-clock fix `d8909a4` is already present
+once in the combined tree; the recovered visual branch's `bd368c9` carries the
+same fixture change in its history, not a second implementation. The complete
+visual source handoff `b31d5ae` was composed with PR48 continuity in merge
+`785cd5e`; the capture/test-harness follow-up is `162572b`. The visual source
+uses only resolve/rendered/outcome hooks, not SDK types. Hosted setup, approved
+study configuration and real outcomes are not demonstrated.
 
 The canonical rubric and mandatory per-change checklist are in
 [product-spec.md](product-spec.md#human-centered-garden-design-and-validation).
@@ -34,6 +37,15 @@ data, disposable SQLite gardens and mock HTTPS/platform bridges. They are not
 Figma/mockups or installed-app screenshots. Account presentation is synthetic,
 not a real signed-in customer. No email, invite, OS Share panel, permission,
 destructive action, publication or release was performed.
+
+The combined-source renders `combined-profile-before-copy-SYNTHETIC.png`,
+`combined-device-copy-confirmation-SYNTHETIC.png`,
+`combined-profile-view-device-SYNTHETIC.png`, and
+`combined-profile-after-copy-SYNTHETIC.png` show the synthetic authoritative
+name and explicit, cancellable device-to-account copy/view states. They do not
+read or mutate the owner's installed garden or database. The combined populated
+garden and invitation frames cover the visual integration, including a 200%
+device-garden and 200% invitation state.
 
 `before-chrome-*.png` show the initial `a778a66` chrome. The three
 `before-surface-*.png` preserve the existing Settings/form content before their
@@ -72,15 +84,18 @@ Reproduce synthetic renders without contacting a real server:
 
 ```powershell
 $env:BLOOMSTEP_SCREENSHOTS = '<new-private-output-directory>'
-flutter test --no-pub --dart-define=BLOOMSTEP_TEST_BUILD=true test\garden_chrome_visual_test.dart test\invitation_widget_test.dart test\invitation_visual_test.dart test\recipe_builder_visual_test.dart test\surface_review_visual_test.dart
-flutter test --no-pub test\visual_quality_contract_test.dart
+flutter test --no-pub --no-test-assets --dart-define=BLOOMSTEP_TEST_BUILD=true test\profile_session_test.dart test\garden_chrome_visual_test.dart test\invitation_widget_test.dart test\invitation_visual_test.dart test\recipe_builder_visual_test.dart test\surface_review_visual_test.dart
+flutter test --no-pub --no-test-assets test\visual_quality_contract_test.dart
 flutter analyze --no-pub
 ```
 
 The test-build define enables only existing test adapters in the test process,
 not a shipping feature flag. `--no-pub` uses resolved dependencies: this host's
 normal Flutter plugin setup reports a symlink/Developer Mode prerequisite.
-No Windows setting was changed to bypass it.
+Flutter's default test-asset rebuild is also blocked by the existing protected
+`build\unit_test_assets` reparse point; `--no-test-assets` is the supported test
+mode used here and does not establish asset-bundle or native-plugin compilation.
+No Windows setting was changed to bypass either host limitation.
 For the existing loopback HTTP tests, restore the API's declared dependencies
 and bundle only `site/customer.mjs` into ignored `site/assets/customer.js` using
 the existing esbuild dependency. The full site build was deliberately not run:
@@ -88,14 +103,17 @@ it can rewrite published page pointers. No tracked site asset/pointer changed.
 
 ## Validation receipt and limits
 
-Final synthetic matrix: **20 passing interaction/render tests**, including
-light/dark, 200% text, short windows, finite/static motion, exact QR/platform
-arguments and consent withdrawal. **108 current PNGs and seven baseline PNGs**
-are committed here; all eight contact sheets were inspected, alongside
-full-size invitation/chrome/short-window examples. These are actual Flutter
-renders, not installed-app acceptance. Screenshot counts do not establish quality.
-The complete composed client suite passes **304 tests with one existing skip**;
-Flutter analysis reports no issues. The suite was also run without screenshot
+The combined continuity/visual/reminder/GrowthBook targeted suite passes
+**111 tests**; the profile-session slice passes **15 tests**. The complete
+combined client suite passes **314 tests with one existing skip**; Flutter
+analysis reports no issues. The complete API suite passes **217 tests**, with
+API TypeScript and generated registry checks passing. Client tests used
+`--no-test-assets`; this validates Dart/widget behavior, not an asset-bundle
+rebuild. **116 current PNGs and seven baseline PNGs** are committed here; all
+eight original contact sheets were inspected, alongside full-size
+invitation/chrome/short-window and combined profile/device-copy/garden frames.
+These are actual Flutter renders, not installed-app acceptance. Screenshot
+counts do not establish quality. The suite was also run without screenshot
 capture so image-encoding delays cannot conceal interaction timing failures.
 QR completion waits for its rendered frame; subsequent actions wait for the
 actual enabled control, not a success label that precedes persistence.
@@ -109,26 +127,23 @@ The former date-sensitive reminder failure is addressed only by the imported
 test-clock fix, with no production reminder policy change.
 
 Native Windows compilation/installed observation is blocked by the host's
-plugin symlink/Developer Mode prerequisite. Narrator, high contrast, Windows
-snap/mixed DPI and device-measured performance are not observed. This bounded PR
-is reviewable source/evidence, not a declaration that every >=4 target is met.
+plugin symlink/Developer Mode prerequisite. Hosted compilation on the eventual
+exact combined SHA is still pending. Narrator, high contrast, Windows
+snap/mixed DPI and device-measured performance are not observed. Continuity
+profile/copy states are now observed only in synthetic widgets; real owner data,
+provider claims and installed-candidate acceptance remain unconfirmed. This
+bounded PR is reviewable source/evidence, not a declaration that every >=4
+target is met.
 
 ### Exact source and delivery gate
 
-Code, tests, scorecard and images are committed and pushed at
-`a97b28ab0b7fd961d7163cd206d243096ef20435` on
-`sampath-k-visual-invitation-dialog`. The full 304-pass/one-existing-skip client
-suite was rerun on that exact head with `sourceDirty=false` before and after.
-Its log SHA-256 is
-`75e7371d4538e734ac019c708fbcf78774c5eee2df427ad3a2f367a6def7b89d`.
-The final handoff commit adds only this documentation receipt, not app/test
-changes. This source identity is distinct from the uncomposed PR48 UI.
-
-**PR creation is blocked:** two app-native creation requests were cancelled
-before a response arrived. A GitHub branch query confirmed no PR persisted.
-The branch is available for review, but a reviewable PR remains an explicit
-delivery gate: retry creation from the app or create it manually from the pushed
-branch. No PR, merge, release or publication is claimed.
+The combined source was locally validated at capture/test-harness commit
+`162572b194554720eef3740052c5a7a1827d26a2`, whose parent composition commit is
+`785cd5ebd97782baa3e9517e8c36597f2ea0406a`. The full client and API suites
+reported above were run on that combined source. It is being delivered through
+the existing PR48 continuity branch; GitHub exact-head CI and hosted x64/ARM64
+compilation are not yet claimed. No merge, release, tag, site deployment or
+installed-candidate acceptance is included in this source integration.
 
 ## Per-surface scorecard
 
@@ -141,8 +156,8 @@ gaps. All current rows remain open against the full Windows quality bar.
 | Existing surface/state | Before -> current | Key assessment / remaining gate |
 |---|---|---|
 | Device empty garden | 4/3/2/3/4 -> 4/4/4/3/4 | Garden identity and compact action improved; native checks open. |
-| Account populated garden | 4/3/3/3/4 -> 4/4/4/3/4 | Coherent shell; not a live account/PR48 composition. |
-| Device populated, 200% | 3/3/2/3/4 -> 3/3/4/3/4 | No overflow; long profile precedes scenery and needs composed review. |
+| Account populated garden | 4/3/3/3/4 -> 4/4/4/3/4 | Combined shell shown with synthetic profile; not live authentication. |
+| Device populated, 200% | 3/3/2/3/4 -> 3/3/4/3/4 | Combined source has no overflow; hierarchy remains below target and native checks are open. |
 | Account empty, short/dark | 3/3/2/3/4 -> 4/4/4/3/4 | Persistent labelled action; native snap/DPI unknown. |
 | Canopy motion/static | N/O -> 4/4/4/3/4 | Finite animation tested, not device frame timing. |
 | Outbound invitation ready | N/O -> 4/4/4/3/4 | Clear primary, honest always-visible privacy. |
@@ -164,7 +179,7 @@ gaps. All current rows remain open against the full Windows quality bar.
 | Empty My feedback | N/O -> 3/4/3/3/4 | Honest empty state; no direct compose action here. |
 | Published releases empty | N/O -> 4/4/3/3/4 | Mock empty result; actual download/browser states unobserved. |
 | Fourth-habit Start small | N/O -> 4/4/3/3/4 | Explicit autonomy, no limit silently imposed. |
-| PR48 continuity/profile/new name/view/copy | N/O -> N/O | Separate branch `0a094e92`; exact combined source not rendered. |
+| PR48 continuity/profile/new name/view/copy | N/O -> 4/3/4/3/4 | Combined synthetic profile/device-copy states rendered; owner data/provider and native access remain unobserved. |
 | Native reminders/tray/startup/time pickers | N/O -> N/O | Source-inventoried, no OS permission/actions performed. |
 | Native email/Share/file pickers/activation | N/O -> N/O | Mock adapter contracts cannot grade OS UI. |
 | Optional measurement/sandbox settings | N/O -> N/O | Off rows visible; enrollment/receipt/config states not rendered. |
