@@ -126,9 +126,10 @@ footer { font-size: 0.85rem; color: var(--cp-text-muted); }
     <p class="muted">A dependency map, not a date-based Gantt or a claim of live agent progress.</p>
   </header>
   <section class="panel notice" aria-label="Source collection instructions">
-    <strong>Collect sources explicitly. Inspect without prompting an agent.</strong>
-    <p><code>node tool\project-status\status.mjs collect</code></p>
-    <p class="muted">This command reads GitHub through your existing local gh login. The browser only rereads the saved snapshot; it never authenticates to GitHub or starts collection.</p>
+    <strong>Inspect without prompting an agent. Choose manual collection or local source polling.</strong>
+    <p><code>node tool\project-status\status.mjs serve --poll-seconds 60</code></p>
+    <p class="muted">The optional local process polls GitHub through your existing gh login with backoff on errors. Manual alternative: <code>node tool\project-status\status.mjs collect</code>. Browser rereads never start collection or authenticate to GitHub. Agent sessions remain unavailable.</p>
+    <p id="polling" class="muted">Source polling status not yet observed.</p>
   </section>
   <div class="toolbar">
     <button id="reload" type="button">Reload saved snapshot</button>
@@ -141,11 +142,11 @@ footer { font-size: 0.85rem; color: var(--cp-text-muted); }
   <section class="stats" aria-label="Evidence summary">
     <div class="panel"><span class="muted">Collection</span><strong id="collection">Unknown</strong><small id="collected">No observation yet</small></div>
     <div class="panel"><span class="muted">Agent sessions</span><strong>Unavailable</strong><small>No supported session API connected; busy time is not completion.</small></div>
-    <div class="panel"><span class="muted">Launch</span><strong id="launch">Unknown</strong><small>Merge, release and verification are independent evidence states.</small></div>
+    <div class="panel"><span class="muted">Owner-trial candidate decision</span><strong id="launch">Unknown</strong><small>Not public-MVP readiness. Hosted experiments may remain default OFF.</small></div>
   </section>
   <section class="panel" aria-labelledby="path-title">
     <h2 id="path-title">Active gating path</h2>
-    <p class="muted">Longest unresolved dependency chain to the launch decision, by dependency depth only. No invented dates, durations, percentages or velocity. Ties are shown together.</p>
+    <p class="muted">Longest unresolved dependency chain to the owner-trial candidate decision, by dependency depth only. Optional hosted activation is separate. No invented dates, durations, percentages or velocity. Ties are shown together.</p>
     <div id="paths">Unknown until a snapshot is available.</div>
   </section>
   <section aria-labelledby="workstreams" id="board">
@@ -170,6 +171,7 @@ footer { font-size: 0.85rem; color: var(--cp-text-muted); }
   let snapshot = null;
   let loadError = '';
   let loading = false;
+  let polling = null;
   let lastViewKey = '';
   const el = (tag, text, className) => {
     const node = document.createElement(tag);
@@ -178,10 +180,12 @@ footer { font-size: 0.85rem; color: var(--cp-text-muted); }
     return node;
   };
   const time = value => Number.isFinite(Date.parse(value)) ? new Date(value).toLocaleString() : 'never observed';
+  const pollingFailed = () => polling?.mode === 'polling' && polling.status === 'failed' &&
+    Date.parse(polling.lastAttemptAt) > Date.parse(snapshot?.collectedAt);
   function ageState(row) {
     const age = Date.now() - Date.parse(row.observedAt);
     if (!Number.isFinite(age) || age < 0) return 'unknown';
-    return age <= snapshot.config.maxAgeSeconds * 1000 && !loadError ? 'fresh' : 'stale';
+    return age <= snapshot.config.maxAgeSeconds * 1000 && !loadError && !pollingFailed() ? 'fresh' : 'stale';
   }
   function badge(state) {
     const node = el('span', state, 'badge');
@@ -260,12 +264,13 @@ footer { font-size: 0.85rem; color: var(--cp-text-muted); }
     const activePaths = paths.filter(path => path.length === longest);
     const critical = new Set(activePaths.flat());
     const sourceFreshness = Date.now() - Date.parse(snapshot.collectedAt);
-    const stale = loadError || sourceFreshness < 0 || sourceFreshness > snapshot.config.maxAgeSeconds * 1000;
+    const stale = loadError || pollingFailed() || sourceFreshness < 0 || sourceFreshness > snapshot.config.maxAgeSeconds * 1000;
     $('collection').textContent = stale ? 'Stale / unknown' : snapshot.collectionState;
     $('collected').textContent = `Attempt: ${time(snapshot.collectedAt)}. Last complete GitHub read: ${time(snapshot.lastCompleteAt)}.`;
     const target = byId.get(snapshot.config.target);
     $('launch').textContent = blockers(defs.find(def => def.id === snapshot.config.target)).length ? 'Blocked / unverified' : effective(target);
-    const warning = loadError || (stale ? 'Snapshot expired or has a future timestamp. Run collect; last-known data below is not current.' :
+    const warning = loadError || (pollingFailed() ? 'Latest local source polling attempt failed before replacing the snapshot. Previous observations are stale, not current.' :
+      stale ? 'Snapshot expired or has a future timestamp. Run collect or check local polling; last-known data below is not current.' :
       snapshot.collectionState !== 'complete' ? 'GitHub collection incomplete. Failed sources are unknown; last-known observations are retained separately.' :
       'Saved GitHub observation loaded. Manual gates and agent activity remain unknown; this is not a live source connection.');
     $('message').textContent = warning;
@@ -339,6 +344,16 @@ footer { font-size: 0.85rem; color: var(--cp-text-muted); }
     if (loading) return;
     loading = true;
     $('reload').setAttribute('aria-busy', 'true');
+    try {
+      const response = await fetch('/polling.json', { cache: 'no-store', signal: AbortSignal.timeout(5000) });
+      if (!response.ok) throw Error(`HTTP ${response.status}`);
+      polling = await response.json();
+      if (!['manual', 'polling'].includes(polling.mode)) throw Error('Invalid polling status');
+      $('polling').textContent = polling.mode === 'manual' ? 'Source polling disabled. Run collect explicitly to refresh GitHub.' :
+        `Local source polling: ${polling.status}; base interval ${polling.intervalSeconds}s (errors back off). Last attempt: ${time(polling.lastAttemptAt)}; finished: ${time(polling.lastFinishedAt)}; last source success (may be partial): ${time(polling.lastSourceSuccessAt)}; last complete: ${time(polling.lastCompleteAt)}; next: ${time(polling.nextAttemptAt)}. ${polling.errors?.join(' ') ?? ''}`;
+    } catch {
+      $('polling').textContent = 'Source polling status unavailable. No active polling claim; snapshot freshness still applies.';
+    }
     try {
       const response = await fetch('/snapshot.json', { cache: 'no-store', signal: AbortSignal.timeout(5000) });
       if (!response.ok) throw Error(`Snapshot unavailable (HTTP ${response.status}). Run collect or check the local server.`);

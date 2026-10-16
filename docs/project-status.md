@@ -7,14 +7,31 @@ node tool\project-status\status.mjs collect
 node tool\project-status\status.mjs serve
 ```
 
+For autonomous local source refresh instead of manual collection:
+
+```powershell
+node tool\project-status\status.mjs serve --poll-seconds 60
+```
+
+This starts an immediate source attempt, then schedules the next only after the
+previous attempt finishes. Intervals are bounded to 60..3600 seconds. Partial
+and failed reads double the delay up to 8 times the base; an observed GitHub
+rate-limit response waits at least 15 minutes. Successful complete reads reset
+the delay. Each fixed GET/auth subprocess has a 20-second timeout. No overlapping
+poll cycles, shell commands from requests, OS scheduler or cloud service is used.
+The server continues serving the last atomic snapshot during collection.
+Ctrl+C stops the timer and aborts outstanding subprocesses; restart the command
+to resume. Do not run manual `collect` concurrently with the polling process.
+
 Open **http://127.0.0.1:8791/**. Stop the server with **Ctrl+C**. An occupied
 port fails rather than attaching to another service; use `serve --port 8792`
 if necessary. No dependencies need installing.
 
 Run `collect` again in a second terminal whenever fresh source evidence is
-needed. The page rereads the saved snapshot every 15 seconds (toggleable), or
-use **Reload saved snapshot**. Neither starts GitHub collection. There is no
-authenticated background polling, scheduler or refresh endpoint. Observations
+needed in manual mode. The page rereads the saved snapshot and polling status
+every 15 seconds (toggleable), or use **Reload saved snapshot**. Neither starts
+GitHub collection. Only the explicit `serve --poll-seconds` mode runs local
+authenticated source polling; there is no scheduler or refresh endpoint. Observations
 expire after five minutes even while the page remains open. No real-time
 agent-session API is connected: agent status is always **unavailable**, never
 inferred from branches, workflow time or agent busy duration.
@@ -39,7 +56,13 @@ SHA, tag, job names/outcomes and GitHub evidence links. Tokens never enter the
 browser, config or snapshot.
 
 `.project-status\snapshot.json` is the generated, git-ignored local data
-snapshot and source-observation history. Writes replace it atomically. It is
+snapshot and source-observation history. `.project-status\polling.json` records
+mode, collecting/partial/failed/stopped state, last attempt/finish, last successful
+source read (possibly partial), last complete read, next attempt and errors.
+Writes replace each file atomically; they are not a cross-file transaction.
+The page displays timestamps, not a guaranteed connection: killed processes
+cannot persist their stopped state, and old timestamps/five-minute source expiry
+remain visible. It is
 not synchronized or indexed into a personal knowledge system, published or
 committed: the durable shared index is the reviewed config and existing repo
 documents. Regenerate on another checkout using its own approved `gh` login.
@@ -75,8 +98,13 @@ Dependency edges specify their accepted states: `merged` and `released` cannot
 satisfy `verified`. Cards retain their own observed state even if prerequisites
 are unmet, and show those unmet prerequisites separately. Dependency layers
 show order, not dates. The **active gating path** shows all longest unresolved
-paths to the launch decision by dependency depth, not a duration-based
+paths to the **owner-trial candidate decision** by dependency depth, not a duration-based
 critical-path schedule or invented progress percentage.
+
+Hosted GrowthBook activation is an independent optional workstream with its
+own blockers, not an owner-trial prerequisite: the default-OFF adapter may ship
+without hosted activation. This target is not public-MVP readiness; the wider
+MVP exit matrix and public-launch acceptance remain separate.
 
 Authentication errors, API failures, timeouts (20 seconds per command), malformed
 or incomplete paginated responses produce nonzero collection exit and a visible
@@ -89,7 +117,7 @@ return HTTP 503; the page retains any previously loaded snapshot explicitly
 as stale. Future/invalid timestamps never satisfy dependencies.
 
 The server binds only `127.0.0.1`, rejects foreign Host/Origin headers, serves only
-the fixed HTML and snapshot routes with no caching, and has no mutation routes.
+the fixed HTML, snapshot and polling-status routes with no caching, and has no mutation routes.
 It is not an authentication boundary against other processes/users on this
 machine. Keep the snapshot local; do not expose or proxy the port publicly.
 

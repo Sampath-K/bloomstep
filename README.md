@@ -18,6 +18,8 @@ flutter build windows --release
 For a private self-service dependency/evidence view (separate from the app and
 public site), see [local project status](docs/project-status.md). It reads GitHub
 with the existing `gh` login and never equates merge or publication with verification.
+Run `node tool\project-status\status.mjs serve --poll-seconds 60` for bounded local
+source polling; browser snapshot refresh and unavailable agent APIs are labeled separately.
 
 **Engineering preview, not the complete MVP.** The persistent garden and core
 widget flows are implemented. The first garden screen has a compact profile;

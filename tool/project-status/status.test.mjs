@@ -10,6 +10,7 @@ import {
 } from './status.mjs';
 
 const now = '2026-10-16T00:00:00.000Z';
+const sourceConfig = JSON.parse(await readFile(new URL('./sources.json', import.meta.url), 'utf8'));
 const required = ['api', 'native'];
 const job = (name, conclusion = 'success', status = 'completed') => ({ name, conclusion, status });
 const config = {
@@ -20,6 +21,114 @@ const config = {
       dependencies: [{ id: 'code', accept: ['review-ready', 'merged'] }] },
   ],
 };
+
+test('contract: owner-trial decision permits default-OFF hosted experiments without implying public MVP readiness', () => {
+  validateConfig(sourceConfig);
+  const target = sourceConfig.workstreams.find(row => row.id === sourceConfig.target);
+  assert.match(target.title, /owner-trial/i);
+  assert.ok(!target.dependencies.some(dep => dep.id === 'hosted'));
+  const rows = sourceConfig.workstreams.map(row => ({
+    id: row.id, state: row.id === 'preview' ? 'released' :
+      ['continuity', 'growthbook', 'visual'].includes(row.id) ? 'merged' :
+      ['candidate', 'native'].includes(row.id) ? 'verified' : 'unknown',
+    observedAt: ['hosted', 'launch'].includes(row.id) ? null : now,
+  }));
+  const graph = dependencyView(sourceConfig, rows, now);
+  assert.deepEqual(graph.blockers.launch, []);
+  assert.equal(rows.find(row => row.id === 'hosted').state, 'unknown');
+  assert.equal(rows.find(row => row.id === 'launch').state, 'unknown');
+  assert.ok(sourceConfig.workstreams.find(row => row.id === 'hosted').dependencies.some(dep => dep.id === 'growthbook'));
+  assert.match(target.note, /public.*MVP/i);
+});
+
+test('contract: configured CI next actions do not assert failures absent observed failures', () => {
+  for (const row of sourceConfig.workstreams.filter(row => ['pull', 'branch', 'workflow'].includes(row.kind))) {
+    assert.doesNotMatch(row.nextAction, /resolve.*failures/i);
+  }
+});
+
+test('contract: polling starts immediately, never overlaps, backs off on partial errors and stops cleanly', async () => {
+  const { startPolling } = await import('./status.mjs');
+  const scheduled = [], observations = [];
+  let calls = 0, release;
+  const poller = startPolling({
+    seconds: 60, clock: () => now,
+    schedule: (callback, delay) => { scheduled.push({ callback, delay }); return scheduled.length; },
+    cancel: handle => { observations.push({ cancelled: handle }); },
+    publish: async state => observations.push(structuredClone(state)),
+    refresh: async signal => {
+      assert.equal(signal.aborted, false);
+      calls++;
+      if (calls === 1) await new Promise(resolve => { release = resolve; });
+      return { collectionState: calls === 1 ? 'partial' : 'complete', collectedAt: now,
+        lastCompleteAt: calls === 1 ? null : now,
+        workstreams: [{ observedAt: now, error: null }, { observedAt: null, error: calls === 1 ? 'HTTP404' : null }] };
+    },
+  });
+  await new Promise(resolve => setImmediate(resolve));
+  assert.equal(calls, 1);
+  assert.equal(scheduled.length, 0);
+  assert.equal(observations[0].status, 'collecting');
+  release();
+  await poller.ready;
+  assert.equal(scheduled[0].delay, 120000);
+  assert.equal(observations.at(-1).status, 'partial');
+  assert.equal(observations.at(-1).lastSourceSuccessAt, now);
+  assert.equal(observations.at(-1).errors[0], 'HTTP404');
+  await scheduled[0].callback();
+  assert.equal(calls, 2);
+  assert.equal(scheduled[1].delay, 60000);
+  assert.equal(observations.at(-1).lastCompleteAt, now);
+  await poller.stop();
+  await scheduled[1].callback();
+  assert.equal(calls, 2);
+  assert.equal(observations.at(-1).status, 'stopped');
+});
+
+test('contract: polling bounds, rate-limit backoff and abort preserve failure visibility', async () => {
+  const { startPolling } = await import('./status.mjs');
+  assert.throws(() => startPolling({ seconds: 1 }), /60/);
+  const scheduled = [], observations = [];
+  const poller = startPolling({
+    seconds: 60, clock: () => now, schedule: (callback, delay) => { scheduled.push({ callback, delay }); return 1; },
+    cancel: () => {}, publish: async state => observations.push(structuredClone(state)),
+    refresh: async () => ({ collectionState: 'failed', collectedAt: now, lastCompleteAt: null,
+      retryAfterSeconds: 900, workstreams: [{ observedAt: null, error: 'GitHub rate limited' }, { observedAt: now, error: null }] }),
+  });
+  await poller.ready;
+  assert.equal(scheduled[0].delay, 900000);
+  assert.equal(observations.at(-1).lastSourceSuccessAt, null);
+  assert.deepEqual(observations.at(-1).errors, ['GitHub rate limited']);
+  await poller.stop();
+  let aborted = false;
+  const active = startPolling({ seconds: 60, publish: async () => {}, refresh: async signal =>
+    new Promise((resolve, reject) => signal.addEventListener('abort', () => { aborted = true; reject(Error('abort')); }, { once: true })) });
+  await new Promise(resolve => setImmediate(resolve));
+  await active.stop();
+  assert.equal(aborted, true);
+});
+
+test('contract: unexpected local polling failures publish errors without replacing last-known success', async () => {
+  const { startPolling } = await import('./status.mjs');
+  const scheduled = [], observations = [];
+  let calls = 0;
+  const poller = startPolling({ seconds: 60, clock: () => now,
+    schedule: (callback, delay) => { scheduled.push({ callback, delay }); return 1; }, cancel: () => {},
+    publish: async state => observations.push(structuredClone(state)),
+    refresh: async () => {
+      if (++calls === 2) throw Error('private filesystem details');
+      return { collectionState: 'complete', collectedAt: now, lastCompleteAt: now, workstreams: [{ observedAt: now }] };
+    },
+  });
+  await poller.ready;
+  await scheduled[0].callback();
+  assert.equal(observations.at(-1).status, 'failed');
+  assert.equal(observations.at(-1).lastSourceSuccessAt, now);
+  assert.equal(observations.at(-1).lastCompleteAt, now);
+  assert.ok(!JSON.stringify(observations).includes('private filesystem details'));
+  assert.equal(scheduled[1].delay, 120000);
+  await poller.stop();
+});
 
 test('contract: lifecycle states remain distinct and merge never means verified', () => {
   assert.equal(mapPull({ state: 'open', draft: true }, 'review-ready'), 'implementing');
@@ -248,6 +357,7 @@ test('contract: atomic snapshot and loopback server expose only fixed read-only 
     assert.equal((await fetch(base)).status, 200);
     assert.equal((await fetch(`${base}/?scoutTheme=dark`)).status, 200);
     assert.equal((await fetch(`${base}/snapshot.json`)).status, 200);
+    assert.equal((await fetch(`${base}/polling.json`)).status, 503);
     assert.equal((await fetch(`${base}/status.mjs`)).status, 404);
     assert.equal((await fetch(`${base}/snapshot.json`, { method: 'POST' })).status, 405);
     const foreignHostStatus = await new Promise((resolve, reject) => {

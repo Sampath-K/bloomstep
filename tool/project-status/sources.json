@@ -12,7 +12,7 @@
       "id": "continuity",
       "title": "Device-garden continuity",
       "owner": "Continuity engineering / PR author",
-      "nextAction": "Resolve exact-head CI failures, then review PR48. Do not infer native acceptance.",
+      "nextAction": "Inspect exact-head job outcomes: await pending jobs, investigate reported failures or cancellation separately, then review PR48. Do not infer native acceptance.",
       "kind": "pull",
       "number": 48,
       "workflow": "ci.yml",
@@ -23,7 +23,7 @@
       "id": "growthbook",
       "title": "Default-off GrowthBook adapter",
       "owner": "Experiment engineering / PR author",
-      "nextAction": "Resolve exact-head CI and review PR49; hosted connection and activation are separate gates.",
+      "nextAction": "Inspect exact-head job outcomes: await pending jobs and investigate only observed failures or cancellation before reviewing PR49; hosted activation is separate.",
       "kind": "pull",
       "number": 49,
       "workflow": "ci.yml",
@@ -85,25 +85,24 @@
     },
     {
       "id": "hosted",
-      "title": "Hosted GrowthBook connection / activation",
+      "title": "Optional hosted GrowthBook connection / activation",
       "owner": "Experiment operator",
       "nextAction": "Supply reviewed hosted connection and consented acceptance evidence before any activation; no account or flag mutation is authorized.",
       "kind": "manual",
       "dependencies": [{ "id": "growthbook", "accept": ["merged"] }],
-      "note": "Coordinator reported not connected / OFF on 2026-10-16. No hosted API is configured, so current hosted state is UNKNOWN."
+      "note": "Separate optional gate, not an owner-trial prerequisite: experiments may remain default OFF. Coordinator reported not connected / OFF on 2026-10-16. No hosted API is configured, so current hosted state is UNKNOWN."
     },
     {
       "id": "launch",
-      "title": "Launch decision",
+      "title": "Owner-trial candidate decision",
       "owner": "Product / release owner",
-      "nextAction": "Review combined candidate, protected native evidence and remaining MVP exit matrix gates. No public launch is implied.",
+      "nextAction": "Review combined owner-trial candidate and protected native evidence; hosted experiments may remain default OFF. Public-MVP acceptance is a separate decision.",
       "kind": "manual",
       "dependencies": [
         { "id": "candidate", "accept": ["verified"] },
-        { "id": "native", "accept": ["verified"] },
-        { "id": "hosted", "accept": ["verified"] }
+        { "id": "native", "accept": ["verified"] }
       ],
-      "note": "A planning dependency map, not a scheduled Gantt. Candidate verification and public-launch acceptance need separately configured evidence."
+      "note": "Owner-trial only, not public-MVP readiness. A planning dependency map, not a scheduled Gantt; combined-candidate verification still needs separately configured evidence. Hosted activation remains an independent optional gate."
     }
   ]
 }
