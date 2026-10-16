@@ -31,9 +31,21 @@ Future<void> captureVisual(
 }
 
 Future<void> loadVisualFonts(WidgetTester tester) async {
+  final iconBytes = Platform.isWindows
+      ? await tester.runAsync(
+          () => File(
+            '${File(Platform.resolvedExecutable).parent.parent.parent.path}'
+            '\\material_fonts\\MaterialIcons-Regular.otf',
+          ).readAsBytes(),
+        )
+      : null;
   await (FontLoader(
     'MaterialIcons',
-  )..addFont(rootBundle.load('fonts/MaterialIcons-Regular.otf'))).load();
+  )..addFont(
+    iconBytes == null
+        ? rootBundle.load('fonts/MaterialIcons-Regular.otf')
+        : Future.value(ByteData.sublistView(iconBytes)),
+  )).load();
   if (Platform.isWindows) {
     await tester.runAsync(() async {
       final bytes = await File(r'C:\Windows\Fonts\segoeui.ttf').readAsBytes();

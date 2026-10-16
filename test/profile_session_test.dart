@@ -351,6 +351,11 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.textContaining('kept separate'), findsOneWidget);
     expect(find.text('Copy device habits to this account'), findsOneWidget);
+    await _screenshot(
+      tester,
+      boundaryKey,
+      'profile-signed-in-before-copy-SYNTHETIC.png',
+    );
     await tester.tap(find.text('Copy device habits to this account'));
     await tester.pumpAndSettle();
     expect(
@@ -369,6 +374,11 @@ void main() {
     await _ready(tester, find.text('Viewing device garden'));
     await _ready(tester, find.text('Did it'));
     expect(identity.active, isTrue);
+    await _screenshot(
+      tester,
+      boundaryKey,
+      'profile-view-device-SYNTHETIC.png',
+    );
     await tester.tap(find.text('Return to account garden'));
     await _ready(tester, find.text('ST'));
     expect(find.text('Did it'), findsNothing);
