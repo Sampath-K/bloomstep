@@ -1,0 +1,105 @@
+# Private local project status
+
+From the repository root with Node 22+ and an already authenticated `gh` CLI:
+
+```powershell
+node tool\project-status\status.mjs collect
+node tool\project-status\status.mjs serve
+```
+
+Open **http://127.0.0.1:8791/**. Stop the server with **Ctrl+C**. An occupied
+port fails rather than attaching to another service; use `serve --port 8792`
+if necessary. No dependencies need installing.
+
+Run `collect` again in a second terminal whenever fresh source evidence is
+needed. The page rereads the saved snapshot every 15 seconds (toggleable), or
+use **Reload saved snapshot**. Neither starts GitHub collection. There is no
+authenticated background polling, scheduler or refresh endpoint. Observations
+expire after five minutes even while the page remains open. No real-time
+agent-session API is connected: agent status is always **unavailable**, never
+inferred from branches, workflow time or agent busy duration.
+
+## Source of truth and integration
+
+`tool\project-status\sources.json` owns the bounded workstream definitions,
+owners, next actions, accepted dependency states, workflow names and required
+job names. It links the existing status ledger, MVP exit matrix and experiment
+documentation; it does not replace their acceptance contracts. Update this
+reviewed config when PRs/branches/gates change. It is developer tooling, not a
+customer dashboard, public marketing page or deployment artifact.
+
+The collector uses only GitHub **GET** calls through the existing local `gh`
+authentication. It reads PR48/49, the configured visual branch and its PR,
+the latest published release (including prereleases), its resolved tag commit,
+and the latest `ci.yml` push run plus **all pages** of jobs for the exact source
+SHA and run attempt (also requiring the release tag for native verification).
+It does not read PR bodies, release bodies, customer data,
+mailboxes, credentials or workflow logs. API responses are reduced to states,
+SHA, tag, job names/outcomes and GitHub evidence links. Tokens never enter the
+browser, config or snapshot.
+
+`.project-status\snapshot.json` is the generated, git-ignored local data
+snapshot and source-observation history. Writes replace it atomically. It is
+not synchronized or indexed into a personal knowledge system, published or
+committed: the durable shared index is the reviewed config and existing repo
+documents. Regenerate on another checkout using its own approved `gh` login.
+No external accounts, resources, permissions, issues, notifications, release
+changes or PR mutations are performed by collection/serving.
+
+## Evidence contract
+
+- **Planned**: a configured integration gate with satisfied prerequisites;
+  no observed implementation claim. **Implementing**: a draft PR or remote
+  branch exists; not proof of current agent activity.
+- **Validating**: exact-head workflow jobs are pending. **Blocked**: a failed,
+  cancelled or skipped required job, closed unmerged PR, or unmet dependency.
+- **Review-ready**: all configured engineering jobs passed, with no failed or
+  pending jobs in that workflow run. This is not human approval, branch
+  protection evaluation, native acceptance or a universal mergeability claim.
+- **Merged**: PR API merge evidence, separately from its displayed workflow
+  observations. **Released**: published release plus peeled immutable tag SHA,
+  not the release's potentially mutable `target_commitish` branch.
+- **Verified**: only the explicitly configured exact-release protected native
+  workflow gate, with every named job succeeding. This is bounded CI evidence,
+  not provider, cohort, customer safety or public-launch signoff.
+- **Unknown**: missing/unconfigured/ambiguous/unreadable evidence. Hosted
+  GrowthBook and launch acceptance have no live source configured. Their
+  historical OFF/unverified context is labeled, not asserted as current truth.
+
+The combined-candidate card is a dependency gate, **not** a live child-agent
+status. It cannot turn verified automatically. Configure an exact candidate
+source and independent acceptance evidence in a reviewed follow-up when those
+exist; the dashboard makes no completion claim in the meantime.
+
+Dependency edges specify their accepted states: `merged` and `released` cannot
+satisfy `verified`. Cards retain their own observed state even if prerequisites
+are unmet, and show those unmet prerequisites separately. Dependency layers
+show order, not dates. The **active gating path** shows all longest unresolved
+paths to the launch decision by dependency depth, not a duration-based
+critical-path schedule or invented progress percentage.
+
+Authentication errors, API failures, timeouts (20 seconds per command), malformed
+or incomplete paginated responses produce nonzero collection exit and a visible
+failed/partial snapshot. Successful independent sources remain visible. Failed
+sources become unknown and keep their previous state, links and observation time
+under **Last known**, including across repeated failures. The last complete
+GitHub collection time is retained separately. Manual/API-unavailable gates stay
+unknown even when GitHub collection is complete. Missing or unreadable snapshots
+return HTTP 503; the page retains any previously loaded snapshot explicitly
+as stale. Future/invalid timestamps never satisfy dependencies.
+
+The server binds only `127.0.0.1`, rejects foreign Host/Origin headers, serves only
+the fixed HTML and snapshot routes with no caching, and has no mutation routes.
+It is not an authentication boundary against other processes/users on this
+machine. Keep the snapshot local; do not expose or proxy the port publicly.
+
+## Contract tests
+
+```powershell
+node --test tool\project-status\status.test.mjs
+```
+
+These run in the existing API CI job and cover lifecycle separation,
+freshness, authentication failures, retained history, partial reads, exact-head
+jobs, immutable tag resolution, dependencies and loopback read-only serving.
+No GitHub writes, cloud resources or real customer records are needed.

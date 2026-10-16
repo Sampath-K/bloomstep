@@ -15,6 +15,10 @@ flutter build windows --release
 
 ## Status
 
+For a private self-service dependency/evidence view (separate from the app and
+public site), see [local project status](docs/project-status.md). It reads GitHub
+with the existing `gh` login and never equates merge or publication with verification.
+
 **Engineering preview, not the complete MVP.** The persistent garden and core
 widget flows are implemented. The first garden screen has a compact profile;
 signed-out users can plant into a separate device-only garden without sync or

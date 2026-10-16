@@ -1,0 +1,109 @@
+{
+  "repo": "Sampath-K/bloomstep",
+  "maxAgeSeconds": 300,
+  "target": "launch",
+  "sources": [
+    "docs/status.md",
+    "docs/mvp-exit-matrix.md",
+    "docs/experiments.md"
+  ],
+  "workstreams": [
+    {
+      "id": "continuity",
+      "title": "Device-garden continuity",
+      "owner": "Continuity engineering / PR author",
+      "nextAction": "Resolve exact-head CI failures, then review PR48. Do not infer native acceptance.",
+      "kind": "pull",
+      "number": 48,
+      "workflow": "ci.yml",
+      "requiredJobs": ["api", "test-and-build-windows (windows-latest, x64)", "test-and-build-windows (windows-11-arm, arm64)"],
+      "dependencies": []
+    },
+    {
+      "id": "growthbook",
+      "title": "Default-off GrowthBook adapter",
+      "owner": "Experiment engineering / PR author",
+      "nextAction": "Resolve exact-head CI and review PR49; hosted connection and activation are separate gates.",
+      "kind": "pull",
+      "number": 49,
+      "workflow": "ci.yml",
+      "requiredJobs": ["api", "test-and-build-windows (windows-latest, x64)", "test-and-build-windows (windows-11-arm, arm64)"],
+      "dependencies": []
+    },
+    {
+      "id": "visual",
+      "title": "Visual invitation dialog",
+      "owner": "Visual engineering",
+      "nextAction": "Publish exact-head review evidence and hand off to the candidate integrator.",
+      "kind": "branch",
+      "branch": "sampath-k-visual-invitation-dialog",
+      "workflow": "ci.yml",
+      "requiredJobs": ["api", "test-and-build-windows (windows-latest, x64)", "test-and-build-windows (windows-11-arm, arm64)"],
+      "dependencies": [],
+      "note": "Reported finalizing by the coordinator on 2026-10-16. Agent activity is not observable by this collector."
+    },
+    {
+      "id": "candidate",
+      "title": "Combined owner-trial candidate",
+      "owner": "Candidate integrator",
+      "nextAction": "After visual handoff, compose the reviewed exact revisions and supply independent combined-head evidence.",
+      "kind": "gate",
+      "dependencies": [
+        { "id": "continuity", "accept": ["review-ready", "merged"] },
+        { "id": "growthbook", "accept": ["review-ready", "merged"] },
+        { "id": "visual", "accept": ["review-ready", "merged"] }
+      ],
+      "note": "Planning gate only, not the combined agent's live state. No candidate PR/ref has been configured."
+    },
+    {
+      "id": "preview",
+      "title": "Published preview (independent of candidate)",
+      "owner": "Release maintainer",
+      "nextAction": "Compare the published immutable tag SHA with the intended candidate before any new release decision.",
+      "kind": "release",
+      "dependencies": [],
+      "note": "Latest published GitHub release including prereleases. Publication does not prove installation, security or launch."
+    },
+    {
+      "id": "native",
+      "title": "Protected native install / security / launch",
+      "owner": "Native acceptance owner",
+      "nextAction": "Obtain exact-release protected x64 and ARM64 workflow receipts on approved infrastructure; no provisioning is performed here.",
+      "kind": "workflow",
+      "release": "preview",
+      "workflow": "ci.yml",
+      "requiredJobs": [
+        "protected-installer-lifecycle (x64)",
+        "protected-installer-lifecycle (arm64)",
+        "universal-native-proof (x64)",
+        "universal-native-proof (arm64)",
+        "protected genuine app checked/unchecked launch (x64)",
+        "protected genuine app checked/unchecked launch (arm64)"
+      ],
+      "dependencies": [{ "id": "preview", "accept": ["released"] }],
+      "note": "Verified means only all named protected jobs succeeded on the current published tag SHA. Missing, cancelled or skipped jobs do not pass."
+    },
+    {
+      "id": "hosted",
+      "title": "Hosted GrowthBook connection / activation",
+      "owner": "Experiment operator",
+      "nextAction": "Supply reviewed hosted connection and consented acceptance evidence before any activation; no account or flag mutation is authorized.",
+      "kind": "manual",
+      "dependencies": [{ "id": "growthbook", "accept": ["merged"] }],
+      "note": "Coordinator reported not connected / OFF on 2026-10-16. No hosted API is configured, so current hosted state is UNKNOWN."
+    },
+    {
+      "id": "launch",
+      "title": "Launch decision",
+      "owner": "Product / release owner",
+      "nextAction": "Review combined candidate, protected native evidence and remaining MVP exit matrix gates. No public launch is implied.",
+      "kind": "manual",
+      "dependencies": [
+        { "id": "candidate", "accept": ["verified"] },
+        { "id": "native", "accept": ["verified"] },
+        { "id": "hosted", "accept": ["verified"] }
+      ],
+      "note": "A planning dependency map, not a scheduled Gantt. Candidate verification and public-launch acceptance need separately configured evidence."
+    }
+  ]
+}

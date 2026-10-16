@@ -56,3 +56,4 @@ local.settings.json
 release-output/
 .env.analytics.local
 analytics-evidence/
+.project-status/
