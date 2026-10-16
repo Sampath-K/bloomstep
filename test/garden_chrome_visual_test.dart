@@ -99,6 +99,14 @@ void main() {
       dark: false,
     ),
     (
+      name: 'account-populated-short',
+      size: const Size(640, 480),
+      populated: true,
+      device: false,
+      scale: 1.0,
+      dark: false,
+    ),
+    (
       name: 'account-empty-dark-small',
       size: const Size(640, 480),
       populated: false,
@@ -180,6 +188,28 @@ void main() {
           findsOneWidget,
           reason: 'Populated desktop scenery must not displace practice.',
         );
+      } else if (variant.populated) {
+        final practice = find.widgetWithText(FilledButton, 'Did it');
+        await tester.ensureVisible(practice);
+        await tester.pumpAndSettle();
+        expect(
+          practice.hitTestable(),
+          findsOneWidget,
+          reason: 'Primary practice must remain reachable in compact layouts.',
+        );
+        if (variant.scale >= 2) {
+          await captureVisual(
+            tester,
+            key,
+            'combined-device-garden-practice-200',
+          );
+        } else {
+          await captureVisual(
+            tester,
+            key,
+            'combined-account-garden-practice-short',
+          );
+        }
       }
       final cta = find.widgetWithText(FilledButton, 'Plant a habit');
       expect(tester.getSize(cta).width, lessThanOrEqualTo(300));
