@@ -13,7 +13,7 @@ the owner has approved a rendered proposal.
 - Use standard Windows and Microsoft product terms unless Bloomstep has a
   user-tested term with a clear reason to keep it.
 - Confirmation titles ask a concise question that names the action, such as
-  `Delete recipe?` or `Copy device habits to your account?`.
+  `Delete recipe?` or `Copy to your account?`.
 - Buttons start with the action verb from the title. Use `Delete` / `Cancel`,
   `Copy` / `Not now`, or another explicit action and safe exit. Avoid vague
   `OK`, `Yes`, and `No` when the action can be named.
