@@ -170,3 +170,21 @@ test('preflight failures and failed lock acquisition cannot erase prior cleanup 
   `], {encoding:'utf8',env:{...process.env,SCRIPT:file}});
   assert.equal(result.status,0,result.stderr||result.error?.message);
 });
+
+test('owner guide gives exact app audit, local scoped token/revocation pages and only the workflow action pins', () => {
+  const readme=read('README.md');
+  for(const path of [
+    '/settings/installations','/settings/apps/authorizations','/settings/applications',
+    '/settings/personal-access-tokens/new',
+    '/bloomstep-vm-controller/settings/access','/bloomstep-vm-controller/settings/actions/runners',
+  ]) assert.ok(readme.includes(path),path);
+  const bodies=[...readme.matchAll(/```json\n([\s\S]*?)\n```/g)].map(match=>JSON.parse(match[1]));
+  assert.deepEqual(bodies[0],{enabled:true,allowed_actions:'selected'});
+  const actions=bodies[1];
+  assert.equal(actions.github_owned_allowed,false);
+  assert.equal(actions.verified_allowed,false);
+  const workflow=read('validate.yml');
+  const pins=[...new Set([...workflow.matchAll(/uses: (actions\/[\w-]+@[a-f0-9]{40})/g)].map(match=>match[1]))];
+  assert.deepEqual([...actions.patterns_allowed].sort(),pins.sort());
+  assert.match(readme,/Revoking the setup token alone does \*\*not\*\* revoke the runner/);
+});

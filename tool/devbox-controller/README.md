@@ -38,6 +38,58 @@ Default workflow token is read-only and cannot approve pull requests.
 workflow policy and the explicit one-time owner app/IT audit confirmation.
 It is an activation interlock, not protection against a malicious writer.
 
+### Exact one-time owner audit and narrow policy
+
+Before entering the setup confirmation, inspect these pages while signed in as
+the repository owner (never share screenshots containing tokens):
+
+- `https://github.com/Sampath-K/bloomstep-vm-controller/settings/access`:
+  private repository, only `Sampath-K` human admin; no unreviewed invitations.
+- `https://github.com/settings/installations`: open Configure for **every app**
+  installed on the owner account. Check whether "All repositories" or the
+  selected repository list includes `bloomstep-vm-controller`, and review its
+  permissions. Any app able to write repository code/workflows, dispatch Actions
+  or change repository access/settings belongs inside the trusted execution
+  boundary. Repository labels cannot restrict such an app to one workflow.
+- `https://github.com/settings/apps/authorizations` and
+  `https://github.com/settings/applications`: review authorized GitHub and OAuth
+  apps, including broad private-repository access. If effective access is unclear,
+  **do not attest or register**; resolve it with the owner/app administrator.
+- `https://github.com/Sampath-K/bloomstep-vm-controller/settings/actions`:
+  verify enabled Actions, read-only default token, no pull-request approval,
+  and only the three exact selected action commits below.
+- `https://github.com/Sampath-K/bloomstep-vm-controller/settings/actions/runners`:
+  expect zero runners before first registration; subsequent resume expects only
+  the exact locally registered runner and no active second listener.
+
+For approved normal owner-authenticated configuration, the desired body for
+`PUT /repos/Sampath-K/bloomstep-vm-controller/actions/permissions` is:
+
+```json
+{"enabled":true,"allowed_actions":"selected"}
+```
+
+The desired body for
+`PUT /repos/Sampath-K/bloomstep-vm-controller/actions/permissions/selected-actions`
+is exactly:
+
+```json
+{
+  "github_owned_allowed": false,
+  "verified_allowed": false,
+  "patterns_allowed": [
+    "actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683",
+    "actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02",
+    "actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093"
+  ]
+}
+```
+
+Use the already approved owner/coordinator credential and ordinary APIs; no
+protection bypass or additional cloud-admin grant. Re-read both endpoints after
+configuration. The setup script itself only reads these settings and fails
+closed if they differ. Do not set activation manually to fake this audit.
+
 ## One entry point on the VM
 
 After verifying the independently provided connection ZIP digest, extract and
@@ -57,6 +109,21 @@ registration input is passed through the runner's supported environment input
 and cleared; the runner's own persistent credentials remain in its local folder.
 Do not upload that folder.
 
+Create that setup token locally at
+`https://github.com/settings/personal-access-tokens/new`: resource owner
+`Sampath-K`, shortest available expiry, **Only select repositories** ->
+`bloomstep-vm-controller`; Repository permissions **Administration: read and
+write**, **Actions: read and write**, **Contents: read-only**, **Variables: read
+and write**, plus automatically required **Metadata: read-only**. No account
+permissions, public-repository runner grants, Workflows write, or new PAT in
+repository secrets are needed. Paste it only into the script's masked local
+prompt. Revoke this setup token after registration/dispatch at
+`https://github.com/settings/personal-access-tokens`; create another short-lived
+token only if a later explicit listener resume requires local authentication.
+Revoking the setup token alone does **not** revoke the runner: stop the listener
+and remove its entry from the repository's Actions/runners page to revoke the
+persistent connection. Revoke any unused setup token on failure too.
+
 The same `Connect-DevBox.ps1 -Resume` rechecks guards, source, pinned executables
 and server registration before restarting the existing listener. It does not
 silently update/replace code or register a second runner. A stopped, outdated
@@ -65,6 +132,8 @@ updates are disabled until a new version/hash is reviewed; GitHub may refuse
 outdated runners. Stop the listener to stop work; remove it from private
 repository Settings to revoke registration. No automatic restart/logon exists.
 Lock, logout, RDP/session changes and reboot can make the desktop unavailable.
+If script-signing/execution policy blocks the unsigned source, stop for the
+organization's reviewed signing/approval route; do not use policy bypass flags.
 
 ## Authenticated test and result flow
 
@@ -110,6 +179,15 @@ Cloud real dispatch of the earlier published controller succeeded as run
 `39019173776`, but hosted authorization FAILED on unauthenticated public API
 rate exhaustion and the VM job skipped. It was not connection proof. The new
 authenticated metadata fix requires a fresh hosted run after reviewed publication.
+
+The authenticated fix was then published normally at controller main
+`f183221c3ebe956b746f325c3f8236b2dc8ffa9a`. Real dispatch run `39019811122`
+completed SUCCESS: hosted authorization passed and VM trial SKIPPED because
+activation was absent. Cloud downloaded artifact `12096202559`, independently
+checked its archive SHA-256
+`fd7133a35b62d0fb35f20e8c39d20e21189115116d08be5f0f4671f1148c44b2`,
+and verified exact candidate source and retained package digest. This proves
+dispatch and private hosted result readback, **not VM connection/installer proof**.
 
 The Linux checks cover contracts, parser syntax, provenance/header routing,
 package hashes and unchanged manual/protected-bootstrap guards. Windows
