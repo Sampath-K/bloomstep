@@ -166,10 +166,7 @@ void main() {
         ),
       );
       expect(find.text('Signed-in account'), findsOneWidget);
-      expect(
-        find.text('Your sign-in provider did not supply a name.'),
-        findsOneWidget,
-      );
+      expect(find.text("Your account doesn't include a name."), findsOneWidget);
       expect(find.text('U'), findsNothing);
       expect(find.text('private-subject'), findsNothing);
       expect(find.text('Sign out'), findsOneWidget);
@@ -217,25 +214,46 @@ void main() {
         ),
         home: Scaffold(
           body: SingleChildScrollView(
-            child: ProfileSection(
-              signedIn: true,
-              profile: const IdentityProfile(
-                displayName: 'Synthetic Garden Tester',
-              ),
-              configured: true,
-              busy: false,
-              notice:
-                  'Viewing your account garden. Device habits stay separate.',
-              onSignIn: () async {},
-              onSignOut: () async {},
-              onCopyDeviceGarden: () async {},
-              onSwitchGarden: () async {},
+            child: Column(
+              children: [
+                ProfileSection(
+                  signedIn: true,
+                  profile: const IdentityProfile(
+                    displayName: 'Synthetic Garden Tester',
+                  ),
+                  configured: true,
+                  busy: false,
+                  notice: 'Viewing your account garden. Device habits stay separate.',
+                  onSignIn: () async {},
+                  onSignOut: () async {},
+                  onCopyDeviceGarden: () async {},
+                  onSwitchGarden: () async {},
+                  compactSummary: true,
+                ),
+                ProfileSection(
+                  signedIn: true,
+                  profile: const IdentityProfile(
+                    displayName: 'Synthetic Garden Tester',
+                  ),
+                  configured: true,
+                  busy: false,
+                  onSignIn: () async {},
+                  onSignOut: () async {},
+                  onCopyDeviceGarden: () async {},
+                  onSwitchGarden: () async {},
+                  detailsOnly: true,
+                ),
+              ],
             ),
           ),
         ),
       ),
     );
     expect(find.text('Synthetic Garden Tester'), findsOneWidget);
+    final details = find.text('Profile and garden details');
+    await tester.ensureVisible(details);
+    await tester.tap(details);
+    await tester.pumpAndSettle();
     await tester.ensureVisible(find.text('View device garden'));
     expect(tester.takeException(), isNull);
   });

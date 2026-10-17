@@ -96,10 +96,23 @@ void main() {
       reason: 'Primary-action emphasis must preserve the application typeface.',
     );
     expect(
-      find.text('No private habit text. Nobody is contacted automatically.'),
+      find.text(
+        'Anyone with the link can open it. No one is contacted automatically.',
+      ),
       findsOneWidget,
     );
     expect(find.text('Email invite').hitTestable(), findsNothing);
+    await tester.ensureVisible(find.text('Privacy and link details'));
+    await tester.tap(find.text('Privacy and link details'));
+    await tester.pumpAndSettle();
+    expect(
+      find.text(
+        'Optional analytics is off by default; when enabled, Bloomstep records '
+        'invitation creation and the sharing method. Recipe cards show only '
+        'the fields you approve—not your name, email, or practice history.',
+      ),
+      findsOneWidget,
+    );
     expect(requests, 0);
     await tester.sendKeyEvent(LogicalKeyboardKey.escape);
     await tester.pumpAndSettle();

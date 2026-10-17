@@ -39,7 +39,6 @@ class _InvitationDialogState extends State<InvitationDialog> {
   bool busy = false;
   String? failure;
   String? outcome;
-  String? failureDetail;
   late final ExperienceResolver experiments =
       widget.experiments ?? ExperienceExperiments(widget.store);
   ExperienceAssignment? assignment;
@@ -68,7 +67,6 @@ class _InvitationDialogState extends State<InvitationDialog> {
     setState(() {
       busy = true;
       failure = null;
-      failureDetail = null;
       receipt = null;
       outcome = null;
     });
@@ -113,14 +111,12 @@ class _InvitationDialogState extends State<InvitationDialog> {
         },
       );
       await observe(ExperienceOutcome.taskCompleted);
-    } catch (e) {
+    } catch (_) {
       if (mounted) {
         setState(() {
           receipt = null;
           outcome = null;
-          failure =
-              'Could not complete this step. Try again or choose another way.';
-          failureDetail = e.toString();
+          failure = "Couldn't complete the invite. Try again.";
         });
         await observe(ExperienceOutcome.error);
       }
@@ -193,12 +189,9 @@ class _InvitationDialogState extends State<InvitationDialog> {
             const SizedBox(height: 16),
             const Text('Invite a friend to start a tiny habit.'),
             const SizedBox(height: 8),
-            Text(
-              card == null
-                  ? 'No private habit text. Nobody is contacted automatically.'
-                  : 'Your approved recipe is included. Nobody is contacted automatically.',
+            const Text(
+              'Anyone with the link can open it. No one is contacted automatically.',
             ),
-            const Text('Anyone with the link can open it.'),
             const SizedBox(height: 16),
             if (busy)
               Semantics(
@@ -268,7 +261,7 @@ class _InvitationDialogState extends State<InvitationDialog> {
                   leading: const Icon(Icons.mail_outline),
                   title: const Text('Email invite'),
                   subtitle: const Text(
-                    'Open your composer; you choose who and send.',
+                    'Choose a recipient and send the email.',
                   ),
                   enabled: !busy,
                   onTap: busy ? null : () => share('email'),
@@ -276,18 +269,14 @@ class _InvitationDialogState extends State<InvitationDialog> {
                 ListTile(
                   leading: const Icon(Icons.qr_code),
                   title: const Text('Show QR'),
-                  subtitle: const Text(
-                    'Let your friend scan an invitation link.',
-                  ),
+                  subtitle: const Text('Your friend can scan the link.'),
                   enabled: !busy,
                   onTap: busy ? null : () => share('qr'),
                 ),
                 ListTile(
                   leading: const Icon(Icons.ios_share),
                   title: const Text('Windows share'),
-                  subtitle: const Text(
-                    'Open the OS panel; you choose where to share.',
-                  ),
+                  subtitle: const Text('Choose an app and where to share.'),
                   enabled: !busy,
                   onTap: busy ? null : () => share('native'),
                 ),
@@ -303,7 +292,9 @@ class _InvitationDialogState extends State<InvitationDialog> {
               ),
               children: [
                 Text(
-                  card == null ? 'Only a link is shared by default.' : 'Your approved recipe text will be shared with anyone who has this link.',
+                  card == null
+                      ? 'Only a link is shared by default.'
+                      : 'Anyone with this link can see your approved recipe.',
                 ),
                 if (!widget.hasRecipes)
                   const Text(
@@ -349,10 +340,11 @@ class _InvitationDialogState extends State<InvitationDialog> {
               title: const Text('Privacy and link details'),
               children: [
                 const Text(
-                  'Anyone with the link can open it. Bloomstep records invitation and channel acceptance. No account identity, progress or habit ID is shared in a recipe card.',
+                  'Optional analytics is off by default; when enabled, Bloomstep '
+                  'records invitation creation and the sharing method. Recipe '
+                  'cards show only the fields you approve—not your name, email, '
+                  'or practice history.',
                 ),
-                if (failureDetail != null)
-                  Text('Error details: $failureDetail'),
                 if (receipt != null) ...[
                   Text(
                     '${receipt!.cached ? "Cached existing invitation" : "Server-created invitation"}; expires ${receipt!.expiresAt.toLocal()}.',

@@ -141,7 +141,10 @@ void main() {
         }
         await tester.tap(find.text('Plant this seed'));
         if (failSave) {
-          await ready(tester, find.textContaining('database_closed'));
+          await ready(
+            tester,
+            find.textContaining("Couldn't complete that action"),
+          );
           expect(find.byType(PlantedRecipeDialog), findsNothing);
         } else {
           await ready(tester, find.byType(PlantedRecipeDialog));

@@ -63,20 +63,21 @@ Figma/mockups or installed-app screenshots. Account presentation is synthetic,
 not a real signed-in customer. No email, invite, OS Share panel, permission,
 destructive action, publication or release was performed.
 
-The combined-source renders `combined-profile-before-copy-SYNTHETIC.png`,
-`combined-device-copy-confirmation-SYNTHETIC.png`,
-`combined-profile-view-device-SYNTHETIC.png`, and
-`combined-profile-after-copy-SYNTHETIC.png` show the synthetic authoritative
-name and explicit, cancellable device-to-account copy/view states. They do not
-read or mutate the owner's installed garden or database. The combined populated
-garden and invitation frames cover the visual integration, including a 200%
-device-garden and 200% invitation state. The follow-up frames
-`combined-device-garden-practice-200.png` and
-`combined-account-garden-practice-short.png` are captured after scrolling to
-the primary practice action. The test verifies `Did it` is hit-testable at
-420x820/200% and 640x480; at 200% it is **not initially above the fold** because
-the profile consumes the first viewport. That hierarchy concern remains an
-explicit scored follow-up, not a claim of polish or an unreviewed late UI change.
+The current `chrome-account-populated-large.png`,
+`chrome-account-populated-short-large.png` and
+`chrome-device-populated-large.png` renders show the practice-first layout at
+420x820/200% and 640x480/200%. The current
+`profile-signed-in-before-copy-SYNTHETIC.png`,
+`device-copy-confirmation-SYNTHETIC.png`,
+`profile-view-device-SYNTHETIC.png` and
+`profile-signed-in-SYNTHETIC.png` show a synthetic authoritative name and
+explicit, cancellable device-to-account copy/view states. They do not read or
+mutate the owner's installed garden or database. Earlier `combined-*` garden
+captures showing the profile above practice are superseded by these renders.
+The widget tests verify the primary action is hit-testable in the initial
+viewport, retains button semantics, and is keyboard-focusable before profile
+details. Native Narrator, high contrast, mixed-monitor DPI and protected-VM
+behavior remain unobserved and keep the release gates open.
 
 `before-chrome-*.png` show the initial `a778a66` chrome. The three
 `before-surface-*.png` preserve the existing Settings/form content before their
@@ -206,8 +207,8 @@ gaps. All current rows remain open against the full Windows quality bar.
 |---|---|---|
 | Device empty garden | 4/3/2/3/4 -> 4/4/4/3/4 | Garden identity and compact action improved; native checks open. |
 | Account populated garden | 4/3/3/3/4 -> 4/4/4/3/4 | Combined shell shown with synthetic profile; not live authentication. |
-| Device populated, 200% | 3/3/2/3/4 -> 3/3/4/3/4 | `Did it` is hit-testable after scrolling; profile consumes initial viewport, so hierarchy remains below target; native checks open. |
-| Account practice, 640x480 | N/O -> 4/3/4/3/4 | `Did it` is hit-testable after scrolling; no layout exception. |
+| Device/account populated, 200% | 3/3/2/3/4 -> 4/4/4/4/4 | `Did it` is hit-testable initially at 420x820/200%; semantics and keyboard order are tested; native checks remain open. |
+| Account practice, 640x480/200% | N/O -> 4/4/4/4/4 | `Did it` is hit-testable initially; account Settings and persistent garden-switch guidance remain visible. Native checks remain open. |
 | Account empty, short/dark | 3/3/2/3/4 -> 4/4/4/3/4 | Persistent labelled action; native snap/DPI unknown. |
 | Canopy motion/static | N/O -> 4/4/4/3/4 | Finite animation tested, not device frame timing. |
 | Outbound invitation ready | N/O -> 4/4/4/3/4 | Clear primary, honest always-visible privacy. |

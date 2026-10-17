@@ -18,6 +18,8 @@ class ProfileSection extends StatelessWidget {
     this.onCopyDeviceGarden,
     this.onSwitchGarden,
     this.returningToAccount = false,
+    this.compactSummary = false,
+    this.detailsOnly = false,
   });
   final bool signedIn;
   final bool configured;
@@ -32,14 +34,143 @@ class ProfileSection extends StatelessWidget {
   final Future<void> Function()? onCopyDeviceGarden;
   final Future<void> Function()? onSwitchGarden;
   final bool returningToAccount;
+  final bool compactSummary;
+  final bool detailsOnly;
 
   @override
-  Widget build(BuildContext context) => Card(
-    child: Padding(
-      padding: const EdgeInsets.all(16),
-      child: signedIn ? _signedInProfile(context) : _signedOutProfile(context),
+  Widget build(BuildContext context) {
+    if (detailsOnly) return _detailsOnly();
+    if (compactSummary) return _compactSummary(context);
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: signedIn
+            ? _signedInProfile(context)
+            : _signedOutProfile(context),
+      ),
+    );
+  }
+
+  Widget _compactSummary(BuildContext context) {
+    final name = profile?.displayName;
+    final initials = _initials(name);
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                CircleAvatar(
+                  radius: 18,
+                  child: initials.isEmpty
+                      ? const Icon(Icons.person_outline)
+                      : Text(initials),
+                ),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Text(
+                    signedIn ? name ?? 'Signed-in account' : 'Not signed in',
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: Theme.of(context).textTheme.titleMedium,
+                  ),
+                ),
+              ],
+            ),
+            if (signedIn && name == null)
+              const Text("Your account doesn't include a name."),
+            if (signedIn &&
+                (onCopyDeviceGarden != null || onSwitchGarden != null))
+              Semantics(
+                label: 'Device garden stays separate. Switch any time.',
+                child: const Text(
+                  'Separate gardens; switch any time.',
+                  maxLines: 2,
+                ),
+              ),
+            if (!signedIn &&
+                notice != null &&
+                notice != 'Device garden stays separate; switch any time.')
+              Semantics(liveRegion: true, child: Text(notice!)),
+            if (!signedIn)
+              const Text(
+                'Your habits stay on this device. Sign in to use an account garden.',
+              ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _detailsOnly() => Card(
+    child: ExpansionTile(
+      key: const ValueKey('profile-details'),
+      title: const Text('Profile and garden details'),
+      childrenPadding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
+      children: signedIn ? _signedInDetails() : _signedOutDetails(),
     ),
   );
+
+  List<Widget> _signedInDetails() => [
+    if (notice != null &&
+        notice != 'Device garden stays separate; switch any time.')
+      Semantics(liveRegion: true, child: Text(notice!)),
+    if (error != null)
+      Semantics(liveRegion: true, child: SelectableText(error!)),
+    if (onCopyDeviceGarden != null)
+      TextButton(
+        onPressed: busy ? null : onCopyDeviceGarden,
+        child: const Text('Copy device habits to this account'),
+      ),
+    if (onSwitchGarden != null)
+      TextButton(
+        onPressed: busy ? null : onSwitchGarden,
+        child: const Text('View device garden'),
+      ),
+    if (error != null)
+      Semantics(liveRegion: true, child: SelectableText(error!)),
+    if (onClearSavedSignIn != null)
+      TextButton(
+        onPressed: busy ? null : onClearSavedSignIn,
+        child: const Text('Clear saved sign-in'),
+      ),
+    TextButton(
+      onPressed: busy ? null : onSignOut,
+      child: Text(busy ? 'Updating profile...' : 'Sign out'),
+    ),
+  ];
+
+  List<Widget> _signedOutDetails() => [
+    if (!configured)
+      const Text('Account sign-in is not configured in this build.'),
+    if (configured && !returningToAccount)
+      const Text(
+        'Choose Microsoft personal account, Google or another enabled option in the system browser. Bloomstep never collects your password.',
+      ),
+    TextButton.icon(
+      onPressed: busy || (!configured && !returningToAccount) ? null : onSignIn,
+      icon: const Icon(Icons.login),
+      label: Text(
+        busy
+            ? returningToAccount
+                  ? 'Opening account garden...'
+                  : 'Complete sign-in in your browser'
+            : returningToAccount
+            ? 'Return to account garden'
+            : 'Sign in with Microsoft or Google',
+      ),
+    ),
+    if (notice != null) Text(notice!),
+    if (error != null)
+      Semantics(liveRegion: true, child: SelectableText(error!)),
+    if (onClearSavedSignIn != null)
+      TextButton(
+        onPressed: busy ? null : onClearSavedSignIn,
+        child: const Text('Clear saved sign-in'),
+      ),
+  ];
 
   Widget _signedInProfile(BuildContext context) {
     final name = profile?.displayName;
@@ -100,9 +231,12 @@ class ProfileSection extends StatelessWidget {
             ),
           ],
         ),
-        if (name == null)
-          const Text('Your sign-in provider did not supply a name.'),
-        if (notice != null) Semantics(liveRegion: true, child: Text(notice!)),
+        if (name == null) const Text("Your account doesn't include a name."),
+        if (onCopyDeviceGarden != null || onSwitchGarden != null)
+          const Text('Device garden stays separate; switch any time.'),
+        if (notice != null &&
+            notice != 'Device garden stays separate; switch any time.')
+          Semantics(liveRegion: true, child: Text(notice!)),
         if (onCopyDeviceGarden != null)
           TextButton(
             onPressed: busy ? null : onCopyDeviceGarden,

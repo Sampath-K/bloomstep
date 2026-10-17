@@ -258,15 +258,11 @@ void main() {
       await tester.tap(find.text('Copy link'));
       await waitInvitation(
         tester,
-        find.text(
-          'Could not complete this step. Try again or choose another way.',
-        ),
+        find.text("Couldn't complete the invite. Try again."),
       );
       await tester.pumpAndSettle();
       await tester.ensureVisible(
-        find.text(
-          'Could not complete this step. Try again or choose another way.',
-        ),
+        find.text("Couldn't complete the invite. Try again."),
       );
       await captureVisual(tester, key, 'invite-${variant.name}-failure');
       expect(find.text('Link copied'), findsNothing);
@@ -351,9 +347,7 @@ void main() {
       await tester.tap(find.text('Copy link'));
       await waitInvitation(
         tester,
-        find.text(
-          'Could not complete this step. Try again or choose another way.',
-        ),
+        find.text("Couldn't complete the invite. Try again."),
       );
       await tester.pumpAndSettle();
       expect(find.text('Link copied'), findsNothing);

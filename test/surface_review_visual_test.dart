@@ -11,6 +11,7 @@ import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
 
 import 'support/visual_capture.dart';
+import 'support/dialog_copy_contract.dart';
 import 'garden_learning_test.dart' show FakeUpdates, settleDatabase;
 import 'invitation_widget_test.dart' show waitInvitation;
 
@@ -163,7 +164,7 @@ void main() {
     expect(find.text('Approved recipe included'), findsOneWidget);
     expect(
       find.text(
-        'Your approved recipe is included. Nobody is contacted automatically.',
+        'Anyone with the link can open it. No one is contacted automatically.',
       ),
       findsOneWidget,
     );
@@ -174,7 +175,9 @@ void main() {
     await tap('Remove recipe card');
     expect(find.text('Link copied'), findsNothing);
     expect(
-      find.text('No private habit text. Nobody is contacted automatically.'),
+      find.text(
+        'Anyone with the link can open it. No one is contacted automatically.',
+      ),
       findsOneWidget,
     );
     await escape();
@@ -187,6 +190,12 @@ void main() {
     await capture('updates-empty');
     await escape();
     await tap('Delete local garden');
+    const localDeleteDisclosure =
+        'This deletes habits, check-ins, and reflections saved on this '
+        'device—not your Microsoft or Google account.';
+    expect(find.text('Delete local data?'), findsOneWidget);
+    expect(find.text(localDeleteDisclosure), findsOneWidget);
+    expectConciseDialogCopy(localDeleteDisclosure);
     await capture('delete-local-confirm');
     await escape();
     await tap('Done');
@@ -266,7 +275,8 @@ void main() {
       await tester.pumpAndSettle();
       await tester.ensureVisible(
         find.text(
-          'Export first if you want a copy. This cannot be undone. It does not delete your identity provider account.',
+          'This deletes habits, check-ins, and reflections saved on this '
+          'device—not your Microsoft or Google account.',
         ),
       );
       await captureVisual(tester, key, 'surface-delete-200percent-short');
