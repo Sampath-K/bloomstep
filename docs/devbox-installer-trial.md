@@ -9,7 +9,7 @@ Download [bloomstep-devbox-installer-trial.zip](downloads/bloomstep-devbox-insta
 and verify SHA-256:
 
 ```text
-TBD
+58ba9adba7851548bff8f1a8f47190f63fb455d6e384eb9b4615b7cab6a3860f
 ```
 
 Extract it beside the earlier `BloomstepVM` folder, if present. Open built-in
@@ -17,7 +17,7 @@ Windows PowerShell on the already-provisioned Dev Box as a non-admin standard
 user. The two commands are:
 
 ```powershell
-if ((Get-FileHash .\bloomstep-devbox-installer-trial.zip -Algorithm SHA256).Hash.ToLowerInvariant() -ne 'TBD') { throw 'ZIP SHA-256 mismatch: STOP' }; Expand-Archive .\bloomstep-devbox-installer-trial.zip -DestinationPath .\BloomstepTrial
+if ((Get-FileHash .\bloomstep-devbox-installer-trial.zip -Algorithm SHA256).Hash.ToLowerInvariant() -ne '58ba9adba7851548bff8f1a8f47190f63fb455d6e384eb9b4615b7cab6a3860f') { throw 'ZIP SHA-256 mismatch: STOP' }; Expand-Archive .\bloomstep-devbox-installer-trial.zip -DestinationPath .\BloomstepTrial
 .\BloomstepTrial\bloomstep-devbox-installer-trial\Run-InstallerTrial.ps1
 ```
 

@@ -1,5 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import { createHash } from 'node:crypto';
 import { readFileSync, mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
@@ -156,5 +157,22 @@ test('trial bundle pins the retained unsigned CI candidate and states supplement
     assert.match(asset.sha256, /^[a-f0-9]{64}$/);
     assert.ok(asset.fileName);
     if (name !== 'inno') assert.ok(asset.executable);
+  }
+});
+
+test('operator runbook contains exactly two parseable commands and the published ZIP digest', () => {
+  const guidePath = new URL('../docs/devbox-installer-trial.md', import.meta.url);
+  const archivePath = new URL('../docs/downloads/bloomstep-devbox-installer-trial.zip', import.meta.url);
+  const guide = text(guidePath);
+  const archiveHash = createHash('sha256').update(readFileSync(archivePath)).digest('hex');
+  assert.ok(guide.includes(archiveHash), 'runbook ZIP digest differs from the committed download');
+  assert.doesNotMatch(guide, /\bTBD\b/);
+  const blocks = [...guide.matchAll(/```powershell\n([\s\S]*?)```/g)].map(match => match[1].trim().split('\n'));
+  assert.equal(blocks.length, 1);
+  assert.equal(blocks[0].length, 2);
+  for (const block of blocks[0]) {
+    const result = runPowerShell(`$tokens=$null;$errors=$null;[System.Management.Automation.Language.Parser]::ParseInput($env:BLOOMSTEP_TRIAL_COMMAND,[ref]$tokens,[ref]$errors)|Out-Null;if($errors.Count){$errors|ForEach-Object{Write-Error $_};exit 1}`,
+      { BLOOMSTEP_TRIAL_COMMAND: block });
+    assert.equal(result.status, 0, result.stderr || result.error?.message);
   }
 });
