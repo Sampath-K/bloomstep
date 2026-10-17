@@ -13,6 +13,16 @@ import { ServiceError } from '../api/src/backend.mjs';
 
 const out = process.env.EVIDENCE_DIR || join(tmpdir(), 'bloomstep-one-viewport');
 await mkdir(out, { recursive: true });
+const publicOrigin = JSON.parse(await readFile(new URL('./customer-config.json', import.meta.url), 'utf8')).origin;
+assert.equal(publicOrigin, 'https://budlark.com');
+for (const [path, route] of [['index.html', '/'], ['releases/index.html', '/releases/']]) {
+  const html = await readFile(new URL(`./${path}`, import.meta.url), 'utf8');
+  assert.match(html, new RegExp(`<link rel="canonical" href="${publicOrigin.replaceAll('.', '\\.')}${route.replaceAll('/', '\\/')}"`));
+  assert.match(html, new RegExp(`<meta property="og:url" content="${publicOrigin.replaceAll('.', '\\.')}${route.replaceAll('/', '\\/')}"`));
+  assert.doesNotMatch(html, /brave-plant-02c10e800\.5\.azurestaticapps\.net/);
+}
+assert.match(await readFile(new URL('./robots.txt', import.meta.url), 'utf8'), /Sitemap: https:\/\/budlark\.com\/sitemap\.xml/);
+assert.match(await readFile(new URL('./sitemap.xml', import.meta.url), 'utf8'), /<loc>https:\/\/budlark\.com\/releases\/<\/loc>/);
 const work = await mkdtemp(join(tmpdir(), 'bloomstep-it-copy-'));
 const store = await FileBackedCosmosContainer.openFresh(join(work, 'store.json'));
 let now = Date.parse('2026-10-01T00:00:00.000Z');
