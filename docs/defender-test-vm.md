@@ -1,5 +1,11 @@
 # Disposable protected Windows installer validation
 
+For the confirmation-gated readiness script, exact workflow labels, public-runner
+trust blocker and separate registration/execution steps, follow
+[the protected runner operator runbook](protected-runner-operator.md).
+Do not register based on labels or a clean queue alone; neither pins a job to a
+reviewed source SHA.
+
 The earlier zero-click candidate is **withdrawn** after Defender behavior
 quarantine. Do not restore or execute it, including inside this VM. No false
 positive or cause is established. The standard user-driven redesign is a
@@ -52,34 +58,18 @@ not authorization to run arbitrary repository code. Each ephemeral registration
 runs one job. The architecture jobs additionally check the actual OS
 architecture; a single x64 VM does not satisfy ARM64.
 
-1. In the repository Settings > Actions > Runners > New self-hosted runner, choose
-   Windows and the VM's architecture. Follow GitHub's current runner download and
-   checksum commands **inside the VM**. Retrieve a fresh short-lived registration
-   token as owner. Do not commit/log it or send it to the agent.
-   **Before registration**, cancel all stale/unreviewed queued runs requesting
-   this label. Inspect the exact queued job's workflow, source head and checkout
-   ref; only the newly reviewed standard-flow head may remain eligible. GitHub
-   labels do not pin a runner to a head or prevent older queued jobs being taken.
-2. Configure as the standard user, not a service, using the UI-supplied token:
-
-   ```powershell
-   .\config.cmd --url https://github.com/Sampath-K/bloomstep `
-     --token '<short-lived owner registration token>' `
-     --labels defender-interactive --ephemeral --name 'bloomstep-disposable-review'
-   $env:BLOOMSTEP_DISPOSABLE_VM = 'true'
-   .\run.cmd
-   ```
-
-   Replace the placeholder only locally. Clear terminal history holding the token
-   after registration. Jobs use `runs-on: [self-hosted, defender-interactive]` and
-   the same preflight before executing any fixture or installer. Without this
-   runner jobs remain queued: absence is not a pass or a security acceptance.
-   Genuine jobs additionally use GitHub's automatic native `x64`/`ARM64` labels
-   to avoid dispatching the ARM64 job to an x64 VM. Inno and required tools must
-   already exist; jobs must not elevate to install them. If Defender scan cmdlets
-   deny standard-user access, preserve the failed preflight and stop; do not
-   elevate the runner or weaken protection to work around it.
-3. Trigger only the reviewed exact CI source head via GitHub Actions. Collect
+1. Follow the [operator runbook](protected-runner-operator.md) to check readiness
+   without registration. Resolve its public-repository trust blocker FIRST:
+   enforceable access restrictions must exclude unreviewed workflow/ref execution.
+   Labels, ephemeral mode and canceling stale jobs alone cannot pin a runner to
+   an approved SHA. No environment approval gate currently exists for these jobs.
+2. Only after separate owner authorization and the enforced restriction, follow
+   the runbook's masked short-lived-token registration and separate interactive
+   start steps. Do not paste a token literal into shell history or install a service.
+   The automatic native architecture labels must remain truthful. Inno and required
+   tools must already exist; if standard-user Defender access fails, stop without
+   elevating the runner or weakening protection.
+3. Consume only the reviewed exact CI source head. Collect
    preflight, Defender versions/detections, installer/app tokens, exact hashes,
    setup logs and checked/unchecked launch receipts. No provider credentials are
    needed for this synthetic test. MSA/Google acceptance remains separate.
