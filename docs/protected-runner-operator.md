@@ -1,7 +1,7 @@
 # Protected Windows runner: owner preparation and explicit execution
 
 **Single-entry delivery supersedes the manual setup steps below.** Use the
-[packaged bootstrap instructions](../tool/protected-vm/README.md): unzip once,
+[downloadable ZIP and two-line instructions](protected-vm-bootstrap.md): unzip once,
 run `.\Bootstrap.ps1` as the standard user, and let its internal prompts handle
 safe prerequisite preparation and resume. The older registration examples below
 are reference only, not an alternative way around the bootstrap's `TrustBlocked`
