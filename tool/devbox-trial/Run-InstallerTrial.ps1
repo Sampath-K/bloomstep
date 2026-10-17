@@ -6,7 +6,9 @@ $root = $PSScriptRoot
 $state = Join-Path $root 'state'
 $receiptPath = Join-Path $state 'trial-receipt.json'
 $receipt = $null
-$stage = 'PackageCheck'
+$lock = $null
+$ownerPath = Join-Path $state 'installation-owner.json'
+$registrationPath = 'Registry::HKEY_CURRENT_USER\Software\Microsoft\Windows\CurrentVersion\Uninstall\{99BE7E95-0565-4C72-A4DD-46D1D5B6C679}_is1'
 
 function Get-FileSha256([string]$Path) {
   (Get-FileHash -Algorithm SHA256 -LiteralPath $Path).Hash.ToLowerInvariant()
@@ -173,11 +175,141 @@ function Confirm-Operator([string]$Prompt, [string]$RequiredText) {
   (Read-Host "$Prompt Type exactly: $RequiredText") -ceq $RequiredText
 }
 
+function Assert-TrialRegistration([string]$Target) {
+  $registration = Get-ItemProperty -LiteralPath $registrationPath -ErrorAction Stop
+  $expectedUninstall = '"' + (Join-Path $Target 'unins000.exe') + '"'
+  if ($registration.DisplayName -ne 'Bloomstep version 0.1.0-preview' -or
+      $registration.UninstallString -cne $expectedUninstall -or
+      [IO.Path]::GetFullPath($registration.InstallLocation).TrimEnd('\') -cne [IO.Path]::GetFullPath($Target).TrimEnd('\')) {
+    throw 'Product uninstall registration differs from the owned candidate/path; stop for review.'
+  }
+}
+
+function Assert-NoOtherProductRegistration([bool]$AllowOwned) {
+  $roots = @(
+    'Registry::HKEY_CURRENT_USER\Software\Microsoft\Windows\CurrentVersion\Uninstall',
+    'Registry::HKEY_CURRENT_USER\Software\WOW6432Node\Microsoft\Windows\CurrentVersion\Uninstall',
+    'Registry::HKEY_LOCAL_MACHINE\Software\Microsoft\Windows\CurrentVersion\Uninstall',
+    'Registry::HKEY_LOCAL_MACHINE\Software\WOW6432Node\Microsoft\Windows\CurrentVersion\Uninstall'
+  )
+  foreach ($registryRoot in $roots) {
+    if (-not (Test-Path -LiteralPath $registryRoot)) { continue }
+    foreach ($key in Get-ChildItem -LiteralPath $registryRoot -ErrorAction Stop) {
+      $displayName = $key.GetValue('DisplayName')
+      if ($displayName -like 'Bloomstep*') {
+        if (-not $AllowOwned -or
+            $registryRoot -ne $roots[0] -or $key.PSChildName -ne '{99BE7E95-0565-4C72-A4DD-46D1D5B6C679}_is1') {
+          throw 'Another/preexisting Bloomstep uninstall registration exists. No install or uninstall authorized.'
+        }
+      }
+    }
+  }
+}
+
+function Get-ProductFootprint([string]$Target) {
+  $runPath = 'Registry::HKEY_CURRENT_USER\Software\Microsoft\Windows\CurrentVersion\Run'
+  $runKey = $null
+  if (Test-Path -LiteralPath $runPath) { $runKey = Get-Item -LiteralPath $runPath -ErrorAction Stop }
+  $runValuePresent = $false
+  if ($null -ne $runKey) { $runValuePresent = $runKey.GetValueNames() -contains 'Bloomstep' }
+  [ordered]@{
+    executableRemains = (Test-Path -LiteralPath (Join-Path $Target 'bloomstep.exe')) -or
+      (Test-Path -LiteralPath (Join-Path $Target 'unins000.exe')) -or
+      (Test-Path -LiteralPath (Join-Path $Target 'unins000.dat'))
+    registrationRemains = (Test-Path -LiteralPath $registrationPath) -or
+      (Test-Path -LiteralPath 'Registry::HKEY_CURRENT_USER\Software\Classes\bloomstep') -or
+      (Test-Path -LiteralPath (Join-Path $env:APPDATA 'Microsoft\Windows\Start Menu\Programs\Bloomstep')) -or
+      (Test-Path -LiteralPath (Join-Path $env:APPDATA 'Microsoft\Windows\Start Menu\Programs\Startup\Bloomstep.lnk')) -or
+      $runValuePresent
+    processRemains = [bool](Get-Process -Name bloomstep -ErrorAction SilentlyContinue)
+  }
+}
+
+function Assert-NoInstallerProcess {
+  $active = @(Get-CimInstance Win32_Process -ErrorAction Stop | Where-Object {
+    $_.Name -eq 'unins000.exe' -or $_.Name -eq 'Bloomstep-0.1.0-preview-windows-universal-setup.exe'
+  })
+  if ($active.Count) { throw 'An installer/uninstaller is still running. Finish or cancel its window normally before resuming. No concurrent operation authorized.' }
+}
+
+function Get-ResidualData {
+  [ordered]@{
+    localAppDataPresent = Test-Path -LiteralPath (Join-Path $env:LOCALAPPDATA 'Bloomstep')
+    roamingAppDataPresent = Test-Path -LiteralPath (Join-Path $env:APPDATA 'Bloomstep')
+    flutterDataPresent = Test-Path -LiteralPath (Join-Path $env:APPDATA 'com.example\bloomstep')
+    applicationSupportDataPresent = Test-Path -LiteralPath (Join-Path $env:APPDATA 'Bloomstep contributors\Bloomstep')
+    productSettingsPresent = Test-Path -LiteralPath 'Registry::HKEY_CURRENT_USER\Software\Bloomstep'
+    dataDeletionAttempted = $false
+    machineRestored = $false
+  }
+}
+
+function Invoke-OwnedTrialUninstall([string]$Target, [string]$Architecture, $UniversalManifest, [string]$CandidateHash) {
+  $receipt.stage = 'CleanupRequired'
+  $receipt.residualUserData = Get-ResidualData
+  $receipt.nextAction = 'Close Bloomstep normally, then confirm product-only uninstall. -Resume retries only verified cleanup, never reinstalls.'
+  Save-DevBoxTrialReceipt $receiptPath $receipt
+  if (-not (Test-Path -LiteralPath $ownerPath)) {
+    throw 'No installation ownership receipt exists. Cannot safely automate uninstall of ambiguous/preexisting state.'
+  }
+  $owner = Get-Content -LiteralPath $ownerPath -Raw | ConvertFrom-Json
+  $sid = [Security.Principal.WindowsIdentity]::GetCurrent().User.Value
+  Assert-NoInstallerProcess
+  $uninstaller = Assert-OwnedUninstaller $owner $Target $sid $CandidateHash
+  Assert-NoOtherProductRegistration $true
+  Assert-TrialRegistration $Target
+  Assert-InstalledPayload $Target $Architecture $root $UniversalManifest | Out-Null
+  $protectionBeforeCleanup = Get-DefenderSnapshot
+  Write-Host 'Close Bloomstep normally, including Exit from its tray menu, before continuing. No process will be killed.'
+  $confirm = Confirm-Operator "Remove only this trial's Bloomstep program, shortcuts and protocol using its verified uninstaller? App-created user data stays; this is NOT VM rollback. Target: $Target" 'UNINSTALL OWNED TRIAL'
+  if (-not $confirm) { throw 'Uninstall declined. Product remains installed; rerun this entry point with -Resume for verified cleanup.' }
+  if (Get-Process -Name bloomstep -ErrorAction SilentlyContinue) {
+    throw 'Bloomstep is still running. Exit normally via its tray menu and rerun with -Resume; no force kill.'
+  }
+  # Revalidate after the human confirmation, before executing any uninstall code.
+  $uninstaller = Assert-OwnedUninstaller $owner $Target $sid $CandidateHash
+  Assert-TrialRegistration $Target
+  Assert-NoInstallerProcess
+  $null = Get-DefenderSnapshot
+  $receipt.stage = 'UninstallStarted'
+  $receipt.nextAction = 'Visible uninstall in progress; do not start another trial or cleanup.'
+  Save-DevBoxTrialReceipt $receiptPath $receipt
+  $uninstall = Start-Process -FilePath $uninstaller -ArgumentList '/NORESTART' -PassThru
+  if (-not $uninstall.WaitForExit(120000)) {
+    throw 'Uninstaller exceeded 120 seconds. It was not killed. Finish/cancel its visible window; preserve the receipt and do not run another copy.'
+  }
+  $receipt.uninstallerExitCode = $uninstall.ExitCode
+  $deadline = [DateTime]::UtcNow.AddSeconds(15)
+  do {
+    $footprint = Get-ProductFootprint $Target
+    if (-not ($footprint.executableRemains -or $footprint.registrationRemains -or $footprint.processRemains)) { break }
+    Start-Sleep -Milliseconds 300
+  } while ([DateTime]::UtcNow -lt $deadline)
+  $receipt.residualUserData = Get-ResidualData
+  $receipt.postUninstallFootprint = $footprint
+  $receipt.installDirectoryRemains = Test-Path -LiteralPath $Target
+  Assert-UninstallResult $uninstall.ExitCode $footprint.executableRemains $footprint.registrationRemains $footprint.processRemains
+  $protectionAfterCleanup = Get-DefenderSnapshot
+  $receipt.defenderAfterCleanup = $protectionAfterCleanup.summary
+  $receipt.newOrChangedCleanupDetectionCount = @($protectionAfterCleanup.detectionFingerprints | Where-Object {
+    $_ -notin $protectionBeforeCleanup.detectionFingerprints
+  }).Count
+  if ($receipt.newOrChangedCleanupDetectionCount) { throw 'New/changed Defender detection during uninstall. Cleanup acceptance withheld; preserve evidence.' }
+  $receipt.cleanupVerified = $true
+  $receipt.cleanupOutcome = 'VERIFIED_PRODUCT_REMOVAL_ONLY'
+  $receipt.cleanupCompletedAt = [DateTime]::UtcNow.ToString('o')
+  $receipt.stage = 'Uninstalled'
+  $receipt.nextAction = 'Product removal verified; user data and any unknown residual directory are preserved. This is not a clean-VM proof or machine rollback. Share only trial-receipt.json.'
+  Save-DevBoxTrialReceipt $receiptPath $receipt
+}
+
 . (Join-Path $root 'Trial.Common.ps1')
 New-Item -ItemType Directory -Force -Path $state | Out-Null
 
 try {
+  $lock = [IO.File]::Open((Join-Path $state 'trial.lock'), [IO.FileMode]::OpenOrCreate, [IO.FileAccess]::ReadWrite, [IO.FileShare]::None)
   if ($env:OS -ne 'Windows_NT') { throw 'This package runs only on Windows.' }
+  if ([IntPtr]::Size -ne 8) { throw 'Use built-in 64-bit Windows PowerShell, not its x86 edition. No operation started.' }
   $package = Assert-Package $root
   $trial = Get-Content -LiteralPath (Join-Path $root 'trial-manifest.json') -Raw | ConvertFrom-Json
   if ($trial.kind -ne 'bloomstep-devbox-installer-trial-v1' -or
@@ -205,15 +337,11 @@ try {
   if ((Get-FileSha256 $installer) -ne $trial.artifact.installerSha256) {
     throw 'Installer SHA-256 mismatch. Do not execute or attempt to repair the package.'
   }
+  $previousReceipt = $null
   if (Test-Path -LiteralPath $receiptPath) {
     $previousReceipt = Get-Content -LiteralPath $receiptPath -Raw | ConvertFrom-Json
-    if ($previousReceipt.installerExecutionStarted -or
-        $previousReceipt.stage -in @('LaunchAuthorized','InstallerStarted','InstallerCompleted')) {
-      throw 'This package already authorized/started the installer. Do not rerun it; preserve the receipt and use the Dev Box restore controls if recovery is needed.'
-    }
-    if (-not $Resume -and $previousReceipt.stage -notin @('Failed','Declined')) {
-      throw 'A prior trial receipt exists. Use -Resume to revalidate it; no prior confirmation is reused.'
-    }
+    if (-not $Resume) { throw 'A prior trial receipt exists. Use the same entry point with -Resume; no reinstall is automatic.' }
+    if ($previousReceipt.schema -ne 2) { throw 'Older trial receipt is not uninstall ownership evidence; stop for review without altering existing product state.' }
   }
   $native = $env:PROCESSOR_ARCHITEW6432
   if (-not $native) { $native = $env:PROCESSOR_ARCHITECTURE }
@@ -222,14 +350,21 @@ try {
     'ARM64' { 'arm64' }
     default { throw "Unsupported or emulated architecture '$native'; use native x64 or ARM64 Windows." }
   }
-  $receipt = New-DevBoxTrialReceipt $trial.source $architecture $trial.artifact.installerSha256
+  if ($null -eq $previousReceipt) {
+    $receipt = New-DevBoxTrialReceipt $trial.source $architecture $trial.artifact.installerSha256
+  } else {
+    $receipt = [ordered]@{}
+    foreach ($property in $previousReceipt.PSObject.Properties) { $receipt[$property.Name] = $property.Value }
+    if ($receipt.source -ne $trial.source -or $receipt.installerSha256 -ne $trial.artifact.installerSha256 -or
+        $receipt.architecture -ne $architecture) { throw 'Prior trial candidate/architecture identity mismatch.' }
+  }
   $receipt.packageSourceCommit = $package.sourceCommit
   $receipt.artifactRunId = $trial.artifact.runId
   $receipt.artifactName = $trial.artifact.name
   $receipt.published = $false
   $receipt.signed = $false
   $receipt.environment = 'operator-confirmed assigned Microsoft Dev Box; not independently attested by this script'
-  $receipt.restoreMechanism = 'Microsoft Dev Box Developer Portal managed snapshot/restore; not host Hyper-V checkpoint'
+  $receipt.recoveryMode = 'owned-product-uninstall; no snapshot required; NOT machine rollback'
   if ($Resume) { $receipt.resume = 'All package, platform, Defender, and clean-state checks rerun; no prior approval reused.' }
   Assert-NoPreviousBootstrapRunning
   $previousRoot = Join-Path (Split-Path (Split-Path $root -Parent) -Parent) 'BloomstepVM\bloomstep-vm-bootstrap'
@@ -243,35 +378,49 @@ try {
     throw 'Operator did not confirm the assigned Dev Box.'
   }
   Assert-InteractiveStandardUser
+  Assert-NoInstallerProcess
   $defenderBefore = Get-DefenderSnapshot
   $baselineDetectionFingerprints = @($defenderBefore.detectionFingerprints)
   $receipt.defenderBefore = $defenderBefore.summary
   $installTarget = Join-Path $env:LOCALAPPDATA 'Programs\Bloomstep'
-  $protocol = 'Registry::HKEY_CURRENT_USER\Software\Classes\bloomstep'
+  Assert-NoReparsePath $installTarget
+  if ($null -ne $previousReceipt -and $previousReceipt.installerExecutionStarted) {
+    if ($receipt.cleanupVerified) {
+      $footprint = Get-ProductFootprint $installTarget
+      Assert-UninstallResult 0 $footprint.executableRemains $footprint.registrationRemains $footprint.processRemains
+      Assert-NoOtherProductRegistration $false
+      $receipt.residualUserData = Get-ResidualData
+      $receipt.installDirectoryRemains = Test-Path -LiteralPath $installTarget
+      Write-Host 'Previously verified uninstall remains absent. No installer rerun or data deletion.'
+      return
+    }
+    if ($receipt.stage -eq 'UninstallStarted') { throw 'Earlier uninstall started; completion/exit code is unknown. Do not rerun blindly. Preserve state for review; this script cannot claim successful uninstall without its exit code.' }
+    Invoke-OwnedTrialUninstall $installTarget $architecture $universal $trial.artifact.installerSha256
+    Write-Host "Cleanup receipt: $receiptPath"
+    return
+  }
+  if ($null -ne $previousReceipt -and $previousReceipt.stage -eq 'LaunchAuthorized') {
+    throw 'Previous installer invocation is uncertain and no owned installation was recorded. Stop for review; no reinstall/uninstall authorized.'
+  }
   $productPaths = @(
     $installTarget,
     (Join-Path $env:LOCALAPPDATA 'Bloomstep'),
     (Join-Path $env:APPDATA 'Bloomstep'),
     'Registry::HKEY_CURRENT_USER\Software\Classes\bloomstep',
-    'Registry::HKEY_CURRENT_USER\Software\Bloomstep'
+    'Registry::HKEY_CURRENT_USER\Software\Bloomstep',
+    $registrationPath,
+    (Join-Path $env:APPDATA 'com.example\bloomstep'),
+    (Join-Path $env:APPDATA 'Bloomstep contributors\Bloomstep')
   )
+  Assert-NoOtherProductRegistration $false
+  $preexistingFootprint = Get-ProductFootprint $installTarget
   if (@($productPaths | Where-Object { Test-Path -LiteralPath $_ }).Count -or
-      (Get-Process -Name bloomstep -ErrorAction SilentlyContinue)) {
-    throw 'Bloomstep state already exists. Nothing will be deleted; restore a clean Dev Box managed snapshot before this trial.'
+      $preexistingFootprint.registrationRemains -or $preexistingFootprint.processRemains) {
+    throw 'Unowned/preexisting Bloomstep installation or data exists. Nothing will be deleted or adopted. Preserve it and return the blocker for review.'
   }
   $receipt.preflightPassed = $true
   $receipt.stage = 'PreflightPassed'
-  $receipt.nextAction = 'Create a manual Dev Box snapshot in the Developer Portal now if one does not already exist. Confirm it is listed and usable; restoring discards all later Dev Box changes.'
-  Save-DevBoxTrialReceipt $receiptPath $receipt
-  Write-Host 'Recovery is a managed Dev Box snapshot, not a host Hyper-V checkpoint. The script cannot verify or create that snapshot.'
-  Write-Host 'Create/confirm the snapshot in the Developer Portal; back up anything you may need after a restore.'
-  if (-not (Confirm-Operator 'Confirm you personally verified the Dev Box restore point is listed and usable, and accept loss of changes made after it on restore.' 'MANAGED RESTORE POINT READY')) {
-    $receipt.stage = 'Declined'
-    $receipt.nextAction = 'Create and verify a Dev Box managed snapshot in the Developer Portal, then rerun this entry point with -Resume. No installer was started.'
-    throw 'No Dev Box restore point was confirmed.'
-  }
-  $receipt.restorePointOperatorConfirmed = $true
-  $receipt.restorePointVerifiedByScript = $false
+  Write-Host 'No snapshot is required for this supplemental trial. Uninstall removes only the owned program; user data and other VM changes are not rolled back.'
   $receipt.stage = 'Ready'
   $receipt.nextAction = 'Installer execution still requires a separate explicit confirmation.'
   Save-DevBoxTrialReceipt $receiptPath $receipt
@@ -279,7 +428,7 @@ try {
   Write-Host "Source: $($trial.source); Actions run: $($trial.artifact.runId); SHA-256: $($trial.artifact.installerSha256)"
   Write-Host 'Unsigned, unpublished CI candidate. SmartScreen/Defender warnings must not be bypassed.'
   $executionConfirmed = Confirm-Operator 'This starts the visible installer as the current non-admin user. You will drive the wizard and app test.' 'RUN UNSIGNED CANDIDATE'
-  if (-not (Test-DevBoxTrialLaunchAllowed $receipt.stage $receipt.preflightPassed $receipt.restorePointOperatorConfirmed $executionConfirmed)) {
+  if (-not (Test-DevBoxTrialLaunchAllowed $receipt.stage $receipt.preflightPassed $executionConfirmed)) {
     $receipt.stage = 'Declined'
     $receipt.nextAction = 'No installer was started. Rerun with -Resume only after choosing to perform the owner trial.'
     throw 'Installer launch confirmation declined or guard conditions were not satisfied.'
@@ -287,6 +436,12 @@ try {
   if ((Get-FileSha256 $installer) -ne $trial.artifact.installerSha256) {
     throw 'Installer changed after preflight. Do not execute.'
   }
+  Assert-InteractiveStandardUser
+  Assert-NoInstallerProcess
+  Assert-NoOtherProductRegistration $false
+  Assert-NoReparsePath $installTarget
+  if (@($productPaths | Where-Object { Test-Path -LiteralPath $_ }).Count) { throw 'Product state changed during confirmation. Stop; no install authorized.' }
+  $null = Get-DefenderSnapshot
   $receipt.stage = 'LaunchAuthorized'
   $receipt.installerExecutionAuthorizedAt = [DateTime]::UtcNow.ToString('o')
   $receipt.nextAction = 'Installer launch authorized; do not rerun this package if the process is interrupted.'
@@ -302,6 +457,16 @@ try {
   if ($receipt.installerExitCode -eq 0) {
     $receipt.installedPayloadFileCount = Assert-InstalledPayload $installTarget $architecture $root $universal
     $receipt.installedPayloadIntegrity = 'PASS'
+    Assert-TrialRegistration $installTarget
+    $owner = [ordered]@{
+      installTarget = $installTarget
+      installingSid = [Security.Principal.WindowsIdentity]::GetCurrent().User.Value
+      installerSha256 = $trial.artifact.installerSha256
+      uninstallerSha256 = Get-FileSha256 (Join-Path $installTarget 'unins000.exe')
+      uninstallDataSha256 = Get-FileSha256 (Join-Path $installTarget 'unins000.dat')
+    }
+    Assert-OwnedUninstaller $owner $installTarget $owner.installingSid $owner.installerSha256 | Out-Null
+    Save-DevBoxTrialReceipt $ownerPath $owner
   } else {
     $receipt.installedPayloadIntegrity = 'NOT_CHECKED; installer exit code was nonzero'
   }
@@ -323,9 +488,8 @@ try {
   $receipt.outcome = Get-DevBoxTrialOutcome $receipt.installerExitCode $receipt.payloadVerified $wizardObserved $appObserved
   $receipt.stage = 'TrialRecorded'
   $receipt.completedAt = [DateTime]::UtcNow.ToString('o')
-  $receipt.restoreAction = 'NOT_PERFORMED; owner controls restore in the Dev Box Developer Portal'
-  $receipt.nextAction = 'Review the sanitized receipt. This owner trial is supplemental only and does not satisfy any protected Actions gate.'
   Save-DevBoxTrialReceipt $receiptPath $receipt
+  Invoke-OwnedTrialUninstall $installTarget $architecture $universal $trial.artifact.installerSha256
   Write-Host "Supplemental receipt: $receiptPath"
   Write-Host 'Protected CI gates remain UNVERIFIED. No runner was registered, no policy changed, and no release was authorized.'
 } catch {
@@ -333,13 +497,17 @@ try {
     if ($receipt.stage -eq 'Created') { $receipt.stage = 'Blocked' }
     if ($receipt.stage -eq 'LaunchAuthorized') {
       $receipt.outcome = 'LAUNCH_NOT_CONFIRMED'
-      $receipt.nextAction = 'Do not rerun. The installer may have been invoked; inspect local state and use the Dev Box Developer Portal restore point if recovery is needed.'
+      $receipt.nextAction = 'Installer invocation is uncertain. Stop for review; no ownership evidence exists for automatic reinstall/uninstall.'
     } elseif ($receipt.stage -eq 'InstallerStarted') {
       $receipt.outcome = 'INSTALLER_INTERRUPTED'
-      $receipt.nextAction = 'Do not rerun. Preserve the Dev Box and receipt; inspect the installer state or restore through the Dev Box Developer Portal.'
+      $receipt.nextAction = 'Preserve state. Use -Resume only for verified owned uninstall if ownership was recorded; otherwise stop for review.'
     } elseif ($receipt.stage -eq 'InstallerCompleted') {
       $receipt.outcome = 'POST_INSTALL_CHECK_FAILED'
-      $receipt.nextAction = 'Do not rerun. Preserve the Dev Box and receipt; inspect the stated failure or restore through the Dev Box Developer Portal.'
+      $receipt.nextAction = 'Preserve state. -Resume can only uninstall a verified owned installation, never adopt ambiguous state.'
+    } elseif ($receipt.stage -in @('CleanupRequired','UninstallStarted','Uninstalled')) {
+      $receipt.cleanupVerified = $false
+      $receipt.cleanupOutcome = 'FAILED_OR_UNVERIFIED'
+      $receipt.nextAction = 'Cleanup not verified. Inspect the visible failure. If no uninstall was started, close the app normally and use -Resume for verified cleanup. Never delete residual data or force-kill processes.'
     } elseif ($receipt.stage -notin @('Declined','TrialRecorded')) {
       $receipt.outcome = 'BLOCKED'
       $receipt.nextAction = 'Read the visible error and resolve only the stated supported dependency. Do not bypass Windows protection or alter tenant policy.'
@@ -355,4 +523,5 @@ try {
     Save-DevBoxTrialReceipt $receiptPath $receipt
     Write-Host "Sanitized local receipt: $receiptPath"
   }
+  if ($null -ne $lock) { $lock.Dispose() }
 }

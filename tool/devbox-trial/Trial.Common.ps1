@@ -3,7 +3,7 @@ $ErrorActionPreference = 'Stop'
 
 function New-DevBoxTrialReceipt([string]$Source, [string]$Architecture, [string]$InstallerSha256) {
   [ordered]@{
-    schema = 1
+    schema = 2
     kind = 'bloomstep-devbox-installer-trial'
     evidenceClass = 'supplemental-manual-owner-trial'
     createdAt = [DateTime]::UtcNow.ToString('o')
@@ -18,19 +18,61 @@ function New-DevBoxTrialReceipt([string]$Source, [string]$Architecture, [string]
     runnerRegistrationAuthorized = $false
     installerExecutionStarted = $false
     preflightPassed = $false
-    restorePointOperatorConfirmed = $false
-    restorePointVerifiedByScript = $false
-    nextAction = 'No installer action is authorized until preflight, managed restore-point confirmation, and explicit execution confirmation pass.'
+    recoveryMode = 'owned-product-uninstall; not machine rollback'
+    machineRollbackAvailable = $false
+    cleanupVerified = $false
+    nextAction = 'Preflight and explicit execution confirmation are required. Only the owned product can be uninstalled; user data is preserved.'
   }
 }
 
 function Test-DevBoxTrialLaunchAllowed(
   [string]$Stage,
   [bool]$PreflightPassed,
-  [bool]$RestorePointConfirmed,
   [bool]$ExecutionConfirmed
 ) {
-  return ($Stage -eq 'Ready' -and $PreflightPassed -and $RestorePointConfirmed -and $ExecutionConfirmed)
+  return ($Stage -eq 'Ready' -and $PreflightPassed -and $ExecutionConfirmed)
+}
+
+function Assert-NoReparsePath([string]$Path) {
+  $current = [IO.Path]::GetFullPath($Path)
+  while ($current) {
+    if (Test-Path -LiteralPath $current) {
+      if ((Get-Item -LiteralPath $current -Force).Attributes -band [IO.FileAttributes]::ReparsePoint) {
+        throw 'Reparse-point install/uninstaller path is ambiguous; no product operation authorized.'
+      }
+    }
+    $parent = [IO.Path]::GetDirectoryName($current)
+    if ($parent -eq $current) { break }
+    $current = $parent
+  }
+}
+
+function Assert-OwnedUninstaller($Owner, [string]$ExpectedTarget, [string]$Sid, [string]$CandidateHash) {
+  $target = [IO.Path]::GetFullPath($ExpectedTarget).TrimEnd('\','/')
+  if ([IO.Path]::GetFullPath($Owner.installTarget).TrimEnd('\','/') -cne $target -or
+      $Owner.installingSid -cne $Sid -or $Owner.installerSha256 -cne $CandidateHash) {
+    throw 'Installation ownership/path/user/candidate mismatch; no uninstall authorized.'
+  }
+  Assert-NoReparsePath $target
+  foreach ($file in @(
+    @{name='unins000.exe'; hash=$Owner.uninstallerSha256},
+    @{name='unins000.dat'; hash=$Owner.uninstallDataSha256}
+  )) {
+    $path = Join-Path $target $file.name
+    Assert-NoReparsePath $path
+    if ($file.hash -notmatch '^[a-f0-9]{64}$' -or
+        -not (Test-Path -LiteralPath $path -PathType Leaf) -or
+        (Get-FileHash -LiteralPath $path -Algorithm SHA256).Hash.ToLowerInvariant() -cne $file.hash) {
+      throw 'Owned uninstaller or its installation log changed/missing; no uninstall authorized.'
+    }
+  }
+  return (Join-Path $target 'unins000.exe')
+}
+
+function Assert-UninstallResult([int]$ExitCode, [bool]$ExecutableRemains, [bool]$RegistrationRemains, [bool]$ProcessRemains) {
+  if ($ExitCode -ne 0 -or $ExecutableRemains -or $RegistrationRemains -or $ProcessRemains) {
+    throw 'Uninstall failed, requires restart, or left executable/registration/process state. Nothing is deleted or retried automatically.'
+  }
 }
 
 function Get-DevBoxTrialOutcome(
