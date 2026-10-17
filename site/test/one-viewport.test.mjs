@@ -16,4 +16,6 @@ test('approved baseline is production HTML, not a proposal selector, with unchan
   assert.equal((home.match(/id="website-consent"/g) ?? []).length, 1);
   assert.equal((home.match(/data-universal-download/g) ?? []).length, 1);
   assert.doesNotMatch(home, /preview\.15/);
+  assert.match(readFileSync(new URL('../verify-browser.mjs', import.meta.url), 'utf8'), /import\('\.\/verify-one-viewport\.mjs'\)/,
+    'the unchanged customer-quality workflow reaches real staged-copy checks through its existing browser verifier');
 });
