@@ -104,7 +104,7 @@ class _SyntheticPreviewState extends State<_SyntheticPreview> {
 
   @override
   Widget build(BuildContext context) => MaterialApp(
-    title: 'Bud Lark - isolated synthetic preview',
+    title: 'Budlark - isolated synthetic preview',
     theme: BloomstepTheme.light(),
     darkTheme: BloomstepTheme.dark(),
     debugShowCheckedModeBanner: false,

@@ -1,4 +1,4 @@
-"""Generate original Bud Lark flower icons, sign-in wordmark and social card."""
+"""Generate original Budlark flower icons, sign-in wordmark and social card."""
 
 import argparse
 import math
@@ -31,7 +31,7 @@ def social(font_path, regular_font_path):
     image = Image.new("RGB", (1200, 630), "#f7f4ef")
     draw = ImageDraw.Draw(image)
     draw.text(
-        (64, 48), "Bud Lark",
+        (64, 48), "Budlark",
         font=ImageFont.truetype(font_path, 61), fill="#242424",
     )
     draw.text(
@@ -74,7 +74,7 @@ def main():
     wordmark.alpha_composite(flower(36))
     draw = ImageDraw.Draw(wordmark)
     font = ImageFont.truetype(args.font, 28)
-    draw.text((42, 0), "Bud Lark", font=font, fill="#242424")
+    draw.text((42, 0), "Budlark", font=font, fill="#242424")
     wordmark.save(assets / "bloomstep-wordmark.png")
     social(args.font, args.regular_font).save(assets / "bloomstep-social.png")
 

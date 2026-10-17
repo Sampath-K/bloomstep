@@ -174,11 +174,11 @@ function initializeCustomer() {
     notice.hidden = false;
     const explanation = document.createElement('p');
     explanation.textContent = invitation.generic ? 'You were invited to grow a tiny habit. This link does not share personal garden information.' :
-      'Your invitation is ready. Keep this link while you install the app if you are an authorized tester. Bud Lark checks the invitation after you sign in.';
+      'Your invitation is ready. Keep this link while you install the app if you are an authorized tester. Budlark checks the invitation after you sign in.';
     notice.append(explanation);
     if (!invitation.generic) {
       const open = document.createElement('a'); open.href = nativeInvitationUrl(invitation);
-      open.textContent = 'Open invitation in Bud Lark'; notice.append(open);
+      open.textContent = 'Open invitation in Budlark'; notice.append(open);
     }
   } catch (error) {
     notice.hidden = false; notice.textContent = `${error.message} Nothing was accepted. Try the original invitation link.`;

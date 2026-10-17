@@ -23,7 +23,7 @@ class BloomstepWindowsPaths extends PathProviderWindows {
     final root = await (knownFolder?.call(folder) ?? getPath(folder));
     if (root == null || root.isEmpty || !p.isAbsolute(root)) {
       throw StateError(
-        'Bud Lark could not resolve its Windows data directory.',
+        'Budlark could not resolve its Windows data directory.',
       );
     }
     // Both garden storage and secure-storage v4 use this path. Branding must

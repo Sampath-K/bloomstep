@@ -61,15 +61,15 @@ export function initializeInvitationLanding() {
     const explanation = document.createElement('p');
     explanation.textContent = intent.generic
       ? 'You were invited to grow a tiny habit. This link does not share personal garden information or promise referral credit.'
-      : 'Your invitation is ready. It contains no private garden data. Bud Lark validates it after you sign in; accepting credits the inviter. Both gardens may earn a cosmetic flower after the invited friend practices.';
+      : 'Your invitation is ready. It contains no private garden data. Budlark validates it after you sign in; accepting credits the inviter. Both gardens may earn a cosmetic flower after the invited friend practices.';
     notice.append(explanation);
     const download = document.createElement('a'); download.href = '#download';
     download.textContent = 'Check the Windows preview status'; notice.append(download);
     if (intent.generic) return;
     const open = document.createElement('a'); open.href = nativeInvitationUrl(intent);
-    open.className = 'button'; open.textContent = 'Open invitation in Bud Lark';
+    open.className = 'button'; open.textContent = 'Open invitation in Budlark';
     const steps = document.createElement('p');
-    steps.textContent = 'If Bud Lark is not installed, keep this invitation link, install the app if you are an authorized tester, then return here after signing in. The app opens only when you choose Open invitation.';
+    steps.textContent = 'If Budlark is not installed, keep this invitation link, install the app if you are an authorized tester, then return here after signing in. The app opens only when you choose Open invitation.';
     const label = document.createElement('label');
     const remember = document.createElement('input'); remember.type = 'checkbox';
     remember.style.width = 'auto'; remember.style.display = 'inline';

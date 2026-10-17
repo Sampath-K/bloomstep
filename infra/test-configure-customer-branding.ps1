@@ -61,7 +61,7 @@ try {
     -not @($global:brandingTargets | Where-Object { $_ -match '/localizations/en-US$' }).Count) { throw 'Default fallback and English must both be branded.' }
   $values = @($global:brandingRecord.contentCustomization.attributeCollection)
   if (-not @($values | Where-Object { $_.key -eq 'Preserved_Key' -and $_.value -eq 'Preserved value' }).Count) { throw 'Existing content lost.' }
-  if (-not @($values | Where-Object { $_.key -eq 'SignIn_Title' -and $_.value -eq 'Sign in to Bud Lark' }).Count) { throw 'Sign-in title not branded.' }
+  if (-not @($values | Where-Object { $_.key -eq 'SignIn_Title' -and $_.value -eq 'Sign in to Budlark' }).Count) { throw 'Sign-in title not branded.' }
   $before = $global:brandingWrites
   $global:brandingTenant = '66666666-7777-4888-8999-000000000000'
   try { $null = & $script @parameters; throw 'Wrong tenant accepted.' }

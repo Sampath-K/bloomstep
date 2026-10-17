@@ -56,7 +56,7 @@ class GardenStore {
           }
         },
         onDowngrade: (_, oldVersion, newVersion) => throw StateError(
-          'This garden uses a newer Bud Lark data format '
+          'This garden uses a newer Budlark data format '
           '($oldVersion; this app supports $newVersion). '
           'Install a compatible newer version. Your data was not changed.',
         ),

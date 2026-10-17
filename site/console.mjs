@@ -399,7 +399,7 @@ function initialize() {
       if(!auth) throw new Error('Not configured');
       await cleared;
       if(generation !== sessionGeneration) return;
-      status.textContent = 'Opening secure Bud Lark operator sign-in...';
+      status.textContent = 'Opening secure Budlark operator sign-in...';
       await auth.signIn();
       if(generation !== sessionGeneration) return;
       status.textContent = 'Signed in. My data isolation is available to customers; team tools require server-assigned Bloomstep.Admin.';

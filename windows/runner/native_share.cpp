@@ -41,7 +41,7 @@ NativeShare::NativeShare(flutter::BinaryMessenger* messenger, HWND window)
         if (!IsWindowVisible(window_) || GetForegroundWindow() != window_) {
           result->Error(
               "share_foreground_required",
-              "Bring Bud Lark to the foreground and choose Windows share again.");
+              "Bring Budlark to the foreground and choose Windows share again.");
           return;
         }
         try {
@@ -65,7 +65,7 @@ NativeShare::NativeShare(flutter::BinaryMessenger* messenger, HWND window)
                     package.SetWebLink(Uri(winrt::to_hstring(url_)));
                   } catch (const winrt::hresult_error&) {
                     request.FailWithDisplayText(
-                        L"Bud Lark could not prepare the invitation. Open the app and try again.");
+                        L"Budlark could not prepare the invitation. Open the app and try again.");
                   }
                 });
           }
@@ -87,7 +87,7 @@ NativeShare::~NativeShare() {
     try {
       manager_.DataRequested(requested_);
     } catch (const winrt::hresult_error&) {
-      OutputDebugStringW(L"Bud Lark: share event cleanup failed during shutdown.\n");
+      OutputDebugStringW(L"Budlark: share event cleanup failed during shutdown.\n");
     }
     manager_ = nullptr;
   }

@@ -170,7 +170,7 @@ class SingleInstance {
         await Future<void>.delayed(const Duration(milliseconds: 50));
       } on FormatException {
         throw StateError(
-          'Existing Bud Lark instance metadata is invalid. Close the old app and retry.',
+          'Existing Budlark instance metadata is invalid. Close the old app and retry.',
         );
       }
     }
@@ -183,7 +183,7 @@ class SingleInstance {
         descriptor['token'] is! String ||
         !RegExp(r'^[a-f0-9]{64}$').hasMatch(descriptor['token'] as String)) {
       throw StateError(
-        'An existing Bud Lark instance is not ready. Retry after it finishes starting.',
+        'An existing Budlark instance is not ready. Retry after it finishes starting.',
       );
     }
     if (Platform.isWindows) {
