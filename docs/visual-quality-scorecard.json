@@ -1,0 +1,238 @@
+{
+  "schemaVersion": 1,
+  "kind": "expert-heuristic-not-outcome-evidence",
+  "targetPerDimension": 4,
+  "dimensions": ["D", "H", "G", "A", "T"],
+  "accessibilityReleaseBlocker": {
+    "blocksRelease": true,
+    "mayBeDeferredAsFollowUp": false,
+    "primaryActionMustBeVisibleAndReachableInitially": [
+      "200_percent_text",
+      "short_window",
+      "high_dpi"
+    ],
+    "primaryActionMustPrecedeSecondaryDetailsIn": [
+      "keyboard_focus_order",
+      "assistive_technology_semantics"
+    ],
+    "minimumApplicableDimensionScore": 4,
+    "notObservedIsPass": false
+  },
+  "sourceBase": "a778a66",
+  "surfaces": [
+    {
+      "id": "device-empty", "source": "lib/features/garden/garden_screen.dart + garden_canopy.dart", "conditions": "1100x900, light, 100%, reduced motion, synthetic device profile",
+      "validationResult": "PASS_OBSERVED_SCOPE",
+      "baseline": {"status": "OBSERVED", "scores": {"D":4,"H":3,"G":2,"A":3,"T":4}, "evidence":["before-chrome-device-empty.png"]},
+      "current": {"status": "OBSERVED", "scores": {"D":4,"H":4,"G":4,"A":3,"T":4}, "evidence":["chrome-device-empty.png"]},
+      "checks": ["garden_chrome_visual_test: canopy present; image-labelled CTA <=300px opens builder"], "gaps":["Native Narrator/high contrast/DPI and device performance not observed"], "gate":"OPEN"
+    },
+    {
+      "id": "account-populated", "source": "lib/features/garden/garden_screen.dart + profile_section.dart", "conditions": "1100x900, light, 100%, synthetic account presentation; no live authentication",
+      "validationResult": "PASS_OBSERVED_SCOPE",
+      "baseline": {"status": "OBSERVED", "scores": {"D":4,"H":3,"G":3,"A":3,"T":4}, "evidence":["before-chrome-account-populated.png"]},
+      "current": {"status": "OBSERVED", "scores": {"D":4,"H":4,"G":4,"A":3,"T":4}, "evidence":["chrome-account-populated.png","combined-account-garden-populated.png"]},
+      "checks": ["garden_chrome_visual_test: compact labelled CTA and Settings retained; Did it hit-testable in initial desktop viewport", "widget_test: actual plant/check-in/undo journey passes after populated-canopy compaction"],
+      "gaps":["Real account and native accessibility unobserved; synthetic profile/copy states are assessed separately"], "gate":"OPEN"
+    },
+    {
+      "id": "device-populated-large", "source": "lib/features/garden/garden_screen.dart + profile_section.dart", "conditions": "420x820, light, 200%, OS/app reduced motion; populated synthetic device and account gardens",
+      "validationResult": "PASS_OBSERVED_SCOPE",
+      "baseline": {"status": "OBSERVED", "scores": {"D":3,"H":3,"G":2,"A":3,"T":4}, "evidence":["before-chrome-device-populated-large.png"]},
+      "current": {"status": "OBSERVED", "scores": {"D":4,"H":4,"G":4,"A":4,"T":4}, "evidence":["chrome-device-populated-large.png","chrome-account-populated-large.png"]},
+      "checks": ["garden chrome 420x820/200% variants: the full Did it control rectangle is inside the initial viewport; button semantics retained; account Settings and persistent garden-switch guidance remain visible; keyboard reaches practice before profile details"],
+      "gaps":["Narrator, high contrast, mixed-monitor/native DPI and protected-VM behavior remain unobserved; gate stays open until those applicable checks are complete"], "gate":"OPEN"
+    },
+    {
+      "id": "account-empty-dark-small", "source": "lib/features/garden/garden_screen.dart", "conditions": "640x480, dark, 100%, reduced motion; synthetic account",
+      "validationResult": "PASS_OBSERVED_SCOPE",
+      "baseline": {"status": "OBSERVED", "scores": {"D":3,"H":3,"G":2,"A":3,"T":4}, "evidence":["before-chrome-account-empty-dark-small.png"]},
+      "current": {"status": "OBSERVED", "scores": {"D":4,"H":4,"G":4,"A":3,"T":4}, "evidence":["chrome-account-empty-dark-small.png"]},
+      "checks": ["garden_chrome_visual_test: scroll reachable, no clipping exception, CTA opens builder"], "gaps":["Native snap/mixed DPI/high contrast unobserved"], "gate":"OPEN"
+    },
+    {
+      "id": "canopy-motion", "source": "lib/features/garden/garden_canopy.dart", "conditions": "700ms finite entrance; normal, app reduced and OS reduced modes",
+      "validationResult": "PASS_OBSERVED_SCOPE",
+      "baseline": {"status":"NOT OBSERVED","scores":null,"evidence":[]},
+      "current": {"status":"OBSERVED","scores":{"D":4,"H":4,"G":4,"A":3,"T":4},"evidence":["canopy-animated-middle.png","canopy-animated-complete.png","canopy-app-static-complete.png","canopy-os-static-complete.png"]},
+      "checks":["garden_chrome_visual_test: opacity progresses then stops; reduced alternatives begin static; no running animation"], "gaps":["No prior canopy; device frame time not measured"], "gate":"OPEN"
+    },
+    {
+      "id":"invite-ready", "source":"lib/features/garden/invitation_dialog.dart", "conditions":"1100x1000 / 420x820 at200% / 640x480; light/dark; synthetic mock server",
+      "validationResult": "PASS_OBSERVED_SCOPE",
+      "baseline":{"status":"NOT OBSERVED","scores":null,"evidence":[]},
+      "current":{"status":"OBSERVED","scores":{"D":4,"H":4,"G":4,"A":3,"T":4},"evidence":["invite-desktop-ready.png","invite-large-ready.png","invite-small-ready.png","invite-dark-ready.png"]},
+      "checks":["invitation_widget_test + invitation_visual_test: zero calls on open; one filled action; contrast/names; Escape/focus/Enter"], "gaps":["Old invitation baseline source-reviewed only; Narrator and native DPI not observed"], "gate":"OPEN"
+    },
+    {
+      "id":"invite-working-error", "source":"lib/features/garden/invitation_dialog.dart", "conditions":"All four invitation variants; mock HTTP503 and clipboard PlatformException; reduced motion",
+      "validationResult": "PASS_OBSERVED_SCOPE",
+      "baseline":{"status":"NOT OBSERVED","scores":null,"evidence":[]},
+      "current":{"status":"OBSERVED","scores":{"D":4,"H":4,"G":4,"A":3,"T":4},"evidence":["invite-desktop-working.png","invite-large-working.png","invite-desktop-failure.png","invite-large-failure.png"]},
+      "checks":["No duplicate request, Close while pending, no disposed-state update, failed transport has no success receipt"], "gaps":["Real offline connectivity and Narrator live announcements not observed"], "gate":"OPEN"
+    },
+    {
+      "id":"invite-methods-receipts", "source":"lib/features/garden/invitation_dialog.dart", "conditions":"Mock Clipboard and Windows native bridge; actual Flutter QR renderer; light/dark/200%/short",
+      "validationResult": "PASS_OBSERVED_SCOPE",
+      "baseline":{"status":"NOT OBSERVED","scores":null,"evidence":[]},
+      "current":{"status":"OBSERVED","scores":{"D":4,"H":4,"G":4,"A":3,"T":4},"evidence":["invite-desktop-methods.png","invite-desktop-qr.png","invite-desktop-copied.png","invite-desktop-details.png","invite-native-requested.png"]},
+      "checks":["Exact attributed URL and bridge arguments; cached receipt distinguished; no sent/delivered claim; failed clipboard clears receipt"], "gaps":["Physical QR scanning, native Share targets and email composer/delivery unobserved"], "gate":"OPEN"
+    },
+    {
+      "id":"invite-empty-recipe", "source":"lib/features/garden/invitation_dialog.dart", "conditions":"Empty synthetic garden, optional recipe disclosure in all invitation variants",
+      "validationResult": "PASS_OBSERVED_SCOPE",
+      "baseline":{"status":"NOT OBSERVED","scores":null,"evidence":[]},
+      "current":{"status":"OBSERVED","scores":{"D":4,"H":4,"G":4,"A":3,"T":4},"evidence":["invite-desktop-empty-recipe.png","invite-large-empty-recipe.png"]},
+      "checks":["No dead picker; invite still available; no recipe fields shared by default"], "gaps":["Native assistive technology unobserved"], "gate":"OPEN"
+    },
+    {
+      "id":"share-recipe-approval", "source":"lib/features/garden/garden_screen.dart:_chooseShareCard", "conditions":"1100x1000, synthetic planted habit, category and exact-field approval",
+      "validationResult": "PASS_OBSERVED_SCOPE",
+      "baseline":{"status":"NOT OBSERVED","scores":null,"evidence":[]},
+      "current":{"status":"OBSERVED","scores":{"D":4,"H":3,"G":3,"A":3,"T":4},"evidence":["surface-share-recipe-picker.png","surface-share-category.png","surface-share-exact-approval.png","surface-share-approved-receipt.png"]},
+      "checks":["Explicit exact card approval; approved text visible; removal clears displayed receipt"], "gaps":["Pickers remain text-heavy; category purpose could be clearer; full 200% picker journey and native access not observed"], "gate":"OPEN"
+    },
+    {
+      "id":"incoming-invitation", "source":"lib/features/garden/garden_screen.dart:pendingInvitation", "conditions":"Synthetic persisted token; no request before decision; 800x600",
+      "validationResult": "PASS_OBSERVED_SCOPE",
+      "baseline":{"status":"NOT OBSERVED","scores":null,"evidence":[]},
+      "current":{"status":"OBSERVED","scores":{"D":4,"H":3,"G":3,"A":3,"T":4},"evidence":["incoming-invitation.png"]},
+      "checks":["invitation_widget_test: decline clears inbox without HTTP; explicit accept only"], "gaps":["Incoming explanatory block remains dense; no native deep-link/Narrator acceptance"], "gate":"OPEN"
+    },
+    {
+      "id":"incoming-accepted-card", "source":"lib/features/garden/garden_screen.dart:_acceptInvitation/_importCard", "conditions":"1100x1100, synthetic server reward and recipe; no automatic planting",
+      "validationResult": "PASS_OBSERVED_SCOPE",
+      "baseline":{"status":"NOT OBSERVED","scores":null,"evidence":[]},
+      "current":{"status":"OBSERVED","scores":{"D":4,"H":3,"G":3,"A":3,"T":4},"evidence":["incoming-accepted-cosmetic.png","incoming-recipe-review.png"]},
+      "checks":["Mock redeem payload has no channel override; card review opens editable builder; habits remain empty"], "gaps":["Live attribution/mutual first-practice reward and native access unobserved"], "gate":"OPEN"
+    },
+    {
+      "id":"first-habit-builder", "source":"lib/features/garden/recipe_builder.dart", "conditions":"1200x920,420x820; light/dark,100%/200%; first-run synthetic garden, three steps and custom inputs",
+      "validationResult": "PASS_OBSERVED_SCOPE",
+      "baseline":{"status":"NOT OBSERVED","scores":null,"evidence":[]},
+      "current":{"status":"OBSERVED","scores":{"D":4,"H":4,"G":4,"A":3,"T":4},"evidence":["picker-desktop-1-anchor-FIRST-RUN-SYNTHETIC.png","picker-desktop-2-action.png","picker-desktop-3-celebration.png","picker-large-text-complete.png"]},
+      "checks":["recipe_builder_visual_test: actual typed and suggested input, no layout exception, labelled targets, explicit save"], "gaps":["Native keyboard/Narrator/mixed DPI acceptance not established by widget renders"], "gate":"OPEN"
+    },
+    {
+      "id":"edit-recipe", "source":"lib/features/garden/recipe_builder.dart", "conditions":"1100x1000; existing synthetic recipe, cancellation",
+      "validationResult": "PASS_OBSERVED_SCOPE",
+      "baseline":{"status":"NOT OBSERVED","scores":null,"evidence":[]},
+      "current":{"status":"OBSERVED","scores":{"D":4,"H":3,"G":3,"A":3,"T":4},"evidence":["surface-edit-recipe.png"]},
+      "checks":["surface_review_visual_test: edit rendered and canceled; existing habit retained"], "gaps":["Dense edit form; full error/large-text/native access matrix not rendered"], "gate":"OPEN"
+    },
+    {
+      "id":"plant-success", "source":"lib/features/garden/recipe_builder.dart:PlantedRecipeDialog", "conditions":"Four picker variants including200%; real disposable SQLite save; finite 1.4s preview",
+      "validationResult": "PASS_OBSERVED_SCOPE",
+      "baseline":{"status":"NOT OBSERVED","scores":null,"evidence":[]},
+      "current":{"status":"OBSERVED","scores":{"D":4,"H":4,"G":4,"A":3,"T":4},"evidence":["picker-desktop-growth-start-SYNTHETIC.png","picker-desktop-growth-middle-SYNTHETIC.png","picker-desktop-planted.png","picker-large-text-planted.png"]},
+      "checks":["recipe_builder_visual_test + planted_growth_test: no fake earned growth; explicit next step; reduced-motion regression"], "gaps":["Device animation timing/performance and assistive technology not measured"], "gate":"OPEN"
+    },
+    {
+      "id":"checkin-rest-undo", "source":"lib/features/garden/garden_screen.dart:_check", "conditions":"1100x1000; synthetic Did it, undo and canceled rest-reason decision",
+      "validationResult": "PASS_OBSERVED_SCOPE",
+      "baseline":{"status":"NOT OBSERVED","scores":null,"evidence":[]},
+      "current":{"status":"OBSERVED","scores":{"D":4,"H":4,"G":4,"A":3,"T":4},"evidence":["surface-checkin-celebration.png","surface-rest-reason.png"]},
+      "checks":["surface_review_visual_test + garden_learning_test: saved practice/undo/rest paths; no guilt or lost growth"], "gaps":["Native <300ms feedback budget not measured; storage-error render and Narrator unobserved"], "gate":"OPEN"
+    },
+    {
+      "id":"weekly-reflection", "source":"lib/features/garden/garden_screen.dart:_weeklyReflection", "conditions":"1100x1000; synthetic recipe, actual recommendation text",
+      "validationResult": "PASS_OBSERVED_SCOPE",
+      "baseline":{"status":"NOT OBSERVED","scores":null,"evidence":[]},
+      "current":{"status":"OBSERVED","scores":{"D":4,"H":3,"G":3,"A":3,"T":4},"evidence":["surface-weekly-reflection.png"]},
+      "checks":["Rendered actual dialog; canceled without edit; existing learning regression suite"], "gaps":["Long explanation/three actions; large-text/native matrix not observed"], "gate":"OPEN"
+    },
+    {
+      "id":"naturalness", "source":"lib/features/garden/garden_screen.dart:_reflection", "conditions":"1100x1000; four synthetic default scores and clinical limitation disclosure",
+      "validationResult": "PASS_OBSERVED_SCOPE",
+      "baseline":{"status":"OBSERVED","scores":{"D":4,"H":3,"G":3,"A":2,"T":4},"evidence":["before-surface-naturalness.png"]},
+      "current":{"status":"OBSERVED","scores":{"D":4,"H":3,"G":3,"A":3,"T":4},"evidence":["surface-naturalness.png"]},
+      "checks":["Actual slider form rendered; question-bound semantic labels and 1-to-7 values; explicit Save/Not now; no reflection saved by review"], "gaps":["Native keyboard/Narrator assessment and dense-content refinement pending"], "gate":"OPEN"
+    },
+    {
+      "id":"settings-consent", "source":"lib/features/garden/garden_screen.dart:_settings", "conditions":"1100x1000; consent off; no toggles enabled except reduced motion",
+      "validationResult": "PASS_OBSERVED_SCOPE",
+      "baseline":{"status":"OBSERVED","scores":{"D":3,"H":2,"G":3,"A":3,"T":4},"evidence":["before-surface-settings-consent.png"]},
+      "current":{"status":"OBSERVED","scores":{"D":4,"H":3,"G":3,"A":3,"T":4},"evidence":["surface-settings-consent.png","surface-settings-export.png"]},
+      "checks":["Section headings orient settings; essential consent/revocation consequences remain visible; secondary collection explanation expands; existing consent/revocation tests"], "gaps":["Reminder/measurement disclosures still dense; native high contrast/Narrator pending"], "gate":"OPEN"
+    },
+    {
+      "id":"deletion-confirmations", "source":"lib/features/garden/garden_screen.dart:_confirm/_removeRecord", "conditions":"1100x1000 and640x480 at200%; cancel only, no destructive action",
+      "validationResult": "PASS_OBSERVED_SCOPE",
+      "baseline":{"status":"NOT OBSERVED","scores":null,"evidence":[]},
+      "current":{"status":"OBSERVED","scores":{"D":4,"H":4,"G":3,"A":3,"T":4},"evidence":["surface-delete-recipe-confirm.png","surface-delete-local-confirm.png","surface-delete-200percent-short.png"]},
+      "checks":["Scroll-reachable consequence text; Cancel leaves synthetic habit intact; record deletion regressions"], "gaps":["Account-wide/server deletion confirmation and native access not observed; irreversible actions not exercised"], "gate":"OPEN"
+    },
+    {
+      "id":"feedback-rating-compose", "source":"lib/features/garden/garden_screen.dart:_voice", "conditions":"1100x1000 and640x480 at200%; synthetic Idea/Rating; cancellation only",
+      "validationResult": "PASS_OBSERVED_SCOPE",
+      "baseline":{"status":"OBSERVED","scores":{"D":4,"H":3,"G":3,"A":2,"T":4},"evidence":["before-surface-feedback-compose.png"]},
+      "current":{"status":"OBSERVED","scores":{"D":4,"H":3,"G":3,"A":3,"T":4},"evidence":["surface-feedback-compose.png","surface-rating-compose.png","surface-feedback-200percent-short.png"]},
+      "checks":["Scrollable short-window disclosure; named feedback type and rating value; Cancel; no submission sent"], "gaps":["Native keyboard/IME/Narrator and real submission/reply not observed"], "gate":"OPEN"
+    },
+    {
+      "id":"feedback-list-empty", "source":"lib/features/garden/garden_screen.dart:_voice records", "conditions":"1100x1000; disposable garden with no feedback",
+      "validationResult": "PASS_OBSERVED_SCOPE",
+      "baseline":{"status":"NOT OBSERVED","scores":null,"evidence":[]},
+      "current":{"status":"OBSERVED","scores":{"D":3,"H":4,"G":3,"A":3,"T":4},"evidence":["surface-feedback-empty.png"]},
+      "checks":["Empty list is honest; Done restores garden"], "gaps":["No direct compose action inside empty list; populated/status/replies/delete-feedback render not observed"], "gate":"OPEN"
+    },
+    {
+      "id":"updates-empty", "source":"lib/features/garden/garden_screen.dart:_checkUpdates", "conditions":"1100x1000; mocked no-new-release result, no browser launch",
+      "validationResult": "PASS_OBSERVED_SCOPE",
+      "baseline":{"status":"NOT OBSERVED","scores":null,"evidence":[]},
+      "current":{"status":"OBSERVED","scores":{"D":4,"H":4,"G":3,"A":3,"T":4},"evidence":["surface-updates-empty.png"]},
+      "checks":["Actual dialog renders mock empty result; no installation/promotion"], "gaps":["Loading/error/new-release browser-launch states and native access not rendered here"], "gate":"OPEN"
+    },
+    {
+      "id":"start-small", "source":"lib/features/garden/garden_screen.dart:_plant", "conditions":"1100x1000; three disposable synthetic active recipes",
+      "validationResult": "PASS_OBSERVED_SCOPE",
+      "baseline":{"status":"NOT OBSERVED","scores":null,"evidence":[]},
+      "current":{"status":"OBSERVED","scores":{"D":4,"H":4,"G":3,"A":3,"T":4},"evidence":["surface-start-small.png"]},
+      "checks":["Fourth recipe requires explicit existing decision; canceled without planting"], "gaps":["Native assistive technology unobserved"], "gate":"OPEN"
+    },
+    {
+      "id":"continuity-profile-auth", "source":"PR48 owner-approved implementation; lib/app/bloomstep_app.dart + profile_section.dart + garden_screen.dart", "conditions":"Synthetic identity and disposable SQLite gardens for sign-in/copy/view; 420x820 and 640x480 at 200%; no live provider or owner data",
+      "validationResult": "PASS_OBSERVED_SCOPE",
+      "baseline":{"status":"NOT OBSERVED","scores":null,"evidence":[]},
+      "current":{"status":"OBSERVED","scores":{"D":4,"H":4,"G":4,"A":4,"T":4},"evidence":["profile-signed-in-before-copy-SYNTHETIC.png","device-copy-confirmation-SYNTHETIC.png","profile-view-device-SYNTHETIC.png","profile-signed-in-SYNTHETIC.png"]},
+      "checks":["profile_session_test: synthetic authoritative name, persistent device/account distinction, explicit copy consent, view-device and post-copy states; copy failure/retry/idempotency and preserved local originals asserted; garden_chrome_visual_test verifies the full practice control bounds, button semantics and keyboard order at 200%"],
+      "gaps":["Real owner database/provider claims were not inspected; external provider/MFA/error pages, Narrator, high contrast and native DPI remain unobserved; native and protected-VM gates stay open"],"gate":"OPEN"
+    },
+    {
+      "id":"account-practice-short", "source":"PR48 owner-approved implementation; lib/features/garden/garden_screen.dart + profile_section.dart", "conditions":"640x480 light, populated synthetic account garden, 200% text; initial viewport",
+      "validationResult":"PASS_OBSERVED_SCOPE",
+      "baseline":{"status":"NOT OBSERVED","scores":null,"evidence":[]},
+      "current":{"status":"OBSERVED","scores":{"D":4,"H":4,"G":4,"A":4,"T":4},"evidence":["chrome-account-populated-short-large.png"]},
+      "checks":["garden chrome 640x480/200% variant: the full Did it control rectangle is inside the initial viewport with button semantics; account Settings, persistent garden-switch guidance and keyboard order are verified"],
+      "gaps":["Native high DPI, Narrator, high contrast and protected-VM behavior remain unobserved; gate stays open"],"gate":"OPEN"
+    },
+    {
+      "id":"reminders-native-timepicker", "source":"lib/services/desktop_reminders.dart + garden_screen.dart:_settings/_chooseMinute", "conditions":"Identity/gateway and OS surfaces not invoked by this review",
+      "validationResult": "NOT_OBSERVED",
+      "baseline":{"status":"NOT OBSERVED","scores":null,"evidence":[]},
+      "current":{"status":"NOT OBSERVED","scores":null,"evidence":[]},
+      "checks":["Source inventory includes notification/tray/startup/snooze/time picker/quiet hours; no OS settings changed"], "gaps":["Actual opt-in/permission/toast/tray/quiet-hours/time-picker and permission-denied/recovery UI unobserved"], "gate":"OPEN"
+    },
+    {
+      "id":"native-handoffs", "source":"lib/services/native_share.dart + invitation_intent.dart + garden_screen.dart export", "conditions":"Native Share/email/file pickers/deep links not opened; bridge mocked only",
+      "validationResult": "NOT_OBSERVED",
+      "baseline":{"status":"NOT OBSERVED","scores":null,"evidence":[]},
+      "current":{"status":"NOT OBSERVED","scores":null,"evidence":[]},
+      "checks":["Existing native_share/invitation_intent/support_export contracts; synthetic share bridge arguments checked"], "gaps":["Share targets/email composer, native save/open picker, installed activation and real recipient consequences require authorized native observation"], "gate":"OPEN"
+    },
+    {
+      "id":"optional-measurement-settings", "source":"measurement_controls.dart + analytics_sandbox_controls.dart + reminder_observation_controls.dart", "conditions":"Source inventory; baseline off/disabled rows visible; optional enrollment/receipt dialogs not invoked",
+      "validationResult": "NOT_OBSERVED",
+      "baseline":{"status":"NOT OBSERVED","scores":null,"evidence":[]},
+      "current":{"status":"NOT OBSERVED","scores":null,"evidence":[]},
+      "checks":["Existing consent/receipt tests only; no consent or feature flags enabled"], "gaps":["Optional source-link confirmation, sandbox credentials, installer receipt error/success and observation choice matrix not rendered"], "gate":"OPEN"
+    },
+    {
+      "id":"rare-transient-states", "source":"garden_screen.dart load/error/configWarning/invitationWarning/ratingInvitation/pausedReminders/graduation", "conditions":"Source-inventoried conditional states; existing unit/widget contracts, not screenshot-backed in this pass",
+      "validationResult": "NOT_OBSERVED",
+      "baseline":{"status":"NOT OBSERVED","scores":null,"evidence":[]},
+      "current":{"status":"NOT OBSERVED","scores":null,"evidence":[]},
+      "checks":["Inventory includes startup loading, sync/cache failures, reconnect, rating invitation, paused reminders, naturalness cooldown and Evergreen Grove"], "gaps":["Exact rendered transient/error/offline/graduate/rating-eligibility matrix remains open; do not infer scores from passing unit tests"], "gate":"OPEN"
+    }
+  ]
+}

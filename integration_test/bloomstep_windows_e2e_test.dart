@@ -425,8 +425,8 @@ void main() {
       await tester.ensureVisible(find.byTooltip('Delete this recipe'));
       await tester.tap(find.byTooltip('Delete this recipe'));
       await tester.pumpAndSettle();
-      expect(find.text('Delete this recipe?'), findsOneWidget);
-      await tester.tap(find.text('Delete recipe'));
+      expect(find.text('Delete recipe?'), findsOneWidget);
+      await tester.tap(find.text('Delete'));
       await _waitFor(
         tester,
         find.text('Plant a habit'),
@@ -525,7 +525,7 @@ void main() {
       await tester.ensureVisible(find.byTooltip('Delete this recipe'));
       await tester.tap(find.byTooltip('Delete this recipe'));
       await tester.pumpAndSettle();
-      await tester.tap(find.text('Delete recipe'));
+      await tester.tap(find.text('Delete'));
       await _waitFor(
         tester,
         find.text('Plant a habit'),

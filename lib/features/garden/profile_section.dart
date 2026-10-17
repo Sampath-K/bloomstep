@@ -15,6 +15,11 @@ class ProfileSection extends StatelessWidget {
     this.notice,
     this.onManage,
     this.onClearSavedSignIn,
+    this.onCopyDeviceGarden,
+    this.onSwitchGarden,
+    this.returningToAccount = false,
+    this.compactSummary = false,
+    this.detailsOnly = false,
   });
   final bool signedIn;
   final bool configured;
@@ -26,14 +31,146 @@ class ProfileSection extends StatelessWidget {
   final Future<void> Function() onSignOut;
   final VoidCallback? onManage;
   final Future<void> Function()? onClearSavedSignIn;
+  final Future<void> Function()? onCopyDeviceGarden;
+  final Future<void> Function()? onSwitchGarden;
+  final bool returningToAccount;
+  final bool compactSummary;
+  final bool detailsOnly;
 
   @override
-  Widget build(BuildContext context) => Card(
-    child: Padding(
-      padding: const EdgeInsets.all(16),
-      child: signedIn ? _signedInProfile(context) : _signedOutProfile(context),
+  Widget build(BuildContext context) {
+    if (detailsOnly) return _detailsOnly();
+    if (compactSummary) return _compactSummary(context);
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: signedIn
+            ? _signedInProfile(context)
+            : _signedOutProfile(context),
+      ),
+    );
+  }
+
+  Widget _compactSummary(BuildContext context) {
+    final name = profile?.displayName;
+    final initials = _initials(name);
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                CircleAvatar(
+                  radius: 18,
+                  child: initials.isEmpty
+                      ? const Icon(Icons.person_outline)
+                      : Text(initials),
+                ),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Text(
+                    signedIn ? name ?? 'Signed-in account' : 'Not signed in',
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: Theme.of(context).textTheme.titleMedium,
+                  ),
+                ),
+              ],
+            ),
+            if (signedIn && name == null)
+              const Text("Your account doesn't include a name."),
+            if (signedIn &&
+                (onCopyDeviceGarden != null || onSwitchGarden != null))
+              Semantics(
+                label: 'Device garden stays separate. Switch any time.',
+                child: const Text(
+                  'Separate gardens; switch any time.',
+                  maxLines: 2,
+                ),
+              ),
+            if (!signedIn &&
+                notice != null &&
+                notice != 'Device garden stays separate; switch any time.')
+              Semantics(liveRegion: true, child: Text(notice!)),
+            if (!signedIn)
+              const Text(
+                'Your habits stay on this device. Sign in to use an account garden.',
+              ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _detailsOnly() => Card(
+    child: ExpansionTile(
+      key: const ValueKey('profile-details'),
+      title: const Text('Profile and garden details'),
+      childrenPadding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
+      children: signedIn ? _signedInDetails() : _signedOutDetails(),
     ),
   );
+
+  List<Widget> _signedInDetails() => [
+    if (notice != null &&
+        notice != 'Device garden stays separate; switch any time.')
+      Semantics(liveRegion: true, child: Text(notice!)),
+    if (error != null)
+      Semantics(liveRegion: true, child: SelectableText(error!)),
+    if (onCopyDeviceGarden != null)
+      TextButton(
+        onPressed: busy ? null : onCopyDeviceGarden,
+        child: const Text('Copy device habits to this account'),
+      ),
+    if (onSwitchGarden != null)
+      TextButton(
+        onPressed: busy ? null : onSwitchGarden,
+        child: const Text('View device garden'),
+      ),
+    if (error != null)
+      Semantics(liveRegion: true, child: SelectableText(error!)),
+    if (onClearSavedSignIn != null)
+      TextButton(
+        onPressed: busy ? null : onClearSavedSignIn,
+        child: const Text('Clear saved sign-in'),
+      ),
+    TextButton(
+      onPressed: busy ? null : onSignOut,
+      child: Text(busy ? 'Updating profile...' : 'Sign out'),
+    ),
+  ];
+
+  List<Widget> _signedOutDetails() => [
+    if (!configured)
+      const Text('Account sign-in is not configured in this build.'),
+    if (configured && !returningToAccount)
+      const Text(
+        'Choose Microsoft personal account, Google or another enabled option in the system browser. Bloomstep never collects your password.',
+      ),
+    TextButton.icon(
+      onPressed: busy || (!configured && !returningToAccount) ? null : onSignIn,
+      icon: const Icon(Icons.login),
+      label: Text(
+        busy
+            ? returningToAccount
+                  ? 'Opening account garden...'
+                  : 'Complete sign-in in your browser'
+            : returningToAccount
+            ? 'Return to account garden'
+            : 'Sign in with Microsoft or Google',
+      ),
+    ),
+    if (notice != null) Text(notice!),
+    if (error != null)
+      Semantics(liveRegion: true, child: SelectableText(error!)),
+    if (onClearSavedSignIn != null)
+      TextButton(
+        onPressed: busy ? null : onClearSavedSignIn,
+        child: const Text('Clear saved sign-in'),
+      ),
+  ];
 
   Widget _signedInProfile(BuildContext context) {
     final name = profile?.displayName;
@@ -56,32 +193,62 @@ class ProfileSection extends StatelessWidget {
                 backgroundColor: Theme.of(context)
                     .colorScheme
                     .secondaryContainer,
-                child: Stack(
-                  alignment: Alignment.center,
-                  children: [
-                    fallback,
-                    if (profile?.photoUrl case final photoUrl?)
-                      ClipOval(
-                        child: Image.network(
-                          photoUrl,
-                          width: 56,
-                          height: 56,
-                          fit: BoxFit.cover,
-                          errorBuilder: (_, _, _) => const SizedBox.shrink(),
+                child: SizedBox(
+                  width: 56,
+                  height: 56,
+                  child: Stack(
+                    alignment: Alignment.center,
+                    children: [
+                      fallback,
+                      if (profile?.photoBytes != null)
+                        ClipOval(child: _MemoryPhoto(profile: profile!))
+                      else if (profile?.photoUrl case final photoUrl?)
+                        ClipOval(
+                          child: Image.network(
+                            photoUrl,
+                            width: 56,
+                            height: 56,
+                            fit: BoxFit.cover,
+                            errorBuilder: (_, _, _) => const SizedBox.shrink(),
+                          ),
                         ),
-                      ),
-                  ],
+                    ],
+                  ),
                 ),
               ),
             ),
-            const Spacer(),
-            TextButton.icon(
-              onPressed: busy ? null : onSignOut,
-              icon: const Icon(Icons.logout),
-              label: Text(busy ? 'Updating profile...' : 'Sign out'),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Text(
+                name ?? 'Signed-in account',
+                style: Theme.of(context).textTheme.titleMedium,
+              ),
+            ),
+            Flexible(
+              child: TextButton.icon(
+                onPressed: busy ? null : onSignOut,
+                icon: const Icon(Icons.logout),
+                label: Text(busy ? 'Updating profile...' : 'Sign out'),
+              ),
             ),
           ],
         ),
+        if (name == null) const Text("Your account doesn't include a name."),
+        if (onCopyDeviceGarden != null || onSwitchGarden != null)
+          const Text('Device garden stays separate; switch any time.'),
+        if (notice != null &&
+            notice != 'Device garden stays separate; switch any time.')
+          Semantics(liveRegion: true, child: Text(notice!)),
+        if (onCopyDeviceGarden != null)
+          TextButton(
+            onPressed: busy ? null : onCopyDeviceGarden,
+            child: const Text('Copy device habits to this account'),
+          ),
+        if (onSwitchGarden != null)
+          TextButton(
+            onPressed: busy ? null : onSwitchGarden,
+            child: const Text('View device garden'),
+          ),
         if (error != null)
           Semantics(liveRegion: true, child: SelectableText(error!)),
         if (onClearSavedSignIn != null)
@@ -103,13 +270,22 @@ class ProfileSection extends StatelessWidget {
         children: [
           const Icon(Icons.account_circle_outlined),
           const Text('Profile'),
-          Text('Not signed in', style: Theme.of(context).textTheme.labelLarge),
+          Text(
+            returningToAccount ? 'Viewing device garden' : 'Not signed in',
+            style: Theme.of(context).textTheme.labelLarge,
+          ),
           TextButton.icon(
-            onPressed: busy || !configured ? null : onSignIn,
+            onPressed: busy || (!configured && !returningToAccount)
+                ? null
+                : onSignIn,
             icon: const Icon(Icons.login),
             label: Text(
               busy
-                  ? 'Complete sign-in in your browser'
+                  ? returningToAccount
+                        ? 'Opening account garden...'
+                        : 'Complete sign-in in your browser'
+                  : returningToAccount
+                  ? 'Return to account garden'
                   : 'Sign in with Microsoft or Google',
             ),
           ),
@@ -127,7 +303,7 @@ class ProfileSection extends StatelessWidget {
       ),
       if (!configured)
         const Text('Account sign-in is not configured in this build.'),
-      if (configured)
+      if (configured && !returningToAccount)
         const Text(
           'Choose Microsoft personal account, Google or another enabled option in the system browser. Bloomstep never collects your password.',
         ),
@@ -150,4 +326,54 @@ class ProfileSection extends StatelessWidget {
     return String.fromCharCode(first) +
         (last == null ? '' : String.fromCharCode(last));
   }
+}
+
+class _MemoryPhoto extends StatefulWidget {
+  const _MemoryPhoto({required this.profile});
+  final IdentityProfile profile;
+
+  @override
+  State<_MemoryPhoto> createState() => _MemoryPhotoState();
+}
+
+class _MemoryPhotoState extends State<_MemoryPhoto> {
+  late ImageProvider _provider;
+
+  void _replace() {
+    _provider = ResizeImage(
+      MemoryImage(widget.profile.photoBytes!),
+      width: 112,
+      height: 112,
+    );
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    _replace();
+  }
+
+  @override
+  void didUpdateWidget(_MemoryPhoto oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.profile.photoBytes != widget.profile.photoBytes) {
+      _provider.evict();
+      _replace();
+    }
+  }
+
+  @override
+  void dispose() {
+    _provider.evict();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) => Image(
+    image: _provider,
+    width: 56,
+    height: 56,
+    fit: BoxFit.cover,
+    errorBuilder: (_, _, _) => const SizedBox.shrink(),
+  );
 }

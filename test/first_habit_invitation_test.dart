@@ -43,12 +43,20 @@ class _RestoringIdentity extends IdentityService {
 }
 
 Future<void> ready(WidgetTester tester, Finder finder) async {
+  var expandedProfile = false;
   for (var i = 0; i < 100; i++) {
     await tester.runAsync(
       () => Future<void>.delayed(const Duration(milliseconds: 20)),
     );
     await tester.pump(const Duration(milliseconds: 20));
     if (finder.evaluate().isNotEmpty) return;
+    final profileDetails = find.text('Profile and garden details');
+    if (!expandedProfile && profileDetails.evaluate().isNotEmpty) {
+      await tester.ensureVisible(profileDetails);
+      await tester.tap(profileDetails);
+      await tester.pumpAndSettle();
+      expandedProfile = true;
+    }
   }
   fail('Timed out waiting for $finder');
 }
@@ -416,7 +424,7 @@ void main() {
   }
 
   testWidgets(
-    'sign-in opens empty account builder once after ownership changes',
+    'saved device habits show continuity choice before the empty account builder',
     (tester) async {
       final root = (await tester.runAsync(
         () => Directory.systemTemp.createTemp('bloomstep-signin-empty-'),
@@ -447,19 +455,26 @@ void main() {
       );
       await ready(tester, find.text('Did it'));
       expect(find.byType(RecipeBuilder), findsNothing);
+      await ready(tester, find.text('Sign in with Microsoft or Google'));
       await tester.tap(find.text('Sign in with Microsoft or Google'));
-      await ready(tester, find.byType(RecipeBuilder));
+      await ready(tester, find.text('Copy device habits to this account'));
       expect(identity.hasValidSession, isTrue);
+      expect(find.byType(RecipeBuilder), findsNothing);
       expect(find.text('Did it'), findsNothing);
+      await tester.tap(find.text('Plant a habit'));
+      await tester.pumpAndSettle();
+      expect(find.byType(RecipeBuilder), findsOneWidget);
       await tester.tap(find.text('Cancel'));
       await tester.pumpAndSettle();
       expect(find.byType(RecipeBuilder), findsNothing);
       await tester.pump(const Duration(seconds: 5));
       expect(find.byType(RecipeBuilder), findsNothing);
+      await ready(tester, find.text('Sign out'));
       await tester.tap(find.text('Sign out'));
       await tester.pumpAndSettle();
       await tester.tap(find.widgetWithText(FilledButton, 'Sign out'));
       await ready(tester, find.text('Did it'));
+      await ready(tester, find.text('Sign in with Microsoft or Google'));
       await tester.tap(find.text('Sign in with Microsoft or Google'));
       await ready(tester, find.text('Sign out'));
       await tester.pumpAndSettle();

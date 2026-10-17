@@ -29,7 +29,7 @@ test('native sign-in and both callback outcomes identify Bloomstep without hidin
   assert.doesNotMatch(profile, /ciamlogin\.com|login\.live\.com/);
   assert.match(read('lib/services/identity.dart'), /Bloomstep sign-in response is invalid/);
   assert.match(read('lib/services/identity.dart'), /Return to Bloomstep/);
-  assert.match(read('lib/features/garden/garden_screen.dart'), /A tiny step together with Bloomstep/);
+  assert.match(read('lib/features/garden/invitation_dialog.dart'), /A tiny step together with Bloomstep/);
 });
 
 test('stable Windows storage is installed before instance, invitations and credentials open', () => {

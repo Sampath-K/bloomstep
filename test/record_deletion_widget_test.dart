@@ -3,6 +3,8 @@ import 'package:bloomstep/features/garden/garden_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
+import 'support/dialog_copy_contract.dart';
+
 Future<void> _settle(WidgetTester tester) async {
   for (var i = 0; i < 3; i++) {
     await tester.runAsync(
@@ -44,13 +46,22 @@ void main() {
       await tester.ensureVisible(remove);
       await tester.tap(remove);
       await tester.pumpAndSettle();
-      expect(find.textContaining('Deletion cannot be undone'), findsOneWidget);
+      expect(find.text('Delete recipe?'), findsOneWidget);
+      expect(
+        find.text('This also deletes its check-ins and reflections.'),
+        findsOneWidget,
+      );
+      expectConciseDialogCopy(
+        'This also deletes its check-ins and reflections.',
+      );
+      expect(find.textContaining('event records'), findsNothing);
+      expect(find.textContaining('ID-only'), findsNothing);
       await tester.tap(find.text('Cancel'));
       await _settle(tester);
       expect((await tester.runAsync(store.habits))!, hasLength(2));
       await tester.tap(remove);
       await tester.pumpAndSettle();
-      await tester.tap(find.text('Delete recipe'));
+      await tester.tap(find.widgetWithText(FilledButton, 'Delete'));
       await _settle(tester);
       expect((await tester.runAsync(store.habits))!.single.id, before.last.id);
       final export = (await tester.runAsync(store.export))!;

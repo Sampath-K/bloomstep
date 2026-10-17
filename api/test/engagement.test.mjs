@@ -68,7 +68,8 @@ function harness({ roles = ['Bloomstep.Admin'], scopes = ['Garden.ReadWrite'], a
           await beforeQuery?.(spec, { put, read }, options);
           const parameters = Object.fromEntries((spec.parameters ?? []).map(p => [p.name, p.value]));
           let rows = [...documents.values()].filter(row => !options.partitionKey || row.userId === options.partitionKey);
-          if (spec.query.includes('c.type IN')) rows = rows.filter(row => ['habits', 'checkins', 'reflections', 'voice', 'settings'].includes(row.type));
+          if (parameters['@target']) rows = rows.filter(row => row.type !== 'account');
+          else if (spec.query.includes('c.type IN')) rows = rows.filter(row => ['habits', 'checkins', 'reflections', 'voice', 'settings'].includes(row.type));
           else if (spec.query.includes('c.type = "voice"')) rows = rows.filter(row => row.type === 'voice');
           else if (spec.query.includes('c.type = "events"')) rows = rows.filter(row => row.type === 'events' && (!parameters['@start'] || row.record.ts >= parameters['@start'] && row.record.ts < parameters['@end']));
           else if (spec.query.includes('c.type = "account"')) rows = rows.filter(row => row.type === 'account');
@@ -80,7 +81,9 @@ function harness({ roles = ['Bloomstep.Admin'], scopes = ['Garden.ReadWrite'], a
           if (parameters['@target']) rows = rows.filter(row =>
             row.type === parameters['@targetType'] && row.record?.id === parameters['@target'] ||
             parameters['@targetType'] === 'habits' && (row.record?.habitId === parameters['@target'] || row.record?.properties?.habitId === parameters['@target']) ||
-            parameters['@targetType'] === 'voice' && row.type === 'audit' && row.targetId === parameters['@target']);
+            parameters['@targetType'] === 'voice' && row.type === 'audit' && row.targetId === parameters['@target'] ||
+            parameters['@targetType'] === 'experienceEvents' && row.type === 'events' &&
+              row.record?.name === 'experience_observation' && row.record.properties?.consentEpoch === parameters['@target']);
           rows.sort((a, b) => a.userId.localeCompare(b.userId) || a.id.localeCompare(b.id));
           if (parameters['@after']) rows = rows.filter(row => `${row.userId}:${row.id}` > parameters['@after']);
           const top = Number(/TOP (\d+)/.exec(spec.query)?.[1] ?? rows.length);

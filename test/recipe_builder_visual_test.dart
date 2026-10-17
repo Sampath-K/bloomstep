@@ -8,16 +8,16 @@ import 'package:bloomstep/features/garden/recipe_builder.dart';
 import 'package:bloomstep/services/identity.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
-import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:path/path.dart' as p;
+import 'support/visual_capture.dart';
 
 void main() {
   for (final variant in [
     (name: 'desktop', size: const Size(1200, 920), dark: false, scale: 1.0),
     (name: 'compact', size: const Size(420, 820), dark: false, scale: 1.0),
     (name: 'dark', size: const Size(1200, 920), dark: true, scale: 1.0),
-    (name: 'large-text', size: const Size(420, 820), dark: false, scale: 1.5),
+    (name: 'large-text', size: const Size(420, 820), dark: false, scale: 2.0),
   ]) {
     testWidgets('primary picker renders ${variant.name} without clipping', (
       tester,
@@ -29,18 +29,7 @@ void main() {
         () => GardenStore.open(':memory:', HabitHome.guestAccount),
       ))!;
       addTearDown(() => tester.runAsync(store.close));
-      await (FontLoader(
-        'MaterialIcons',
-      )..addFont(rootBundle.load('fonts/MaterialIcons-Regular.otf'))).load();
-      if (Platform.isWindows) {
-        await tester.runAsync(() async {
-          final font = await File(r'C:\Windows\Fonts\segoeui.ttf')
-              .readAsBytes();
-          await (FontLoader(
-            'Segoe UI',
-          )..addFont(Future.value(ByteData.sublistView(font)))).load();
-        });
-      }
+      await loadVisualFonts(tester);
       final boundaryKey = GlobalKey();
       Future<void> capture(String stage) async {
         expect(tester.takeException(), isNull);
@@ -75,7 +64,16 @@ void main() {
             builder: (context, child) => MediaQuery(
               data: MediaQuery.of(context)
                   .copyWith(textScaler: TextScaler.linear(variant.scale)),
-              child: child!,
+              child: Column(
+                children: [
+                  const Material(
+                    child: Text(
+                      'SYNTHETIC UI - disposable garden, no live account',
+                    ),
+                  ),
+                  Expanded(child: child!),
+                ],
+              ),
             ),
             home: HabitHome(
               testIdentity: IdentityService(),

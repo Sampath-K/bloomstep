@@ -76,6 +76,8 @@ jobs:
       - run: npm run check
       - run: npm test
       - run: node ../tool/generate_event_registry.mjs --check
+      - run: node ../tool/generate_experience_policy.mjs --check
+      - run: node --test ../tool/project-status/status.test.mjs
       - run: node --test ../infra/test-automation-provisioning.mjs
       - run: node --test ../test/universal_installer_test.mjs ../test/release_bundle_test.mjs
       - run: node --test ../test/installer_standard_flow_test.mjs ../test/installer_security_gate_test.mjs ../test/installer_one_click_test.mjs

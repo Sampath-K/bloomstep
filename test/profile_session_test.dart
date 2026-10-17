@@ -17,6 +17,8 @@ import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:path/path.dart' as p;
 
+import 'support/dialog_copy_contract.dart';
+
 class _SyntheticIdentity extends IdentityService {
   bool active = false;
   bool restoreOffline = false;
@@ -64,6 +66,7 @@ class _SyntheticIdentity extends IdentityService {
 }
 
 Future<void> _ready(WidgetTester tester, Finder finder) async {
+  var expandedProfile = false;
   for (var i = 0; i < 100; i++) {
     await tester.runAsync(
       () => Future<void>.delayed(const Duration(milliseconds: 30)),
@@ -90,6 +93,13 @@ Future<void> _ready(WidgetTester tester, Finder finder) async {
         await tester.pumpAndSettle();
       }
       return;
+    }
+    final profileDetails = find.text('Profile and garden details');
+    if (!expandedProfile && profileDetails.evaluate().isNotEmpty) {
+      await tester.ensureVisible(profileDetails);
+      await tester.tap(profileDetails);
+      await tester.pumpAndSettle();
+      expandedProfile = true;
     }
   }
   fail('Timed out waiting for $finder');
@@ -218,19 +228,6 @@ void main() {
     expect(find.text('Not signed in'), findsOneWidget);
     expect(find.byType(BackButton), findsNothing);
     expect(find.byTooltip('Settings and privacy'), findsOneWidget);
-    await tester.tap(find.byTooltip('Settings and privacy'));
-    await _ready(tester, find.text('Share product event counts'));
-    expect(
-      tester
-          .widget<SwitchListTile>(
-            find.widgetWithText(SwitchListTile, 'Share product event counts'),
-          )
-          .onChanged,
-      isNull,
-    );
-    expect(find.text('Sign out'), findsNothing);
-    await tester.tap(find.text('Done'));
-    await tester.pumpAndSettle();
     await tester.tap(find.text('Plant a habit'));
     await tester.pumpAndSettle();
     expect(find.text('Sign in securely'), findsNothing);
@@ -292,6 +289,7 @@ void main() {
       await guest.close();
     });
     final identity = _SyntheticIdentity();
+    var failDeviceRead = false;
     if (Platform.isWindows) {
       await tester.runAsync(() async {
         final bytes = await File(r'C:\Windows\Fonts\segoeui.ttf').readAsBytes();
@@ -312,46 +310,120 @@ void main() {
     }
     final boundaryKey = GlobalKey();
     await tester.pumpWidget(
-      MaterialApp(
-        theme: BloomstepTheme.light(),
-        home: RepaintBoundary(
-          key: boundaryKey,
-          child: HabitHome(
+      RepaintBoundary(
+        key: boundaryKey,
+        child: MaterialApp(
+          theme: BloomstepTheme.light(),
+          home: HabitHome(
             testIdentity: identity,
-            testOpenStore: (account) =>
-                GardenStore.open(p.join(root.path, '$account.sqlite'), account),
+            testOpenStore: (account) {
+              if (failDeviceRead && account == HabitHome.guestAccount) {
+                throw StateError('Synthetic device reader unavailable');
+              }
+              return GardenStore.open(
+                p.join(root.path, '$account.sqlite'),
+                account,
+              );
+            },
           ),
         ),
       ),
     );
     await _ready(tester, find.text('Did it'));
-    expect(find.byTooltip('Settings and privacy'), findsOneWidget);
+    expect(find.byTooltip('Settings and privacy'), findsNothing);
     await _screenshot(tester, boundaryKey, 'profile-signed-out.png');
+    await _ready(tester, find.text('Sign in with Microsoft or Google'));
     await tester.tap(find.text('Sign in with Microsoft or Google'));
     await _ready(tester, find.text('ST'));
     expect(find.text('Signed in'), findsNothing);
-    expect(find.text('Synthetic Garden Tester'), findsNothing);
+    expect(find.text('Synthetic Garden Tester'), findsOneWidget);
     expect(find.textContaining('synthetic@example.invalid'), findsNothing);
     expect(find.textContaining('Google'), findsNothing);
     expect(find.textContaining('unknown'), findsNothing);
     expect(find.text('ST'), findsOneWidget);
     expect(find.byTooltip('Settings and privacy'), findsOneWidget);
     expect(find.text('Did it'), findsNothing);
-    expect(find.textContaining('kept separate'), findsOneWidget);
+    expect(find.textContaining('Device garden stays separate'), findsOneWidget);
     expect(find.byType(BackButton), findsNothing);
+    await tester.pump(const Duration(seconds: 5));
+    await tester.pumpAndSettle();
+    expect(find.textContaining('Device garden stays separate'), findsOneWidget);
+    expect(find.text('Copy device habits to this account'), findsOneWidget);
+    await _screenshot(
+      tester,
+      boundaryKey,
+      'profile-signed-in-before-copy-SYNTHETIC.png',
+    );
+    await tester.tap(find.text('Copy device habits to this account'));
+    await tester.pumpAndSettle();
+    const copyDisclosure =
+        'Device habits, check-ins, and reflections copy to your account and may '
+        'sync. Originals stay on this device; existing account habits are '
+        'unchanged.';
+    expect(find.text('Copy to your account?'), findsOneWidget);
+    expect(find.text(copyDisclosure), findsOneWidget);
+    expectConciseDialogCopy(copyDisclosure);
+    await _screenshot(
+      tester,
+      boundaryKey,
+      'device-copy-confirmation-SYNTHETIC.png',
+    );
+    await tester.tap(find.text('Not now'));
+    await tester.pumpAndSettle();
+    expect(find.text('Did it'), findsNothing);
+    await _ready(tester, find.text('View device garden'));
+    await tester.tap(find.text('View device garden'));
+    await _ready(tester, find.text('Viewing your device garden.'));
+    await _ready(tester, find.text('Did it'));
+    expect(identity.active, isTrue);
+    await _screenshot(tester, boundaryKey, 'profile-view-device-SYNTHETIC.png');
+    await _ready(tester, find.text('Return to account garden'));
+    await tester.tap(find.text('Return to account garden'));
+    await _ready(tester, find.text('ST'));
+    expect(find.text('Did it'), findsNothing);
+    failDeviceRead = true;
+    await _ready(tester, find.text('Copy device habits to this account'));
+    await tester.tap(find.text('Copy device habits to this account'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.widgetWithText(FilledButton, 'Copy'));
+    await _ready(tester, find.textContaining("Couldn't copy device habits"));
+    expect(find.text('Did it'), findsNothing);
+    expect(find.textContaining('No changes were saved.'), findsOneWidget);
+    failDeviceRead = false;
+    await _ready(tester, find.text('Copy device habits to this account'));
+    await tester.tap(find.text('Copy device habits to this account'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.widgetWithText(FilledButton, 'Copy'));
+    await _ready(tester, find.text('Did it'));
+    await _ready(tester, find.textContaining('Copied 1 habit'));
+    expect(find.textContaining('Copied 1 habit'), findsOneWidget);
+    await _ready(tester, find.text('Copy device habits to this account'));
+    await tester.tap(find.text('Copy device habits to this account'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.widgetWithText(FilledButton, 'Copy'));
+    await _ready(tester, find.textContaining('Copied 0 habits'));
+    expect(find.textContaining('Copied 0 habits'), findsOneWidget);
+    expect(find.text('Did it'), findsOneWidget);
     await tester.pump(const Duration(seconds: 5));
     await tester.pumpAndSettle();
     await _screenshot(tester, boundaryKey, 'profile-signed-in-SYNTHETIC.png');
     final account = identity.account!;
+    await _ready(tester, find.text('Sign out'));
     await tester.tap(find.text('Sign out'));
     await tester.pumpAndSettle();
     await tester.tap(find.text('Cancel'));
     await tester.pumpAndSettle();
     expect(find.text('ST'), findsOneWidget);
     expect(identity.account, account);
+    await _ready(tester, find.text('Sign out'));
     await tester.tap(find.text('Sign out'));
     await tester.pumpAndSettle();
-    expect(find.textContaining('Unsynced'), findsOneWidget);
+    const signOutDisclosure =
+        'Unsynced account data is removed from this device; your separate '
+        'device garden stays here. Export it first if you need a copy.';
+    expect(find.text('Sign out?'), findsOneWidget);
+    expect(find.text(signOutDisclosure), findsOneWidget);
+    expectConciseDialogCopy(signOutDisclosure);
     await tester.tap(find.widgetWithText(FilledButton, 'Sign out'));
     await _ready(tester, find.text('Not signed in'));
     await _ready(tester, find.text('Did it'));
@@ -416,6 +488,61 @@ void main() {
     },
   );
 
+  testWidgets('copy confirmation is scrollable at compact 200 percent text', (
+    tester,
+  ) async {
+    await tester.binding.setSurfaceSize(const Size(360, 600));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+    final root = (await tester.runAsync(
+      () => Directory.systemTemp.createTemp('bloomstep-copy-compact-'),
+    ))!;
+    addTearDown(() => tester.runAsync(() => root.delete(recursive: true)));
+    await tester.runAsync(() async {
+      final guest = await GardenStore.open(
+        p.join(root.path, '${HabitHome.guestAccount}.sqlite'),
+        HabitHome.guestAccount,
+      );
+      await guest.plant(
+        aspiration: 'Device habit',
+        anchor: 'coffee',
+        behavior: 'breathe',
+        celebration: 'smile',
+        species: 'Cosmos',
+      );
+      await guest.close();
+    });
+    await tester.pumpWidget(
+      MaterialApp(
+        builder: (context, child) => MediaQuery(
+          data: MediaQuery.of(context)
+              .copyWith(textScaler: const TextScaler.linear(2)),
+          child: child!,
+        ),
+        home: HabitHome(
+          testIdentity: _SyntheticIdentity()..restoreOffline = true,
+          testOpenStore: (account) =>
+              GardenStore.open(p.join(root.path, '$account.sqlite'), account),
+        ),
+      ),
+    );
+    await _ready(tester, find.text('Copy device habits to this account'));
+    await tester.ensureVisible(find.text('Copy device habits to this account'));
+    await tester.tap(find.text('Copy device habits to this account'));
+    await tester.pumpAndSettle();
+    expect(
+      tester.widget<AlertDialog>(find.byType(AlertDialog)).scrollable,
+      isTrue,
+    );
+    await tester.ensureVisible(find.text('Not now'));
+    await tester.tap(find.text('Not now'));
+    await tester.pumpAndSettle();
+    expect(tester.takeException(), isNull);
+    await tester.pumpWidget(const SizedBox());
+    await tester.runAsync(
+      () => Future<void>.delayed(const Duration(milliseconds: 150)),
+    );
+  });
+
   for (final category in ['cancelled', 'network', 'validation']) {
     testWidgets('$category sign-in leaves guest editable and unchanged', (
       tester,
@@ -442,7 +569,10 @@ void main() {
       expect(find.text('Complete sign-in in your browser'), findsOneWidget);
       expect(find.text('Plant a habit'), findsOneWidget);
       identity.pending!.complete();
-      await _ready(tester, find.textContaining('Synthetic $category failure'));
+      await _ready(
+        tester,
+        find.text('Sign-in didn’t complete. Your device garden is unchanged.'),
+      );
       expect(find.text('Not signed in'), findsOneWidget);
       expect(identity.account, isNull);
       await tester.tap(find.text('Plant a habit'));
@@ -520,7 +650,9 @@ void main() {
       await tester.tap(find.text('Sign in with Microsoft or Google'));
       await _ready(
         tester,
-        find.textContaining('Synthetic account storage failure'),
+        find.text(
+          'Couldn’t open your account garden. Your device garden is unchanged.',
+        ),
       );
       expect(find.text('Not signed in'), findsOneWidget);
       expect(identity.account, isNull);
@@ -556,7 +688,7 @@ void main() {
       await tester.pumpAndSettle();
       await tester.tap(find.widgetWithText(FilledButton, 'Sign out'));
       await _ready(tester, find.text('Clear saved sign-in'));
-      expect(find.textContaining('could not be cleared'), findsOneWidget);
+      expect(find.textContaining('Couldn’t finish sign-out'), findsOneWidget);
       expect(find.text('Not signed in'), findsOneWidget);
       identity.failSignOut = false;
       await _ready(tester, find.text('Sign in with Microsoft or Google'));
@@ -619,6 +751,60 @@ void main() {
         );
         expect(await saved.habits(), hasLength(1));
         await saved.close();
+      });
+    },
+  );
+  testWidgets(
+    'session expiry while viewing device preserves the live device store',
+    (tester) async {
+      final root = (await tester.runAsync(
+        () => Directory.systemTemp.createTemp('bloomstep-device-expiry-'),
+      ))!;
+      addTearDown(() => tester.runAsync(() => root.delete(recursive: true)));
+      await tester.runAsync(() async {
+        final guest = await GardenStore.open(
+          p.join(root.path, '${HabitHome.guestAccount}.sqlite'),
+          HabitHome.guestAccount,
+        );
+        await guest.plant(
+          aspiration: 'Saved device habit',
+          anchor: 'coffee',
+          behavior: 'breathe',
+          celebration: 'smile',
+          species: 'Cosmos',
+        );
+        await guest.close();
+      });
+      final identity = _SyntheticIdentity()..restoreOffline = true;
+      await tester.pumpWidget(
+        MaterialApp(
+          home: HabitHome(
+            testIdentity: identity,
+            testOpenStore: (account) =>
+                GardenStore.open(p.join(root.path, '$account.sqlite'), account),
+          ),
+        ),
+      );
+      await _ready(tester, find.text('View device garden'));
+      await tester.tap(find.text('View device garden'));
+      await _ready(tester, find.text('Viewing your device garden.'));
+      identity.active = false;
+      tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.resumed);
+      await _ready(tester, find.text('Not signed in'));
+      expect(find.text('Did it'), findsOneWidget);
+      expect(find.text('Return to account garden'), findsNothing);
+      expect(find.byTooltip('Settings and privacy'), findsNothing);
+      await tester.pumpWidget(const SizedBox());
+      await tester.runAsync(
+        () => Future<void>.delayed(const Duration(milliseconds: 150)),
+      );
+      await tester.runAsync(() async {
+        final guest = await GardenStore.open(
+          p.join(root.path, '${HabitHome.guestAccount}.sqlite'),
+          HabitHome.guestAccount,
+        );
+        expect(await guest.habits(), hasLength(1));
+        await guest.close();
       });
     },
   );

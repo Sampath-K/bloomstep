@@ -1,0 +1,161 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Bloomstep: deferred PR review proposals</title>
+<script>
+  (() => {
+    const param = new URLSearchParams(window.location.search).get("scoutTheme");
+    const theme =
+      param || (window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light");
+    document.documentElement.setAttribute("data-theme", theme);
+  })();
+</script>
+<style>
+:root {
+  color-scheme: light;
+  --cp-bg: #f7f4ef;
+  --cp-bg-elevated: #fcfbf8;
+  --cp-surface: #ffffff;
+  --cp-surface-soft: #f5f5f5;
+  --cp-border: #dedede;
+  --cp-border-strong: #919191;
+  --cp-text: #242424;
+  --cp-text-muted: #5c5c5c;
+  --cp-text-soft: #6f6f6f;
+  --cp-accent: #b11f4b;
+  --cp-accent-hover: #9a1a41;
+  --cp-accent-soft: rgba(177, 31, 75, 0.08);
+  --cp-accent-fg: #ffffff;
+  --cp-success: #16a34a;
+  --cp-danger: #dc2626;
+  --cp-warning: #f59e0b;
+  --cp-link: #0078d4;
+  --cp-shadow: 0 18px 48px rgba(0, 0, 0, 0.12);
+  --cp-overlay: rgba(255, 255, 255, 0.8);
+  --cp-panel: rgba(255, 255, 255, 0.86);
+  --cp-panel-strong: rgba(255, 255, 255, 0.96);
+  --cp-sheen: rgba(255, 255, 255, 0.55);
+  --cp-highlight: rgba(177, 31, 75, 0.12);
+}
+html[data-theme="dark"] {
+  color-scheme: dark;
+  --cp-bg: #3d3b3a;
+  --cp-bg-elevated: #343231;
+  --cp-surface: #292929;
+  --cp-surface-soft: #2e2e2e;
+  --cp-border: #474747;
+  --cp-border-strong: #5f5f5f;
+  --cp-text: #dedede;
+  --cp-text-muted: #919191;
+  --cp-text-soft: #b0b0b0;
+  --cp-accent: #fd8ea1;
+  --cp-accent-hover: #fb7b91;
+  --cp-accent-soft: rgba(253, 142, 161, 0.14);
+  --cp-accent-fg: #1a1a1a;
+  --cp-success: #4ade80;
+  --cp-danger: #f87171;
+  --cp-warning: #fbbf24;
+  --cp-link: #4da6ff;
+  --cp-shadow: 0 18px 48px rgba(0, 0, 0, 0.32);
+  --cp-overlay: rgba(41, 41, 41, 0.88);
+  --cp-panel: rgba(41, 41, 41, 0.72);
+  --cp-panel-strong: rgba(41, 41, 41, 0.96);
+  --cp-sheen: rgba(255, 255, 255, 0.04);
+  --cp-highlight: rgba(253, 142, 161, 0.12);
+}
+* { box-sizing: border-box; }
+body { margin: 0; padding: 24px; background: var(--cp-bg); color: var(--cp-text); font: 16px/1.5 "Segoe UI", Aptos, Calibri, -apple-system, BlinkMacSystemFont, sans-serif; }
+main { max-width: 1120px; margin: auto; }
+h1 { font-size: 28px; margin: 0 0 8px; }
+h2, h3, p { margin: 0 0 12px; }
+h2 { font-size: 22px; } h3 { font-size: 18px; }
+a { color: var(--cp-link); }
+.notice, .warning { padding: 12px 16px; border-left: 4px solid var(--cp-warning); background: var(--cp-surface); border-radius: 0.625rem; margin-bottom: 20px; }
+.muted { color: var(--cp-text-muted); }
+.grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 460px), 1fr)); gap: 24px; }
+article { padding: 20px; border: 1px solid var(--cp-border); background: var(--cp-bg-elevated); border-radius: 16px; }
+.mock { padding: 16px; border: 1px solid var(--cp-border); border-radius: 16px; background: var(--cp-surface); }
+.practice { margin-bottom: 20px; }
+.context { font-weight: 600; }
+button { min-height: 44px; padding: 8px 16px; margin: 4px 8px 4px 0; border: 1px solid var(--cp-border-strong); border-radius: 0.625rem; background: var(--cp-surface); color: var(--cp-text); font: inherit; }
+button.primary { background: var(--cp-accent); border-color: var(--cp-accent); color: var(--cp-accent-fg); }
+button:hover { border-color: var(--cp-accent-hover); }
+button:focus-visible, summary:focus-visible { outline: 3px solid var(--cp-link); outline-offset: 3px; }
+details { margin: 16px 0 0; border-top: 1px solid var(--cp-border); padding-top: 12px; }
+summary { cursor: pointer; min-height: 44px; }
+.secondary { border-left: 4px solid var(--cp-border-strong); padding: 16px; background: var(--cp-surface-soft); }
+.label { font-weight: 600; color: var(--cp-accent); }
+code { font-family: Consolas, "Courier New", Courier, monospace; }
+.large .mock { font-size: 200%; }
+.large .mock h3 { font-size: 1.125em; }
+@media (prefers-reduced-motion: reduce) { * { scroll-behavior: auto; } }
+@media (max-width: 600px) { body { padding: 12px; } article { padding: 12px; } }
+</style>
+</head>
+<body>
+<main>
+<h1>Bloomstep: proposals held for review</h1>
+<p class="notice"><strong>Not implemented. Not in preview.15.</strong> These conceptual review mockups cover only PRs #27, #29, #30, and #38. They are not actual Flutter screenshots or accessibility evidence. Existing garden art and the approved practice-first design stay unchanged.</p>
+<p><button id="scale" aria-pressed="false">Show 200% text</button> <span class="muted">All controls are inert proposals. No update, edit, check-in, or account action runs.</span></p>
+<div class="grid">
+<article id="pr27">
+<p class="label">#27 &middot; Settings only</p>
+<h2>No permanent update-status row</h2>
+<p class="muted">Protect the practice viewport. Keep unsigned installation manual and signing disabled.</p>
+<div class="mock" aria-label="Proposed update settings">
+<h3>Updates</h3>
+<p>You choose when to install an update.</p>
+<button class="primary" type="button">Check for updates</button>
+<details><summary>When a release is available</summary><p>A new version is available.</p><button type="button">Open release page</button></details>
+<details><summary>Failure example</summary><p role="note">Couldn't check for updates. Try again.</p></details>
+</div>
+<p class="warning">Approval needed: raw exception text must not ship; a permanent bottom row must not reduce practice space. Automatic discovery would remain off in this proposal. No trust or feed activation.</p>
+</article>
+<article id="pr29">
+<p class="label">#29 &middot; Optional weekly summary</p>
+<h2>Short recap, accurate data boundaries</h2>
+<div class="mock" aria-label="Proposed weekly summary">
+<h3>Your garden this week</h3>
+<p>12&ndash;17 October &middot; Synthetic example</p>
+<p>Calm: 3 practice days.</p>
+<h3>An optional next step</h3>
+<p>Try a smaller version of your tiny action.</p>
+<p>This suggestion uses your saved reasons. Your recipe changes only if you edit it.</p>
+<details><summary>Privacy</summary><p>Opening this summary doesn't start a sync. Your existing sync settings still apply.</p></details>
+<button class="primary" type="button">Edit recipe</button><button type="button">Close</button>
+</div>
+<p class="muted">Illustrative counts only. Preserve per-habit dates and existing account sync; no automatic recipe changes.</p>
+</article>
+<article id="pr30">
+<p class="label">#30 &middot; After Not today and a saved reason</p>
+<h2>Recovery follows practice</h2>
+<div class="mock" aria-label="Proposed recovery card position">
+<div class="practice"><h3>Calm</h3><p class="context">After I pour my morning drink, I will take one slow breath. Then I relax my shoulders and smile.</p><button class="primary" type="button">Did it</button><button type="button">Not today</button></div>
+<div class="secondary"><h3>An optional next step</h3><p>Try a smaller version of your tiny action.</p><button type="button">Edit recipe</button></div>
+</div>
+<p class="muted">Position proposal, not simultaneous check-in state proof. Actual source must use the saved reason and retain the full recipe, primary target, semantics, and focus order.</p>
+</article>
+<article id="pr38">
+<p class="label">#38 &middot; Optional secondary moments</p>
+<h2>Static, dismissible, after practice</h2>
+<div class="mock" aria-label="Proposed badge and coach cards">
+<div class="practice"><h3>Calm</h3><p class="context">After I pour my morning drink, I will take one slow breath. Then I relax my shoulders and smile.</p><button class="primary" type="button">Did it</button></div>
+<details><summary>Example badge</summary><div class="secondary"><h3>First seed</h3><p>You made room for one small beginning.</p><button type="button">Dismiss</button></div></details>
+<details><summary>Example coach</summary><div class="secondary"><h3>An optional next step</h3><p>Let your next anchor be the invitation. No need to practice right now.</p><button type="button">Review recipe</button><button type="button">Not now</button></div></details>
+</div>
+<p class="warning">The original 700 ms fade is not approved. No new animation is proposed here. Preserve reduced-motion support and never delay practice or focus.</p>
+</article>
+</div>
+<p class="notice">Approval of this packet would authorize only its exact scope, followed by tests-first implementation and actual Flutter renders. Native Narrator, high contrast, DPI, protected installation, and genuine launch remain separate gates.</p>
+</main>
+<script>
+document.getElementById('scale').addEventListener('click', event => {
+  const enabled = document.body.classList.toggle('large');
+  event.currentTarget.setAttribute('aria-pressed', String(enabled));
+  event.currentTarget.textContent = enabled ? 'Show 100% text' : 'Show 200% text';
+});
+</script>
+</body>
+</html>

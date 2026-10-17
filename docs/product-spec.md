@@ -43,8 +43,12 @@ guest/account analytics, authentication success or automatic account linking.
 No receipt means no measurement. The receipt can be cleared in profile Settings.
 
 Sign-in keeps the configured Microsoft personal/Google/other hosted choices in
-the trusted system browser. The signed-in profile shows an avatar and Sign out,
-not identity text. Validated token claims supply initials/accessibility or an
+the trusted system browser. Following the owner's 15 October preview.14 trial
+feedback, the signed-in profile shows a usable provider-supplied name, an avatar
+and Sign out. Validated standard `name`, or `given_name`/`family_name`, claims
+supply the name; absent names show "Signed-in account" and explain that the
+provider did not supply a name, never an invented name, email or U-only identity.
+Validated claims supply initials/accessibility or an
 existing HTTPS OIDC picture; absent claims are not invented. No extra photo
 scopes, account connection or persistent photo storage are added.
 The profile also owns the Settings/privacy entry for export and deletion.
@@ -54,11 +58,163 @@ account data and clears account-local data/authentication before returning to
 the separate device garden. Session expiry preserves the saved account garden
 but removes access and returns to the device garden.
 
-**First-pass boundary:** device habits remain separate when signing in; a one-time
-notice states that nothing was transferred. No import, linking or migration
-occurs. A future "Bring them / Keep separate" flow needs explicit consent,
-idempotent local import, rollback and failure tests before enabling it. This
-contract does not itself establish released-build or installed-launch acceptance.
+**Owner-directed continuity correction (15 October 2026):** signing in still
+does not upload or merge device habits automatically. Persistent account-garden
+messaging identifies the selected garden and the preserved device habits.
+"View device garden" and "Return to account garden" let users inspect the
+separate gardens without destructive sign-out. Existing Settings/export/delete/
+consent controls stay reachable. Authentication expiry still removes account access.
+
+Only an explicit "Copy to this account" confirmation, disclosing possible cloud
+sync, copies device recipes and their check-in/reflection history to the displayed
+account. Keep separate, dismissal or cancellation writes nothing. Originals stay
+unchanged locally. Settings, reminders, consent, telemetry and feedback are never
+copied. Stable per-account copy identities make retries atomic/idempotent and
+preserve account edits and deletion markers; this is a one-time copy, not ongoing
+linking or reconciliation. A failed transaction leaves no partial copy and exposes
+a retryable error. Account/session changes invalidate the transaction. No
+account-to-account copy exists. When saved device habits need this decision,
+the empty-account automatic builder must not obscure it; manual planting remains
+available. This source contract is not released-build/installed-launch acceptance,
+and does not establish the state of the owner's uninspected local database.
+
+## Human-centered garden design and validation
+
+**Purpose:** Help people practice useful tiny habits voluntarily, eventually with
+less app support. Engagement is useful practice and autonomy, not time in app,
+compulsive checking, streak preservation or guilt. A prettier screen or higher
+expert score is not evidence of improved retention or habit outcomes.
+
+**Principles and guidelines (all existing and new surfaces):**
+
+- Give each view one clear primary decision/action. Use short welcoming labels,
+  consistent navigation and accessible progressive disclosure for secondary
+  explanation. Never hide permissions, recipients, shared fields, irreversible
+  effects, data boundaries or recovery actions behind illustration or disclosure.
+- Use original garden/plant imagery and existing semantic design tokens. Reuse
+  `PlantArt`; decorative growth is not earned practice/progress. Compact prominent
+  image-and-text actions retain readable labels, meaningful tooltips, hit areas
+  and discoverability; do not replace task names with ambiguous icons.
+- Use purposeful finite micro-animation for orientation/action feedback, never
+  ambient motion that competes with a task. Respect both app and OS reduced-motion
+  settings with an equivalent static state. Loading, hover, focus, pressed,
+  disabled, success and failure must remain understandable without animation.
+- Preserve keyboard order, visible focus, Enter/Space activation, Escape/cancel
+  and focus restoration; provide headings, names, roles and live feedback for
+  assistive technology. Check Narrator, light/dark/high contrast, 200% text,
+  small windows, Windows snap/resize and mixed-monitor DPI. Color, motion,
+  hover and decoration are never the sole carrier of meaning. Scroll must keep
+  all content/actions reachable without horizontal clipping.
+- Keep typography, spacing and hierarchy consistent. Never block the UI on
+  network/storage work; show honest pending/error/retry/offline states and
+  distinguish queued/requested/cached from received/delivered/fresh. Destructive
+  actions require explicit informed confirmation; cancellation has no side effect.
+- Use native capabilities only when they improve the current task and are
+  supported by the packaging. Share/composer/file-picker/deep-link actions remain
+  explicit; reminders/tray/startup retain opt-in, quiet hours and exit semantics.
+  Missing integrations are named gaps, not a reason to request new permissions.
+
+### Visual-change approval before implementation
+
+Before changing a screen's visual layout, hierarchy, or interaction presentation,
+prepare rendered mockups/prototypes for the affected states and relevant viewport,
+text-scale, and input conditions. Label synthetic content and unobserved behavior.
+Show the renders to the owner and wait for explicit approval before implementing
+the visual change; do not treat a written description or heuristic score as visual
+approval. This process requirement does not replace accessibility tests or
+acceptance gates.
+
+### Editorial copy approval before implementation
+
+Every new or changed user-facing string must pass the editorial gate in
+[`copy-guide.md`](copy-guide.md) before it is implemented or merged. Prepare
+before/after copy proposals and rendered dialog or screen mockups where copy
+changes layout; get owner approval before changing the application strings.
+Automated checks supplement, but do not replace, editorial review.
+
+### Anchored quality scores and minimum bars
+
+Use the same five dimensions for **every affected surface and state**:
+discoverability/next action (D), hierarchy/cognitive load (H), coherent garden
+imagery/emotional tone (G), accessibility/responsiveness (A), and feedback,
+recovery/trust (T). Each score is an **expert heuristic assessment**, with source
+and rendered evidence, not a numeric usability certification.
+
+| Score | Anchor, applied separately to each dimension |
+|---|---|
+| 1 | Unusable, misleading or critical task blocked. |
+| 2 | Major friction or a material accessibility/trust defect. |
+| 3 | Usable for observed conditions, with notable documented gaps. |
+| 4 | Polished within the declared matrix and meets the defined checks. |
+| 5 | Exceptional refinement supported by independent task/accessibility evidence, not author opinion alone. |
+| NOT OBSERVED | No reliable rendered evidence for this condition; an open gate, not a pass or an averageable zero. |
+
+**Target bar:** each applicable dimension on every changed surface is >=4/5;
+there is no compensating average. A critical accessibility, privacy, data-loss
+or core-task blocker fails regardless of other scores. Preserve any evidenced
+baseline >4; lower scores require an explicit, reviewed tradeoff (never a
+waiver of a safety/privacy blocker). Unknowns remain open acceptance gates.
+Scores must name viewport/text scale, motion, input method and state; do not
+generalize a desktop screenshot to Narrator, DPI or 200% text.
+
+**Accessibility hierarchy defects block release and are never deferred as
+follow-ups.** The primary action must be visible and reachable in the initial
+viewport at 200% text, in short windows and at high DPI. Keyboard focus order
+and assistive-technology semantics must not bury that action behind profile or
+secondary details. Any applicable dimension below 4/5 blocks release, and
+`NOT OBSERVED` remains an open gate rather than evidence of a pass. Automate
+these checks where the surface supports reliable widget or scorecard validation;
+automated checks do not replace native accessibility validation.
+The current per-surface scores, evidence and gaps are maintained in
+[`visual-quality-review.md`](visual-quality-review.md), not declared achieved
+by this policy. State-specific acceptance is in
+[`invitation-dialog-contract.md`](invitation-dialog-contract.md).
+
+### Mandatory per-change validation / Definition of Done
+
+1. Inventory affected routes, dialogs, transient and empty/loading/error/offline/
+   success states; include native handoffs and cancellation, not just happy paths.
+   Capture measurable interaction/layout contracts and failing regression tests
+   **before** implementation.
+2. Compare actual rendered before/after surfaces where baseline is observable.
+   Record source revision, synthetic versus real data, viewport/text scale,
+   motion/input conditions, exact checks/results and limitations. Never award an
+   unobserved state an inferred grade. Inspect the images, not just file counts.
+3. Exercise keyboard/focus, labels/live regions/targets, 200% text and short/narrow
+   windows; light/dark/high contrast and reduced motion; error/retry, cancellation,
+   destructive consent and privacy boundaries. Run the smallest relevant
+   interaction/accessibility tests plus static analysis, extending coverage for
+   the real risk. Narrator and native DPI/OS behavior need actual native evidence.
+4. Preserve existing measurable performance targets: check-in celebration
+   **<300ms**, desktop cold start **<2s**, vector rendering **<16ms** (see
+   Nonfunctional below). Record hardware/build/method and measured results before
+   claiming attainment. Widget pump durations do not establish device latency,
+   frame budgets, cold start or release-build performance. Missing measurements
+   are explicit gates; do not invent achieved numbers.
+5. Maintain per-dimension/per-surface no-regression scores and evidence links in
+   the review. Explain any lower baseline or unresolved target; separate heuristic
+   assessment, functional tests, synthetic rendered evidence, native observation
+   and real-user/experimental outcomes. Assess telemetry necessity for each
+   change: reuse approved consented events or justify no new events; no ad-hoc
+   identifiers/free text. Experiment policy is owned separately in
+   [`app-experiments.md`](app-experiments.md); proposed/disabled experiments are
+   not measured outcomes.
+   The selected app experiment provider is **GrowthBook**, behind a replaceable
+   vendor-neutral resolver/adapter. UI code depends only on the existing
+   resolve/rendered/outcome contract, never vendor SDK/configuration types.
+   Consent, privacy, expiry, control fallback, actual-visible-render exposure and
+   quality bars are provider-independent invariants. Selection/source wiring is
+   not a configured hosted integration or permission to activate a study.
+6. Review only when changes are persistent, related documentation is updated,
+   required checks pass and remaining gates are explicit. An unobserved native
+   capability or missing real-user result cannot be relabelled "verified" merely
+   by documenting it. No release, flag activation or Store certification follows
+   from a visual PR.
+
+Authoritative platform references (guidance, not certification):
+[Windows accessibility](https://learn.microsoft.com/en-us/windows/apps/design/accessibility/accessibility-overview),
+[responsive design](https://learn.microsoft.com/en-us/windows/apps/design/layout/responsive-design),
+and [motion in practice](https://learn.microsoft.com/en-us/windows/apps/develop/motion/motion-in-practice).
 
 ## First-habit invitation and planting
 
@@ -249,7 +405,7 @@ kill switch must be verified before production launch.
 | Check-in | Did it / Did more / Not today; optional forgot/too hard/anchor absent/motivation reason; no response is no data. Personal celebration within 300ms; persistent client event IDs; one effective result per habit per **local** date; edits and undo append events; sync retries idempotent. |
 | Garden | Five stages: seed, sprout at 3, sapling at 10, budding at 21, bloom at 30 practice days plus score >=4/7. No negative stage changes after rest or corrected data. Permanent Grove after graduation. Deterministic species/plant variation, vector visuals, screen-reader labels and reduced motion. Optional day/night, seasons, decor, pollinators and return celebration, never a penalty. |
 | Reminders | Real Windows local toasts and tray actions; opt-in permission/context; optional autostart; chosen local time, quiet hours default 21:30-07:30; <=1 prompt/habit/day and <=3 notifications/app/day; snooze/fewer/off. Three ignored halves frequency, seven pauses with in-app explanation. Device scheduling, not paid service. Respect OS settings/Focus; never use urgent bypass. Re-evaluate local time/DST/travel. Median of last 14 check-in times after five samples, rounded 15m. |
-| Identity | Real OIDC broker with Microsoft account/work-school, Google and email OTP; system browser authorization code + PKCE, unpredictable state and nonce; validate token signature/issuer/audience/expiry/nonce. Never embedded browser or fake sign-in. Provider/platform capabilities verified, not assumed. Refresh credentials in OS secure storage. Inline profile on the habit screen; separate device-only guest garden with no analytics/sync/migration. Authenticated offline sessions; per-account isolation; sign-out clears account-local device data with unsynced-data warning and returns to the device garden. No silent email-based linking. |
+| Identity | Real OIDC broker with Microsoft account/work-school, Google and email OTP; system browser authorization code + PKCE, unpredictable state and nonce; validate token signature/issuer/audience/expiry/nonce. Never embedded browser or fake sign-in. Provider/platform capabilities verified, not assumed. Refresh credentials in OS secure storage. Inline profile with provider-supplied name or honest missing-name explanation; separate device-only garden with no analytics/sync or automatic migration. Explicitly confirmed, atomic/idempotent copy preserves originals and account isolation. Authenticated offline sessions; per-account isolation; sign-out clears account-local device data with unsynced-data warning and returns to the device garden. No silent email-based linking. |
 | Sync | Functions JWT verification on **every** endpoint, server-derived partition `/userId`, Cosmos persistent records, retry, append-event union and last-writer-wins recipe/settings with deterministic conflicts. Never accept client-selected account identity. Two-device verification including offline edits/restarts. |
 | User learning | Weekly reflection under 60s; four 1-7 naturalness items every 14 days; explain deterministic Recipe Doctor based on check-in reasons (specific/reliable anchor, smaller behavior, reconsider aspiration/celebration). Two consecutive naturalness scores >=5.5 plus practice >=60% of last 28 days graduates, not a fixed day count. Original content. AI features, if added, will be explained and optional. |
 | Reconnect | Gentle absence nudges at 3 then 7 days, maximum two per absence episode, then stop until return. Opt-out, ignored-reminder backoff, never guilt. Return earns a positive celebration. Windows background/tray/next-open delivery must actually be observed before claiming success. |

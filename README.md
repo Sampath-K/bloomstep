@@ -13,7 +13,27 @@ flutter run -d windows
 flutter build windows --release
 ```
 
+Before submitting a UI change, use the canonical
+[design and validation bar](docs/product-spec.md#human-centered-garden-design-and-validation):
+inventory affected surfaces/states; write failing behavior/accessibility contracts;
+inspect synthetic-labelled actual renders at small windows/200% text, light/dark
+and reduced motion; exercise keyboard/focus, errors/recovery and privacy;
+record per-dimension/per-surface baseline/after scores and exact checks with
+evidence. Preserve any higher evidenced baseline. Identify telemetry necessity
+without adding unconsented events, and mark native/Narrator/performance/real-user
+conditions **NOT OBSERVED** until actually checked. Scores are expert heuristics,
+not measured engagement or certification. The current
+[visual review](docs/visual-quality-review.md) records results and open gates.
+Use the [app experiment policy](docs/app-experiments.md) for the selected,
+replaceable GrowthBook adapter; source wiring is not hosted setup or activation.
+
 ## Status
+
+For a private self-service dependency/evidence view (separate from the app and
+public site), see [local project status](docs/project-status.md). It reads GitHub
+with the existing `gh` login and never equates merge or publication with verification.
+Run `node tool\project-status\status.mjs serve --poll-seconds 60` for bounded local
+source polling; browser snapshot refresh and unavailable agent APIs are labeled separately.
 
 **Engineering preview, not the complete MVP.** The persistent garden and core
 widget flows are implemented. The first garden screen has a compact profile;

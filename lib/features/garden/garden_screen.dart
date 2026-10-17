@@ -3,8 +3,6 @@ import 'dart:async';
 
 import 'package:file_selector/file_selector.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
-import 'package:qr_flutter/qr_flutter.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../../core/garden_store.dart';
@@ -17,7 +15,6 @@ import '../../services/remote_config.dart';
 import '../../services/update_service.dart';
 import '../../services/invitation_service.dart';
 import '../../services/invitation_intent.dart';
-import '../../services/native_share.dart';
 import '../../services/session_diagnostics.dart';
 import 'reminder_observation_controls.dart';
 import '../../services/installer_measurement.dart';
@@ -29,6 +26,10 @@ import 'package:launch_at_startup/launch_at_startup.dart';
 
 import 'plant_art.dart';
 import 'recipe_builder.dart';
+import 'invitation_dialog.dart';
+import 'garden_canopy.dart';
+import 'experience_copy.dart';
+import '../../services/experience_experiments.dart';
 
 const _testBuild = bool.fromEnvironment('BLOOMSTEP_TEST_BUILD');
 
@@ -42,6 +43,7 @@ class GardenScreen extends StatefulWidget {
     this.configLoader,
     this.invitationInbox,
     this.invitationService,
+    this.experienceResolver,
     this.diagnostics,
     this.installerMeasurement,
     this.analyticsSandbox,
@@ -50,11 +52,14 @@ class GardenScreen extends StatefulWidget {
     this.deviceGuest = false,
     this.testDisableServices = false,
     this.profileBuilder,
+    this.profileSummaryBuilder,
+    this.profileDetailsBuilder,
     this.onSignedOut,
     this.onProfileShown,
     this.autoInviteFirstHabit = false,
     this.firstHabitInvitationReady = true,
     this.onFirstHabitInvited,
+    this.contentRevision = 0,
   });
   final GardenStore store;
   final IdentityService? identity;
@@ -63,6 +68,7 @@ class GardenScreen extends StatefulWidget {
   final Future<RemoteConfigResult> Function(GardenStore)? configLoader;
   final InvitationInbox? invitationInbox;
   final InvitationService? invitationService;
+  final ExperienceResolver? experienceResolver;
   final SessionDiagnostics? diagnostics;
   final InstallerMeasurement? installerMeasurement;
   final AnalyticsSandbox? analyticsSandbox;
@@ -72,11 +78,16 @@ class GardenScreen extends StatefulWidget {
   final bool testDisableServices;
   final Widget Function(Future<void> Function() signOut, VoidCallback manage)?
   profileBuilder;
+  final Widget Function(Future<void> Function() signOut, VoidCallback manage)?
+  profileSummaryBuilder;
+  final Widget Function(Future<void> Function() signOut, VoidCallback manage)?
+  profileDetailsBuilder;
   final Future<void> Function(String? warning)? onSignedOut;
   final VoidCallback? onProfileShown;
   final bool autoInviteFirstHabit;
   final bool firstHabitInvitationReady;
   final VoidCallback? onFirstHabitInvited;
+  final int contentRevision;
   @override
   State<GardenScreen> createState() => _GardenScreenState();
 }
@@ -104,6 +115,8 @@ class _GardenScreenState extends State<GardenScreen> {
   Timer? configExpiryTimer;
   DesktopReminders? reminders;
   InvitationService? invitations;
+  late final ExperienceResolver experiences =
+      widget.experienceResolver ?? ExperienceExperiments(widget.store);
   InvitationIntent? pendingInvitation;
   InvitationStatus? invitationStatus;
   Map<String, dynamic>? acceptedCard;
@@ -138,7 +151,9 @@ class _GardenScreenState extends State<GardenScreen> {
         if (mounted) setState(() => error = message);
       }, gateway: widget.reminderGateway);
       reminders!.initialize().catchError((Object e) {
-        if (mounted) setState(() => error = 'Reminders could not start: $e');
+        if (mounted) {
+          setState(() => error = 'Could not start reminders. Check Settings.');
+        }
       });
       _refreshConfig();
     }
@@ -162,6 +177,12 @@ class _GardenScreenState extends State<GardenScreen> {
   @override
   void didUpdateWidget(GardenScreen oldWidget) {
     super.didUpdateWidget(oldWidget);
+    if (oldWidget.contentRevision != widget.contentRevision) {
+      unawaited(_load());
+      if (widget.identity != null && !widget.testDisableServices) {
+        unawaited(_sync());
+      }
+    }
     _scheduleFirstHabit();
   }
 
@@ -222,7 +243,10 @@ class _GardenScreenState extends State<GardenScreen> {
       }
     } catch (e) {
       if (mounted) {
-        setState(() => error = 'Your return could not be recorded: $e');
+        setState(
+          () =>
+              error = "Couldn't record your return. Your garden is unchanged.",
+        );
       }
     }
   }
@@ -245,7 +269,9 @@ class _GardenScreenState extends State<GardenScreen> {
       if (invitations != null) await _refreshInvitations();
     } catch (e) {
       if (mounted) {
-        setState(() => syncStatus = 'Sync needs attention: $e');
+        setState(
+          () => syncStatus = "Couldn't sync your garden. Your saved garden is still on this device.",
+        );
       }
     } finally {
       syncing = false;
@@ -323,7 +349,7 @@ class _GardenScreenState extends State<GardenScreen> {
     } catch (e) {
       if (mounted) {
         setState(() {
-          error = 'Your garden could not be read: $e';
+          error = "Couldn't open your garden. Try again.";
           loading = false;
         });
       }
@@ -343,7 +369,10 @@ class _GardenScreenState extends State<GardenScreen> {
       await _load();
       if (widget.identity?.account != null) unawaited(_sync());
     } catch (e) {
-      if (mounted) setState(() => error = '$e');
+      debugPrint('Garden action failed: ${e.runtimeType}');
+      if (mounted) {
+        setState(() => error = "Couldn't complete that action. Try again.");
+      }
     } finally {
       if (mounted) setState(() => working = false);
     }
@@ -388,6 +417,7 @@ class _GardenScreenState extends State<GardenScreen> {
       await showDialog<bool>(
         context: context,
         builder: (context) => AlertDialog(
+          scrollable: true,
           title: Text(title),
           content: Text(message),
           actions: [
@@ -408,11 +438,9 @@ class _GardenScreenState extends State<GardenScreen> {
     if (working) return false;
     final recipe = type == 'habits';
     if (!await _confirm(
-      recipe ? 'Delete this recipe?' : 'Delete this feedback?',
-      recipe
-          ? 'Removes only this recipe, its check-ins, reflections and linked event records. Deletion cannot be undone. Offline deletion is queued until sync; other devices apply it when they reconnect. A minimal ID-only marker prevents stale copies from returning.'
-          : 'Removes only this feedback or rating and its private replies. Deletion cannot be undone. Offline deletion is queued until sync; the team can see it until the server receives deletion. A minimal ID-only marker prevents stale copies from returning.',
-      recipe ? 'Delete recipe' : 'Delete feedback',
+      recipe ? 'Delete recipe?' : 'Delete this feedback?',
+      recipe ? 'This also deletes its check-ins and reflections.' : 'Removes only this feedback or rating and its private replies. Deletion cannot be undone. Offline deletion is queued until sync; the team can see it until the server receives deletion. A minimal ID-only marker prevents stale copies from returning.',
+      recipe ? 'Delete' : 'Delete feedback',
     )) {
       return false;
     }
@@ -501,7 +529,9 @@ class _GardenScreenState extends State<GardenScreen> {
       }
     } catch (e) {
       if (mounted) {
-        setState(() => error = 'Rating invitation could not be saved: $e');
+        setState(
+          () => error = "Couldn't save the rating invitation. Try again.",
+        );
       }
     }
   }
@@ -549,6 +579,12 @@ class _GardenScreenState extends State<GardenScreen> {
       return;
     }
     final scores = [4, 4, 4, 4];
+    const questions = [
+      'Starting feels automatic',
+      'My routine reminds me without effort',
+      'The tiny step needs little thought',
+      'I begin naturally when my anchor happens',
+    ];
     final accepted = await showDialog<bool>(
       context: context,
       builder: (context) => StatefulBuilder(
@@ -576,21 +612,19 @@ class _GardenScreenState extends State<GardenScreen> {
                   ),
                   for (var i = 0; i < 4; i++) ...[
                     const SizedBox(height: 12),
-                    Text(
-                      [
-                        'Starting feels automatic',
-                        'My routine reminds me without effort',
-                        'The tiny step needs little thought',
-                        'I begin naturally when my anchor happens',
-                      ][i],
-                    ),
-                    Slider(
-                      value: scores[i].toDouble(),
-                      min: 1,
-                      max: 7,
-                      divisions: 6,
-                      label: '${scores[i]}',
-                      onChanged: (v) => update(() => scores[i] = v.round()),
+                    Text(questions[i]),
+                    Semantics(
+                      label: questions[i],
+                      child: Slider(
+                        value: scores[i].toDouble(),
+                        min: 1,
+                        max: 7,
+                        divisions: 6,
+                        label: '${scores[i]}',
+                        onChanged: (v) => update(() => scores[i] = v.round()),
+                        semanticFormatterCallback: (value) =>
+                            '${value.round()} of 7',
+                      ),
                     ),
                   ],
                   const Text(
@@ -847,144 +881,15 @@ class _GardenScreenState extends State<GardenScreen> {
       );
       return;
     }
-    Map<String, dynamic>? card;
-    var busy = false;
-    String? failure;
-    InvitationReceipt? receipt;
     await showDialog<void>(
       context: context,
-      builder: (dialogContext) => StatefulBuilder(
-        builder: (context, update) {
-          Future<void> send(String channel) async {
-            update(() {
-              busy = true;
-              failure = null;
-            });
-            try {
-              final created = await invitations!.create(
-                channel,
-                recipeCard: card,
-              );
-              final url = invitations!.webUri(created);
-              if (!context.mounted) return;
-              update(() => receipt = created);
-              if (channel == 'link') {
-                await Clipboard.setData(ClipboardData(text: url.toString()));
-              } else if (channel == 'email') {
-                if (!await launchUrl(
-                  Uri(
-                    scheme: 'mailto',
-                    query:
-                        'subject=${Uri.encodeComponent('A tiny step together with Bloomstep')}&body=${Uri.encodeComponent('Grow a tiny habit with Bloomstep. $url')}',
-                  ),
-                )) {
-                  throw StateError(
-                    'No email application is available. Nothing was sent.',
-                  );
-                }
-              } else if (channel == 'native') {
-                await NativeShare.share(url);
-              }
-              await widget.store.track(
-                'share_initiated',
-                properties: {
-                  'channel': ['link', 'email'].contains(channel)
-                      ? channel
-                      : 'invite',
-                  'platform': GardenStore.telemetryPlatform,
-                },
-              );
-            } catch (e) {
-              if (context.mounted) {
-                update(
-                  () => failure = 'Invitation needs a connection or retry: $e',
-                );
-              }
-            } finally {
-              if (context.mounted) update(() => busy = false);
-            }
-          }
-
-          return AlertDialog(
-            title: const Text('Invite someone to grow'),
-            content: SizedBox(
-              width: 460,
-              child: SingleChildScrollView(
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    const Text(
-                      'Default: no private habit text. We do not contact anyone. Email opens your composer; Windows share opens the OS panel, not proof of transmission.',
-                    ),
-                    Text(
-                      card == null
-                          ? 'No recipe card included.'
-                          : 'Explicitly approved recipe card included.',
-                    ),
-                    TextButton(
-                      onPressed: busy
-                          ? null
-                          : () async {
-                              final chosen = await _chooseShareCard();
-                              if (context.mounted && chosen != null) {
-                                update(() => card = chosen);
-                              }
-                            },
-                      child: const Text('Choose and approve a recipe card'),
-                    ),
-                    if (card != null)
-                      TextButton(
-                        onPressed: busy
-                            ? null
-                            : () => update(() => card = null),
-                        child: const Text('Remove recipe card'),
-                      ),
-                    if (receipt != null) ...[
-                      Text(
-                        '${receipt!.cached ? "Cached existing invitation" : "Server-created invitation"}; expires ${receipt!.expiresAt.toLocal()}.',
-                      ),
-                      SelectableText(invitations!.webUri(receipt!).toString()),
-                      if (receipt!.channel == 'qr')
-                        Semantics(
-                          label: 'Server invitation QR code',
-                          child: QrImageView(
-                            data: invitations!.webUri(receipt!).toString(),
-                            size: 180,
-                            backgroundColor: Colors.white,
-                          ),
-                        ),
-                    ],
-                    if (failure != null) Text(failure!),
-                    if (busy) const LinearProgressIndicator(),
-                  ],
-                ),
-              ),
-            ),
-            actions: [
-              TextButton(
-                onPressed: busy ? null : () => send('link'),
-                child: const Text('Copy link'),
-              ),
-              TextButton(
-                onPressed: busy ? null : () => send('email'),
-                child: const Text('Email invite'),
-              ),
-              TextButton(
-                onPressed: busy ? null : () => send('qr'),
-                child: const Text('Show QR'),
-              ),
-              TextButton(
-                onPressed: busy ? null : () => send('native'),
-                child: const Text('Windows share'),
-              ),
-              TextButton(
-                onPressed: busy ? null : () => Navigator.pop(dialogContext),
-                child: const Text('Done'),
-              ),
-            ],
-          );
-        },
+      builder: (_) => InvitationDialog(
+        service: invitations!,
+        store: widget.store,
+        hasRecipes: habits.isNotEmpty,
+        chooseCard: _chooseShareCard,
+        reducedMotion: reducedMotion,
+        experiments: experiences,
       ),
     );
   }
@@ -998,6 +903,7 @@ class _GardenScreenState extends State<GardenScreen> {
         context: context,
         builder: (context) => StatefulBuilder(
           builder: (context, update) => AlertDialog(
+            scrollable: true,
             title: const Text('Help us grow'),
             content: SizedBox(
               width: 460,
@@ -1005,6 +911,9 @@ class _GardenScreenState extends State<GardenScreen> {
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   DropdownButtonFormField<String>(
+                    decoration: const InputDecoration(
+                      labelText: 'Feedback type',
+                    ),
                     initialValue: kind,
                     items: [
                       for (final k in [
@@ -1020,13 +929,18 @@ class _GardenScreenState extends State<GardenScreen> {
                     onChanged: (v) => update(() => kind = v!),
                   ),
                   if (kind == 'Rating')
-                    Slider(
-                      value: rating.toDouble(),
-                      min: 1,
-                      max: 5,
-                      divisions: 4,
-                      label: '$rating stars',
-                      onChanged: (v) => update(() => rating = v.round()),
+                    Semantics(
+                      label: 'Your rating',
+                      child: Slider(
+                        value: rating.toDouble(),
+                        min: 1,
+                        max: 5,
+                        divisions: 4,
+                        label: '$rating stars',
+                        onChanged: (v) => update(() => rating = v.round()),
+                        semanticFormatterCallback: (value) =>
+                            '${value.round()} of 5 stars',
+                      ),
                     ),
                   TextField(
                     controller: body,
@@ -1138,6 +1052,13 @@ class _GardenScreenState extends State<GardenScreen> {
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
+                  ListTile(
+                    leading: const Icon(Icons.spa_outlined),
+                    title: Semantics(
+                      header: true,
+                      child: const Text('Comfort and motion'),
+                    ),
+                  ),
                   SwitchListTile(
                     title: const Text('Reduced motion'),
                     value: reducedMotion,
@@ -1148,10 +1069,17 @@ class _GardenScreenState extends State<GardenScreen> {
                       update(() {});
                     },
                   ),
+                  ListTile(
+                    leading: const Icon(Icons.shield_outlined),
+                    title: Semantics(
+                      header: true,
+                      child: const Text('Privacy choices'),
+                    ),
+                  ),
                   SwitchListTile(
                     title: const Text('Share product event counts'),
                     subtitle: const Text(
-                      'Off by default. Counts, up to 10 observed Dart/Flutter errors and 10 account-session/token attempts per session; fixed stage/outcome/category and elapsed time only. No message/stack, credentials, habit text, email or feedback. Pre-sign-in failures and provider choice are not captured. Native/process deaths are not captured; no crash-free claim. Turning off clears local queued events; previously synced events follow account deletion and retention rules.',
+                      'Optional, off by default. Counts and up to 10 fixed-category error and 10 account-session attempts per session. No message/stack, credentials, habit text, email or feedback. Turning off clears queued events; synced events follow account deletion and retention rules.',
                     ),
                     value: analytics,
                     onChanged: widget.deviceGuest
@@ -1176,6 +1104,17 @@ class _GardenScreenState extends State<GardenScreen> {
                               update(() => analyticsWarning = error);
                             }
                           },
+                  ),
+                  const ExpansionTile(
+                    title: Text('What these counts include'),
+                    children: [
+                      Padding(
+                        padding: EdgeInsets.fromLTRB(16, 0, 16, 16),
+                        child: Text(
+                          'Only fixed stage/outcome/category and elapsed time from observed Dart/Flutter errors and account-session/token attempts. Pre-sign-in failures and provider choice are not captured. Native/process deaths are not captured; no crash-free claim.',
+                        ),
+                      ),
+                    ],
                   ),
                   if (analyticsWarning != null)
                     SelectableText('Product-event choice: $analyticsWarning'),
@@ -1203,6 +1142,14 @@ class _GardenScreenState extends State<GardenScreen> {
                     analytics: analytics,
                     installer: widget.installerMeasurement,
                   ),
+                  if (reminders != null)
+                    ListTile(
+                      leading: const Icon(Icons.notifications_none),
+                      title: Semantics(
+                        header: true,
+                        child: const Text('Gentle reminders'),
+                      ),
+                    ),
                   if (reminders != null)
                     SwitchListTile(
                       title: const Text('Gentle Windows reminders'),
@@ -1275,6 +1222,13 @@ class _GardenScreenState extends State<GardenScreen> {
                       }),
                     ),
                   ],
+                  ListTile(
+                    leading: const Icon(Icons.folder_outlined),
+                    title: Semantics(
+                      header: true,
+                      child: const Text('Your data and app'),
+                    ),
+                  ),
                   ListTile(
                     title: const Text('Export my data (JSON)'),
                     leading: const Icon(Icons.download),
@@ -1351,9 +1305,9 @@ class _GardenScreenState extends State<GardenScreen> {
                     leading: const Icon(Icons.delete_outline),
                     onTap: () async {
                       if (await _confirm(
-                        'Delete this local garden?',
-                        'Export first if you want a copy. This cannot be undone. It does not delete your identity provider account.',
-                        'Delete local data',
+                        'Delete local data?',
+                        'This deletes habits, check-ins, and reflections saved on this device—not your Microsoft or Google account.',
+                        'Delete',
                       )) {
                         await _act(() async {
                           closing = true;
@@ -1446,7 +1400,7 @@ class _GardenScreenState extends State<GardenScreen> {
     if (working || closing || widget.identity == null) return;
     if (!await _confirm(
       'Sign out?',
-      'Unsynced account data will be removed from this device. Export it in Settings first if needed. Your separate device garden is unchanged.',
+      'Unsynced account data is removed from this device; your separate device garden stays here. Export it first if you need a copy.',
       'Sign out',
     )) {
       return;
@@ -1471,8 +1425,7 @@ class _GardenScreenState extends State<GardenScreen> {
       try {
         await widget.identity!.signOut();
       } catch (e) {
-        warning =
-            'Signed out of this session, but saved authentication could not be cleared: $e. Try again before sharing this device.';
+        warning = 'Couldn’t finish sign-out. Saved sign-in may remain on this device; clear it before sharing this device.';
       }
       if (widget.onSignedOut != null) {
         await widget.onSignedOut!(warning);
@@ -1482,7 +1435,7 @@ class _GardenScreenState extends State<GardenScreen> {
     } catch (e) {
       if (mounted) {
         setState(() {
-          error = 'Sign-out cleanup did not complete: $e';
+          error = 'Could not finish sign-out. Check that saved sign-in is cleared before sharing this device.';
           working = false;
           closing = false;
         });
@@ -1569,7 +1522,10 @@ class _GardenScreenState extends State<GardenScreen> {
                               }
                             } catch (e) {
                               if (context.mounted) {
-                                update(() => launchError = '$e');
+                                update(
+                                  () => launchError =
+                                      "Couldn't open the release page.",
+                                );
                               }
                             } finally {
                               if (context.mounted) {
@@ -1601,9 +1557,48 @@ class _GardenScreenState extends State<GardenScreen> {
     }
   }
 
+  Widget _plantAction(ThemeData theme) => ConstrainedBox(
+    constraints: const BoxConstraints(maxWidth: 300),
+    child: FilledButton.icon(
+      style: FilledButton.styleFrom(minimumSize: const Size(0, 56)),
+      onPressed: working ? null : _plant,
+      icon: ExcludeSemantics(
+        child: Container(
+          width: 32,
+          height: 40,
+          decoration: BoxDecoration(
+            color: theme.colorScheme.secondaryContainer,
+            borderRadius: BorderRadius.circular(16),
+          ),
+          child: const FittedBox(
+            child: SizedBox(
+              width: 100,
+              height: 130,
+              child: PlantArt(stage: GrowthStage.sprout, species: 'Fern'),
+            ),
+          ),
+        ),
+      ),
+      label: const Text('Plant a habit'),
+    ),
+  );
+
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final viewport = MediaQuery.sizeOf(context);
+    final textScale = MediaQuery.textScalerOf(context).scale(1);
+    final shortWindow = viewport.height <= 512;
+    final compactPracticeFirst =
+        habits.isNotEmpty &&
+        (viewport.height <= 600 || (viewport.width <= 700 && textScale >= 1.5));
+    final splitProfile =
+        compactPracticeFirst &&
+        widget.profileSummaryBuilder != null &&
+        widget.profileDetailsBuilder != null;
+    final habitCardWidth = compactPracticeFirst && viewport.height <= 600
+        ? (viewport.width - 32).clamp(0, double.infinity).toDouble()
+        : (viewport.width - 64).clamp(0, 350).toDouble();
     return Scaffold(
       appBar: AppBar(
         automaticallyImplyLeading: false,
@@ -1612,7 +1607,7 @@ class _GardenScreenState extends State<GardenScreen> {
           IconButton(
             tooltip: 'Invite a friend',
             onPressed: working ? null : _share,
-            icon: const Icon(Icons.ios_share),
+            icon: const Icon(Icons.spa_outlined),
           ),
           IconButton(
             tooltip: 'Help us grow',
@@ -1630,41 +1625,59 @@ class _GardenScreenState extends State<GardenScreen> {
       body: loading
           ? const Center(child: CircularProgressIndicator())
           : SingleChildScrollView(
-              padding: const EdgeInsets.fromLTRB(32, 24, 32, 100),
+              padding: compactPracticeFirst
+                  ? EdgeInsets.fromLTRB(16, shortWindow ? 4 : 8, 16, 24)
+                  : const EdgeInsets.fromLTRB(32, 24, 32, 100),
               child: Center(
                 child: ConstrainedBox(
                   constraints: const BoxConstraints(maxWidth: 1200),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      if (widget.profileBuilder != null) ...[
+                      if (splitProfile) ...[
+                        widget.profileSummaryBuilder!(_signOut, () {
+                          if (!working && !closing) unawaited(_settings());
+                        }),
+                        SizedBox(height: shortWindow ? 4 : 8),
+                      ] else if (widget.profileBuilder != null) ...[
                         widget.profileBuilder!(_signOut, () {
                           if (!working && !closing) unawaited(_settings());
                         }),
                         const SizedBox(height: 16),
                       ],
-                      Text(
-                        'A little is enough.',
-                        style: theme.textTheme.displaySmall,
-                      ),
-                      const SizedBox(height: 8),
-                      Text(
-                        'Your plants keep their growth. Rest days and returning both belong here.',
-                        style: theme.textTheme.titleMedium,
-                      ),
-                      const SizedBox(height: 24),
-                      Text(
-                        weeklyDue && habits.isNotEmpty
-                            ? '$syncStatus • Weekly reflection is ready'
-                            : syncStatus,
-                        style: theme.textTheme.bodySmall,
-                      ),
-                      if (widget.identity != null)
-                        TextButton.icon(
-                          onPressed: syncing ? null : _sync,
-                          icon: const Icon(Icons.sync),
-                          label: const Text('Sync now'),
+                      if (!compactPracticeFirst || habits.isEmpty) ...[
+                        GardenCanopy(
+                          key: const ValueKey('garden-canopy'),
+                          reducedMotion: reducedMotion,
+                          compact: habits.isNotEmpty,
+                          heading: Semantics(
+                            header: true,
+                            child: ExperienceCopy(
+                              experiments: experiences,
+                              surface: ExperienceSurface.gardenPrompt,
+                              builder: (context, copy) => Text(
+                                copy,
+                                style: habits.isEmpty
+                                    ? theme.textTheme.headlineMedium
+                                    : theme.textTheme.titleLarge,
+                              ),
+                            ),
+                          ),
                         ),
+                        const SizedBox(height: 24),
+                        Text(
+                          weeklyDue && habits.isNotEmpty
+                              ? '$syncStatus • Weekly reflection is ready'
+                              : syncStatus,
+                          style: theme.textTheme.bodySmall,
+                        ),
+                        if (widget.identity != null)
+                          TextButton.icon(
+                            onPressed: syncing ? null : _sync,
+                            icon: const Icon(Icons.sync),
+                            label: const Text('Sync now'),
+                          ),
+                      ],
                       if (pendingInvitation != null)
                         Card(
                           child: Padding(
@@ -1854,11 +1867,17 @@ class _GardenScreenState extends State<GardenScreen> {
                         children: [
                           for (final habit in habits)
                             SizedBox(
-                              width: 350,
+                              width: habitCardWidth,
                               child: Card(
                                 clipBehavior: Clip.antiAlias,
                                 child: Padding(
-                                  padding: const EdgeInsets.all(20),
+                                  padding: EdgeInsets.all(
+                                    compactPracticeFirst
+                                        ? shortWindow
+                                              ? 8
+                                              : 12
+                                        : 20,
+                                  ),
                                   child: Column(
                                     crossAxisAlignment:
                                         CrossAxisAlignment.start,
@@ -1870,7 +1889,9 @@ class _GardenScreenState extends State<GardenScreen> {
                                               habit.status == 'graduated'
                                                   ? 'Evergreen Grove'
                                                   : habit.aspiration,
-                                              style: theme.textTheme.titleLarge,
+                                              style: compactPracticeFirst
+                                                  ? theme.textTheme.titleMedium
+                                                  : theme.textTheme.titleLarge,
                                             ),
                                           ),
                                           IconButton(
@@ -1896,46 +1917,64 @@ class _GardenScreenState extends State<GardenScreen> {
                                           ),
                                         ],
                                       ),
-                                      Semantics(
-                                        label:
-                                            '${habit.species}, ${habit.stage.name}. ${habit.practiceCount} practice days.',
-                                        child: AnimatedScale(
-                                          duration:
-                                              reducedMotion ||
-                                                  MediaQuery.disableAnimationsOf(
-                                                    context,
-                                                  )
-                                              ? Duration.zero
-                                              : const Duration(
-                                                  milliseconds: 240,
-                                                ),
-                                          scale:
-                                              habit.today ==
-                                                  CheckInResult.didMore
-                                              ? 1.04
-                                              : 1,
-                                          child: SizedBox(
-                                            height: 180,
-                                            width: double.infinity,
-                                            child: PlantArt(
-                                              stage: habit.stage,
-                                              species: habit.species,
+                                      if (!compactPracticeFirst ||
+                                          viewport.height > 600)
+                                        Semantics(
+                                          label:
+                                              '${habit.species}, ${habit.stage.name}. ${habit.practiceCount} practice days.',
+                                          child: AnimatedScale(
+                                            duration:
+                                                reducedMotion ||
+                                                    MediaQuery.disableAnimationsOf(
+                                                      context,
+                                                    )
+                                                ? Duration.zero
+                                                : const Duration(
+                                                    milliseconds: 240,
+                                                  ),
+                                            scale:
+                                                habit.today ==
+                                                    CheckInResult.didMore
+                                                ? 1.04
+                                                : 1,
+                                            child: SizedBox(
+                                              height: compactPracticeFirst
+                                                  ? 96
+                                                  : 180,
+                                              width: double.infinity,
+                                              child: PlantArt(
+                                                stage: habit.stage,
+                                                species: habit.species,
+                                              ),
                                             ),
                                           ),
                                         ),
+                                      if (!compactPracticeFirst ||
+                                          viewport.height > 600)
+                                        Text(
+                                          '${habit.stage.name.toUpperCase()}  /  ${habit.practiceCount} tiny steps',
+                                          style: theme.textTheme.labelLarge,
+                                        ),
+                                      SizedBox(
+                                        height: compactPracticeFirst ? 4 : 12,
                                       ),
-                                      Text(
-                                        '${habit.stage.name.toUpperCase()}  /  ${habit.practiceCount} tiny steps',
-                                        style: theme.textTheme.labelLarge,
-                                      ),
-                                      const SizedBox(height: 12),
                                       Text(
                                         habit.recipe,
-                                        style: theme.textTheme.titleMedium,
+                                        style: compactPracticeFirst
+                                            ? theme.textTheme.bodyLarge
+                                            : theme.textTheme.titleMedium,
                                       ),
-                                      const SizedBox(height: 8),
+                                      SizedBox(
+                                        height: compactPracticeFirst ? 4 : 8,
+                                      ),
                                       Text('Then I ${habit.celebration}.'),
-                                      const SizedBox(height: 16),
+                                      SizedBox(
+                                        height: compactPracticeFirst
+                                            ? shortWindow
+                                                  ? 4
+                                                  : 8
+                                            : 16,
+                                      ),
                                       if (habit.status != 'graduated')
                                         Wrap(
                                           spacing: 8,
@@ -2058,21 +2097,62 @@ class _GardenScreenState extends State<GardenScreen> {
                             ),
                         ],
                       ),
+                      if (compactPracticeFirst) ...[
+                        if (splitProfile)
+                          widget.profileDetailsBuilder!(_signOut, () {
+                            if (!working && !closing) unawaited(_settings());
+                          }),
+                        const SizedBox(height: 8),
+                        GardenCanopy(
+                          key: const ValueKey('garden-canopy'),
+                          reducedMotion: reducedMotion,
+                          compact: true,
+                          heading: Semantics(
+                            header: true,
+                            child: ExperienceCopy(
+                              experiments: experiences,
+                              surface: ExperienceSurface.gardenPrompt,
+                              builder: (context, copy) =>
+                                  Text(copy, style: theme.textTheme.titleLarge),
+                            ),
+                          ),
+                        ),
+                        const SizedBox(height: 8),
+                        Text(
+                          weeklyDue
+                              ? '$syncStatus • Weekly reflection is ready'
+                              : syncStatus,
+                          style: theme.textTheme.bodySmall,
+                        ),
+                        if (widget.identity != null)
+                          TextButton.icon(
+                            onPressed: syncing ? null : _sync,
+                            icon: const Icon(Icons.sync),
+                            label: const Text('Sync now'),
+                          ),
+                        Center(
+                          child: Padding(
+                            padding: const EdgeInsets.symmetric(vertical: 12),
+                            child: _plantAction(theme),
+                          ),
+                        ),
+                      ],
                     ],
                   ),
                 ),
               ),
             ),
-      bottomNavigationBar: SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
-          child: FilledButton.icon(
-            onPressed: working ? null : _plant,
-            icon: const Icon(Icons.add),
-            label: const Text('Plant a habit'),
-          ),
-        ),
-      ),
+      bottomNavigationBar: compactPracticeFirst
+          ? null
+          : SafeArea(
+              child: Padding(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 24,
+                  vertical: 12,
+                ),
+                child: Align(heightFactor: 1, child: _plantAction(theme)),
+              ),
+            ),
     );
   }
 }

@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:io';
 
 import 'package:flutter/material.dart';
 import 'package:path/path.dart' as p;
@@ -75,6 +76,8 @@ class _HabitHomeState extends State<HabitHome> {
   Future<void>? returningToGuest;
   String? error;
   String? notice;
+  int deviceHabitCount = 0;
+  int contentRevision = 0;
 
   @override
   void initState() {
@@ -114,13 +117,13 @@ class _HabitHomeState extends State<HabitHome> {
     try {
       final restored = await identity.restore();
       await _showGarden(authenticated: restored);
-    } catch (e) {
-      error =
-          'Session could not be restored: $e. Your saved garden was not deleted.';
+    } catch (_) {
+      error = 'Couldn’t restore your account garden. Your saved garden wasn’t deleted.';
       try {
         await _showGarden(authenticated: false);
-      } catch (storageError) {
-        error = '$error\nYour device garden could not be opened: $storageError';
+      } catch (_) {
+        error =
+            '$error Your device garden couldn’t be opened. Your saved garden wasn’t deleted.';
       }
     } finally {
       if (mounted) setState(() => busy = false);
@@ -142,6 +145,25 @@ class _HabitHomeState extends State<HabitHome> {
     AnalyticsSandbox? nextSandbox;
     try {
       if (authenticated) {
+        final visibleDevice = !accountGarden ? store : null;
+        final deviceExists =
+            visibleDevice != null ||
+            await File(
+              p.join(
+                p.dirname(next.storagePath),
+                '${HabitHome.guestAccount}.sqlite',
+              ),
+            ).exists();
+        deviceHabitCount = 0;
+        if (deviceExists) {
+          final device = visibleDevice ?? await _open(HabitHome.guestAccount);
+          try {
+            deviceHabitCount = (await device.habits()).length;
+          } finally {
+            // The visible guest store closes only after ownership changes.
+            if (visibleDevice == null) await device.close();
+          }
+        }
         nextDiagnostics = SessionDiagnostics(next, onWriteError: _writeError);
         nextObservations = AuthObservations(next, onWriteError: _writeError);
         nextSandbox = analyticsSandboxEnabled
@@ -181,11 +203,16 @@ class _HabitHomeState extends State<HabitHome> {
     setState(() {
       store = next;
       accountGarden = authenticated;
-      autoInviteFirstHabit = !invitedGardens.contains(next.account);
+      autoInviteFirstHabit =
+          !invitedGardens.contains(next.account) &&
+          !(authenticated && deviceHabitCount > 0);
       diagnostics = nextDiagnostics;
       observations = nextObservations;
       sandbox = nextSandbox;
       identity.observations = nextObservations;
+      notice = authenticated
+          ? _accountGardenNotice()
+          : 'Viewing your device garden.';
     });
     nextDiagnostics?.attach();
     nextSandbox?.attach();
@@ -194,6 +221,12 @@ class _HabitHomeState extends State<HabitHome> {
     await previousSandbox?.close();
     await previousDiagnostics?.close();
     await previous?.close();
+    if (authenticated) unawaited(_loadMicrosoftPhoto());
+  }
+
+  Future<void> _loadMicrosoftPhoto() async {
+    await identity.loadMicrosoftPhoto();
+    if (mounted && accountGarden) setState(() {});
   }
 
   Future<void> _signIn() async {
@@ -205,29 +238,105 @@ class _HabitHomeState extends State<HabitHome> {
     try {
       await identity.signIn();
       pendingAuthCleanup = false;
-      final count = (await store!.habits()).length;
       await _showGarden(authenticated: true, authenticatedNow: true);
-      notice = count == 0
-          ? null
-          : 'Your $count device ${count == 1 ? 'habit is' : 'habits are'} kept separate. Nothing was transferred to your account.';
-      if (mounted && notice != null) {
-        ScaffoldMessenger.of(context)
-            .showSnackBar(SnackBar(content: Text(notice!)));
-      }
     } catch (e) {
       error = e is AuthFailure
-          ? 'Sign-in did not complete: ${e.message} Your device garden is unchanged.'
-          : 'Your account garden could not be opened: $e. Your device garden is unchanged.';
+          ? 'Sign-in didn’t complete. Your device garden is unchanged.'
+          : 'Couldn’t open your account garden. Your device garden is unchanged.';
       if (!accountGarden) {
         try {
           await identity.signOut();
         } catch (cleanupError) {
           pendingAuthCleanup = true;
           error =
-              '$error Saved authentication could not be cleared: $cleanupError';
+              '$error Saved sign-in may remain on this device. Clear it before sharing this device.';
         }
       }
     } finally {
+      if (mounted) setState(() => busy = false);
+    }
+  }
+
+  String _accountGardenNotice() =>
+      'Device garden stays separate; switch any time.';
+
+  Future<void> _switchGarden() async {
+    if (busy) return;
+    setState(() {
+      busy = true;
+      error = null;
+    });
+    try {
+      await _showGarden(authenticated: !accountGarden);
+    } catch (e) {
+      _writeError("Couldn't switch gardens. Try again.");
+    } finally {
+      if (mounted) setState(() => busy = false);
+    }
+  }
+
+  Future<void> _copyDeviceGarden() async {
+    if (busy || !accountGarden || !identity.hasValidSession) return;
+    final destination = store!;
+    final owner = destination.account;
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        scrollable: true,
+        title: const Text('Copy to your account?'),
+        content: Text(
+          'Device habits, check-ins, and reflections copy to your account and '
+          'may sync. Originals stay on this device; existing account habits '
+          'are unchanged.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Not now'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text('Copy'),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true || !mounted || busy) return;
+    setState(() {
+      busy = true;
+      error = null;
+    });
+    GardenStore? device;
+    try {
+      device = await _open(HabitHome.guestAccount);
+      final copied = await destination.copyDeviceGardenFrom(
+        device,
+        authorized: () =>
+            mounted &&
+            accountGarden &&
+            identical(store, destination) &&
+            identity.hasValidSession &&
+            identity.account == owner,
+      );
+      if (mounted && identical(store, destination)) {
+        setState(() {
+          contentRevision++;
+          notice =
+              'Copied $copied ${copied == 1 ? 'habit' : 'habits'}. '
+              'Originals stay on this device.';
+        });
+      }
+    } catch (_) {
+      _writeError("Couldn't copy device habits. No changes were saved.");
+    } finally {
+      try {
+        await device?.close();
+      } catch (_) {
+        _writeError(
+          "Couldn't close the device garden. Copies may already be saved; "
+          "retrying won't create duplicates.",
+        );
+      }
       if (mounted) setState(() => busy = false);
     }
   }
@@ -248,7 +357,9 @@ class _HabitHomeState extends State<HabitHome> {
     pendingAuthCleanup = authCleanupFailed;
     if (mounted) setState(() => busy = true);
     try {
-      await _showGarden(authenticated: false);
+      if (accountGarden || store == null) {
+        await _showGarden(authenticated: false);
+      }
     } finally {
       if (mounted) setState(() => busy = false);
     }
@@ -261,9 +372,8 @@ class _HabitHomeState extends State<HabitHome> {
       await identity.signOut();
       pendingAuthCleanup = false;
       error = 'Saved sign-in cleared. Your device garden is unchanged.';
-    } catch (e) {
-      error =
-          'Saved sign-in could not be cleared: $e. Do not share this OS account until cleanup succeeds.';
+    } catch (_) {
+      error = 'Saved sign-in couldn’t be cleared. Keep this Windows account private until you can clear it.';
     } finally {
       if (mounted) setState(() => busy = false);
     }
@@ -275,9 +385,10 @@ class _HabitHomeState extends State<HabitHome> {
         'Your offline session ended. Sign in again; your saved account garden was not deleted.';
     try {
       await identity.signOut();
-    } catch (e) {
+    } catch (_) {
       cleanupFailed = true;
-      message = '$message Saved authentication could not be cleared: $e';
+      message =
+          '$message Saved sign-in may remain on this device. Clear it before sharing this device.';
     }
     if (reason != null) message = '$message\n$reason';
     await _signedOut(message, authCleanupFailed: cleanupFailed);
@@ -285,6 +396,7 @@ class _HabitHomeState extends State<HabitHome> {
 
   @override
   void dispose() {
+    identity.clearMicrosoftPhoto();
     observations?.close();
     identity.observations = null;
     unawaited(_close());
@@ -313,6 +425,30 @@ class _HabitHomeState extends State<HabitHome> {
         ),
       );
     }
+    Widget buildProfileSection(
+      Future<void> Function() signOut,
+      VoidCallback manage, {
+      bool compactSummary = false,
+      bool detailsOnly = false,
+    }) => ProfileSection(
+      signedIn: accountGarden && identity.hasValidSession,
+      profile: accountGarden ? identity.profile : null,
+      configured: identity.configured,
+      busy: busy,
+      error: error ?? widget.measurementWarning,
+      notice: notice,
+      onSignIn: identity.hasValidSession ? _switchGarden : _signIn,
+      onSignOut: signOut,
+      onManage: manage,
+      onClearSavedSignIn: pendingAuthCleanup ? _clearSavedSignIn : null,
+      onCopyDeviceGarden: accountGarden && deviceHabitCount > 0
+          ? _copyDeviceGarden
+          : null,
+      onSwitchGarden: accountGarden ? _switchGarden : null,
+      returningToAccount: !accountGarden && identity.hasValidSession,
+      compactSummary: compactSummary,
+      detailsOnly: detailsOnly,
+    );
     final garden = GardenScreen(
       key: ObjectKey(current),
       store: current,
@@ -320,6 +456,7 @@ class _HabitHomeState extends State<HabitHome> {
       deviceGuest: !accountGarden,
       autoInviteFirstHabit: autoInviteFirstHabit,
       firstHabitInvitationReady: !busy,
+      contentRevision: contentRevision,
       onFirstHabitInvited: () => invitedGardens.add(current.account),
       testDisableServices: widget.testOpenStore != null,
       invitationInbox: accountGarden ? widget.invitationInbox : null,
@@ -331,20 +468,13 @@ class _HabitHomeState extends State<HabitHome> {
           : () => unawaited(_observeProfile()),
       onSignedOut: (warning) =>
           _signedOut(warning, authCleanupFailed: warning != null),
-      profileBuilder: (signOut, manage) => ProfileSection(
-        signedIn: accountGarden && identity.hasValidSession,
-        profile: accountGarden ? identity.profile : null,
-        configured: identity.configured,
-        busy: busy,
-        error: error ?? widget.measurementWarning,
-        notice: notice,
-        onSignIn: _signIn,
-        onSignOut: signOut,
-        onManage: manage,
-        onClearSavedSignIn: pendingAuthCleanup ? _clearSavedSignIn : null,
-      ),
+      profileBuilder: buildProfileSection,
+      profileSummaryBuilder: (signOut, manage) =>
+          buildProfileSection(signOut, manage, compactSummary: true),
+      profileDetailsBuilder: (signOut, manage) =>
+          buildProfileSection(signOut, manage, detailsOnly: true),
     );
-    return accountGarden
+    return identity.hasValidSession
         ? SessionBoundary(
             key: ObjectKey(current),
             expiresAt: identity.sessionExpiresAt ?? DateTime.now(),
