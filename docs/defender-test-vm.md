@@ -3,6 +3,8 @@
 For the confirmation-gated readiness script, exact workflow labels, public-runner
 trust blocker and separate registration/execution steps, follow
 [the protected runner operator runbook](protected-runner-operator.md).
+For operator delivery use the [single-entry packaged bootstrap](../tool/protected-vm/README.md),
+not a sequence of manually assembled prerequisite commands.
 Do not register based on labels or a clean queue alone; neither pins a job to a
 reviewed source SHA.
 
