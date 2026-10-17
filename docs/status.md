@@ -4,6 +4,50 @@
 cloud deployment and native background behavior require integration evidence.
 This ledger is updated with verified outcomes, not inferred from source code.
 
+## 17 October approved preview.15 candidate (not yet released)
+
+Approved accessibility/copy implementation is committed in `ad80c23`, with the
+strict short-window correction in `6adb889db5a95e9345cd2894519c383a2c302058`
+and Windows E2E copy alignment in `56100590d4715773f21c7f945f1cf3a7378f26c3`.
+The practice tests now set the exact MediaQuery viewport and require every
+edge of the Did it control inside 420x820/200% and 640x480/200%, with recipe
+context, semantics, and keyboard ordering. Actual-source synthetic renders
+are `docs/evidence/visual-quality/chrome-account-populated-large.png`,
+`chrome-account-populated-short-large.png`, and
+`device-copy-confirmation-SYNTHETIC.png`; they were reviewed in Browser canvas.
+Native accessibility and protected launch are not established by these renders.
+
+PR50's local-only status tooling is composed in
+`8d3fb21729215bec33aff43796acd491a1310510` (21 Node contracts passed).
+PR36's photo foundation is composed in
+`8dc00de88c0b8414065026f7c1cc46f2db35ea3a`: production immutable linkage remains
+null, so no Microsoft photo browser/Graph path is activated. The profile name
+and approved compact layout remain intact. Analyzer and all 37 targeted
+photo/profile/viewport regressions passed.
+
+The full Flutter suite on `8dc00de` passed through the bounded execution
+watchdog with exit 0, receipt
+`7b5f1da8203227716745bc3b503e19d96a7f55b81c2a07d48fac336df7c74358`.
+The private dashboard test receipt is
+`23f8814473159223ef8cad5a445a71328c326a8518e8a1a108be4a4b272f79e4`.
+Both ran without tracked/source changes. Local tests use `--no-test-assets`;
+native asset/plugin compilation is a distinct hosted gate.
+
+PRs #27/#29/#30/#38 remain open and excluded from preview.15, pending exact
+copy/mockup approval. This disposition was confirmed by the coordinator on
+17 October: do not block the approved preview on those four additions.
+Their proposed copy and conceptual renders are recorded in
+[the deferred review packet](evidence/copy-review/deferred-pr-copy.md).
+PR26's branch also contains the held coach patch; do not merge it wholesale.
+PR28/31/33 are closed with superseding main-commit evidence. PR49/50/36 closure
+waits for the combined candidate to land.
+
+Hosted x64/ARM64 and other required engineering checks on the latest candidate
+must pass before merge. Protected-VM lifecycle and genuine launch remain
+UNVERIFIED, not passed or waived. No preview.15 tag/release has been published
+at this checkpoint. Production downloads and customer configuration stay on
+preview.14; no site deployment or promotion is authorized.
+
 ## 15 October preview-trial continuity correction (source only)
 
 Owner feedback: device habits appeared to vanish after sign-in; the profile did
