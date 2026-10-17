@@ -1,53 +1,55 @@
-# Standalone Dev Box installer trial
+# Current Dev Box: one-script installer trial
 
-This is a **supplemental owner test only**, not protected CI evidence or a
-release. It bundles the exact unsigned, unpublished universal-installer artifact
-from Actions run `38994109408`, source
-`bd5ad93ad28988123ef7d3e28eab989f91cc4362`, artifact ID `12086798368`.
+**No snapshot is required.** This revised package installs the pinned CI
+candidate, records your observations, and uninstalls only its own verified
+installation. It preserves user data. Uninstall is **not machine rollback** and
+does not satisfy protected CI clean-VM requirements.
 
-Download [bloomstep-devbox-installer-trial.zip](downloads/bloomstep-devbox-installer-trial.zip)
-and verify SHA-256:
-
-```text
-58ba9adba7851548bff8f1a8f47190f63fb455d6e384eb9b4615b7cab6a3860f
-```
-
-Extract it beside the earlier `BloomstepVM` folder, if present. Open built-in
-Windows PowerShell on the already-provisioned Dev Box as a non-admin standard
-user. The two commands are:
+Download [bloomstep-devbox-installer-trial.zip](downloads/bloomstep-devbox-installer-trial.zip).
+In its download directory, open built-in **64-bit Windows PowerShell as a true
+non-admin standard user** inside the dedicated Dev Box. Let the old bootstrap
+and any Inno UAC window finish/close first. Paste these two lines:
 
 ```powershell
-if ((Get-FileHash .\bloomstep-devbox-installer-trial.zip -Algorithm SHA256).Hash.ToLowerInvariant() -ne '58ba9adba7851548bff8f1a8f47190f63fb455d6e384eb9b4615b7cab6a3860f') { throw 'ZIP SHA-256 mismatch: STOP' }; Expand-Archive .\bloomstep-devbox-installer-trial.zip -DestinationPath .\BloomstepTrial
-.\BloomstepTrial\bloomstep-devbox-installer-trial\Run-InstallerTrial.ps1
+if ((Get-FileHash .\bloomstep-devbox-installer-trial.zip -Algorithm SHA256).Hash.ToLowerInvariant() -ne 'ca521b4921cbeade0745984ba725c154f531f0f069f5e668d5ad5f6def23d822') { throw 'ZIP SHA-256 mismatch: STOP' }; Expand-Archive .\bloomstep-devbox-installer-trial.zip -DestinationPath .\BloomstepTrialUninstall
+.\BloomstepTrialUninstall\bloomstep-devbox-installer-trial\Run-InstallerTrial.ps1
 ```
 
-The script requires a usable **Microsoft Dev Box managed snapshot** created and
-confirmed in the Developer Portal before it will run the installer. This is
-not a host Hyper-V checkpoint; the script does not create or independently
-verify the restore point. Restore discards all later changes on that Dev Box.
-Follow [Microsoft's Dev Box snapshot and restore guidance](https://learn.microsoft.com/en-us/azure/dev-box/how-to-restore-from-snapshot).
-It checks native x64/ARM64 architecture, non-admin interactive desktop,
-Defender protection and unresolved/new detections, clean Bloomstep state, the
-candidate and architecture manifests, and recognized caches from the previous
-bootstrap (read-only). It does not require Inno, Git, Node, PowerShell 7,
-GitHub credentials or network access.
+Use the new extraction folder, not the old snapshot-based package. All safety,
+execution and uninstall confirmations are inside this entry point. The visible
+wizard/app require owner observation. Exit Bloomstep normally via its tray menu
+when asked. No force kills, security-warning bypass, automatic reboot, broad
+cleanup, runner registration, cloud access or policy changes.
 
-The installer runs visibly as the standard user, only after a separate
-`RUN UNSIGNED CANDIDATE` confirmation. Do not bypass SmartScreen/Defender or
-continue after a warning or quarantine. The script does not restore the Dev Box,
-reboot, remove data, register a runner, alter a policy, or automatically start
-another trial after an interrupted installer. It writes a sanitized local
-receipt at `state\trial-receipt.json`; only manually observed outcomes are
-recorded. The prior entered checkpoint name `Baseline` is ignored as recovery
-evidence.
+The script refuses unowned/preexisting product state, binds the installed
+uninstaller and log hashes to its exact target/user/candidate, and confirms the
+precise product-only removal consequence before invoking it. It checks uninstall
+exit status and residual executable/registration/protocol/shortcut/process
+state. Timeout (120 seconds) or failure is not success; no automatic retry.
+Unknown residual directories and app databases are left intact and reported.
+Cleanup cannot reverse arbitrary app/OS/server changes. Use no real data.
 
-This manual trial cannot satisfy exact-head protected lifecycle, launch,
-native x64/ARM64, funnel or other Actions requirements. Protected acceptance
-and release authorization remain false. No merge, tag, publishing, signing or
-website promotion is performed.
+If stopped before uninstall starts, rerun the **same script with `-Resume`**:
+after an install this only attempts verified owned uninstall, never reinstalls.
+If ownership, partial setup or a lost uninstall exit code is ambiguous, preserve
+the state and return the blocker; the script does not adopt someone else's
+installation. No snapshot/restore operation is attempted and the old typed
+`Baseline` is not used.
 
-The package's internal inventory pins its source scripts and candidate files.
-The separately supplied outer ZIP digest is required to authenticate that
-inventory. The source scripts were parser-checked on Linux; actual Windows
-PowerShell 5.1, Dev Box recovery, Defender and candidate execution are not
-verified by this worktree.
+Return `BloomstepTrialUninstall\bloomstep-devbox-installer-trial\state\trial-receipt.json`,
+not the whole state folder. User-observed trial outcome and verified uninstall
+are separate fields; protected CI gates remain **UNVERIFIED** regardless of
+either. There is no merge, tag, release or website promotion.
+
+Candidate: unsigned, unpublished universal installer from source
+`bd5ad93ad28988123ef7d3e28eab989f91cc4362`, Actions run `38994109408`, artifact
+`12086798368`, EXE SHA-256
+`664b60d44929da601e22832568d0c88d8baa70f119764958336e065ff4892162`.
+
+Validated on Linux with contract tests/PowerShell parser, inventory hashes and
+deterministic packaging. Actual Windows PowerShell 5.1, Defender, Dev Box and
+installer/uninstaller execution remain unverified until the owner returns VM
+evidence. This package does not require dependencies from the old bootstrap.
+
+Bundle source: `0e9c98714530b5a602d5d634b0dce1ccb1f5383b`.
+ZIP SHA-256: `ca521b4921cbeade0745984ba725c154f531f0f069f5e668d5ad5f6def23d822`.
