@@ -1,7 +1,7 @@
 // Shared, dependency-free website experiment policy. Bundled into the customer page and used by the API,
 // so assignment, catalog content and definition hashes are computed identically on both sides.
 
-export const POLICY_VERSION = 'bloomstep-web-experiments/v1';
+export const POLICY_VERSION = 'bloomstep-web-experiments/v2';
 /** Unit = one consented page visit (page memory only). Reloads/new tabs are new units; not a person. */
 export const ATTRIBUTION_VERSION = 'web-consented-visit/v1';
 export const OUTCOMES = /** @type {const} */ (['primary_cta_click', 'download_click']);
@@ -10,6 +10,7 @@ export const ARMS = /** @type {const} */ (['control', 'candidate']);
 /** Only these page surfaces may ever vary. Download links, installer help, consent, receipts, privacy,
  * sign-in, security and payment copy are deliberately not representable. */
 export const SURFACES = Object.freeze({
+  hero_copy_pair: Object.freeze({ selector: '#intro', kind: 'pair', maxLength: 80 }),
   hero_cta_label: Object.freeze({ selector: '#primary-cta', kind: 'text', maxLength: 48 }),
   download_heading: Object.freeze({ selector: '#download-title', kind: 'text', maxLength: 80 }),
   hero_note_position: Object.freeze({ selector: '.hero .small', kind: 'position', values: ['after_cta', 'before_cta'] }),
@@ -19,7 +20,25 @@ const bannedClaims = /\b(?:proven|prove[sn]?|guarantee[ds]?|clinical(?:ly)?|scie
 
 /** Finite curated catalog: truthful, low-risk wording/layout only. Primary metric is download intent per
  * consented visit, never the clicked button itself; button clicks are secondary diagnostics only. */
+const baseline = Object.freeze({ headline: 'Build a habit small enough to start today.', cta: 'Download Windows preview' });
 export const CATALOG = Object.freeze([
+  Object.freeze({
+    key: 'hero-pair-b-v1',
+    stage: Object.freeze({ from: 'landing_view', to: 'primary_cta_click' }),
+    surface: 'hero_copy_pair',
+    hypothesis: 'An identity-led headline and matching preview button improve download intent per consented visit.',
+    control: Object.freeze({ id: 'baseline-a', value: baseline }),
+    candidate: Object.freeze({ id: 'pair-b', value: Object.freeze({ headline: 'A tiny habit. A little more you.', cta: 'Get the Windows preview' }) }),
+  }),
+  Object.freeze({
+    key: 'hero-pair-c-v1',
+    stage: Object.freeze({ from: 'landing_view', to: 'primary_cta_click' }),
+    surface: 'hero_copy_pair',
+    hypothesis: 'A low-pressure headline and matching preview button improve download intent per consented visit.',
+    control: Object.freeze({ id: 'baseline-a', value: baseline }),
+    candidate: Object.freeze({ id: 'pair-c', value: Object.freeze({ headline: 'Make room for one small habit.', cta: 'Try the Windows preview' }) }),
+  }),
+  // Legacy definitions remain readable for audit/build compatibility, but are not eligible for new enrollment.
   Object.freeze({
     key: 'download-heading-v1',
     stage: Object.freeze({ from: 'primary_cta_click', to: 'download_click' }),
@@ -55,8 +74,8 @@ export const DESIGN = Object.freeze({
   minSamplePerArm: 400,
   minExpectedCell: 10,
   maxSubjectsPerArm: 5000,
-  alpha: 0.05,
-  method: 'fixed-horizon two-sided two-proportion z test, single final analysis at endAt',
+  alpha: 0.025,
+  method: 'fixed-horizon two-sided two-proportion z test, single final analysis at endAt; Bonferroni alpha 0.025 for each of two staged copy comparisons',
   harm: Object.freeze({
     looksAtFraction: Object.freeze([0.25, 0.5, 0.75]),
     alphaPerLook: 0.001,
@@ -95,12 +114,22 @@ export function lintEntry(entry) {
   const surface = /** @type {Record<string, {kind:string,maxLength?:number,values?:string[]}>} */ (SURFACES)[entry.surface];
   if (!surface) return [`${entry.key}: surface not allowed`];
   if (!['landing_view', 'primary_cta_click'].includes(entry.stage.from) || !OUTCOMES.includes(/** @type {any} */ (entry.stage.to))) problems.push(`${entry.key}: unknown stage`);
-  if (String(entry.control.value) === String(entry.candidate.value)) problems.push(`${entry.key}: arms identical`);
+  if (canonicalJson(entry.control.value) === canonicalJson(entry.candidate.value)) problems.push(`${entry.key}: arms identical`);
   for (const arm of [entry.control, entry.candidate]) {
-    if (surface.kind === 'text') {
+    if (surface.kind === 'pair') {
+      const value = arm.value;
+      if (typeof value !== 'object' || !value || Object.keys(value).sort().join(',') !== 'cta,headline') {
+        problems.push(`${entry.key}: invalid pair ${arm.id}`);
+        continue;
+      }
+      for (const [key, text] of Object.entries(value)) {
+        if (typeof text !== 'string' || !text.trim() || text.length > (key === 'cta' ? 48 : 80) || /[<>&"]/.test(text)) problems.push(`${entry.key}: invalid pair text ${arm.id}`);
+        if (bannedClaims.test(text)) problems.push(`${entry.key}: unsubstantiated or protected claim in ${arm.id}`);
+      }
+    } else if (surface.kind === 'text') {
       if (typeof arm.value !== 'string' || !arm.value.trim() || arm.value.length > Number(surface.maxLength) || /[<>&"]/.test(arm.value)) problems.push(`${entry.key}: invalid text ${arm.id}`);
-      if (bannedClaims.test(arm.value)) problems.push(`${entry.key}: unsubstantiated or protected claim in ${arm.id}`);
-    } else if (!surface.values?.includes(arm.value)) problems.push(`${entry.key}: invalid position ${arm.id}`);
+      if (typeof arm.value === 'string' && bannedClaims.test(arm.value)) problems.push(`${entry.key}: unsubstantiated or protected claim in ${arm.id}`);
+    } else if (typeof arm.value !== 'string' || !surface.values?.includes(arm.value)) problems.push(`${entry.key}: invalid position ${arm.id}`);
   }
   if (bannedClaims.test(entry.hypothesis.replace(/download/gi, ''))) problems.push(`${entry.key}: hypothesis makes a protected claim`);
   return problems;
@@ -142,7 +171,11 @@ export async function verifyInstance(value) {
       body.surface !== entry.surface || canonicalJson(body.design) !== canonicalJson(DESIGN) ||
       body.policyVersion !== POLICY_VERSION || body.attributionVersion !== ATTRIBUTION_VERSION ||
       body.catalogPolicyHash !== await policyHash()) return false;
-  try { return await sha256Hex(canonicalJson(body)) === definitionHash; } catch { return false; }
+  try {
+    if (!['production', 'isolated'].includes(body.environment)) return false;
+    const expected = await freezeInstance(entry, { startAt: body.startAt, environment: body.environment });
+    return canonicalJson(value) === canonicalJson(expected);
+  } catch { return false; }
 }
 
 /** Deterministic assignment for an eligible consented visit. @param {Instance} instance @param {string} subjectId */
@@ -250,35 +283,54 @@ export async function evaluate(instance, counts, now, looksDone = []) {
   if (!stats) return done('insufficient', `Expected success/failure cells below ${design.minExpectedCell}; normal approximation not valid; control retained.`);
   if (stats.pTwoSided < design.alpha && stats.diff > 0) {
     return { status: 'promote', terminal: true, promote: true, rollback: false, stats,
-      reason: 'Final fixed-horizon analysis: candidate download intent per consented visit higher at α=0.05; activation remains unobservable.' };
+      reason: 'Final fixed-horizon analysis: candidate download intent per consented visit higher at the pre-registered alpha; activation remains unobservable. Copy pairs require separate owner review; public baseline remains A.' };
   }
   if (stats.pTwoSided < design.alpha) return done('candidate_worse', 'Candidate significantly lower at final analysis; control retained.', { stats });
   return done('inconclusive', 'No significant difference at final analysis; control retained.', { stats });
 }
 
 /**
- * Prioritization only (never evaluation): weakest publishable website step, then first unrun catalog entry.
+ * Enrollment only (never evaluation): require published website steps, then approved B and C in fixed order.
+ * Pending evidence for B never changes A as C's control; legacy surfaces are audit-only.
  * @param {{steps?:{from:string,to:string,rate:number|null}[]}|null} summary @param {string[]} concludedKeys @param {string[]} promotedSurfaces
  */
 export function selectNext(summary, concludedKeys, promotedSurfaces) {
   const steps = summary?.steps;
   if (!Array.isArray(steps) || !steps.length) return { status: 'no_data', entry: null, stage: null };
+  if (!steps.some(step => step.from === 'landing_view' && step.to === 'primary_cta_click') ||
+      !steps.some(step => step.from === 'primary_cta_click' && step.to === 'download_click')) {
+    return { status: 'insufficient_data', entry: null, stage: null };
+  }
   if (steps.some(step => typeof step.rate !== 'number' || !Number.isFinite(step.rate))) return { status: 'insufficient_data', entry: null, stage: null };
   const ordered = [...steps].sort((a, b) => Number(a.rate) - Number(b.rate));
-  for (const step of ordered) {
-    const entry = CATALOG.find(item => item.stage.from === step.from && item.stage.to === step.to &&
-      !concludedKeys.includes(item.key) && !promotedSurfaces.includes(item.surface));
-    if (entry) return { status: 'selected', entry, stage: step, weakest: ordered[0] };
-  }
+  const entry = CATALOG.find(item => item.surface === 'hero_copy_pair' && !concludedKeys.includes(item.key));
+  const stage = entry && steps.find(step => step.from === entry.stage.from && step.to === entry.stage.to);
+  if (entry && stage) return { status: 'selected', entry, stage, weakest: ordered[0] };
   return { status: 'catalog_exhausted', entry: null, stage: ordered[0] };
 }
 
 // ---------- page application (browser) and build-time promotion ----------
-/** @param {Document} document @param {string} surfaceKey @param {string} from @param {string} to */
+/** @typedef {{headline:string,cta:string}} CopyPair */
+/** @param {unknown} value @returns {value is CopyPair} */
+function isPair(value) {
+  return !!value && typeof value === 'object' && 'headline' in value && typeof value.headline === 'string' &&
+    'cta' in value && typeof value.cta === 'string';
+}
+/** @param {Document} document @param {string} surfaceKey @param {string|CopyPair} from @param {string|CopyPair} to */
 export function applyVariant(document, surfaceKey, from, to) {
   const surface = /** @type {Record<string,{selector:string,kind:string}>} */ (SURFACES)[surfaceKey];
   const node = surface && document.querySelector(surface.selector);
   if (!node) throw Error('Experiment surface missing.');
+  if (surface.kind === 'pair') {
+    const cta = document.querySelector('#primary-cta-copy');
+    if (!cta || !isPair(from) || !isPair(to)) throw Error('Experiment copy pair is incomplete.');
+    const matches = (/** @type {CopyPair} */ copy) => node.textContent === copy.headline && cta.textContent === copy.cta;
+    if (!matches(from) && !matches(to)) throw Error('Experiment copy pair no longer matches reviewed copy.');
+    node.textContent = to.headline;
+    cta.textContent = to.cta;
+    return;
+  }
+  if (typeof from !== 'string' || typeof to !== 'string') throw Error('Invalid experiment text.');
   if (surface.kind === 'text') {
     if (node.textContent !== from && node.textContent !== to) throw Error('Experiment surface no longer matches the reviewed copy.');
     node.textContent = to;
@@ -297,6 +349,7 @@ export function applyPromotionsToHtml(html, promotions) {
     const entry = catalogEntry(promotion.key);
     if (!entry || promotion.decision !== 'promote' || !/^[a-f0-9]{64}$/.test(promotion.definitionHash) ||
         !promotion.experimentId?.startsWith(`${entry.key}.`)) throw Error('Invalid experiment promotion record.');
+    if (entry.surface === 'hero_copy_pair') throw Error('Copy-pair evidence cannot replace public baseline A; separate owner-reviewed promotion is required.');
     const before = output;
     if (entry.surface === 'hero_cta_label') {
       const control = `id="primary-cta" href="#download">${entry.control.value}</a>`, candidate = `id="primary-cta" href="#download">${entry.candidate.value}</a>`;

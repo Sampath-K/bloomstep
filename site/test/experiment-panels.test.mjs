@@ -27,5 +27,5 @@ test('concluded decisions render with uncertainty and isolated environment is la
   const text = JSON.stringify(experimentPanels({ ...base, environment: 'isolated', concluded: [{ key: 'k', experimentId: 'k.1', decision: 'rollback_harm',
     stats: { p0: 0.3, p1: 0.1, ci95: [-0.25, -0.15] } }] }));
   assert.match(text, /synthetic, not customers/);
-  assert.match(text, /Rolled back: pre-registered harm look; control 30.0% vs candidate 10.0%; 95% CI of difference -25.0% to -15.0%/);
+  assert.match(text, /Rolled back: pre-registered harm look; control 30.0% vs candidate 10.0%; unadjusted 95% CI of difference -25.0% to -15.0%/);
 });

@@ -16,6 +16,8 @@ jobs:
       - run: npm --prefix site ci --ignore-scripts
       - run: npm --prefix site test && npm --prefix site run build
       - run: npm --prefix api ci --ignore-scripts
+      - name: Verify approved viewport and staged consented copy with real isolated handlers
+        run: CHROME_PATH=/usr/bin/google-chrome EVIDENCE_DIR=/tmp/approved-website node site/verify-one-viewport.mjs
       - name: Verify public CTA intent and consent with real isolated collector
         run: CHROME_PATH=/usr/bin/google-chrome EVIDENCE_DIR=/tmp/public-launch node site/verify-launch.mjs
       - name: Measure mobile public-page quality
@@ -41,3 +43,4 @@ jobs:
             /tmp/lighthouse-*.json
             /tmp/customer-browser/
             /tmp/public-launch/
+            /tmp/approved-website/

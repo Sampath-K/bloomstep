@@ -1,5 +1,11 @@
 # PROPOSAL — Bloomstep in one viewport
 
+**Historical design-review artifact:** the owner approved A and real staged B/C trials on 17 October 2026.
+Production implementation and current eligibility/activation status are documented in
+[`docs/website-one-viewport.md`](../../docs/website-one-viewport.md). The controls/screenshots in this directory
+remain the original static proposal, not production visitor assignment. The original restrictions below describe
+the proposal's scope before that approval.
+
 **Not for merge or deployment. Owner approval is required before any production UI implementation.** This branch changes only `proposals/one-viewport/`. It does not change the live site, assets/configuration under `site/`, API behavior, preview.14 pointers, or the preview15 branch / [#48](https://github.com/Sampath-K/bloomstep/pull/48).
 
 Open [`index.html`](index.html) directly in a browser, or serve this directory locally. It is a self-contained, no-build, no-analytics concept; it makes no requests until a reviewer follows an external source/release link. Use the clearly labeled proposal selector to compare copy, or append `?variant=b&scoutTheme=light` (variants `a`, `b`, `c`; themes `light`, `dark`). This selector is **not visitor randomization**.
