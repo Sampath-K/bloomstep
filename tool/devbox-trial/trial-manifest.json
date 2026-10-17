@@ -1,0 +1,58 @@
+{
+  "kind": "bloomstep-devbox-installer-trial-v1",
+  "source": "bd5ad93ad28988123ef7d3e28eab989f91cc4362",
+  "artifact": {
+    "runId": "38994109408",
+    "artifactId": "12086798368",
+    "name": "bloomstep-universal-installer",
+    "installerFile": "Bloomstep-0.1.0-preview-windows-universal-setup.exe",
+    "installerSha256": "664b60d44929da601e22832568d0c88d8baa70f119764958336e065ff4892162",
+    "bytes": 22312142,
+    "signatureStatus": "NotSigned",
+    "published": false
+  },
+  "payloadManifests": {
+    "x64": "6c58315fffb3f281fb35531ce61a10dcb5b770c2930983dbbbb7830f5ac93cd8",
+    "arm64": "f16629812cb7571ab0b0b44b1bb858cc82e64ae7826b2de8ebcab7431cd1f769"
+  },
+  "previousBootstrap": {
+    "sourceCommit": "33ca30f373a6883ad464834b3cd5c6dc69845c44",
+    "assets": {
+      "pwsh-x64": {
+        "sha256": "d2f952ebdbf24386cb8923553aa58e41a846db35a6155ea04c58142a4b16dbb7",
+        "fileName": "PowerShell-7.6.7-win-x64.zip",
+        "executable": "pwsh.exe"
+      },
+      "pwsh-arm64": {
+        "sha256": "119bd9221254ef3637523cb1990797618f5fd68848b57de40f12b561d743149e",
+        "fileName": "PowerShell-7.6.7-win-arm64.zip",
+        "executable": "pwsh.exe"
+      },
+      "git-x64": {
+        "sha256": "da35e72aa21c005a5a0d298cfbae110bc1609a815730ea0dde84b01a1b3cd3be",
+        "fileName": "MinGit-2.56.0.2-64-bit.zip",
+        "executable": "cmd/git.exe"
+      },
+      "git-arm64": {
+        "sha256": "38b33dc6024026e3315cf88ab2cfea65205bbd7bb3a8e824bd21c8ad4fe609a7",
+        "fileName": "MinGit-2.56.0.2-arm64.zip",
+        "executable": "cmd/git.exe"
+      },
+      "node-x64": {
+        "sha256": "2b0ff57b049cda1bbcea2240eec20467018713c1efe1f7360c2681859b90ed71",
+        "fileName": "node-v22.23.3-win-x64.zip",
+        "executable": "node-v22.23.3-win-x64/node.exe"
+      },
+      "node-arm64": {
+        "sha256": "33dad22e4cef5ee8f9fbb1b0d037fdacd0e56d12a4580f0d63f68b894deab535",
+        "fileName": "node-v22.23.3-win-arm64.zip",
+        "executable": "node-v22.23.3-win-arm64/node.exe"
+      },
+      "inno": {
+        "sha256": "4d11e8050b6185e0d49bd9e8cc661a7a59f44959a621d31d11033124c4e8a7b0",
+        "fileName": "innosetup-6.7.1.exe"
+      }
+    }
+  },
+  "protectedGatesAccepted": false
+}

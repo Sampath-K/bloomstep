@@ -1,3 +1,11 @@
+# Scope note
+
+This is the earlier **prerequisite-only protected-runner bootstrap**. It is not
+the Dev Box installer-test package and its manually entered checkpoint name is
+not recovery evidence. Do not start it concurrently with another setup. For
+the standalone, supplemental owner installer trial on an existing Dev Box, use
+[the Dev Box installer-trial bundle](devbox-installer-trial.md).
+
 # Run one script inside your disposable VM
 
 Download [bloomstep-vm-bootstrap.zip](downloads/bloomstep-vm-bootstrap.zip).
