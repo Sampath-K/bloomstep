@@ -37,6 +37,13 @@ Default workflow token is read-only and cannot approve pull requests.
 `DEVBOX_CONNECTION_AUDITED` is set only after the verified private/human/pinned
 workflow policy and the explicit one-time owner app/IT audit confirmation.
 It is an activation interlock, not protection against a malicious writer.
+As of 2026-10-17, the owner reports applying and independently reading back
+this exact narrow policy: `allowed_actions=selected`,
+`github_owned_allowed=false`, `verified_allowed=false`, and exactly the three
+pins above. The author's cloud integration receives HTTP 403 for these settings
+endpoints, so that live readback is owner-provided evidence, not an independent
+read by this package author. The setup script still checks the live settings
+using the locally entered owner token before it can register a runner.
 
 ### Exact one-time owner audit and narrow policy
 
@@ -62,14 +69,14 @@ the repository owner (never share screenshots containing tokens):
   expect zero runners before first registration; subsequent resume expects only
   the exact locally registered runner and no active second listener.
 
-For approved normal owner-authenticated configuration, the desired body for
+The owner-confirmed current body for
 `PUT /repos/Sampath-K/bloomstep-vm-controller/actions/permissions` is:
 
 ```json
 {"enabled":true,"allowed_actions":"selected"}
 ```
 
-The desired body for
+The owner-confirmed current body for
 `PUT /repos/Sampath-K/bloomstep-vm-controller/actions/permissions/selected-actions`
 is exactly:
 
@@ -85,10 +92,15 @@ is exactly:
 }
 ```
 
-Use the already approved owner/coordinator credential and ordinary APIs; no
-protection bypass or additional cloud-admin grant. Re-read both endpoints after
-configuration. The setup script itself only reads these settings and fails
-closed if they differ. Do not set activation manually to fake this audit.
+No further Actions policy mutation is requested. The setup script only reads
+these settings and fails closed if they differ. Do not set activation manually
+to fake the separate app-access audit or successful VM connection.
+
+**Current remaining gates:** owner reports zero registered runners and no
+`DEVBOX_CONNECTION_AUDITED` variable. Effective installed-app access still
+needs the explicit owner audit on the pages below; no app-wide permission result
+has been established by the cloud integration. Only after that audit may the
+owner run the local setup. No runner is registered by the authoring session.
 
 ## One entry point on the VM
 

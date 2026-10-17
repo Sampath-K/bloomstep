@@ -187,4 +187,7 @@ test('owner guide gives exact app audit, local scoped token/revocation pages and
   const pins=[...new Set([...workflow.matchAll(/uses: (actions\/[\w-]+@[a-f0-9]{40})/g)].map(match=>match[1]))];
   assert.deepEqual([...actions.patterns_allowed].sort(),pins.sort());
   assert.match(readme,/Revoking the setup token alone does \*\*not\*\* revoke the runner/);
+  assert.match(readme,/owner reports applying and independently reading back/);
+  assert.match(readme,/author's cloud integration receives HTTP 403/);
+  assert.match(readme.replace(/\s+/g,' '),/Effective installed-app access still needs the explicit owner audit/);
 });

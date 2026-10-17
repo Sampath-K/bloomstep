@@ -1,11 +1,14 @@
 # Budlock supplemental Dev Box connection
 
-**Published setup package, not an established VM connection.** Current
-controller Actions policy still allows all Actions; owner approval/configuration
-of the exact three-pin policy and effective owner/app audit remain outstanding.
-Setup deliberately stops before registration until they are resolved. There is
-no runner registration, snapshot, release acceptance or protected-CI substitution.
-Do not interpret the hosted authorization PASS below as a Windows trial PASS.
+**Published setup package, not an established VM connection.** The owner reports
+applying and independently reading back the exact three-pin Actions restriction:
+`allowed_actions=selected`, GitHub-owned/verified blanket allowances false, and
+only the three reviewed SHA pins in the bundled guide. The author's cloud
+integration cannot independently read Actions settings (HTTP 403). The remaining
+gate is effective owner/app-access audit and local VM setup; the setup script
+rechecks Actions policy before runner registration. There is no runner
+registration, snapshot, release acceptance or protected-CI substitution. Do not
+interpret the hosted authorization PASS below as a Windows trial PASS.
 
 The approved legacy Bloomstep EXE, hashes, paths, controller slug and public
 PR48/PR51 heads are unchanged. This connection does not apply the separate
