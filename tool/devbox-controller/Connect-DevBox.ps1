@@ -62,6 +62,8 @@ try {
   Write-Host 'ALL controller writers/admins/apps can execute as you; a single workflow, labels or ephemeral mode cannot isolate them.'
   Write-Host 'Only trusted owner/apps may have write access. Corporate IT approval must permit this. No service, autologon, lock bypass or inbound access.'
   Write-Host 'Stop the listener to stop accepting work; remove its registration in the private repository Settings to revoke credentials.'
+  Write-Host "Budlock supplemental trials retain the legacy Bloomstep candidate: approved runs may install into $env:LOCALAPPDATA\Programs\Bloomstep and remove ONLY their verified owned program, shortcuts, protocol/startup registration using its native uninstaller."
+  Write-Host 'Existing user data is preserved; preexisting/unowned product state blocks execution. Uninstall is NOT VM rollback. No force kills or broad cleanup.'
   if (-not (Confirm-Operator 'Confirm dedicated VM/IT authorization and completed owner audit of ALL controller writers and installed/authorized apps, plus standing reviewed installer execution and owned uninstall.' 'PERSISTENT PRIVATE CONTROLLER')) {
     throw 'Required one-time persistent-access/trust audit confirmation declined.'
   }
