@@ -16,14 +16,14 @@ Budlock customer-facing rename to that candidate.
 
 ## Immutable source and package
 
-Source commit: `7f1bc11770d588bb87922badc836c639defc2697`, preparation branch
+Source commit: `af136e9dbe24bf3524106a4d3f984c22d357d341`, preparation branch
 `sampath-k-cautious-umbrella`.
 
 Download [budlock-devbox-controller.zip](downloads/budlock-devbox-controller.zip).
 SHA-256:
 
 ```text
-4acc854ba2bbfb3fbaa30c4eb22524f78eb3ba8b95e93cedba08d223ddb4d3ad
+7d78a00f21478888c1f5250998610847d34a57ce4774e65f638f3b369ba27eca
 ```
 
 The ZIP was built twice independently from that commit; bytes matched.
@@ -56,7 +56,7 @@ controller contracts are `test/devbox_controller_test.mjs` at the same source.
 
 ## Required one-time owner steps, then two commands
 
-Follow the bundled `README.md` or the [immutable owner setup/audit guide](https://github.com/Sampath-K/bloomstep/blob/7f1bc11770d588bb87922badc836c639defc2697/tool/devbox-controller/README.md).
+Follow the bundled `README.md` or the [immutable owner setup/audit guide](https://github.com/Sampath-K/bloomstep/blob/af136e9dbe24bf3524106a4d3f984c22d357d341/tool/devbox-controller/README.md).
 It gives exact GitHub collaborator/app/token/settings pages, the two narrow
 Actions policy JSON bodies, selected-repository setup token permissions and
 revocation. These are real required owner-side gates, not checks the cloud can
@@ -70,7 +70,7 @@ The first line verifies the outer digest before extraction. Leave the second
 command's interactive listener open:
 
 ```powershell
-$ErrorActionPreference='Stop'; $z="$HOME\Downloads\budlock-devbox-controller.zip"; if((Get-FileHash -LiteralPath $z -Algorithm SHA256).Hash.ToLowerInvariant() -cne '4acc854ba2bbfb3fbaa30c4eb22524f78eb3ba8b95e93cedba08d223ddb4d3ad'){throw 'ZIP digest mismatch'}; Expand-Archive -LiteralPath $z -DestinationPath "$HOME\BudlockConnection"
+$ErrorActionPreference='Stop'; $z="$HOME\Downloads\budlock-devbox-controller.zip"; if((Get-FileHash -LiteralPath $z -Algorithm SHA256).Hash.ToLowerInvariant() -cne '7d78a00f21478888c1f5250998610847d34a57ce4774e65f638f3b369ba27eca'){throw 'ZIP digest mismatch'}; Expand-Archive -LiteralPath $z -DestinationPath "$HOME\BudlockConnection"
 & "$HOME\BudlockConnection\bloomstep-private-controller\Connect-DevBox.ps1"
 ```
 
