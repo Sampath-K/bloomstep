@@ -204,6 +204,7 @@ export function createExperimentHandlers({ container, environment, authenticate,
     const state = await readState();
     await requireLive(state, value.experimentId);
     if (!subject || subject.experimentId !== value.experimentId) throw new ServiceError(409, 'Exposure must be persisted before outcomes.');
+    if (!subject.applied) throw new ServiceError(409, 'A successfully applied exposure is required before outcomes.');
     if (subject.outcomes[value.event]) return { status: 200, jsonBody: { recorded: false, duplicate: true } };
     const countsId = `counts:${value.experimentId}`, old = await read(countsId);
     if (!old) throw new ServiceError(503, 'Experiment counts missing; outcome not recorded.');
@@ -266,7 +267,9 @@ export function createExperimentHandlers({ container, environment, authenticate,
         state.concluded = [...state.concluded, record].slice(-concludedLimit);
         if (decision.promote) {
           state.promotions = [...state.promotions, { key: record.key, experimentId: record.experimentId, definitionHash: record.definitionHash,
-            decision: 'promote', status: environment === 'production' ? 'pending_build_via_draft_pr' : 'isolated_acceptance_only', at: record.concludedAt }];
+            decision: 'promote', status: environment === 'production'
+              ? record.surface === 'hero_copy_pair' ? 'evidence_only_baseline_a_retained' : 'pending_build_via_draft_pr'
+              : 'isolated_acceptance_only', at: record.concludedAt }];
         }
         audit(state, decision.promote ? 'promote' : decision.rollback ? 'rollback' : 'retain_control', { experimentId: record.experimentId, decision: decision.status });
         state.active = null;

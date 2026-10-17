@@ -1,0 +1,694 @@
+{
+  "scope": "Static proposal only; not production or customer data",
+  "sourceSha256": "eb5198e01b30e692c593dbda8569ed08f871110131239a6899a5601dc9507640",
+  "checks": [
+    {
+      "theme": "light",
+      "variant": "a",
+      "width": 1920,
+      "height": 1080,
+      "layout": {
+        "title": {
+          "top": 305.796875,
+          "bottom": 522.03125,
+          "left": 320,
+          "right": 926.4375
+        },
+        "cta": {
+          "top": 714.21875,
+          "bottom": 776.5625,
+          "left": 320,
+          "right": 632.921875
+        },
+        "safety": {
+          "top": 788.5625,
+          "bottom": 850.953125,
+          "left": 320,
+          "right": 800
+        },
+        "methodLink": {
+          "top": 1023.46875,
+          "bottom": 1045.15625,
+          "left": 1392.5625,
+          "right": 1600
+        },
+        "illustration": {
+          "top": 235.953125,
+          "bottom": 880.65625,
+          "left": 1022.4375,
+          "right": 1599.984375
+        },
+        "fold": {
+          "top": 0,
+          "bottom": 1080,
+          "left": 0,
+          "right": 1920
+        },
+        "method": {
+          "top": 1080,
+          "bottom": 2759.265625,
+          "left": 320,
+          "right": 1600
+        },
+        "width": 1920,
+        "viewport": 1920
+      },
+      "textContrast": "WCAG AA pass",
+      "keyboardDialog": "pass",
+      "reducedMotion": "pass",
+      "externalRequests": 0
+    },
+    {
+      "theme": "light",
+      "variant": "b",
+      "width": 1920,
+      "height": 1080,
+      "layout": {
+        "title": {
+          "top": 341.84375,
+          "bottom": 486,
+          "left": 320,
+          "right": 926.4375
+        },
+        "cta": {
+          "top": 678.1875,
+          "bottom": 740.53125,
+          "left": 320,
+          "right": 610.28125
+        },
+        "safety": {
+          "top": 752.53125,
+          "bottom": 814.921875,
+          "left": 320,
+          "right": 800
+        },
+        "methodLink": {
+          "top": 1023.46875,
+          "bottom": 1045.15625,
+          "left": 1392.5625,
+          "right": 1600
+        },
+        "illustration": {
+          "top": 235.953125,
+          "bottom": 880.65625,
+          "left": 1022.4375,
+          "right": 1599.984375
+        },
+        "fold": {
+          "top": 0,
+          "bottom": 1080,
+          "left": 0,
+          "right": 1920
+        },
+        "method": {
+          "top": 1080,
+          "bottom": 2759.265625,
+          "left": 320,
+          "right": 1600
+        },
+        "width": 1920,
+        "viewport": 1920
+      },
+      "textContrast": "WCAG AA pass",
+      "keyboardDialog": "pass",
+      "reducedMotion": "pass",
+      "externalRequests": 0
+    },
+    {
+      "theme": "light",
+      "variant": "c",
+      "width": 1920,
+      "height": 1080,
+      "layout": {
+        "title": {
+          "top": 341.84375,
+          "bottom": 486,
+          "left": 320,
+          "right": 926.4375
+        },
+        "cta": {
+          "top": 678.1875,
+          "bottom": 740.53125,
+          "left": 320,
+          "right": 607.453125
+        },
+        "safety": {
+          "top": 752.53125,
+          "bottom": 814.921875,
+          "left": 320,
+          "right": 800
+        },
+        "methodLink": {
+          "top": 1023.46875,
+          "bottom": 1045.15625,
+          "left": 1392.5625,
+          "right": 1600
+        },
+        "illustration": {
+          "top": 235.953125,
+          "bottom": 880.65625,
+          "left": 1022.4375,
+          "right": 1599.984375
+        },
+        "fold": {
+          "top": 0,
+          "bottom": 1080,
+          "left": 0,
+          "right": 1920
+        },
+        "method": {
+          "top": 1080,
+          "bottom": 2759.265625,
+          "left": 320,
+          "right": 1600
+        },
+        "width": 1920,
+        "viewport": 1920
+      },
+      "textContrast": "WCAG AA pass",
+      "keyboardDialog": "pass",
+      "reducedMotion": "pass",
+      "externalRequests": 0
+    },
+    {
+      "theme": "light",
+      "variant": "a",
+      "width": 1366,
+      "height": 768,
+      "layout": {
+        "title": {
+          "top": 207.453125,
+          "bottom": 326.171875,
+          "left": 48,
+          "right": 663.5
+        },
+        "cta": {
+          "top": 509.359375,
+          "bottom": 571.703125,
+          "left": 48,
+          "right": 360.921875
+        },
+        "safety": {
+          "top": 583.703125,
+          "bottom": 646.09375,
+          "left": 48,
+          "right": 528
+        },
+        "methodLink": {
+          "top": 732.265625,
+          "bottom": 753.953125,
+          "left": 1110.5625,
+          "right": 1318
+        },
+        "illustration": {
+          "top": 133,
+          "bottom": 680.421875,
+          "left": 731.796875,
+          "right": 1318
+        },
+        "fold": {
+          "top": 0,
+          "bottom": 784.796875,
+          "left": 0,
+          "right": 1366
+        },
+        "method": {
+          "top": 784.796875,
+          "bottom": 2464.0625,
+          "left": 48,
+          "right": 1318
+        },
+        "width": 1366,
+        "viewport": 1366
+      },
+      "textContrast": "WCAG AA pass",
+      "keyboardDialog": "pass",
+      "reducedMotion": "pass",
+      "externalRequests": 0
+    },
+    {
+      "theme": "light",
+      "variant": "b",
+      "width": 1366,
+      "height": 768,
+      "layout": {
+        "title": {
+          "top": 207.453125,
+          "bottom": 326.171875,
+          "left": 48,
+          "right": 663.5
+        },
+        "cta": {
+          "top": 509.359375,
+          "bottom": 571.703125,
+          "left": 48,
+          "right": 338.28125
+        },
+        "safety": {
+          "top": 583.703125,
+          "bottom": 646.09375,
+          "left": 48,
+          "right": 528
+        },
+        "methodLink": {
+          "top": 732.265625,
+          "bottom": 753.953125,
+          "left": 1110.5625,
+          "right": 1318
+        },
+        "illustration": {
+          "top": 133,
+          "bottom": 680.421875,
+          "left": 731.796875,
+          "right": 1318
+        },
+        "fold": {
+          "top": 0,
+          "bottom": 784.796875,
+          "left": 0,
+          "right": 1366
+        },
+        "method": {
+          "top": 784.796875,
+          "bottom": 2464.0625,
+          "left": 48,
+          "right": 1318
+        },
+        "width": 1366,
+        "viewport": 1366
+      },
+      "textContrast": "WCAG AA pass",
+      "keyboardDialog": "pass",
+      "reducedMotion": "pass",
+      "externalRequests": 0
+    },
+    {
+      "theme": "light",
+      "variant": "c",
+      "width": 1366,
+      "height": 768,
+      "layout": {
+        "title": {
+          "top": 207.453125,
+          "bottom": 326.171875,
+          "left": 48,
+          "right": 663.5
+        },
+        "cta": {
+          "top": 509.359375,
+          "bottom": 571.703125,
+          "left": 48,
+          "right": 335.453125
+        },
+        "safety": {
+          "top": 583.703125,
+          "bottom": 646.09375,
+          "left": 48,
+          "right": 528
+        },
+        "methodLink": {
+          "top": 732.265625,
+          "bottom": 753.953125,
+          "left": 1110.5625,
+          "right": 1318
+        },
+        "illustration": {
+          "top": 133,
+          "bottom": 680.421875,
+          "left": 731.796875,
+          "right": 1318
+        },
+        "fold": {
+          "top": 0,
+          "bottom": 784.796875,
+          "left": 0,
+          "right": 1366
+        },
+        "method": {
+          "top": 784.796875,
+          "bottom": 2464.0625,
+          "left": 48,
+          "right": 1318
+        },
+        "width": 1366,
+        "viewport": 1366
+      },
+      "textContrast": "WCAG AA pass",
+      "keyboardDialog": "pass",
+      "reducedMotion": "pass",
+      "externalRequests": 0
+    },
+    {
+      "theme": "dark",
+      "variant": "a",
+      "width": 1920,
+      "height": 1080,
+      "layout": {
+        "title": {
+          "top": 305.796875,
+          "bottom": 522.03125,
+          "left": 320,
+          "right": 926.4375
+        },
+        "cta": {
+          "top": 714.21875,
+          "bottom": 776.5625,
+          "left": 320,
+          "right": 632.921875
+        },
+        "safety": {
+          "top": 788.5625,
+          "bottom": 850.953125,
+          "left": 320,
+          "right": 800
+        },
+        "methodLink": {
+          "top": 1023.46875,
+          "bottom": 1045.15625,
+          "left": 1392.5625,
+          "right": 1600
+        },
+        "illustration": {
+          "top": 235.953125,
+          "bottom": 880.65625,
+          "left": 1022.4375,
+          "right": 1599.984375
+        },
+        "fold": {
+          "top": 0,
+          "bottom": 1080,
+          "left": 0,
+          "right": 1920
+        },
+        "method": {
+          "top": 1080,
+          "bottom": 2759.265625,
+          "left": 320,
+          "right": 1600
+        },
+        "width": 1920,
+        "viewport": 1920
+      },
+      "textContrast": "WCAG AA pass",
+      "keyboardDialog": "pass",
+      "reducedMotion": "pass",
+      "externalRequests": 0
+    },
+    {
+      "theme": "dark",
+      "variant": "b",
+      "width": 1920,
+      "height": 1080,
+      "layout": {
+        "title": {
+          "top": 341.84375,
+          "bottom": 486,
+          "left": 320,
+          "right": 926.4375
+        },
+        "cta": {
+          "top": 678.1875,
+          "bottom": 740.53125,
+          "left": 320,
+          "right": 610.28125
+        },
+        "safety": {
+          "top": 752.53125,
+          "bottom": 814.921875,
+          "left": 320,
+          "right": 800
+        },
+        "methodLink": {
+          "top": 1023.46875,
+          "bottom": 1045.15625,
+          "left": 1392.5625,
+          "right": 1600
+        },
+        "illustration": {
+          "top": 235.953125,
+          "bottom": 880.65625,
+          "left": 1022.4375,
+          "right": 1599.984375
+        },
+        "fold": {
+          "top": 0,
+          "bottom": 1080,
+          "left": 0,
+          "right": 1920
+        },
+        "method": {
+          "top": 1080,
+          "bottom": 2759.265625,
+          "left": 320,
+          "right": 1600
+        },
+        "width": 1920,
+        "viewport": 1920
+      },
+      "textContrast": "WCAG AA pass",
+      "keyboardDialog": "pass",
+      "reducedMotion": "pass",
+      "externalRequests": 0
+    },
+    {
+      "theme": "dark",
+      "variant": "c",
+      "width": 1920,
+      "height": 1080,
+      "layout": {
+        "title": {
+          "top": 341.84375,
+          "bottom": 486,
+          "left": 320,
+          "right": 926.4375
+        },
+        "cta": {
+          "top": 678.1875,
+          "bottom": 740.53125,
+          "left": 320,
+          "right": 607.453125
+        },
+        "safety": {
+          "top": 752.53125,
+          "bottom": 814.921875,
+          "left": 320,
+          "right": 800
+        },
+        "methodLink": {
+          "top": 1023.46875,
+          "bottom": 1045.15625,
+          "left": 1392.5625,
+          "right": 1600
+        },
+        "illustration": {
+          "top": 235.953125,
+          "bottom": 880.65625,
+          "left": 1022.4375,
+          "right": 1599.984375
+        },
+        "fold": {
+          "top": 0,
+          "bottom": 1080,
+          "left": 0,
+          "right": 1920
+        },
+        "method": {
+          "top": 1080,
+          "bottom": 2759.265625,
+          "left": 320,
+          "right": 1600
+        },
+        "width": 1920,
+        "viewport": 1920
+      },
+      "textContrast": "WCAG AA pass",
+      "keyboardDialog": "pass",
+      "reducedMotion": "pass",
+      "externalRequests": 0
+    },
+    {
+      "theme": "dark",
+      "variant": "a",
+      "width": 1366,
+      "height": 768,
+      "layout": {
+        "title": {
+          "top": 207.453125,
+          "bottom": 326.171875,
+          "left": 48,
+          "right": 663.5
+        },
+        "cta": {
+          "top": 509.359375,
+          "bottom": 571.703125,
+          "left": 48,
+          "right": 360.921875
+        },
+        "safety": {
+          "top": 583.703125,
+          "bottom": 646.09375,
+          "left": 48,
+          "right": 528
+        },
+        "methodLink": {
+          "top": 732.265625,
+          "bottom": 753.953125,
+          "left": 1110.5625,
+          "right": 1318
+        },
+        "illustration": {
+          "top": 133,
+          "bottom": 680.421875,
+          "left": 731.796875,
+          "right": 1318
+        },
+        "fold": {
+          "top": 0,
+          "bottom": 784.796875,
+          "left": 0,
+          "right": 1366
+        },
+        "method": {
+          "top": 784.796875,
+          "bottom": 2464.0625,
+          "left": 48,
+          "right": 1318
+        },
+        "width": 1366,
+        "viewport": 1366
+      },
+      "textContrast": "WCAG AA pass",
+      "keyboardDialog": "pass",
+      "reducedMotion": "pass",
+      "externalRequests": 0
+    },
+    {
+      "theme": "dark",
+      "variant": "b",
+      "width": 1366,
+      "height": 768,
+      "layout": {
+        "title": {
+          "top": 207.453125,
+          "bottom": 326.171875,
+          "left": 48,
+          "right": 663.5
+        },
+        "cta": {
+          "top": 509.359375,
+          "bottom": 571.703125,
+          "left": 48,
+          "right": 338.28125
+        },
+        "safety": {
+          "top": 583.703125,
+          "bottom": 646.09375,
+          "left": 48,
+          "right": 528
+        },
+        "methodLink": {
+          "top": 732.265625,
+          "bottom": 753.953125,
+          "left": 1110.5625,
+          "right": 1318
+        },
+        "illustration": {
+          "top": 133,
+          "bottom": 680.421875,
+          "left": 731.796875,
+          "right": 1318
+        },
+        "fold": {
+          "top": 0,
+          "bottom": 784.796875,
+          "left": 0,
+          "right": 1366
+        },
+        "method": {
+          "top": 784.796875,
+          "bottom": 2464.0625,
+          "left": 48,
+          "right": 1318
+        },
+        "width": 1366,
+        "viewport": 1366
+      },
+      "textContrast": "WCAG AA pass",
+      "keyboardDialog": "pass",
+      "reducedMotion": "pass",
+      "externalRequests": 0
+    },
+    {
+      "theme": "dark",
+      "variant": "c",
+      "width": 1366,
+      "height": 768,
+      "layout": {
+        "title": {
+          "top": 207.453125,
+          "bottom": 326.171875,
+          "left": 48,
+          "right": 663.5
+        },
+        "cta": {
+          "top": 509.359375,
+          "bottom": 571.703125,
+          "left": 48,
+          "right": 335.453125
+        },
+        "safety": {
+          "top": 583.703125,
+          "bottom": 646.09375,
+          "left": 48,
+          "right": 528
+        },
+        "methodLink": {
+          "top": 732.265625,
+          "bottom": 753.953125,
+          "left": 1110.5625,
+          "right": 1318
+        },
+        "illustration": {
+          "top": 133,
+          "bottom": 680.421875,
+          "left": 731.796875,
+          "right": 1318
+        },
+        "fold": {
+          "top": 0,
+          "bottom": 784.796875,
+          "left": 0,
+          "right": 1366
+        },
+        "method": {
+          "top": 784.796875,
+          "bottom": 2464.0625,
+          "left": 48,
+          "right": 1318
+        },
+        "width": 1366,
+        "viewport": 1366
+      },
+      "textContrast": "WCAG AA pass",
+      "keyboardDialog": "pass",
+      "reducedMotion": "pass",
+      "externalRequests": 0
+    },
+    {
+      "width": 320,
+      "responsiveReflow": "pass (vertical scrolling expected on mobile/zoom)"
+    },
+    {
+      "width": 390,
+      "responsiveReflow": "pass (vertical scrolling expected on mobile/zoom)"
+    },
+    {
+      "width": 683,
+      "responsiveReflow": "pass (vertical scrolling expected on mobile/zoom)"
+    },
+    {
+      "javaScriptDisabled": "Native preview details and release link available"
+    }
+  ],
+  "pageErrors": []
+}

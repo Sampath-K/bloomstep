@@ -153,7 +153,10 @@ try {
         assert.equal(await page.$$eval('#download-help figcaption', captions => captions.filter(caption =>
           caption.textContent.includes('User-shared warning from preview.8 on an ARM64 Windows device')).length), 5);
         assert.equal(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), true);
-        if (scenario.forced) assert.equal(await page.$eval('.teaching-art', node => getComputedStyle(node).display), 'none');
+        if (scenario.forced) {
+          assert.equal(await page.$eval('.plant', node => getComputedStyle(node).display), 'block');
+          assert.match(await page.$eval('.plant title', node => node.textContent), /illustrated plant/);
+        }
         await page.keyboard.press('Tab');
         assert.equal(await page.evaluate(() => document.activeElement.matches('a,button,input,summary')), true);
       }
@@ -164,3 +167,5 @@ try {
   }
   console.log('Responsive layout, memory-only observation, DNT/GPC and API-outage download independence verified.');
 } finally { await browser.close(); }
+
+await import('./verify-one-viewport.mjs');

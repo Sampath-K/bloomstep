@@ -57,9 +57,9 @@ void main() {
   late DesktopReminders reminders;
   late DateTime now;
   setUp(() async {
-    store = await GardenStore.open(':memory:', 'account-a');
-    gateway = FakeReminderGateway();
     now = DateTime(2026, 10, 4, 18);
+    store = await GardenStore.open(':memory:', 'account-a', clock: () => now);
+    gateway = FakeReminderGateway();
     reminders = DesktopReminders(
       store,
       () async {},
@@ -575,32 +575,69 @@ void main() {
     },
   );
 
-  test(
-    'seven actual unanswered requests pause with alternate-day backoff',
-    () async {
-      final h = await plantReminder(store);
-      for (var day = 4; day <= 20; day++) {
-        now = DateTime(2026, 10, day, 18);
-        await reminders.tick();
-      }
-      final requests = gateway.requests.where((r) => r.habitId == h.id);
-      expect(requests, hasLength(7));
-      expect(
-        gateway.requests.where((r) => r.habitId == '_reconnect'),
-        hasLength(2),
-      );
-      expect(await store.setting('ignored:${h.id}'), '7');
-      expect(requests.map((r) => r.day), [
-        '2026-10-04',
-        '2026-10-05',
-        '2026-10-06',
-        '2026-10-08',
-        '2026-10-10',
-        '2026-10-12',
-        '2026-10-14',
-      ]);
-    },
-  );
+  for (final scenario in <String, List<String>>{
+    '2026-10-04': [
+      '2026-10-04',
+      '2026-10-05',
+      '2026-10-06',
+      '2026-10-08',
+      '2026-10-10',
+      '2026-10-12',
+      '2026-10-14',
+    ],
+    '2025-12-28': [
+      '2025-12-28',
+      '2025-12-29',
+      '2025-12-30',
+      '2026-01-02',
+      '2026-01-04',
+      '2026-01-06',
+      '2026-01-08',
+    ],
+    '2027-02-26': [
+      '2027-02-26',
+      '2027-02-27',
+      '2027-02-28',
+      '2027-03-02',
+      '2027-03-04',
+      '2027-03-06',
+      '2027-03-08',
+    ],
+    '2028-02-26': [
+      '2028-02-26',
+      '2028-02-27',
+      '2028-02-28',
+      '2028-03-02',
+      '2028-03-04',
+      '2028-03-06',
+      '2028-03-08',
+    ],
+  }.entries) {
+    test(
+      'seven actual unanswered requests pause with alternate-day backoff (${scenario.key})',
+      () async {
+        final start = DateTime.parse('${scenario.key}T18:00:00');
+        now = start;
+        final h = await plantReminder(store);
+        expect(
+          await store.setting('lastInteraction'),
+          start.toUtc().toIso8601String(),
+        );
+        for (var day = 0; day <= 16; day++) {
+          now = DateTime(start.year, start.month, start.day + day, 18);
+          await reminders.tick();
+        }
+        final requests = gateway.requests.where((r) => r.habitId == h.id);
+        expect(requests, hasLength(7));
+        expect(
+          gateway.requests.where((r) => r.habitId == '_reconnect'),
+          hasLength(2),
+        );
+        expect(await store.setting('ignored:${h.id}'), '7');
+        expect(requests.map((r) => r.day), scenario.value);
+      },
+    );
+  }
 
   test(
     'account switch during plugin request cannot acknowledge new account',

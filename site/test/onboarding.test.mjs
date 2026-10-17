@@ -6,19 +6,18 @@ const read = path => readFileSync(new URL(`../${path}`, import.meta.url), 'utf8'
 const readRepositoryFile = path => readFileSync(new URL(`../../${path}`, import.meta.url), 'utf8');
 const limited = 'Bloomstep is an early, unsigned Windows app for trying tiny, routine-linked habits, check-ins and a personal growing garden. This version is for designated owner testing only; it has not been verified for general use. Sign-in is required, and some features and sign-in options are still being refined. It is not a complete release or medical care. There is no Microsoft Store version yet. Private feedback is available in the app after sign-in.';
 
-test('hero sells the small first step without front-loading installer warning language', () => {
+test('approved hero explains the small first step and keeps essential preview restrictions beside the CTA', () => {
   const page = read('index.html');
-  const hero = /<section class="hero"[\s\S]*?<\/section>/.exec(page)?.[0];
+  const hero = /<section class="hero frame"[\s\S]*?<\/section>/.exec(page)?.[0];
   assert.ok(hero);
-  assert.match(hero, /Make a tiny habit part of your day/);
-  assert.match(hero, /Choose a routine, pair it with one small action, and celebrate your moment/);
-  assert.match(hero, /Check preview availability/);
-  assert.match(hero, /Early Windows preview · Owner testing only · Sign-in required/);
-  assert.doesNotMatch(hero, /unsigned|not the full MVP|engineering preview|Windows protected your PC|SmartScreen/i);
-  assert.match(page, /src="\/assets\/sample-garden\.png"[^>]+alt="[^"]+"/);
-  assert.match(page, /Isolated synthetic sample garden; example app content, not customer data/);
-  assert.equal(readFileSync(new URL('../assets/sample-garden.png', import.meta.url))
-    .subarray(0, 8).equals(Buffer.from('89504e470d0a1a0a', 'hex')), true);
+  assert.match(hero, /Build a habit small enough to start today/);
+  assert.match(hero, /Pair an everyday routine with one tiny action/);
+  assert.match(hero, /Download Windows preview/);
+  assert.match(hero, /Owner-test preview only · Not a general release/);
+  assert.match(hero, /Unsigned installer; full app journey not yet verified/);
+  assert.doesNotMatch(hero, /engineering preview|Windows protected your PC|SmartScreen/i);
+  assert.match(hero, /role="img" aria-labelledby="plant-title"/);
+  assert.match(hero, /Interface concept · Illustrative habit, not customer data/);
   assert.match(page, /id="download-footer-cta"/);
 });
 
@@ -96,7 +95,7 @@ test('both customer entry paths explain the early-preview limits and official le
     assert.match(page, /owner-test candidate, not a general customer release/);
     assert.match(page, /Launch after installation and the complete sign-in and app journey have not been verified/);
     assert.match(page, /not affiliated with or endorsed by BJ Fogg or Tiny Habits/);
-    assert.match(page, /href="https:\/\/tinyhabits.com"/);
+    assert.match(page, /href="https:\/\/tinyhabits.com\/?"/);
     assert.match(page, /href="https:\/\/tinyhabits.com\/book\/"/);
     assert.doesNotMatch(page, /join (?:our|the) (?:preview|cohort|waitlist)|verified safe|(?:please|you can|you should) disable (?:SmartScreen|Safe Browsing|antivirus)/i);
   }
@@ -152,7 +151,7 @@ test('browser screenshots are behind collapsed native disclosure controls by def
 test('original teaching illustrations have text alternatives, self-contained vectors and no scripts', () => {
   const home = read('index.html');
   for (const name of ['anchor', 'tiny', 'celebrate']) {
-    assert.match(home, new RegExp(`src="/assets/habit-${name}\\.svg"[^>]+alt="[^"]+"`));
+    assert.match(home, /<svg class="plant"[^>]+role="img"[^>]+aria-labelledby="plant-title"/);
     const svg = read(`assets/habit-${name}.svg`);
     assert.match(svg, /<svg[^>]+viewBox=/);
     assert.match(svg, /<title>/);

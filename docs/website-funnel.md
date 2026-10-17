@@ -1,5 +1,10 @@
 # Customer acquisition and website funnel contract
 
+The owner-approved one-viewport update and staged copy contracts are in
+[`website-one-viewport.md`](website-one-viewport.md). The real hero CTA goes to preview details; only the
+subsequent designated-owner-test file link emits download intent. Optional per-visit measurement is now
+discoverable on the first screen, still default-off. Production experimentation remains gated/off; A is fallback.
+
 The current additive bounded attribution, distributed timestamped retry
 contract and independently persisted browser/app acceptance are specified in
 [`funnel-telemetry.md`](funnel-telemetry.md). That foundation supersedes the
