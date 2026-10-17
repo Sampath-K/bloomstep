@@ -89,13 +89,13 @@ BEGIN
     BEGIN
         BLOCK "040904e4"
         BEGIN
-            VALUE "CompanyName", "Budlock contributors" "\0"
-            VALUE "FileDescription", "Budlock" "\0"
+            VALUE "CompanyName", "Bud Lark contributors" "\0"
+            VALUE "FileDescription", "Bud Lark" "\0"
             VALUE "FileVersion", VERSION_AS_STRING "\0"
             VALUE "InternalName", "bloomstep" "\0"
             VALUE "LegalCopyright", "" "\0"
             VALUE "OriginalFilename", "bloomstep.exe" "\0"
-            VALUE "ProductName", "Budlock" "\0"
+            VALUE "ProductName", "Bud Lark" "\0"
             VALUE "ProductVersion", VERSION_AS_STRING "\0"
         END
     END

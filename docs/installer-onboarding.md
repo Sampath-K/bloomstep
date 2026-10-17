@@ -1,6 +1,6 @@
 # Installer and customer onboarding contract
 
-Current product text uses **Budlock**; historical sections below retain the names
+Current product text uses **Bud Lark**; historical sections below retain the names
 observed at their recorded revisions. See [the branding inventory](branding.md).
 
 ## Current shipping boundary
@@ -57,7 +57,7 @@ submission or third-party binary upload is authorized.
 The owner rejected extra Next screens in the conventional baseline. The corrected
 source shows one visible native **Ready** page with the same branded value-prop
 art and **Install**, uses the default per-user location (existing installs retain
-their folder), then progress and Finish. **Launch Budlock** is **checked by
+their folder), then progress and Finish. **Launch Bud Lark** is **checked by
 default** on Finish and the user can freely untick it before selecting Finish.
 No destination choice is required; standard settings disable Welcome, directory
 and program-group pages and the Ready memo. Cancel remains native.

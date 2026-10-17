@@ -106,7 +106,7 @@ $env:BLOOMSTEP_DISPOSABLE_VM = 'true'
 
 The script scans with already-enabled protection, rechecks the hash, then starts
 the visible installer. The **owner** selects Install on the single branded Ready
-page, then Finish; **Launch Budlock** defaults checked and can be freely unticked.
+page, then Finish; **Launch Bud Lark** defaults checked and can be freely unticked.
 No automatic page clicks, dwell or forced launch. Stop on any malware, managed
 policy or protection warning; do not bypass it. A launcher exit alone is not an
 app/token/security/full-journey verdict. Capture the visible application, process

@@ -7,7 +7,7 @@ older categories-only/no-stored-campaign/transient-dedup description below.
 First/last touch still means one consented page epoch, never unique visitors or
 automatic account linkage.
 
-The customer site explains Budlock without presenting operator tooling as a
+The customer site explains Bud Lark without presenting operator tooling as a
 product feature. `/releases/` preserves the release evidence and checksums;
 `/console.html` is a separate noindex operator surface. Downloads remain ordinary
 links and work without JavaScript, analytics, authentication, or the API.

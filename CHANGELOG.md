@@ -2,7 +2,7 @@
 
 ## Unreleased
 
-- Rename customer-facing product text and display metadata to Budlock. Keep
+- Rename customer-facing product text and display metadata to Bud Lark. Keep
   package/storage/protocol identifiers, repository and release URLs, installer
   filenames and upgrade paths unchanged; see [the branding inventory](docs/branding.md).
 - Refresh the existing wordmark and social-card product text. Published preview

@@ -13,23 +13,23 @@ test('customer branding provisioning preserves existing content and fails on wro
 });
 
 test('native user-visible titles and publisher do not retain scaffold identifiers', () => {
-  assert.match(read('windows/runner/main.cpp'), /window\.Create\(L"Budlock"/);
+  assert.match(read('windows/runner/main.cpp'), /window\.Create\(L"Bud Lark"/);
   const metadata = read('windows/runner/Runner.rc');
-  assert.match(metadata, /VALUE "ProductName", "Budlock"/);
-  assert.match(metadata, /VALUE "FileDescription", "Budlock"/);
-  assert.match(metadata, /VALUE "CompanyName", "Budlock contributors"/);
+  assert.match(metadata, /VALUE "ProductName", "Bud Lark"/);
+  assert.match(metadata, /VALUE "FileDescription", "Bud Lark"/);
+  assert.match(metadata, /VALUE "CompanyName", "Bud Lark contributors"/);
   assert.doesNotMatch(metadata, /com\.bloomstep/);
 });
 
-test('native sign-in and both callback outcomes identify Budlock without hiding security errors', () => {
+test('native sign-in and both callback outcomes identify Bud Lark without hiding security errors', () => {
   assert.match(read('lib/app/bloomstep_app.dart'), /profile_section\.dart/);
   const profile = read('lib/features/garden/profile_section.dart');
   assert.match(profile, /Choose Microsoft personal account, Google or another enabled option in the system browser/);
-  assert.match(profile, /Budlock never collects your password/);
+  assert.match(profile, /Bud Lark never collects your password/);
   assert.doesNotMatch(profile, /ciamlogin\.com|login\.live\.com/);
-  assert.match(read('lib/services/identity.dart'), /Budlock sign-in response is invalid/);
-  assert.match(read('lib/services/identity.dart'), /Return to Budlock/);
-  assert.match(read('lib/features/garden/garden_screen.dart'), /A tiny step together with Budlock/);
+  assert.match(read('lib/services/identity.dart'), /Bud Lark sign-in response is invalid/);
+  assert.match(read('lib/services/identity.dart'), /Return to Bud Lark/);
+  assert.match(read('lib/features/garden/garden_screen.dart'), /A tiny step together with Bud Lark/);
 });
 
 test('stable Windows storage is installed before instance, invitations and credentials open', () => {
@@ -45,12 +45,12 @@ test('stable Windows storage is installed before instance, invitations and crede
 test('site, operator popup and download labels are product-branded', () => {
   const site = read('site/index.html');
   assert.match(site, /Owner-test download \(designated testers only\)/);
-  assert.match(site, /Budlock ARM64/);
-  assert.match(site, /Budlock x64/);
-  assert.doesNotMatch(site, /Sign in to Budlock operator console/);
-  assert.match(read('site/console.html'), /Sign in to Budlock (?:operator )?console/);
+  assert.match(site, /Bud Lark ARM64/);
+  assert.match(site, /Bud Lark x64/);
+  assert.doesNotMatch(site, /Sign in to Bud Lark operator console/);
+  assert.match(read('site/console.html'), /Sign in to Bud Lark (?:operator )?console/);
   assert.match(site, /rel="icon"/);
-  assert.match(read('site/operator-callback.html'), /Completing Budlock operator sign-in/);
+  assert.match(read('site/operator-callback.html'), /Completing Bud Lark operator sign-in/);
 });
 
 test('customer release page makes the owner-test restriction clear and excludes operator evidence', () => {
@@ -77,57 +77,57 @@ test('branding assets have genuine binary formats and do not replace protocol id
   assert.match(read('packaging/bloomstep.iss'), /Software\\Classes\\bloomstep/);
 });
 
-test('Budlock display metadata is consistent without renaming package or binary identities', () => {
-  assert.match(read('lib/app/bloomstep_app.dart'), /title: 'Budlock'/);
-  assert.match(read('android/app/src/main/AndroidManifest.xml'), /android:label="Budlock"/);
+test('Bud Lark display metadata is consistent without renaming package or binary identities', () => {
+  assert.match(read('lib/app/bloomstep_app.dart'), /title: 'Bud Lark'/);
+  assert.match(read('android/app/src/main/AndroidManifest.xml'), /android:label="Bud Lark"/);
   assert.match(read('android/app/build.gradle.kts'), /applicationId = "com\.bloomstep\.bloomstep"/);
-  assert.match(read('ios/Runner/Info.plist'), /<key>CFBundleDisplayName<\/key>\s*<string>Budlock<\/string>/);
-  assert.match(read('macos/Runner/Info.plist'), /<key>CFBundleDisplayName<\/key>\s*<string>Budlock<\/string>/);
+  assert.match(read('ios/Runner/Info.plist'), /<key>CFBundleDisplayName<\/key>\s*<string>Bud Lark<\/string>/);
+  assert.match(read('macos/Runner/Info.plist'), /<key>CFBundleDisplayName<\/key>\s*<string>Bud Lark<\/string>/);
   for (const platform of ['ios', 'macos']) {
-    assert.match(read(`${platform}/Runner/Info.plist`), /<key>CFBundleName<\/key>\s*<string>Budlock<\/string>/);
+    assert.match(read(`${platform}/Runner/Info.plist`), /<key>CFBundleName<\/key>\s*<string>Bud Lark<\/string>/);
   }
   assert.match(read('macos/Runner/Configs/AppInfo.xcconfig'), /PRODUCT_NAME = bloomstep/);
   assert.match(read('windows/CMakeLists.txt'), /set\(BINARY_NAME "bloomstep"\)/);
   assert.match(read('pubspec.yaml'), /^name: bloomstep\n/);
-  assert.match(read('pubspec.yaml'), /description: "Budlock -/);
+  assert.match(read('pubspec.yaml'), /description: "Bud Lark -/);
 });
 
 test('installer UI changes but upgrade identity, paths, startup and protocol remain stable', () => {
   const setup = read('packaging/bloomstep.iss');
-  assert.match(setup, /^AppName=Budlock$/m);
+  assert.match(setup, /^AppName=Bud Lark$/m);
   assert.match(setup, /^AppName=Bloomstep isolated journey proof$/m);
   assert.match(read('.github/workflows/ci.yml'), /AppName=Bloomstep isolated journey proof/);
-  assert.match(setup, /^AppPublisher=Budlock contributors$/m);
-  assert.match(setup, /Description: "Launch Budlock"/);
-  assert.match(read('packaging/install-progress.iss'), /Welcome to Budlock/);
+  assert.match(setup, /^AppPublisher=Bud Lark contributors$/m);
+  assert.match(setup, /Description: "Launch Bud Lark"/);
+  assert.match(read('packaging/install-progress.iss'), /Welcome to Bud Lark/);
   assert.match(setup, /AppId=\{\{99BE7E95-0565-4C72-A4DD-46D1D5B6C679\}/);
   assert.match(setup, /^DefaultDirName=\{localappdata\}\\Programs\\Bloomstep$/m);
   assert.match(setup, /^DefaultGroupName=Bloomstep$/m);
   assert.match(setup, /^OutputBaseFilename=Bloomstep-/m);
   assert.match(setup, /Name: "\{group\}\\Bloomstep"; Filename: "\{app\}\\bloomstep\.exe"/);
   assert.match(setup, /ValueName: "Bloomstep"; Flags: uninsdeletevalue/);
-  assert.match(setup, /ValueData: "URL:Budlock invitation"/);
-  assert.match(read('lib/services/desktop_reminders.dart'), /appName: 'Budlock',\s*appUserModelId: 'Bloomstep\.Garden'/);
+  assert.match(setup, /ValueData: "URL:Bud Lark invitation"/);
+  assert.match(read('lib/services/desktop_reminders.dart'), /appName: 'Bud Lark',\s*appUserModelId: 'Bloomstep\.Garden'/);
   assert.match(read('lib/services/desktop_reminders.dart'), /launchAtStartup\.setup\(\s*appName: 'Bloomstep'/);
   assert.match(read('lib/services/windows_storage_identity.dart'), /p\.join\(root, 'com\.bloomstep', 'bloomstep'\)/);
   assert.match(read('lib/services/identity.dart'), /key: 'bloomstep-session'/);
   assert.match(read('site/invitation-landing.mjs'), /bloomstep\.pending-invitation\.v1/);
 });
 
-test('public metadata uses Budlock while authentic historical filenames stay exact', () => {
+test('public metadata uses Bud Lark while authentic historical filenames stay exact', () => {
   for (const path of ['site/index.html', 'site/releases/index.html']) {
     const html = read(path);
-    assert.match(html, /<title>Budlock/);
-    assert.match(html, /property="og:title" content="Budlock/);
-    assert.match(html, /name="twitter:title" content="Budlock/);
+    assert.match(html, /<title>Bud Lark/);
+    assert.match(html, /property="og:title" content="Bud Lark/);
+    assert.match(html, /name="twitter:title" content="Bud Lark/);
     assert.match(html, /Bloomstep-0\.1\.0-preview\.14-windows-universal-setup\.exe/);
   }
-  assert.match(read('site/index.html'), /"name":"Budlock"/);
-  assert.match(read('site/release-downloads.mjs'), />Budlock x64</);
-  assert.match(read('site/release-downloads.mjs'), />Budlock ARM64</);
-  assert.match(read('tool/generate_brand_assets.py'), /"Budlock"/);
-  assert.match(read('tool/create_social_image.ps1'), /DrawString\('Budlock'/);
-  assert.match(read('infra/configure-customer-branding.ps1'), /SignIn_Title = 'Sign in to Budlock'/);
+  assert.match(read('site/index.html'), /"name":"Bud Lark"/);
+  assert.match(read('site/release-downloads.mjs'), />Bud Lark x64</);
+  assert.match(read('site/release-downloads.mjs'), />Bud Lark ARM64</);
+  assert.match(read('tool/generate_brand_assets.py'), /"Bud Lark"/);
+  assert.match(read('tool/create_social_image.ps1'), /DrawString\('Bud Lark'/);
+  assert.match(read('infra/configure-customer-branding.ps1'), /SignIn_Title = 'Sign in to Bud Lark'/);
   assert.match(read('site/console.html'), /server-assigned Bloomstep\.Admin/);
 });
 
@@ -151,6 +151,7 @@ test('customer prose has no old product name beyond the explicit compatibility a
       .replaceAll("launchAtStartup.setup(\n        appName: 'Bloomstep'", "launchAtStartup.setup(\n        appName: 'Legacy'")
       .replaceAll('Earlier Bloomstep preview', 'Earlier preview')
       .replace(/\bBloomstep-(?=[0-9$])/g, 'LegacyArtifact-');
+    assert.doesNotMatch(prose, /\bbudlock\b/i, path);
     assert.doesNotMatch(prose, /\bBloomstep\b/, path);
   }
 });

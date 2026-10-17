@@ -129,7 +129,7 @@ class ProfileSection extends StatelessWidget {
         const Text('Account sign-in is not configured in this build.'),
       if (configured)
         const Text(
-          'Choose Microsoft personal account, Google or another enabled option in the system browser. Budlock never collects your password.',
+          'Choose Microsoft personal account, Google or another enabled option in the system browser. Bud Lark never collects your password.',
         ),
       if (notice != null) Text(notice!),
       if (error != null)

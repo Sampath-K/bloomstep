@@ -12,7 +12,7 @@ function Assert-WelcomeCancelExit([int]$ExitCode) {
 }
 
 function Test-BloomstepInnoProductName([string]$ProductName,
-    [ValidateSet('Budlock','Bloomstep isolated journey proof')][string]$ExpectedName = 'Budlock') {
+    [ValidateSet('Bud Lark','Bloomstep isolated journey proof')][string]$ExpectedName = 'Bud Lark') {
   if ($null -eq $ProductName) { return $false }
   return ($ProductName.TrimEnd([char]32) -ceq $ExpectedName)
 }
@@ -70,8 +70,8 @@ function Invoke-StandardWizardStep([IntPtr]$Window, [hashtable]$Journey, [bool]$
   if ($button -eq [IntPtr]::Zero) { throw "Native $stage button missing: $caption" }
   if ($stage -eq 'finish') {
     $choice = [OnboardingWizard]::LaunchChoiceState($Window)
-    if ($choice -eq 0) { throw 'Launch Budlock must be checked by default.' }
-    if ($choice -eq -1 -and $CheckLaunch) { throw 'Explicit Launch Budlock choice unavailable on checked proof.' }
+    if ($choice -eq 0) { throw 'Launch Bud Lark must be checked by default.' }
+    if ($choice -eq -1 -and $CheckLaunch) { throw 'Explicit Launch Bud Lark choice unavailable on checked proof.' }
     $Journey.launchDefaultChecked = if ($choice -eq 1) { $true } else { $null }
     if (-not $CheckLaunch -and $choice -eq 1) {
       [OnboardingWizard]::ToggleLaunchChoice($Window)
@@ -79,7 +79,7 @@ function Invoke-StandardWizardStep([IntPtr]$Window, [hashtable]$Journey, [bool]$
       while ([OnboardingWizard]::LaunchChoiceState($Window) -ne 0 -and (Get-Date) -lt $deadline) {
         Start-Sleep -Milliseconds 50
       }
-      if ([OnboardingWizard]::LaunchChoiceState($Window) -ne 0) { throw 'Explicit Launch Budlock deselection was not verified.' }
+      if ([OnboardingWizard]::LaunchChoiceState($Window) -ne 0) { throw 'Explicit Launch Bud Lark deselection was not verified.' }
     }
     $Journey.launchSelected = $CheckLaunch;
   }

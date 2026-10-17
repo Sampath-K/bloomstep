@@ -183,7 +183,7 @@ class IdentityService {
     } on TimeoutException {
       throw const AuthFailure(
         'timeout',
-        'Sign-in timed out. Return to Budlock and try again. '
+        'Sign-in timed out. Return to Bud Lark and try again. '
             'This does not establish cancellation.',
       );
     } on SocketException {
@@ -231,11 +231,11 @@ class IdentityService {
           parameters['state'] != flow.state) {
         request.response.statusCode = HttpStatus.badRequest;
         request.response.write(
-          'Budlock sign-in response is invalid. Return to Budlock and start sign-in again.',
+          'Bud Lark sign-in response is invalid. Return to Bud Lark and start sign-in again.',
         );
       } else {
         request.response.write(
-          'Return to Budlock. You may close this browser tab.',
+          'Return to Bud Lark. You may close this browser tab.',
         );
         if (!response.isCompleted) response.complete(parameters);
       }

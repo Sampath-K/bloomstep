@@ -322,12 +322,12 @@ test('Defender proof refuses new detections or changed protection and preserves 
 test('genuine Inno product authority permits only trailing ASCII resource padding', () => {
   const helper = fileURLToPath(new URL('../tool/universal_integrity_contract.ps1', import.meta.url)).replaceAll("'", "''");
   const script = `$ErrorActionPreference='Stop'; . '${helper}';
-    foreach ($valid in @('Budlock',('Budlock'+(' '*51)))) {
+    foreach ($valid in @('Bud Lark',('Bud Lark'+(' '*51)))) {
       if (-not (Test-BloomstepInnoProductName $valid)) { throw 'Genuine padded resource rejected' }
     }
     if (-not (Test-BloomstepInnoProductName ('Bloomstep isolated journey proof'.PadRight(60,' ')) 'Bloomstep isolated journey proof')) { throw 'Known padded fixture rejected' }
     if (Test-BloomstepInnoProductName ('Bloomstep isolated journey proof'.PadRight(60,' '))) { throw 'Fixture accepted as product' }
-    foreach ($invalid in @('',' Budlock','Budlock other','budlock',('Budlock'+[char]9),('Budlock'+[char]10),('Budlock'+[char]13),('Budlock'+[char]160))) {
+    foreach ($invalid in @('',' Bud Lark','Bud Lark other','bud lark',('Bud Lark'+[char]9),('Bud Lark'+[char]10),('Bud Lark'+[char]13),('Bud Lark'+[char]160))) {
       if (Test-BloomstepInnoProductName $invalid) { throw 'Non-product identity accepted' }
     }
     'PASS'`;

@@ -57,7 +57,7 @@ class WindowsReminderGateway implements ReminderGateway {
     final initialized = await notifications.initialize(
       settings: const InitializationSettings(
         windows: WindowsInitializationSettings(
-          appName: 'Budlock',
+          appName: 'Bud Lark',
           appUserModelId: 'Bloomstep.Garden',
           guid: 'dc9b4d34-b0de-4df7-aead-690d8a5304a2',
         ),
@@ -223,7 +223,7 @@ class DesktopReminders with TrayListener, WindowListener {
           'app_icon.ico',
         ),
       );
-      await trayManager.setToolTip('Budlock - a little is enough');
+      await trayManager.setToolTip('Bud Lark - a little is enough');
       trayManager.addListener(this);
       windowManager.addListener(this);
       await windowManager.setPreventClose(true);
@@ -741,7 +741,7 @@ class DesktopReminders with TrayListener, WindowListener {
           ),
           MenuItem(key: 'fewer', label: 'Fewer reminders'),
           MenuItem(key: 'off', label: 'Turn reminders off'),
-          MenuItem(key: 'exit', label: 'Exit Budlock'),
+          MenuItem(key: 'exit', label: 'Exit Bud Lark'),
         ],
       ),
     );

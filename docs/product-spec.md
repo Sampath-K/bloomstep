@@ -1,4 +1,4 @@
-# Budlock product contract (Flutter v0.4)
+# Bud Lark product contract (Flutter v0.4)
 
 This is the public implementation contract for the approved Windows-first
 Flutter v0.4 MVP, with the customer outcome and product priorities below clearly

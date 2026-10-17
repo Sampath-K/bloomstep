@@ -10,7 +10,7 @@ test('one native Install commitment replaces extra Next screens without autonomo
   assert.match(setup, /DisableReadyPage=no/);
   assert.match(setup, /DisableReadyMemo=yes/);
   assert.match(setup, /DisableFinishedPage=no/);
-  assert.match(setup, /\[Run\][\s\S]*Description: "Launch Budlock"[\s\S]*postinstall[\s\S]*skipifsilent/);
+  assert.match(setup, /\[Run\][\s\S]*Description: "Launch Bud Lark"[\s\S]*postinstall[\s\S]*skipifsilent/);
   assert.doesNotMatch(setup, /postinstall unchecked/);
   assert.match(read('packaging/install-progress.iss'), /WizardForm\.ReadyPage/);
   assert.match(setup, /PrivilegesRequired=lowest/);
