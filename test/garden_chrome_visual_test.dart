@@ -185,6 +185,7 @@ void main() {
                 : BloomstepTheme.light(),
             builder: (context, child) => MediaQuery(
               data: MediaQuery.of(context).copyWith(
+                size: variant.size,
                 textScaler: TextScaler.linear(variant.scale),
                 disableAnimations: true,
               ),
@@ -221,6 +222,31 @@ void main() {
           reason: 'The primary practice action must be hit-testable without scrolling.',
         );
         final practice = find.widgetWithText(FilledButton, 'Did it');
+        final practiceRect = tester.getRect(practice);
+        expect(
+          practiceRect.left,
+          greaterThanOrEqualTo(0),
+          reason:
+              'The full practice action must be inside the initial viewport.',
+        );
+        expect(
+          practiceRect.top,
+          greaterThanOrEqualTo(0),
+          reason:
+              'The full practice action must be inside the initial viewport.',
+        );
+        expect(
+          practiceRect.right,
+          lessThanOrEqualTo(variant.size.width),
+          reason:
+              'The full practice action must be inside the initial viewport.',
+        );
+        expect(
+          practiceRect.bottom,
+          lessThanOrEqualTo(variant.size.height),
+          reason:
+              'The full practice action must be inside the initial viewport.',
+        );
         expect(
           tester.getSemantics(practice).flagsCollection.isButton,
           isTrue,

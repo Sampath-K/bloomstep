@@ -1588,6 +1588,7 @@ class _GardenScreenState extends State<GardenScreen> {
     final theme = Theme.of(context);
     final viewport = MediaQuery.sizeOf(context);
     final textScale = MediaQuery.textScalerOf(context).scale(1);
+    final shortWindow = viewport.height <= 512;
     final compactPracticeFirst =
         habits.isNotEmpty &&
         (viewport.height <= 600 || (viewport.width <= 700 && textScale >= 1.5));
@@ -1625,7 +1626,7 @@ class _GardenScreenState extends State<GardenScreen> {
           ? const Center(child: CircularProgressIndicator())
           : SingleChildScrollView(
               padding: compactPracticeFirst
-                  ? const EdgeInsets.fromLTRB(16, 8, 16, 24)
+                  ? EdgeInsets.fromLTRB(16, shortWindow ? 4 : 8, 16, 24)
                   : const EdgeInsets.fromLTRB(32, 24, 32, 100),
               child: Center(
                 child: ConstrainedBox(
@@ -1637,7 +1638,7 @@ class _GardenScreenState extends State<GardenScreen> {
                         widget.profileSummaryBuilder!(_signOut, () {
                           if (!working && !closing) unawaited(_settings());
                         }),
-                        const SizedBox(height: 8),
+                        SizedBox(height: shortWindow ? 4 : 8),
                       ] else if (widget.profileBuilder != null) ...[
                         widget.profileBuilder!(_signOut, () {
                           if (!working && !closing) unawaited(_settings());
@@ -1871,7 +1872,11 @@ class _GardenScreenState extends State<GardenScreen> {
                                 clipBehavior: Clip.antiAlias,
                                 child: Padding(
                                   padding: EdgeInsets.all(
-                                    compactPracticeFirst ? 12 : 20,
+                                    compactPracticeFirst
+                                        ? shortWindow
+                                              ? 8
+                                              : 12
+                                        : 20,
                                   ),
                                   child: Column(
                                     crossAxisAlignment:
@@ -1964,7 +1969,11 @@ class _GardenScreenState extends State<GardenScreen> {
                                       ),
                                       Text('Then I ${habit.celebration}.'),
                                       SizedBox(
-                                        height: compactPracticeFirst ? 8 : 16,
+                                        height: compactPracticeFirst
+                                            ? shortWindow
+                                                  ? 4
+                                                  : 8
+                                            : 16,
                                       ),
                                       if (habit.status != 'graduated')
                                         Wrap(

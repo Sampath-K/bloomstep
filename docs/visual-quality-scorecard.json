@@ -40,7 +40,7 @@
       "validationResult": "PASS_OBSERVED_SCOPE",
       "baseline": {"status": "OBSERVED", "scores": {"D":3,"H":3,"G":2,"A":3,"T":4}, "evidence":["before-chrome-device-populated-large.png"]},
       "current": {"status": "OBSERVED", "scores": {"D":4,"H":4,"G":4,"A":4,"T":4}, "evidence":["chrome-device-populated-large.png","chrome-account-populated-large.png"]},
-      "checks": ["garden chrome 420x820/200% variants: Did it is hit-testable in the initial viewport; button semantics retained; account Settings and persistent garden-switch guidance remain visible; keyboard reaches practice before profile details"],
+      "checks": ["garden chrome 420x820/200% variants: the full Did it control rectangle is inside the initial viewport; button semantics retained; account Settings and persistent garden-switch guidance remain visible; keyboard reaches practice before profile details"],
       "gaps":["Narrator, high contrast, mixed-monitor/native DPI and protected-VM behavior remain unobserved; gate stays open until those applicable checks are complete"], "gate":"OPEN"
     },
     {
@@ -195,7 +195,7 @@
       "validationResult": "PASS_OBSERVED_SCOPE",
       "baseline":{"status":"NOT OBSERVED","scores":null,"evidence":[]},
       "current":{"status":"OBSERVED","scores":{"D":4,"H":4,"G":4,"A":4,"T":4},"evidence":["profile-signed-in-before-copy-SYNTHETIC.png","device-copy-confirmation-SYNTHETIC.png","profile-view-device-SYNTHETIC.png","profile-signed-in-SYNTHETIC.png"]},
-      "checks":["profile_session_test: synthetic authoritative name, persistent device/account distinction, explicit copy consent, view-device and post-copy states; copy failure/retry/idempotency and preserved local originals asserted; practice-first 200% visibility, button semantics and keyboard order covered by garden_chrome_visual_test"],
+      "checks":["profile_session_test: synthetic authoritative name, persistent device/account distinction, explicit copy consent, view-device and post-copy states; copy failure/retry/idempotency and preserved local originals asserted; garden_chrome_visual_test verifies the full practice control bounds, button semantics and keyboard order at 200%"],
       "gaps":["Real owner database/provider claims were not inspected; external provider/MFA/error pages, Narrator, high contrast and native DPI remain unobserved; native and protected-VM gates stay open"],"gate":"OPEN"
     },
     {
@@ -203,7 +203,7 @@
       "validationResult":"PASS_OBSERVED_SCOPE",
       "baseline":{"status":"NOT OBSERVED","scores":null,"evidence":[]},
       "current":{"status":"OBSERVED","scores":{"D":4,"H":4,"G":4,"A":4,"T":4},"evidence":["chrome-account-populated-short-large.png"]},
-      "checks":["garden chrome 640x480/200% variant: Did it is hit-testable in the initial viewport with button semantics; account Settings, persistent garden-switch guidance and keyboard order are verified"],
+      "checks":["garden chrome 640x480/200% variant: the full Did it control rectangle is inside the initial viewport with button semantics; account Settings, persistent garden-switch guidance and keyboard order are verified"],
       "gaps":["Native high DPI, Narrator, high contrast and protected-VM behavior remain unobserved; gate stays open"],"gate":"OPEN"
     },
     {

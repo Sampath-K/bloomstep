@@ -22,14 +22,15 @@ from production source until the owner approves them.
 ## Accessibility hierarchy is release-blocking
 
 Do not release or defer an accessibility or hierarchy defect of this grade as
-a follow-up. At 200% text, in short windows and at high DPI, the primary action
-must be visible and reachable in the initial viewport. Keyboard focus order and
-assistive-technology semantics must expose the primary action before secondary
-profile details. Every applicable score dimension must be at least 4; any lower
-score blocks release. `NOT_OBSERVED` is an open gate, never a pass. The
-scorecard contract test enforces the recorded release policy and prevents an
-unobserved or below-target surface from being marked closed; surface-specific
-widget tests must verify the action and input semantics where automatable.
+a follow-up. At 200% text, in short windows and at high DPI, the complete
+primary-action control bounds must fit within the initial viewport and remain
+reachable. Keyboard focus order and assistive-technology semantics must expose
+the primary action before secondary profile details. Every applicable score
+dimension must be at least 4; any lower score blocks release. `NOT_OBSERVED` is
+an open gate, never a pass. The scorecard contract test enforces the recorded
+release policy and prevents an unobserved or below-target surface from being
+marked closed; surface-specific widget tests must verify the complete action
+bounds and input semantics where automatable.
 
 ## Source and evidence
 
@@ -74,10 +75,11 @@ The current `chrome-account-populated-large.png`,
 explicit, cancellable device-to-account copy/view states. They do not read or
 mutate the owner's installed garden or database. Earlier `combined-*` garden
 captures showing the profile above practice are superseded by these renders.
-The widget tests verify the primary action is hit-testable in the initial
-viewport, retains button semantics, and is keyboard-focusable before profile
-details. Native Narrator, high contrast, mixed-monitor DPI and protected-VM
-behavior remain unobserved and keep the release gates open.
+The widget tests verify the complete primary-action rectangle fits in the
+initial viewport at 420x820/200% and 640x480/200%, retains button semantics,
+and is keyboard-focusable before profile details. Native Narrator, high
+contrast, mixed-monitor DPI and protected-VM behavior remain unobserved and
+keep the release gates open.
 
 `before-chrome-*.png` show the initial `a778a66` chrome. The three
 `before-surface-*.png` preserve the existing Settings/form content before their
@@ -207,8 +209,8 @@ gaps. All current rows remain open against the full Windows quality bar.
 |---|---|---|
 | Device empty garden | 4/3/2/3/4 -> 4/4/4/3/4 | Garden identity and compact action improved; native checks open. |
 | Account populated garden | 4/3/3/3/4 -> 4/4/4/3/4 | Combined shell shown with synthetic profile; not live authentication. |
-| Device/account populated, 200% | 3/3/2/3/4 -> 4/4/4/4/4 | `Did it` is hit-testable initially at 420x820/200%; semantics and keyboard order are tested; native checks remain open. |
-| Account practice, 640x480/200% | N/O -> 4/4/4/4/4 | `Did it` is hit-testable initially; account Settings and persistent garden-switch guidance remain visible. Native checks remain open. |
+| Device/account populated, 200% | 3/3/2/3/4 -> 4/4/4/4/4 | The full `Did it` control fits initially at 420x820/200%; semantics and keyboard order are tested; native checks remain open. |
+| Account practice, 640x480/200% | N/O -> 4/4/4/4/4 | The full `Did it` control fits initially; account Settings and persistent garden-switch guidance remain visible. Native checks remain open. |
 | Account empty, short/dark | 3/3/2/3/4 -> 4/4/4/3/4 | Persistent labelled action; native snap/DPI unknown. |
 | Canopy motion/static | N/O -> 4/4/4/3/4 | Finite animation tested, not device frame timing. |
 | Outbound invitation ready | N/O -> 4/4/4/3/4 | Clear primary, honest always-visible privacy. |
