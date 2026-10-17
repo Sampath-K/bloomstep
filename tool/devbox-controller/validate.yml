@@ -48,6 +48,7 @@ jobs:
         shell: pwsh
         env:
           CANDIDATE_ID: ${{ inputs.candidate }}
+          GITHUB_TOKEN: ${{ github.token }}
         run: |
           ./controller/Verify-Candidate.ps1 -CandidateId $env:CANDIDATE_ID -OutputDirectory "$env:RUNNER_TEMP/approved-candidate"
           "candidate=$env:CANDIDATE_ID" >> $env:GITHUB_OUTPUT
@@ -64,6 +65,10 @@ jobs:
     runs-on: [self-hosted, Windows, bloomstep-private-controller, "${{ inputs.architecture }}"]
     timeout-minutes: 15
     steps:
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093
+        with:
+          name: approved-candidate
+          path: ${{ runner.temp }}/bloomstep-controller-input
       - name: Invoke only the locally pinned controller harness
         shell: powershell
         env:
@@ -71,10 +76,16 @@ jobs:
           EXPECTED_NATIVE_ARCHITECTURE: ${{ inputs.architecture }}
           CONTROLLER_SOURCE: ${{ github.sha }}
           PRIVATE_REPOSITORY: ${{ github.event.repository.private }}
+          CONTROLLER_TOKEN: ${{ github.token }}
         run: |
           $entry = Join-Path $env:LOCALAPPDATA 'BloomstepController\Invoke-ControllerTrial.ps1'
           if (-not (Test-Path -LiteralPath $entry)) { throw 'Pinned local harness is not installed; no installer execution.' }
-          & $entry
+          $native = if ($env:PROCESSOR_ARCHITEW6432) { $env:PROCESSOR_ARCHITEW6432 } else { $env:PROCESSOR_ARCHITECTURE }
+          $arch = switch ($native) { 'AMD64' {'x64'} 'ARM64' {'arm64'} default { throw 'Unsupported native architecture.' } }
+          $runtime = Join-Path $env:LOCALAPPDATA "BloomstepController\pwsh-$arch\pwsh.exe"
+          if (-not (Test-Path -LiteralPath $runtime)) { throw 'Pinned portable runtime is unavailable.' }
+          & $runtime -NoProfile -File $entry
+          if ($LASTEXITCODE -ne 0) { throw 'Supplemental trial failed; inspect sanitized result.' }
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
         if: always()
         with:

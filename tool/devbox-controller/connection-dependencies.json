@@ -1,0 +1,23 @@
+{
+  "runnerVersion": "2.338.0",
+  "assets": {
+    "runner-x64": {
+      "url": "https://github.com/actions/runner/releases/download/v2.338.0/actions-runner-win-x64-2.338.0.zip",
+      "sha256": "f48e0750a21812bca5f82de5f7f5aeae71abee647fab5a582f1742d07eba455f"
+    },
+    "runner-arm64": {
+      "url": "https://github.com/actions/runner/releases/download/v2.338.0/actions-runner-win-arm64-2.338.0.zip",
+      "sha256": "a57a4d29c0dcf02210a16b01906ed76cb8091b26d728c41232736c0f627a557e"
+    },
+    "pwsh-x64": {
+      "url": "https://github.com/PowerShell/PowerShell/releases/download/v7.6.7/PowerShell-7.6.7-win-x64.zip",
+      "sha256": "d2f952ebdbf24386cb8923553aa58e41a846db35a6155ea04c58142a4b16dbb7",
+      "executable": "pwsh.exe"
+    },
+    "pwsh-arm64": {
+      "url": "https://github.com/PowerShell/PowerShell/releases/download/v7.6.7/PowerShell-7.6.7-win-arm64.zip",
+      "sha256": "119bd9221254ef3637523cb1990797618f5fd68848b57de40f12b561d743149e",
+      "executable": "pwsh.exe"
+    }
+  }
+}

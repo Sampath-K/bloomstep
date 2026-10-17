@@ -1,4 +1,4 @@
-param([switch]$Resume)
+param([switch]$Resume, [switch]$LoadHelpersOnly)
 $ErrorActionPreference = 'Stop'
 Set-StrictMode -Version Latest
 
@@ -304,6 +304,7 @@ function Invoke-OwnedTrialUninstall([string]$Target, [string]$Architecture, $Uni
 }
 
 . (Join-Path $root 'Trial.Common.ps1')
+if ($LoadHelpersOnly) { return }
 New-Item -ItemType Directory -Force -Path $state | Out-Null
 
 try {
