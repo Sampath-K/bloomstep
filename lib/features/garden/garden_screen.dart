@@ -875,7 +875,7 @@ class _GardenScreenState extends State<GardenScreen> {
                   Uri(
                     scheme: 'mailto',
                     query:
-                        'subject=${Uri.encodeComponent('A tiny step together with Bloomstep')}&body=${Uri.encodeComponent('Grow a tiny habit with Bloomstep. $url')}',
+                        'subject=${Uri.encodeComponent('A tiny step together with Budlock')}&body=${Uri.encodeComponent('Grow a tiny habit with Budlock. $url')}',
                   ),
                 )) {
                   throw StateError(
@@ -1207,7 +1207,7 @@ class _GardenScreenState extends State<GardenScreen> {
                     SwitchListTile(
                       title: const Text('Gentle Windows reminders'),
                       subtitle: const Text(
-                        'Opt in to toasts and tray. Closing the window keeps Bloomstep running. Delivery stops when you exit.',
+                        'Opt in to toasts and tray. Closing the window keeps Budlock running. Delivery stops when you exit.',
                       ),
                       value: reminders!.enabled,
                       onChanged: (value) async {
@@ -1536,7 +1536,7 @@ class _GardenScreenState extends State<GardenScreen> {
                             'Unsigned preview: experimental and not a signed update. Windows may show an unknown-publisher warning.',
                           ),
                         const Text(
-                          'You choose whether to open the release page and download anything. Bloomstep will not download or run an installer automatically.',
+                          'You choose whether to open the release page and download anything. Budlock will not download or run an installer automatically.',
                         ),
                       ],
                       if (launchError != null) Text(launchError!),
@@ -1607,7 +1607,7 @@ class _GardenScreenState extends State<GardenScreen> {
     return Scaffold(
       appBar: AppBar(
         automaticallyImplyLeading: false,
-        title: const Text('Bloomstep'),
+        title: const Text('Budlock'),
         actions: [
           IconButton(
             tooltip: 'Invite a friend',
@@ -1785,7 +1785,7 @@ class _GardenScreenState extends State<GardenScreen> {
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
                                 const Text(
-                                  'A positive moment in your garden. Want to share how Bloomstep feels? Ratings are optional and never affect your garden.',
+                                  'A positive moment in your garden. Want to share how Budlock feels? Ratings are optional and never affect your garden.',
                                 ),
                                 Wrap(
                                   spacing: 8,
@@ -1799,7 +1799,7 @@ class _GardenScreenState extends State<GardenScreen> {
                                               );
                                               _voice(initialKind: 'Rating');
                                             },
-                                      child: const Text('Rate Bloomstep'),
+                                      child: const Text('Rate Budlock'),
                                     ),
                                     TextButton(
                                       onPressed: () => setState(

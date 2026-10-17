@@ -16,7 +16,7 @@ class NativeShare {
       'url': url.toString(),
       'title': 'A little is enough',
       'description':
-          'Grow a tiny habit with Bloomstep. No private garden data is shared.',
+          'Grow a tiny habit with Budlock. No private garden data is shared.',
     });
   }
 }

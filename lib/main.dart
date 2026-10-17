@@ -44,13 +44,13 @@ Future<void> main(List<String> arguments) async {
     } catch (_) {
       runApp(
         const MaterialApp(
-          title: 'Bloomstep',
+          title: 'Budlock',
           home: Scaffold(
             body: Center(
               child: Padding(
                 padding: EdgeInsets.all(32),
                 child: SelectableText(
-                  'Bloomstep could not safely process this invitation or open its app window. Use a valid Bloomstep link, or close an existing Bloomstep window and retry. No new garden or session was opened.',
+                  'Budlock could not safely process this invitation or open its app window. Use a valid Budlock link, or close an existing Budlock window and retry. No new garden or session was opened.',
                 ),
               ),
             ),

@@ -74,9 +74,9 @@ public static class OnboardingWizard {
   }
   static int LaunchChild(IAccessible accessible) {
     for (int child = 1; child <= accessible.accChildCount; child++) {
-      if (accessible.get_accName(child) == "Launch Bloomstep") return child;
+      if (accessible.get_accName(child) == "Launch Budlock") return child;
     }
-    throw new InvalidOperationException("Exact Launch Bloomstep accessibility item unavailable.");
+    throw new InvalidOperationException("Exact Launch Budlock accessibility item unavailable.");
   }
   public static int LaunchChoiceState(IntPtr owner) {
     var accessible = LaunchList(owner);

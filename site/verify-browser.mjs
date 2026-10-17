@@ -55,6 +55,9 @@ try {
     assert.equal(posts.some(value => value.event === 'primary_cta_click'), true);
     const jsonLd = await page.$eval('script[type="application/ld+json"]', node => JSON.parse(node.textContent));
     assert.equal(jsonLd['@type'], 'SoftwareApplication');
+    assert.equal(jsonLd.name, 'Budlock');
+    assert.match(await page.title(), /^Budlock/);
+    assert.equal(await page.$eval('header .brand', node => node.textContent), 'Budlock');
     if (output) await page.screenshot({ path: join(output, `customer-${width}.png`), fullPage: true });
     await page.close();
   }
@@ -118,6 +121,8 @@ try {
     }
     for (const path of ['/', '/releases/']) {
       await page.goto(origin + path, { waitUntil: 'networkidle0' });
+      assert.match(await page.title(), /^Budlock/);
+      assert.match(await page.$eval('meta[property="og:title"]', node => node.content), /^Budlock/);
       assert.equal(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), true,
         `${path} must reflow in ${scenario.name}`);
       const previewText = await page.$eval('main', node => node.textContent);

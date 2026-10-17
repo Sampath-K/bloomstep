@@ -170,7 +170,7 @@ class SingleInstance {
         await Future<void>.delayed(const Duration(milliseconds: 50));
       } on FormatException {
         throw StateError(
-          'Existing Bloomstep instance metadata is invalid. Close the old app and retry.',
+          'Existing Budlock instance metadata is invalid. Close the old app and retry.',
         );
       }
     }
@@ -183,7 +183,7 @@ class SingleInstance {
         descriptor['token'] is! String ||
         !RegExp(r'^[a-f0-9]{64}$').hasMatch(descriptor['token'] as String)) {
       throw StateError(
-        'An existing Bloomstep instance is not ready. Retry after it finishes starting.',
+        'An existing Budlock instance is not ready. Retry after it finishes starting.',
       );
     }
     if (Platform.isWindows) {

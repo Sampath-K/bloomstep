@@ -67,6 +67,8 @@ test('loopback-only synthetic preview: actual console buttons, production auth i
     await page.setViewport({ width: 1440, height: 1050, deviceScaleFactor: 1 });
     await page.goto(preview.url, { waitUntil: 'networkidle0' });
     assert.match(await page.$eval('aside', node => node.textContent), /Local synthetic preview — not customers/);
+    assert.equal(await page.$eval('#signin-console', node => node.textContent),
+      'Local preview connected (no sign-in needed)');
     for (const [button, output] of [['#metrics', '#aarrr-report .aarrr-stage'],
       ['#website-metrics', '#website-funnel article'], ['#experiment-status', '#experiment-report .experiment-card']]) {
       await page.click(button);

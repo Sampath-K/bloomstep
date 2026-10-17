@@ -1,5 +1,13 @@
 # Changelog
 
+## Unreleased
+
+- Rename customer-facing product text and display metadata to Budlock. Keep
+  package/storage/protocol identifiers, repository and release URLs, installer
+  filenames and upgrade paths unchanged; see [the branding inventory](docs/branding.md).
+- Refresh the existing wordmark and social-card product text. Published preview
+  binaries, screenshots and historical acceptance evidence are not relabeled.
+
 ## 0.1.0-preview.14 - owner trial only
 
 - Native one-click Install page, progress and Finish with a freely toggleable,

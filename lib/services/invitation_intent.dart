@@ -43,7 +43,7 @@ class InvitationIntent {
         uri.hasPort ||
         (uri.path.isNotEmpty && uri.path != '/')) {
       throw const FormatException(
-        'This is not a supported Bloomstep invitation.',
+        'This is not a supported Budlock invitation.',
       );
     }
     return _query(uri, 'code');

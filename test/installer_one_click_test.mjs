@@ -30,7 +30,7 @@ test('launch is a default-checked toggleable native Finish choice with original-
   const run = setup.split('[Run]')[1]?.split(/\n\[/)[0];
   assert.ok(run);
   assert.match(run, /Filename: "\{app\}\\bloomstep.exe"/);
-  assert.match(run, /Description: "Launch Bloomstep"/);
+  assert.match(run, /Description: "Launch Budlock"/);
   for (const flag of ['postinstall', 'skipifsilent', 'runasoriginaluser']) {
     assert.match(run, new RegExp(`\\b${flag}\\b`));
   }

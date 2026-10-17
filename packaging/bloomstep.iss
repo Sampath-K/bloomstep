@@ -38,10 +38,10 @@ UsePreviousAppDir=yes
 AppName=Bloomstep isolated journey proof
 VersionInfoProductName=Bloomstep isolated journey proof
 #else
-AppName=Bloomstep
+AppName=Budlock
 #endif
 AppVersion={#AppVersion}
-AppPublisher=Bloomstep contributors
+AppPublisher=Budlock contributors
 AppPublisherURL=https://github.com/Sampath-K/bloomstep
 DefaultDirName={localappdata}\Programs\Bloomstep
 DefaultGroupName=Bloomstep
@@ -74,8 +74,8 @@ ArchitecturesInstallIn64BitMode=x64compatible
 #endif
 
 [Messages]
-SelectDirDesc=Choose where Bloomstep will grow.
-SelectDirLabel3=Bloomstep will use this folder. Select Next to review installation, Browse to choose another folder, or Cancel to leave without installing.
+SelectDirDesc=Choose where Budlock will grow.
+SelectDirLabel3=Budlock will use this folder. Select Next to review installation, Browse to choose another folder, or Cancel to leave without installing.
 SelectDirBrowseLabel=To continue, select Next. To choose a different folder, select Browse.
 
 [Files]
@@ -92,7 +92,7 @@ Source: "{#IntegrityMarker}"; DestDir: "{app}"; DestName: "integrity-probe.txt";
 #endif
 
 [Run]
-Filename: "{app}\bloomstep.exe"; Description: "Launch Bloomstep"; Flags: postinstall skipifsilent runasoriginaluser; Check: CanLaunchBloomstep
+Filename: "{app}\bloomstep.exe"; Description: "Launch Budlock"; Flags: postinstall skipifsilent runasoriginaluser; Check: CanLaunchBloomstep
 
 [InstallDelete]
 Type: files; Name: "{app}\measurement-owner.txt"
@@ -108,7 +108,7 @@ Type: files; Name: "{app}\measurement-owner.txt"
 [Registry]
 #ifndef OnboardingJourneyFixture
 Root: HKCU; Subkey: "Software\Microsoft\Windows\CurrentVersion\Run"; ValueName: "Bloomstep"; Flags: uninsdeletevalue dontcreatekey
-Root: HKCU; Subkey: "Software\Classes\bloomstep"; ValueType: string; ValueData: "URL:Bloomstep invitation"
+Root: HKCU; Subkey: "Software\Classes\bloomstep"; ValueType: string; ValueData: "URL:Budlock invitation"
 Root: HKCU; Subkey: "Software\Classes\bloomstep"; ValueType: string; ValueName: "URL Protocol"; ValueData: ""
 Root: HKCU; Subkey: "Software\Classes\bloomstep\DefaultIcon"; ValueType: string; ValueData: "{app}\bloomstep.exe,0"
 Root: HKCU; Subkey: "Software\Classes\bloomstep\shell\open\command"; ValueType: string; ValueData: """{app}\bloomstep.exe"" ""%1"""

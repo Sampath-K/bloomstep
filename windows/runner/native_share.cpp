@@ -41,7 +41,7 @@ NativeShare::NativeShare(flutter::BinaryMessenger* messenger, HWND window)
         if (!IsWindowVisible(window_) || GetForegroundWindow() != window_) {
           result->Error(
               "share_foreground_required",
-              "Bring Bloomstep to the foreground and choose Windows share again.");
+              "Bring Budlock to the foreground and choose Windows share again.");
           return;
         }
         try {
@@ -65,7 +65,7 @@ NativeShare::NativeShare(flutter::BinaryMessenger* messenger, HWND window)
                     package.SetWebLink(Uri(winrt::to_hstring(url_)));
                   } catch (const winrt::hresult_error&) {
                     request.FailWithDisplayText(
-                        L"Bloomstep could not prepare the invitation. Open the app and try again.");
+                        L"Budlock could not prepare the invitation. Open the app and try again.");
                   }
                 });
           }
@@ -87,7 +87,7 @@ NativeShare::~NativeShare() {
     try {
       manager_.DataRequested(requested_);
     } catch (const winrt::hresult_error&) {
-      OutputDebugStringW(L"Bloomstep: share event cleanup failed during shutdown.\n");
+      OutputDebugStringW(L"Budlock: share event cleanup failed during shutdown.\n");
     }
     manager_ = nullptr;
   }

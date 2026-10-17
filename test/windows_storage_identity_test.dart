@@ -50,7 +50,7 @@ void main() {
     );
     expect(await File(files.single.path).readAsBytes(), before);
     expect(
-      await Directory(p.join(root.path, 'Bloomstep contributors')).exists(),
+      await Directory(p.join(root.path, 'Budlock contributors')).exists(),
       false,
     );
   }, skip: !Platform.isWindows);
