@@ -338,7 +338,7 @@ void main() {
     expect(find.text('Did it'), findsNothing);
     await _ready(tester, find.text('View device garden'));
     await tester.tap(find.text('View device garden'));
-    await _ready(tester, find.text('Viewing your device garden.'));
+    await _ready(tester, find.text('Viewing device garden'));
     await _ready(tester, find.text('Did it'));
     expect(identity.active, isTrue);
     await _screenshot(tester, boundaryKey, 'profile-view-device-SYNTHETIC.png');
@@ -760,7 +760,7 @@ void main() {
       );
       await _ready(tester, find.text('View device garden'));
       await tester.tap(find.text('View device garden'));
-      await _ready(tester, find.text('Viewing your device garden.'));
+      await _ready(tester, find.text('Viewing device garden'));
       identity.active = false;
       tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.resumed);
       await _ready(tester, find.text('Not signed in'));

@@ -85,7 +85,7 @@ Future<void> ready(
         find.byType(RecipeBuilder).evaluate().isNotEmpty) {
       final cancel = find.descendant(
         of: find.byType(RecipeBuilder),
-        matching: find.text('Cancel'),
+        matching: find.widgetWithText(TextButton, 'Cancel'),
       );
       await tester.ensureVisible(cancel);
       await settleUi();
@@ -100,13 +100,13 @@ Future<void> ready(
           ? null
           : tester.widget<HabitHome>(home).testIdentity;
       if (identity != null && section.signedIn != identity.hasValidSession) {
-        await tester.tap(find.text('Done'));
+        await tester.tap(find.widgetWithText(TextButton, 'Done'));
         await settleUi();
         continue;
       }
       if (section.busy &&
           !finder.toString().contains('Complete sign-in in your browser')) {
-        await tester.tap(find.text('Done'));
+        await tester.tap(find.widgetWithText(TextButton, 'Done'));
         await settleUi();
         continue;
       }
@@ -118,12 +118,7 @@ Future<void> ready(
       }
       return;
     }
-    final settings = find.byWidgetPredicate(
-      (widget) =>
-          widget is IconButton &&
-          widget.tooltip == 'Settings and privacy' &&
-          widget.onPressed != null,
-    );
+    final settings = find.byTooltip('Settings and privacy');
     if (needsProfile &&
         !settingsPending &&
         find.byType(AlertDialog).evaluate().isEmpty &&
