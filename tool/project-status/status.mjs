@@ -28,6 +28,7 @@ export function validateConfig(config) {
     ids.add(row.id);
     need(['pull', 'branch', 'release', 'workflow', 'gate', 'manual'].includes(row.kind));
     need(['title', 'owner', 'nextAction'].every(key => typeof row[key] === 'string' && row[key].length > 0));
+    need(['agentNext', 'ownerNext'].every(key => row[key] === undefined || (typeof row[key] === 'string' && row[key].length > 0)));
     need(Array.isArray(row.dependencies));
     if (row.kind === 'pull') need(Number.isSafeInteger(row.number) && row.number > 0);
     if (row.kind === 'branch') need(typeof row.branch === 'string' && /^[\w.-]+$/.test(row.branch));
@@ -278,14 +279,94 @@ export async function collect(config, { now = new Date().toISOString(), previous
   }
   const sourceRows = config.workstreams.filter(row => !['manual', 'gate'].includes(row.kind)).map(row => rows.get(row.id));
   const errors = sourceRows.filter(row => row.error).length;
-  return {
+  const changesSincePrevious = previous ? detectChanges(config, previous, workstreams, now) : [];
+  const snapshot = {
     schemaVersion: 1, collectedAt: now,
     lastCompleteAt: errors === 0 ? now : previous?.lastCompleteAt ?? null,
+    lastSourceSuccessAt: sourceRows.some(row => !row.error && row.observedAt) ? now : previous?.lastSourceSuccessAt ?? null,
     collectionState: errors === 0 ? 'complete' : errors === sourceRows.length ? 'failed' : 'partial',
     agentStatus: 'unavailable',
     retryAfterSeconds: Math.max(0, ...sourceRows.map(row => row.retryAfterSeconds ?? 0)),
     agentDetail: 'No supported agent-session API is connected. GitHub evidence is point-in-time, not real-time agent progress.',
+    changeBaseline: !previous, changesSincePrevious,
+    changes: [...changesSincePrevious, ...(Array.isArray(previous?.changes) ? previous.changes : [])].slice(0, 50),
     config, workstreams, graph: dependencyView(config, workstreams, now),
+  };
+  snapshot.executive = executiveSummary(config, snapshot);
+  return snapshot;
+}
+
+// Only evidence differences count; collection timestamps, polling and unchanged reads never do.
+export function detectChanges(config, previous, workstreams, now) {
+  const previousRows = new Map((previous.workstreams ?? []).map(row => [row.id, row]));
+  const kinds = new Map(config.workstreams.map(row => [row.id, row.kind]));
+  const changes = [];
+  for (const row of workstreams) {
+    if (['gate', 'manual'].includes(kinds.get(row.id))) continue;
+    const prior = previousRows.get(row.id);
+    const add = (kind, from, to, progress, name) => changes.push({
+      id: row.id, kind, ...(name ? { name } : {}), from: from ?? null, to: to ?? null, progress,
+      observedAt: now, evidence: row.evidence?.[0]?.url ?? prior?.evidence?.[0]?.url ?? prior?.lastKnown?.evidence?.[0]?.url ?? null,
+    });
+    if (!prior) { add('added', null, row.state, false); continue; }
+    if (row.error) {
+      if (!prior.error) add('read-error', prior.state, 'unknown', false);
+      continue;
+    }
+    if (prior.error) add('read-recovered', 'unknown', row.state, false);
+    const base = prior.error ? prior.lastKnown : prior;
+    if (!base) continue;
+    if (base.state !== row.state) add('state', base.state, row.state, true);
+    if (base.sha && row.sha && base.sha !== row.sha) add('sha', base.sha, row.sha, true);
+    if ((base.tag || row.tag) && base.tag !== row.tag) add('release', base.tag, row.tag, true);
+    if (base.sha === row.sha && Array.isArray(base.checks) && Array.isArray(row.checks)) {
+      const outcome = job => job ? `${job.status}${job.conclusion ? `/${job.conclusion}` : ''}` : 'absent';
+      const before = new Map(base.checks.map(job => [job.name, job]));
+      const after = new Map(row.checks.map(job => [job.name, job]));
+      for (const name of new Set([...before.keys(), ...after.keys()])) {
+        const from = outcome(before.get(name)), to = outcome(after.get(name));
+        if (from !== to) add('check', from, to, true, name);
+      }
+    }
+  }
+  return changes;
+}
+
+export function executiveSummary(config, snapshot) {
+  const definitions = new Map(config.workstreams.map(row => [row.id, row]));
+  const rows = new Map(snapshot.workstreams.map(row => [row.id, row]));
+  const { blockers, levels } = snapshot.graph;
+  const blocking = new Set();
+  (function walk(id) { for (const dep of blockers[id] ?? []) { if (!blocking.has(dep)) { blocking.add(dep); walk(dep); } } })(config.target);
+  const list = [...blocking].map(id => {
+    const row = rows.get(id), definition = definitions.get(id);
+    const fresh = row.observedAt && freshness(row.observedAt, snapshot.collectedAt, config.maxAgeSeconds) === 'fresh';
+    const failedJobs = (row.checks ?? []).filter(job => job.status === 'completed' && job.conclusion !== 'success' &&
+      ((definition.requiredJobs ?? []).includes(job.name) || !['skipped', 'neutral'].includes(job.conclusion)));
+    const pendingJobs = (row.checks ?? []).filter(job => job.status !== 'completed');
+    const observed = failedJobs.length ? ` Observed ${failedJobs.map(job => `${job.name}: ${job.conclusion}`).join('; ')}.` :
+      pendingJobs.length ? ` ${pendingJobs.length} job(s) pending.` : '';
+    const reason = row.error ? row.error : !fresh ? 'Evidence is stale or unavailable.' :
+      blockers[id].length ? `Waiting on ${blockers[id].map(dep => definitions.get(dep).title).join(', ')}.` : `Current state is ${row.state}.${observed}`;
+    return { id, title: definition.title, state: row.state, owner: definition.owner, reason, root: blockers[id].length === 0,
+      known: !row.error && row.state !== 'unknown' && Boolean(fresh), level: levels[id],
+      agentNext: definition.agentNext ?? definition.nextAction, ownerNext: definition.ownerNext ?? null,
+      evidence: row.evidence?.[0]?.url ?? row.lastKnown?.evidence?.[0]?.url ?? null };
+  }).sort((a, b) => Number(b.root) - Number(a.root) || a.level - b.level);
+  const readiness = snapshot.collectionState === 'failed' ? 'unknown' : list.length === 0 ? 'ready-for-decision' :
+    list.some(row => row.root && row.known) ? 'not-ready' : 'unknown';
+  const agent = list.find(row => row.agentNext), owner = list.find(row => row.ownerNext);
+  return {
+    target: config.target, targetTitle: definitions.get(config.target).title, readiness,
+    blockers: list.map(({ known, level, ...row }) => row),
+    nextAgent: agent ? { id: agent.id, title: agent.title, action: agent.agentNext } : null,
+    nextOwner: owner ? { id: owner.id, title: owner.title, action: owner.ownerNext } : null,
+    counts: {
+      error: snapshot.workstreams.filter(row => row.error && !['manual', 'gate'].includes(definitions.get(row.id).kind)).length,
+      unknown: snapshot.workstreams.filter(row => row.state === 'unknown').length,
+      blocked: snapshot.workstreams.filter(row => row.state === 'blocked').length,
+    },
+    lastSourceSuccessAt: snapshot.lastSourceSuccessAt, lastCompleteAt: snapshot.lastCompleteAt, collectionState: snapshot.collectionState,
   };
 }
 

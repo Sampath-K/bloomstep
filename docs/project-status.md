@@ -36,6 +36,31 @@ expire after five minutes even while the page remains open. No real-time
 agent-session API is connected: agent status is always **unavailable**, never
 inferred from branches, workflow time or agent busy duration.
 
+## Executive view
+
+The top of the page is an executive summary for Budlark, computed by the
+collector (`executive` in the snapshot) and shown with the local evidence age:
+
+- **Owner-trial candidate readiness**: `Ready for owner decision` only when
+  every configured prerequisite of the target has fresh accepted evidence;
+  `NOT READY` when a root prerequisite is observed in a non-accepted state;
+  otherwise `UNKNOWN`. A stale snapshot or failed polling attempt always shows
+  `UNKNOWN`. It is never green by default and is not public-MVP readiness.
+- **Changes since previous collection**: differences between the previous and
+  new snapshot only: workstream state, head commit, published release tag and
+  exact-head job outcome (job diffs are skipped when the head commit changed).
+  The first collection is a baseline. Polling attempts, timestamps and
+  unchanged reads are never changes. Source read failures/recoveries are listed
+  but marked *not progress*; failed reads never fabricate state changes. The
+  last 50 changes are kept as history in the git-ignored snapshot.
+- **Blockers**, then **Next: AGENT** and **Next: OWNER** actions from the
+  optional `agentNext` / `ownerNext` fields in `sources.json` (root causes first).
+- **Last successful source refresh** (any source read succeeded) and **last
+  complete refresh**, plus error / unknown / blocked counts.
+
+PR52 (release) and PR54 (website) are observed read-only for visibility; they
+are not owner-trial dependencies and this tool does not change their gates.
+
 ## Source of truth and integration
 
 `tool\project-status\sources.json` owns the bounded workstream definitions,

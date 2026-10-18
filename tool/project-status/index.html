@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Bloomstep | Private project status</title>
+<title>Budlark | Private executive progress</title>
 <script>
   (() => {
     const param = new URLSearchParams(window.location.search).get("scoutTheme");
@@ -108,10 +108,19 @@ summary { cursor: pointer; color: var(--cp-link); padding: 8px 0; }
 .check { font-size: 0.85rem; }
 #empty { padding: 16px; }
 footer { font-size: 0.85rem; color: var(--cp-text-muted); }
+.exec { border-top: 4px solid var(--cp-accent); }
+.exec-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; margin-bottom: 12px; }
+.exec-grid.two { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.exec-grid > div { background: var(--cp-surface-soft); border: 1px solid var(--cp-border); border-radius: 0.625rem; padding: 12px; overflow-wrap: anywhere; }
+.exec-grid strong { display: block; font-size: 1.3rem; }
+.exec-grid h3 { margin-top: 0; }
+.readiness[data-readiness="not-ready"], .readiness[data-readiness="unknown"] { color: var(--cp-danger); }
+.readiness[data-readiness="ready-for-decision"] { color: var(--cp-success); }
+#changes-latest li, #changes-history li, #exec-blockers li { overflow-wrap: anywhere; }
 @media (max-width: 1100px) { #timeline { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
 @media (max-width: 600px) {
   main { padding: 16px; }
-  #timeline, .stats { grid-template-columns: minmax(0, 1fr); }
+  #timeline, .stats, .exec-grid, .exec-grid.two { grid-template-columns: minmax(0, 1fr); }
   .toolbar { align-items: stretch; }
   .toolbar button { width: 100%; }
 }
@@ -122,9 +131,26 @@ footer { font-size: 0.85rem; color: var(--cp-text-muted); }
 <main>
   <header>
     <div class="eyebrow">Internal / loopback only / read-only GitHub evidence</div>
-    <h1>Bloomstep project status</h1>
+    <h1>Budlark executive progress</h1>
     <p class="muted">A dependency map, not a date-based Gantt or a claim of live agent progress.</p>
   </header>
+  <section class="panel exec" aria-labelledby="exec-title" id="executive">
+    <h2 id="exec-title">Executive summary</h2>
+    <div class="exec-grid">
+      <div><span class="muted">Owner-trial candidate</span><strong id="readiness" class="readiness">Unknown</strong><small id="readiness-detail">No snapshot yet.</small></div>
+      <div><span class="muted">Last successful source refresh</span><strong id="last-success">Never observed</strong><small id="last-complete">Last complete refresh: never observed.</small></div>
+      <div><span class="muted">Evidence warnings</span><strong id="warn-counts">Unknown</strong><small>Read errors / unknown states / blocked workstreams.</small></div>
+    </div>
+    <div class="exec-grid two">
+      <div><h3>Next: AGENT</h3><p id="next-agent">Unknown.</p></div>
+      <div><h3>Next: OWNER</h3><p id="next-owner">Unknown.</p></div>
+    </div>
+    <h3>Changes since previous collection</h3>
+    <ul id="changes-latest"><li>Unknown until a snapshot is available.</li></ul>
+    <h3>Current blockers</h3>
+    <ul id="exec-blockers"><li>Unknown until a snapshot is available.</li></ul>
+    <details><summary>Recent change history (last 50 evidence changes)</summary><ul id="changes-history"></ul></details>
+  </section>
   <section class="panel notice" aria-label="Source collection instructions">
     <strong>Inspect without prompting an agent. Choose manual collection or local source polling.</strong>
     <p><code>node tool\project-status\status.mjs serve --poll-seconds 60</code></p>
@@ -275,10 +301,56 @@ footer { font-size: 0.85rem; color: var(--cp-text-muted); }
       'Saved GitHub observation loaded. Manual gates and agent activity remain unknown; this is not a live source connection.');
     $('message').textContent = warning;
     $('message').classList.toggle('error', Boolean(stale || snapshot.collectionState !== 'complete'));
+    const exec = snapshot.executive;
+    const age = value => {
+      const ms = Date.now() - Date.parse(value);
+      if (!Number.isFinite(ms)) return 'never observed';
+      if (ms < 0) return `${time(value)} (future timestamp)`;
+      const minutes = Math.round(ms / 60000);
+      return `${minutes < 1 ? 'under 1 minute' : minutes < 120 ? `${minutes} min` : `${Math.round(minutes / 60)} h`} ago`;
+    };
+    const readiness = !exec ? 'unknown' : stale ? 'unknown' : exec.readiness;
+    $('readiness').dataset.readiness = readiness;
+    $('readiness').textContent = { 'ready-for-decision': 'Ready for owner decision', 'not-ready': 'NOT READY', unknown: 'UNKNOWN' }[readiness] ?? 'UNKNOWN';
+    $('readiness-detail').textContent = !exec ? 'Executive summary unavailable until the next source collection.' :
+      stale ? 'Snapshot is stale or polling failed; readiness cannot be asserted.' :
+      readiness === 'not-ready' ? `${exec.blockers.length} unresolved prerequisite(s). Owner-trial only, not public MVP.` :
+      readiness === 'unknown' ? 'Prerequisite evidence is missing, failed or unknown. Not a pass.' :
+      'All configured prerequisites have fresh accepted evidence. Decision still requires the owner.';
+    const lastSuccess = exec?.lastSourceSuccessAt ?? polling?.lastSourceSuccessAt;
+    $('last-success').textContent = lastSuccess ? age(lastSuccess) : 'Never observed';
+    $('last-complete').textContent = `${lastSuccess ? time(lastSuccess) : ''} Last complete refresh: ${time(exec?.lastCompleteAt ?? snapshot.lastCompleteAt)}. ${stale ? 'STALE.' : ''}`.trim();
+    $('warn-counts').textContent = exec ? `${exec.counts.error} errors / ${exec.counts.unknown} unknown / ${exec.counts.blocked} blocked` : 'Unknown';
     // Do not rebuild interactive cards on every timer tick; preserve keyboard focus and disclosure state.
     const key = JSON.stringify([snapshot, loadError, $('filter').value, snapshot.workstreams.map(row => ageState(row))]);
     if (key === lastViewKey) return;
     lastViewKey = key;
+    const title = id => defs.find(def => def.id === id)?.title ?? id;
+    const describe = change => {
+      const short = value => typeof value === 'string' && /^[a-f0-9]{40}$/.test(value) ? value.slice(0, 7) : value ?? 'none';
+      const what = { state: 'state', sha: 'head commit', release: 'published release', check: `job "${change.name}"`,
+        'read-error': 'source read FAILED (not progress)', 'read-recovered': 'source read recovered (not progress)', added: 'now observed (not progress)' }[change.kind] ?? change.kind;
+      const li = el('li', `${time(change.observedAt)}: ${title(change.id)} ${what}: ${short(change.from)} -> ${short(change.to)}. `);
+      if (typeof change.evidence === 'string' && change.evidence.startsWith('https://github.com/Sampath-K/bloomstep/')) {
+        const a = el('a', 'evidence'); a.href = change.evidence; a.target = '_blank'; a.rel = 'noopener noreferrer'; li.append(a);
+      }
+      return li;
+    };
+    const latest = exec ? (snapshot.changeBaseline ? [el('li', 'Baseline collection: no previous snapshot to compare yet.')] :
+      snapshot.changesSincePrevious?.length ? snapshot.changesSincePrevious.map(describe) :
+      [el('li', `No source evidence changes observed at ${time(snapshot.collectedAt)} (polling alone is not progress).`)]) :
+      [el('li', 'Unknown: snapshot predates change tracking. Wait for the next collection.')];
+    $('changes-latest').replaceChildren(...latest);
+    $('changes-history').replaceChildren(...(snapshot.changes?.length ? snapshot.changes.map(describe) : [el('li', 'No evidence changes recorded yet.')]));
+    $('exec-blockers').replaceChildren(...(!exec ? [el('li', 'Unknown.')] : exec.blockers.length ? exec.blockers.map(row => {
+      const li = el('li', `${row.title} [${row.state}${row.root ? '' : ', waiting on prerequisites'}]: ${row.reason} Owner: ${row.owner}.`);
+      if (typeof row.evidence === 'string' && row.evidence.startsWith('https://github.com/Sampath-K/bloomstep/')) {
+        const a = el('a', ' evidence'); a.href = row.evidence; a.target = '_blank'; a.rel = 'noopener noreferrer'; li.append(' ', a);
+      }
+      return li;
+    }) : [el('li', stale ? 'Unknown: snapshot is stale.' : 'No unresolved configured prerequisites.')]));
+    $('next-agent').textContent = exec?.nextAgent ? `${exec.nextAgent.title}: ${exec.nextAgent.action}` : 'None configured or unknown.';
+    $('next-owner').textContent = exec?.nextOwner ? `${exec.nextOwner.title}: ${exec.nextOwner.action}` : 'None configured or unknown.';
     $('paths').replaceChildren(...activePaths.map(path => el('p', path.map(id => defs.find(def => def.id === id).title).join(' -> '))));
     const lanes = new Map();
     let count = 0;

@@ -373,3 +373,97 @@ test('contract: atomic snapshot and loopback server expose only fixed read-only 
     await rm(dir, { recursive: true });
   }
 });
+
+const later = '2026-10-16T00:01:00.000Z';
+const execConfig = { ...config, workstreams: [
+  { ...config.workstreams[0], agentNext: 'Await exact-head CI for PR48.', ownerNext: 'Review PR48 when CI is green.' },
+  { ...config.workstreams[1], ownerNext: 'Approve candidate composition.' },
+] };
+
+test('contract: first collection is a baseline, not a list of changes', async () => {
+  const result = await collect(execConfig, { now, auth: async () => {}, read: async path => reader(path) });
+  assert.equal(result.changeBaseline, true);
+  assert.deepEqual(result.changesSincePrevious, []);
+  assert.deepEqual(result.changes, []);
+});
+
+test('contract: unchanged evidence and heartbeat collections never count as progress', async () => {
+  const first = await collect(execConfig, { now, auth: async () => {}, read: async path => reader(path) });
+  const second = await collect(execConfig, { now: later, previous: first, auth: async () => {}, read: async path => reader(path) });
+  assert.equal(second.changeBaseline, false);
+  assert.deepEqual(second.changesSincePrevious, []);
+  assert.deepEqual(second.changes, []);
+});
+
+test('contract: concrete state, SHA and job-outcome changes are recorded with evidence and history is bounded', async () => {
+  const pending = path => path.includes('/jobs?') ? [{ total_count: 2, jobs: [job('api'), job('native', null, 'in_progress')] }] : reader(path);
+  const first = await collect(execConfig, { now, auth: async () => {}, read: async path => pending(path) });
+  assert.equal(first.workstreams[0].state, 'validating');
+  const second = await collect(execConfig, { now: later, previous: first, auth: async () => {}, read: async path => reader(path) });
+  const kinds = second.changesSincePrevious.map(change => `${change.id}:${change.kind}`);
+  assert.ok(kinds.includes('code:state'));
+  assert.ok(kinds.includes('code:check'));
+  const state = second.changesSincePrevious.find(change => change.kind === 'state' && change.id === 'code');
+  assert.equal(state.from, 'validating');
+  assert.equal(state.to, 'review-ready');
+  assert.equal(state.observedAt, later);
+  assert.match(state.evidence, /^https:\/\/github\.com\/Sampath-K\/bloomstep\//);
+  const moved = await collect(execConfig, { now: '2026-10-16T00:02:00.000Z', previous: second, auth: async () => {}, read: async path =>
+    path.endsWith('/pulls/48') ? { ...pull, head: { sha: 'e'.repeat(40) } } :
+    path.includes('/runs?') ? [{ total_count: 1, workflow_runs: [{ ...run, head_sha: 'e'.repeat(40) }] }] : reader(path) });
+  assert.ok(moved.changesSincePrevious.some(change => change.kind === 'sha' && change.to === 'e'.repeat(40)));
+  assert.ok(!moved.changesSincePrevious.some(change => change.kind === 'check'));
+  assert.ok(moved.changes.length >= 3);
+  const padded = { ...moved, changes: Array.from({ length: 60 }, (_, i) => ({ id: 'code', kind: 'state', from: 'a', to: 'b', observedAt: now, n: i })) };
+  const bounded = await collect(execConfig, { now: '2026-10-16T00:03:00.000Z', previous: padded, auth: async () => {}, read: async path =>
+    path.endsWith('/pulls/48') ? { ...pull, draft: true } : reader(path) });
+  assert.equal(bounded.changes.length, 50);
+  assert.equal(bounded.changes[0].kind, 'state');
+  assert.equal(bounded.changes[0].to, 'implementing');
+});
+
+test('contract: failed reads never fabricate source changes; recovery is reported separately from progress', async () => {
+  const first = await collect(execConfig, { now, auth: async () => {}, read: async path => reader(path) });
+  const failed = await collect(execConfig, { now: later, previous: first, auth: async () => {}, read: async () => { throw Error('timeout'); } });
+  assert.ok(!failed.changesSincePrevious.some(change => change.progress));
+  assert.ok(failed.changesSincePrevious.every(change => change.kind === 'read-error'));
+  assert.equal(failed.lastSourceSuccessAt, now);
+  const recovered = await collect(execConfig, { now: '2026-10-16T00:02:00.000Z', previous: failed, auth: async () => {}, read: async path => reader(path) });
+  assert.ok(recovered.changesSincePrevious.some(change => change.kind === 'read-recovered' && change.progress === false));
+  assert.ok(!recovered.changesSincePrevious.some(change => change.kind === 'state'));
+  assert.equal(recovered.lastSourceSuccessAt, '2026-10-16T00:02:00.000Z');
+});
+
+test('contract: executive readiness is never green by default and orders AGENT before OWNER actions', async () => {
+  const pending = path => path.includes('/jobs?') ? [{ total_count: 2, jobs: [job('api'), job('native', 'failure')] }] : reader(path);
+  const blocked = await collect(execConfig, { now, auth: async () => {}, read: async path => pending(path) });
+  assert.equal(blocked.executive.readiness, 'not-ready');
+  assert.equal(blocked.executive.blockers[0].id, 'code');
+  assert.match(blocked.executive.blockers[0].reason, /Observed native: failure/);
+  assert.equal(blocked.executive.nextAgent.id, 'code');
+  assert.match(blocked.executive.nextAgent.action, /Await exact-head CI/);
+  assert.equal(blocked.executive.nextOwner.id, 'code');
+  assert.equal(blocked.executive.counts.error, 0);
+  const failed = await collect(execConfig, { now, auth: async () => { throw Error('x'); }, read: async () => {} });
+  assert.equal(failed.executive.readiness, 'unknown');
+  assert.equal(failed.executive.counts.error, 1);
+  assert.equal(failed.executive.counts.unknown, 1);
+  const ready = await collect(execConfig, { now, auth: async () => {}, read: async path => reader(path) });
+  assert.equal(ready.executive.readiness, 'ready-for-decision');
+  assert.deepEqual(ready.executive.blockers, []);
+  assert.equal(ready.executive.lastSourceSuccessAt, now);
+  assert.equal(ready.executive.lastCompleteAt, now);
+});
+
+test('contract: live config observes Budlark release and website PRs read-only without changing owner-trial gates', () => {
+  const ids = Object.fromEntries(sourceConfig.workstreams.map(row => [row.id, row]));
+  assert.equal(ids.release.kind, 'pull');
+  assert.equal(ids.release.number, 52);
+  assert.equal(ids.website.number, 54);
+  for (const row of sourceConfig.workstreams) {
+    assert.ok(!row.dependencies.some(dep => ['release', 'website'].includes(dep.id)));
+  }
+  assert.deepEqual(ids.launch.dependencies.map(dep => dep.id), ['candidate', 'native']);
+  assert.ok(ids.native.ownerNext && /manual/i.test(ids.native.ownerNext));
+  assert.ok(sourceConfig.workstreams.every(row => !/Bloomstep/.test(row.title)));
+});
