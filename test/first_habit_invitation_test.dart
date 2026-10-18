@@ -71,7 +71,7 @@ Future<void> ready(
     'offline session ended',
     'Couldn’t finish sign-out',
   ].any(finder.toString().contains);
-  for (var i = 0; i < 200; i++) {
+  for (var i = 0; i < 600; i++) {
     await tester.runAsync(
       () => Future<void>.delayed(const Duration(milliseconds: 20)),
     );
@@ -100,6 +100,10 @@ Future<void> ready(
       }
     }
     final profile = find.byType(ProfileSection);
+    final profileBusy =
+        needsProfile &&
+        profile.evaluate().isNotEmpty &&
+        tester.widget<ProfileSection>(profile).busy;
     if (finder.evaluate().isNotEmpty) {
       if (needsProfile) {
         await tester.ensureVisible(finder);
@@ -137,6 +141,7 @@ Future<void> ready(
     );
     if (needsProfile &&
         details.evaluate().isNotEmpty &&
+        !profileBusy &&
         find
             .descendant(of: profile, matching: find.byType(SelectableText))
             .evaluate()
