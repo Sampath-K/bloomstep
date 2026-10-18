@@ -520,7 +520,11 @@ jobs:
             installerSha256 = (Get-FileHash $corrupt).Hash.ToLower()
             reportedProductName = (Get-Item $corrupt).VersionInfo.ProductName
           } | ConvertTo-Json | Set-Content "$output\integrity-manifest.json" -Encoding utf8
+      - name: Attempt static Defender scan without installer execution
+        shell: pwsh
+        run: .\tool\scan_installer_static.ps1 -PackageDir (Join-Path $PWD 'universal-output')
       - uses: actions/upload-artifact@v4
+        if: always()
         with:
           name: bloomstep-universal-installer
           path: universal-output/
