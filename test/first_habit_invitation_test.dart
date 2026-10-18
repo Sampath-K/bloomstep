@@ -49,6 +49,7 @@ Future<void> ready(
   bool dismissRecipeBuilder = false,
 }) async {
   var settingsPending = false;
+  var dialogWasOpen = false;
   final needsProfile = [
     'Sign in with Microsoft or Google',
     'Complete sign-in in your browser',
@@ -74,13 +75,21 @@ Future<void> ready(
       () => Future<void>.delayed(const Duration(milliseconds: 20)),
     );
     await tester.pump(const Duration(milliseconds: 350));
-    if (find.byType(AlertDialog).evaluate().isNotEmpty) {
+    final dialogOpen = find.byType(AlertDialog).evaluate().isNotEmpty;
+    if (settingsPending && dialogWasOpen && !dialogOpen) {
       settingsPending = false;
     }
+    dialogWasOpen = dialogOpen;
     if (dismissRecipeBuilder &&
         find.byType(RecipeBuilder).evaluate().isNotEmpty) {
-      await tester.tap(find.text('Cancel'));
-      await tester.pump(const Duration(milliseconds: 350));
+      final cancel = find.descendant(
+        of: find.byType(RecipeBuilder),
+        matching: find.text('Cancel'),
+      );
+      await tester.ensureVisible(cancel);
+      await tester.pumpAndSettle();
+      await tester.tap(cancel);
+      await tester.pumpAndSettle();
     }
     final profile = find.byType(ProfileSection);
     if (needsProfile && profile.evaluate().isNotEmpty) {
@@ -91,20 +100,20 @@ Future<void> ready(
           : tester.widget<HabitHome>(home).testIdentity;
       if (identity != null && section.signedIn != identity.hasValidSession) {
         await tester.tap(find.text('Done'));
-        await tester.pump(const Duration(milliseconds: 350));
+        await tester.pumpAndSettle();
         continue;
       }
       if (section.busy &&
           !finder.toString().contains('Complete sign-in in your browser')) {
         await tester.tap(find.text('Done'));
-        await tester.pump(const Duration(milliseconds: 350));
+        await tester.pumpAndSettle();
         continue;
       }
     }
     if (finder.evaluate().isNotEmpty) {
       if (needsProfile) {
         await tester.ensureVisible(finder);
-        await tester.pump(const Duration(milliseconds: 350));
+        await tester.pumpAndSettle();
       }
       return;
     }
@@ -120,16 +129,16 @@ Future<void> ready(
         settings.evaluate().isNotEmpty) {
       settingsPending = true;
       await tester.tap(settings);
-      await tester.pump(const Duration(milliseconds: 350));
+      await tester.pumpAndSettle();
     }
     final profileGroup = find.text('Profile & account');
     if (needsProfile &&
         profile.evaluate().isEmpty &&
         profileGroup.evaluate().isNotEmpty) {
       await tester.ensureVisible(profileGroup);
-      await tester.pump(const Duration(milliseconds: 350));
+      await tester.pumpAndSettle();
       await tester.tap(profileGroup);
-      await tester.pump(const Duration(milliseconds: 350));
+      await tester.pumpAndSettle();
     }
     final details = find.descendant(
       of: profile,
@@ -146,9 +155,9 @@ Future<void> ready(
         matching: find.text('Details'),
       );
       await tester.ensureVisible(title);
-      await tester.pump(const Duration(milliseconds: 350));
+      await tester.pumpAndSettle();
       await tester.tap(title);
-      await tester.pump(const Duration(milliseconds: 350));
+      await tester.pumpAndSettle();
     }
   }
   final profiles = find
