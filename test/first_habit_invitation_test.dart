@@ -50,6 +50,7 @@ Future<void> ready(
 }) async {
   var settingsPending = false;
   var dialogWasOpen = false;
+  var missingBeforeSettings = 0;
   Future<void> settleUi() => tester.pump(const Duration(milliseconds: 350));
   final needsProfile = [
     'Sign in with Microsoft or Google',
@@ -105,15 +106,18 @@ Future<void> ready(
         profile.evaluate().isNotEmpty &&
         tester.widget<ProfileSection>(profile).busy;
     if (finder.evaluate().isNotEmpty) {
+      missingBeforeSettings = 0;
       if (needsProfile) {
         await tester.ensureVisible(finder);
         await settleUi();
       }
       return;
     }
+    missingBeforeSettings++;
     final settings = find.byTooltip('Settings and privacy');
     if (needsProfile &&
         !settingsPending &&
+        missingBeforeSettings >= 50 &&
         find.byType(AlertDialog).evaluate().isEmpty &&
         settings.evaluate().isNotEmpty) {
       settingsPending = true;
