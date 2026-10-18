@@ -64,7 +64,8 @@ class _SyntheticIdentity extends IdentityService {
 }
 
 Future<void> _ready(WidgetTester tester, Finder finder) async {
-  for (var i = 0; i < 100; i++) {
+  final elapsed = Stopwatch()..start();
+  while (elapsed.elapsed < const Duration(seconds: 15)) {
     await tester.runAsync(
       () => Future<void>.delayed(const Duration(milliseconds: 30)),
     );
@@ -99,9 +100,11 @@ void main() {
   for (final scenario in [
     'no receipt',
     'consented guest',
+    'consented guest with slow storage',
     'restored account',
   ]) {
     testWidgets('legacy view consent: $scenario', (tester) async {
+      final consentedGuest = scenario.startsWith('consented guest');
       final root = (await tester.runAsync(
         () => Directory.systemTemp.createTemp('bloomstep-profile-'),
       ))!;
@@ -149,8 +152,15 @@ void main() {
             measurement: collector,
             testIdentity: _SyntheticIdentity()
               ..restoreOffline = scenario == 'restored account',
-            testOpenStore: (account) =>
-                GardenStore.open(p.join(root.path, '$account.sqlite'), account),
+            testOpenStore: (account) async {
+              if (scenario == 'consented guest with slow storage') {
+                await Future<void>.delayed(const Duration(seconds: 4));
+              }
+              return GardenStore.open(
+                p.join(root.path, '$account.sqlite'),
+                account,
+              );
+            },
           ),
         ),
       );
@@ -170,12 +180,12 @@ void main() {
               ? MeasurementReceipt.parse(await file.readAsString())
               : null;
         });
-        if (scenario == 'consented guest' &&
+        if (consentedGuest &&
             receipt?.events.any((event) => event.name == 'signin_view') ==
                 true) {
           break;
         }
-        if (scenario != 'consented guest' && i >= 10) break;
+        if (!consentedGuest && i >= 10) break;
       }
       if (scenario == 'no receipt') {
         expect(receipt, isNull);
@@ -188,7 +198,7 @@ void main() {
           'installer_started',
           'install_completed',
           'first_launch',
-          if (scenario == 'consented guest') 'signin_view',
+          if (consentedGuest) 'signin_view',
         ]);
       }
       await tester.pumpWidget(const SizedBox());
