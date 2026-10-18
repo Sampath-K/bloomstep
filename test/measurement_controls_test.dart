@@ -115,7 +115,6 @@ void main() {
     tester,
   ) async {
     final semantics = tester.ensureSemantics();
-    addTearDown(semantics.dispose);
     final store = await mount(tester, consent: true);
     await tester.tap(find.text('Link my exported website receipt'));
     await tester.pump();
@@ -132,6 +131,7 @@ void main() {
       isTrue,
     );
     expect((await tester.runAsync(store.export))!['events'], isEmpty);
+    semantics.dispose();
   });
   testWidgets('invalid receipt surfaces a privacy-safe failure', (
     tester,

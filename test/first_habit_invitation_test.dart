@@ -43,18 +43,36 @@ class _RestoringIdentity extends IdentityService {
 }
 
 Future<void> ready(WidgetTester tester, Finder finder) async {
+  var settingsOpened = false;
   var expandedProfile = false;
+  final needsProfile = [
+    'Sign in with Microsoft or Google',
+    'Not signed in',
+    'Synthetic Gardener',
+  ].any(finder.toString().contains);
   for (var i = 0; i < 100; i++) {
     await tester.runAsync(
       () => Future<void>.delayed(const Duration(milliseconds: 20)),
     );
     await tester.pump(const Duration(milliseconds: 20));
-    if (finder.evaluate().isNotEmpty) return;
-    final profileDetails = find.text('Profile and garden details');
-    if (!expandedProfile && profileDetails.evaluate().isNotEmpty) {
-      await tester.ensureVisible(profileDetails);
-      await tester.tap(profileDetails);
-      await tester.pumpAndSettle();
+    if (finder.evaluate().isNotEmpty && (!needsProfile || expandedProfile)) {
+      return;
+    }
+    if (needsProfile &&
+        !settingsOpened &&
+        find.byTooltip('Settings and privacy').evaluate().isNotEmpty) {
+      await tester.tap(find.byTooltip('Settings and privacy'));
+      settingsOpened = true;
+      await tester.pump(const Duration(milliseconds: 350));
+    }
+    final profileGroup = find.text('Profile & account');
+    if (needsProfile &&
+        settingsOpened &&
+        !expandedProfile &&
+        profileGroup.evaluate().isNotEmpty) {
+      await tester.ensureVisible(profileGroup);
+      await tester.tap(profileGroup);
+      await tester.pump(const Duration(milliseconds: 350));
       expandedProfile = true;
     }
   }
@@ -126,7 +144,7 @@ void main() {
       ))!,
     );
     await ready(tester, find.byType(RecipeBuilder));
-    expect(find.text('Plant one tiny step'), findsOneWidget);
+    expect(find.text('Choose a moment'), findsOneWidget);
     await captureFirstHabitScreen(tester, screenshotKey);
     await tester.tap(find.text('Cancel'));
     await tester.pumpAndSettle();

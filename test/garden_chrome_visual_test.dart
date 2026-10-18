@@ -327,7 +327,7 @@ void main() {
       await tester.pumpAndSettle();
       await tester.tap(cta);
       await tester.pumpAndSettle();
-      expect(find.text('Plant one tiny step'), findsOneWidget);
+      expect(find.text('Choose a moment'), findsOneWidget);
       await tester.sendKeyEvent(LogicalKeyboardKey.escape);
       await tester.pumpAndSettle();
       expect(tester.takeException(), isNull);

@@ -28,7 +28,6 @@ void main() {
     'failed session clock checkpoint hides data and reports the failure',
     (tester) async {
       final semantics = tester.ensureSemantics();
-      addTearDown(semantics.dispose);
       var expirations = 0;
       await tester.pumpWidget(
         MaterialApp(
@@ -60,6 +59,7 @@ void main() {
         isTrue,
       );
       expect(expirations, 1);
+      semantics.dispose();
       await tester.pumpWidget(const SizedBox.shrink());
     },
   );

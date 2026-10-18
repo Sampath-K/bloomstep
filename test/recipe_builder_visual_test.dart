@@ -38,7 +38,6 @@ void main() {
       await tester.binding.setSurfaceSize(variant.size);
       addTearDown(() => tester.binding.setSurfaceSize(null));
       final semantics = tester.ensureSemantics();
-      addTearDown(semantics.dispose);
       await loadVisualFonts(tester);
       final boundaryKey = GlobalKey();
       Future<void> capture(String stage) async {
@@ -186,6 +185,7 @@ void main() {
       await tester.tap(continuation);
       await tester.pumpAndSettle();
       expect(find.byType(PlantedRecipeDialog), findsNothing);
+      semantics.dispose();
       await tester.pumpWidget(const SizedBox());
       await tester.runAsync(
         () => Future<void>.delayed(const Duration(milliseconds: 100)),

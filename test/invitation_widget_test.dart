@@ -593,7 +593,8 @@ void main() {
       expect(redeemed, 1);
       expect((await tester.runAsync(store.habits))!, isEmpty);
       await tester.tap(find.byTooltip('Settings and privacy'));
-      await tester.pumpAndSettle();
+      await waitInvitation(tester, find.text('Garden & data'));
+      await tester.ensureVisible(find.text('Garden & data'));
       await tester.tap(find.text('Garden & data'));
       await tester.pumpAndSettle();
       await tester.tap(find.text('Invitation status'));

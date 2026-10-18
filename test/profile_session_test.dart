@@ -67,6 +67,7 @@ class _SyntheticIdentity extends IdentityService {
 
 Future<void> _ready(WidgetTester tester, Finder finder) async {
   var expandedProfile = false;
+  var settingsOpened = false;
   final description = finder.toString();
   final needsProfile = [
     'ST',
@@ -90,10 +91,10 @@ Future<void> _ready(WidgetTester tester, Finder finder) async {
     await tester.pump(const Duration(milliseconds: 30));
     if (find.byType(RecipeBuilder).evaluate().isNotEmpty &&
         find.text('Cancel').evaluate().isNotEmpty) {
-      await tester.pumpAndSettle();
+      await tester.pump(const Duration(milliseconds: 350));
       if (find.text('Cancel').evaluate().isNotEmpty) {
         await tester.tap(find.text('Cancel'));
-        await tester.pumpAndSettle();
+        await tester.pump(const Duration(milliseconds: 350));
       }
     }
     if (finder.evaluate().isNotEmpty) {
@@ -102,34 +103,37 @@ Future<void> _ready(WidgetTester tester, Finder finder) async {
           find.text('Complete sign-in in your browser').evaluate().isNotEmpty) {
         continue;
       }
-      await tester.pumpAndSettle();
+      await tester.pump(const Duration(milliseconds: 350));
       if (find.byType(RecipeBuilder).evaluate().isNotEmpty &&
           find.text('Cancel').evaluate().isNotEmpty) {
         await tester.tap(find.text('Cancel'));
-        await tester.pumpAndSettle();
+        await tester.pump(const Duration(milliseconds: 350));
       }
       return;
     }
     if (needsProfile &&
+        !settingsOpened &&
         find.byType(AlertDialog).evaluate().isEmpty &&
         find.byTooltip('Settings and privacy').evaluate().isNotEmpty) {
       await tester.tap(find.byTooltip('Settings and privacy'));
-      await tester.pumpAndSettle();
+      settingsOpened = true;
+      await tester.pump(const Duration(milliseconds: 350));
     }
     final profileGroup = find.text('Profile & account');
     if (needsProfile &&
         !expandedProfile &&
+        settingsOpened &&
         profileGroup.evaluate().isNotEmpty) {
       await tester.ensureVisible(profileGroup);
       await tester.tap(profileGroup);
-      await tester.pumpAndSettle();
+      await tester.pump(const Duration(milliseconds: 350));
       expandedProfile = true;
     }
     final profileDetails = find.text('Profile and garden details');
     if (!expandedProfile && profileDetails.evaluate().isNotEmpty) {
       await tester.ensureVisible(profileDetails);
       await tester.tap(profileDetails);
-      await tester.pumpAndSettle();
+      await tester.pump(const Duration(milliseconds: 350));
       expandedProfile = true;
     }
   }

@@ -46,6 +46,7 @@ void main() {
         await tester.pumpAndSettle();
       }
     }
+    debugDefaultTargetPlatformOverride = null;
   });
 
   Future<void> openBuilder(
@@ -440,7 +441,6 @@ void main() {
       tester,
     ) async {
       final semantics = tester.ensureSemantics();
-      addTearDown(semantics.dispose);
       await tester.pumpWidget(
         MaterialApp(
           home: MediaQuery(
@@ -460,6 +460,7 @@ void main() {
       expect(find.bySemanticsLabel(RegExp('Seed planted')), findsOneWidget);
       expect(tester.binding.transientCallbackCount, 0);
       expect(tester.takeException(), isNull);
+      semantics.dispose();
     });
   }
 

@@ -141,10 +141,7 @@ void main() {
         }
         await tester.tap(find.text('Plant this seed'));
         if (failSave) {
-          await ready(
-            tester,
-            find.textContaining("Couldn't complete that action"),
-          );
+          await ready(tester, find.text('Something needs your attention.'));
           expect(find.byType(PlantedRecipeDialog), findsNothing);
         } else {
           await ready(tester, find.byType(PlantedRecipeDialog));

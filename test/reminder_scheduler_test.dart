@@ -61,15 +61,17 @@ void main() {
   late DesktopReminders reminders;
   late DateTime now;
   late List<String> positiveCheckIns;
+  late List<String> reminderErrors;
   setUp(() async {
     now = DateTime(2026, 10, 4, 18);
     positiveCheckIns = [];
+    reminderErrors = [];
     store = await GardenStore.open(':memory:', 'account-a', clock: () => now);
     gateway = FakeReminderGateway();
     reminders = DesktopReminders(
       store,
       () async {},
-      (_) {},
+      reminderErrors.add,
       gateway: gateway,
       clock: () => now,
       onPositiveCheckIn: (id) async => positiveCheckIns.add(id),
@@ -141,13 +143,12 @@ void main() {
       await gateway.action!(request.payloadFor('rest'));
       expect(positiveCheckIns, isEmpty);
 
-      await expectLater(
-        gateway.action!(
-          request.payloadFor('did').replaceFirst('account-a', 'another-account'),
-        ),
-        throwsStateError,
+      await gateway.action!(
+        request.payloadFor('did').replaceFirst('account-a', 'another-account'),
       );
       expect(positiveCheckIns, isEmpty);
+      expect(reminderErrors, hasLength(1));
+      expect(reminderErrors.single, contains('different garden'));
 
       now = now.add(const Duration(days: 1));
       await gateway.action!(request.payloadFor('did'));

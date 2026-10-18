@@ -129,7 +129,7 @@ void main() {
         tester.widget<TextField>(field).controller!.text,
         'Pasted feedback',
       );
-      await tester.tap(find.text('Save feedback'));
+      await tester.tap(find.text('Send feedback'));
       await settleDatabase(tester);
       expect(
         (await tester.runAsync(store.voice))!.single['body'],
@@ -412,7 +412,7 @@ void main() {
       await settleDatabase(tester);
 
       expect(
-        find.text('Saved. That tiny step counts! Now smile.'),
+        find.text('That tiny step counts! Now smile.'),
         findsOneWidget,
       );
       expect(
