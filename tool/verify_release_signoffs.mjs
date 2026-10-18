@@ -217,6 +217,21 @@ export function verifyArtifactProvenance({ candidate, artifact, repository, run,
   return { ok: true };
 }
 
+export function verifyOwnerStatement({ trial, comment, repository, owner }) {
+  const o = (c, m) => gate(c, `owner statement: ${m}`);
+  const m = /^https:\/\/github\.com\/([^/]+\/[^/]+)\/(?:issues|pull)\/\d+#issuecomment-([1-9]\d{0,19})$/.exec(trial?.reference ?? '');
+  o(m && m[1] === repository, 'reference must be an issue or PR comment URL in this repository');
+  o(String(comment?.id) === m[2], 'fetched comment is not the referenced comment');
+  o(nonEmpty(owner) && comment.user?.login === owner && comment.user?.type === 'User' && comment.author_association === 'OWNER',
+    'comment is not authored by the repository owner');
+  o(trial.by === owner, 'record attributes the trial to someone other than the owner');
+  o(!comment.updated_at || !comment.created_at || comment.updated_at === comment.created_at, 'comment was edited after posting');
+  const body = comment.body ?? '';
+  o(body.includes(trial.candidateCommit) && body.includes(trial.installerSha256), 'comment must name the exact candidate commit and installer SHA-256');
+  o(/\bPASS\b/.test(body) && !/\bFAIL\b/i.test(body), 'comment must state PASS and no FAIL');
+  return { ok: true, commentId: m[2] };
+}
+
 export function resolveCandidate({ root, head, git = realGit(root) }) {
   const base = join(root, 'release', 'signoffs');
   const candidates = existsSync(base) ? readdirSync(base).filter((d) => SHA1.test(d)
@@ -232,7 +247,7 @@ function parseArgs(argv) {
   const args = {};
   for (let i = 0; i < argv.length; i += 1) {
     const key = argv[i];
-    if (['--write-evidence', '--check-evidence', '--resolve-candidate', '--emit-artifact'].includes(key)) args[key.slice(2)] = true;
+    if (['--write-evidence', '--check-evidence', '--resolve-candidate', '--emit-artifact', '--emit-owner-comment'].includes(key)) args[key.slice(2)] = true;
     else if (key.startsWith('--')) { args[key.slice(2)] = argv[i + 1]; i += 1; }
   }
   return args;
@@ -256,6 +271,20 @@ if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.ur
         artifacts: JSON.parse(readFileSync(args['provenance-artifacts'], 'utf8')),
       });
       process.stdout.write(`PASS provenance run ${r.artifact.runId} artifact ${r.artifact.artifactId} built ${r.candidate}\n`);
+      process.exit(0);
+    }
+    if (args['owner-comment']) {
+      const r = verifySignoffs({ root, stage: 'public-launch', candidate: args.candidate, head, git });
+      const v = verifyOwnerStatement({ trial: r.ownerTrial, repository: args.repository, owner: args.owner,
+        comment: JSON.parse(readFileSync(args['owner-comment'], 'utf8')) });
+      process.stdout.write(`PASS owner statement comment ${v.commentId} by ${args.owner}\n`);
+      process.exit(0);
+    }
+    if (args['emit-owner-comment']) {
+      const r = verifySignoffs({ root, stage: 'public-launch', candidate: args.candidate, head, git });
+      const id = /#issuecomment-([1-9]\d{0,19})$/.exec(r.ownerTrial.reference ?? '');
+      gate(id, 'owner trial reference is not a GitHub comment URL');
+      process.stdout.write(`comment=${id[1]}\n`);
       process.exit(0);
     }
     if (args['emit-artifact']) {

@@ -85,3 +85,14 @@ Role sign-off records are **agent attestations**: they provide accountability an
 2. Only the owner can push `v*` tags (tag ruleset), and workflow-file changes require owner credentials.
 
 A forged sign-off record therefore cannot publish anything without the owner's authenticated approval of that exact run.
+
+### Owner trial authentication (QA-1)
+
+The owner trial record's `reference` must be a GitHub issue or PR comment URL in this repository
+(`https://github.com/<repo>/(issues|pull)/<n>#issuecomment-<id>`). Before promotion, the release job
+fetches that comment through the API and fails unless it is authored by `github.repository_owner`
+(`author_association: OWNER`, user account), unedited, names the exact candidate commit and installer
+SHA-256, and states PASS with no FAIL. The coordinator writes the record only after the owner posts
+that comment. Verified live (2026-10-18): Sampath-K is the sole collaborator and admin of this
+user-owned repo, so the ruleset's admin-role bypass and the `public-launch` required reviewer both
+resolve to the owner.

@@ -4,7 +4,7 @@ import { mkdtempSync, mkdirSync, writeFileSync, readFileSync, rmSync, cpSync } f
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import {
-  verifySignoffs, renderEvidence, resolveCandidate, SIGNOFF_PATH_PREFIXES, verifyArtifactProvenance,
+  verifySignoffs, renderEvidence, resolveCandidate, SIGNOFF_PATH_PREFIXES, verifyArtifactProvenance, verifyOwnerStatement,
 } from '../tool/verify_release_signoffs.mjs';
 
 const CANDIDATE = 'a'.repeat(40);
@@ -299,4 +299,31 @@ test('SEC-1/SEC-2: release job never interpolates record data into shell and req
   assert.match(release, /environment: public-launch/);
   assert.match(release, /--provenance-run run\.json --provenance-artifacts artifacts\.json/);
   assert.ok(release.indexOf('--provenance-run') < release.indexOf('gh run download'));
+});
+test('QA-1: owner trial reference must resolve to an owner-authored comment in this repo naming the exact bytes', () => {
+  const trial = { candidateCommit: CANDIDATE, installerSha256: SHA, result: 'PASS', by: 'Sampath-K',
+    reference: 'https://github.com/Sampath-K/bloomstep/pull/52#issuecomment-123' };
+  const comment = { id: 123, html_url: trial.reference, user: { login: 'Sampath-K', type: 'User' }, author_association: 'OWNER',
+    body: `Installer test PASS for ${CANDIDATE} installer ${SHA}` };
+  const args = { trial, comment, repository: 'Sampath-K/bloomstep', owner: 'Sampath-K' };
+  assert.equal(verifyOwnerStatement(args).ok, true);
+  const bad = (patch, re = /owner statement/) => assert.throws(() => verifyOwnerStatement({ ...args, ...patch }), re);
+  bad({ trial: { ...trial, reference: 'https://example.com/x#issuecomment-123' } });
+  bad({ trial: { ...trial, reference: 'https://github.com/other/repo/pull/52#issuecomment-123' } });
+  bad({ comment: { ...comment, id: 999 } });
+  bad({ comment: { ...comment, user: { login: 'someone-else', type: 'User' } } });
+  bad({ comment: { ...comment, author_association: 'CONTRIBUTOR' } });
+  bad({ trial: { ...trial, by: 'someone-else' } });
+  bad({ comment: { ...comment, body: `PASS for ${CANDIDATE}` } });
+  bad({ comment: { ...comment, body: `Installer ${SHA} ${CANDIDATE} FAIL` } });
+  bad({ comment: { ...comment, body: `PASS ${SHA} ${CANDIDATE} edited`, updated_at: '2026-10-22T00:00:00Z', created_at: '2026-10-21T00:00:00Z' } });
+});
+
+test('QA-1: release job authenticates the owner statement via the API before promotion', () => {
+  const wf = readFileSync('.github/workflows/ci.yml', 'utf8');
+  const job = wf.slice(wf.indexOf('environment: public-launch'));
+  const verifyAt = job.indexOf('--owner-comment');
+  assert.ok(verifyAt > 0, 'owner comment verification missing');
+  assert.ok(verifyAt < job.indexOf('gh release create'), 'owner statement must be verified before publishing');
+  assert.match(job, /issues\/comments\/\$COMMENT_ID/);
 });
