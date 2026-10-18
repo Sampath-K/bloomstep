@@ -5,6 +5,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import {
   verifySignoffs, renderEvidence, resolveCandidate, SIGNOFF_PATH_PREFIXES, verifyArtifactProvenance, verifyOwnerStatement,
+  validateFunctionalRequirements,
 } from '../tool/verify_release_signoffs.mjs';
 
 const CANDIDATE = 'a'.repeat(40);
@@ -47,6 +48,38 @@ function ownerTrial(overrides = {}) {
   };
 }
 
+const FUNC = `release/evidence/${CANDIDATE}/functional`;
+const BASELINE = '083f2def66c1e084c56653238b85802ff260c3c3';
+
+function writeFunctional(root, mutate = () => {}) {
+  cpSync(join(repoRoot, 'release', 'functional-requirements.json'), join(root, 'release', 'functional-requirements.json'));
+  const reqs = JSON.parse(readFileSync(join(root, 'release', 'functional-requirements.json'), 'utf8')).requirements;
+  mkdirSync(join(root, FUNC, 'shots'), { recursive: true });
+  mkdirSync(join(root, FUNC, 'logs'), { recursive: true });
+  writeFileSync(join(root, FUNC, 'README.md'), '# Functional evidence\n');
+  const tests = reqs.map((r) => {
+    const t = { id: `T-${r.id}`, requirement: r.id, result: 'PASS', log: `${FUNC}/logs/${r.id}.log` };
+    writeFileSync(join(root, t.log), 'ok\n');
+    if (r.ui) {
+      t.screenshots = { light: `${FUNC}/shots/${r.id}-light.png`, dark: `${FUNC}/shots/${r.id}-dark.png` };
+      writeFileSync(join(root, t.screenshots.light), 'png');
+      writeFileSync(join(root, t.screenshots.dark), 'png');
+    }
+    if (r.regression) t.baselineResult = 'FAIL';
+    return t;
+  });
+  const doc = {
+    schema: 'budlark-functional-evidence-v1', candidateCommit: CANDIDATE, installerSha256: SHA,
+    artifact: { runId: '39100447327', artifactId: '12127077182' },
+    environment: { kind: 'clean-windows-vm', os: 'Windows 11 24H2' },
+    run: 'https://github.com/Sampath-K/bloomstep/actions/runs/39100447327', executedAt: '2026-10-20T05:00:00Z',
+    baseline: { commit: BASELINE, run: 'https://github.com/Sampath-K/bloomstep/actions/runs/39100447300' },
+    tests,
+  };
+  mutate(doc);
+  if (doc !== null) writeFileSync(join(root, FUNC, 'results.json'), JSON.stringify(doc, null, 2));
+}
+
 function setup(stage = 'public-launch', mutate = () => {}) {
   const root = mkdtempSync(join(tmpdir(), 'budlark-signoffs-'));
   mkdirSync(join(root, 'release'), { recursive: true });
@@ -58,6 +91,7 @@ function setup(stage = 'public-launch', mutate = () => {}) {
   mkdirSync(join(root, 'release', 'reviews', CANDIDATE), { recursive: true });
   mkdirSync(join(root, 'release', 'owner'), { recursive: true });
   writeFileSync(join(root, 'release', 'owner', `${CANDIDATE}.json`), JSON.stringify(ownerTrial(), null, 2));
+  writeFunctional(root);
   for (const { id } of roles) {
     writeFileSync(join(root, 'release', 'reviews', CANDIDATE, `${id}.md`), `# ${id} review\n\nVerdict: APPROVED\n`);
     const rec = record(id);
@@ -331,4 +365,48 @@ test('QA-1: release job authenticates the owner statement via the API before pro
   assert.ok(verifyAt > 0, 'owner comment verification missing');
   assert.ok(verifyAt < job.indexOf('gh release create'), 'owner statement must be verified before publishing');
   assert.match(job, /issues\/comments\/\$COMMENT_ID/);
+});
+
+test('FUNC: requirements cover every owner-reported item 1..N exactly by a requirement or a named process gate', () => {
+  const doc = JSON.parse(readFileSync(join(repoRoot, 'release', 'functional-requirements.json'), 'utf8'));
+  assert.equal(doc.baselineCommit, BASELINE);
+  const covered = new Set([...doc.requirements.flatMap((r) => r.ownerItems), ...Object.keys(doc.processOwnerItems).map(Number)]);
+  for (let i = 1; i <= doc.ownerItemCount; i += 1) assert.ok(covered.has(i), `owner item ${i} uncovered`);
+  assert.equal(validateFunctionalRequirements(doc).ok, true);
+  assert.throws(() => validateFunctionalRequirements({ ...doc, processOwnerItems: {}, requirements: doc.requirements.filter((r) => !r.ownerItems.includes(7)) }), /owner item/);
+});
+
+test('FUNC: owner-test and public launch both require passing functional evidence on the exact installer', () => {
+  for (const stage of ['owner-test', 'public-launch']) {
+    const root = setup(stage);
+    try {
+      assert.equal(run(root, { stage }).ok, true);
+      const bad = (mutate, re) => { writeFunctional(root, mutate); assert.throws(() => run(root, { stage }), re); writeFunctional(root); };
+      bad((d) => { d.schema = 'x'; }, /functional evidence/);
+      bad((d) => { d.installerSha256 = 'f'.repeat(64); }, /functional evidence.*installer/);
+      bad((d) => { d.candidateCommit = HEAD; }, /functional evidence.*candidate/);
+      bad((d) => { d.artifact.artifactId = '1'; }, /functional evidence.*artifact/);
+      bad((d) => { d.environment.kind = 'developer-laptop'; }, /clean Windows VM/);
+      bad((d) => { d.run = 'http://x'; }, /run/);
+      bad((d) => { d.executedAt = '2026-13-01T00:00:00Z'; }, /executedAt/);
+      bad((d) => { d.tests[0].result = 'FAIL'; }, /did not pass/);
+      bad((d) => { d.tests[0].result = 'SKIP'; }, /did not pass/);
+      bad((d) => { d.tests = d.tests.filter((t) => t.requirement !== 'FR-INVITE-QR'); }, /FR-INVITE-QR/);
+      bad((d) => { delete d.tests.find((t) => t.requirement === 'FR-SETTINGS').screenshots.dark; }, /dark/);
+      bad((d) => { d.tests.find((t) => t.requirement === 'FR-SETTINGS').screenshots.light = 'README.md'; }, /path/);
+      bad((d) => { d.tests.find((t) => t.requirement === 'FR-PASTE').screenshots.light = `${FUNC}/../x.png`; }, /path/);
+      bad((d) => { d.tests.find((t) => t.requirement === 'FR-SETTINGS').log = `${FUNC}/logs/missing.log`; }, /does not exist/);
+      bad((d) => { delete d.tests.find((t) => t.requirement === 'FR-REMINDER-TOGGLE').baselineResult; }, /baseline/);
+      bad((d) => { d.baseline.commit = CANDIDATE; }, /baseline/);
+      bad((d) => { d.tests.push({ ...d.tests[0], requirement: 'FR-UNKNOWN' }); }, /unknown requirement/);
+    } finally { rmSync(root, { recursive: true, force: true }); }
+  }
+  const root = setup('owner-test');
+  try {
+    rmSync(join(root, FUNC, 'results.json'));
+    assert.throws(() => run(root, { stage: 'owner-test' }), /functional evidence .*missing/);
+    writeFunctional(root);
+    rmSync(join(root, FUNC, 'README.md'));
+    assert.throws(() => run(root, { stage: 'owner-test' }), /README/);
+  } finally { rmSync(root, { recursive: true, force: true }); }
 });

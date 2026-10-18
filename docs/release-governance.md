@@ -100,3 +100,13 @@ resolve to the owner.
 ## Marketing and visual brand role (owner request, 2026-10-18)
 
 The owner asked that all customer-facing brands, names and images be vetted and recommended by marketing and branding experts. `brand-marketing` is required at `owner-test`: it owns the Budlark visual identity (theme, app icon, songbird/lark motif, imagery), and signs off on every customer-facing surface: app, installer, Start menu, tray, sign-in pages (Microsoft Entra and Google consent screens), website, store listing and launch assets. `editorial-brand` keeps voice and naming consistency. Owner-test now requires 8 roles and public launch requires all 13.
+## Functional evidence before the owner trial
+
+The owner must never be the first person to find a functional failure. Both gate stages (`owner-test` and `public-launch`) require `release/evidence/<candidate>/functional/`:
+
+- `results.json` (schema `budlark-functional-evidence-v1`). It must bind the same candidate commit, installer SHA-256 and CI artifact as the sign-offs, and record `environment.kind: clean-windows-vm`, an https run link and `executedAt`.
+- One `PASS` test for every requirement in `release/functional-requirements.json`. Each test has a log; UI requirements also have light and dark screenshots. All paths must sit under the functional folder.
+- For every owner-reported bug (`regression: true`), `baselineResult: FAIL` proves the same test failed on the baseline build `083f2de`.
+- `README.md`: the human evidence pack the owner reads before receiving the installer.
+
+`release/functional-requirements.json` maps every owner feedback item to a requirement or a named process gate. A unit test fails if any item is left uncovered.

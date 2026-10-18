@@ -60,6 +60,64 @@ function checkFinding(role, f, candidate, git) {
   }
 }
 
+export function validateFunctionalRequirements(doc) {
+  gate(doc?.schema === 'budlark-functional-requirements-v1' && Array.isArray(doc.requirements) && doc.requirements.length > 0,
+    'invalid release/functional-requirements.json');
+  gate(SHA1.test(doc.baselineCommit ?? ''), 'functional requirements need a full baselineCommit');
+  const ids = new Set();
+  for (const r of doc.requirements) {
+    gate(nonEmpty(r.id) && !ids.has(r.id) && nonEmpty(r.flow) && nonEmpty(r.description) && Array.isArray(r.ownerItems)
+      && typeof r.ui === 'boolean' && typeof r.regression === 'boolean', `malformed functional requirement ${r?.id ?? ''}`);
+    ids.add(r.id);
+  }
+  const covered = new Set([...doc.requirements.flatMap((r) => r.ownerItems), ...Object.keys(doc.processOwnerItems ?? {}).map(Number)]);
+  for (let i = 1; i <= doc.ownerItemCount; i += 1) gate(covered.has(i), `owner item ${i} is not covered by a functional requirement or process gate`);
+  return { ok: true };
+}
+
+function verifyFunctional(root, candidate, installerSha256, artifact) {
+  const contract = readRecord(join(root, 'release', 'functional-requirements.json'));
+  validateFunctionalRequirements(contract);
+  const prefix = `release/evidence/${candidate}/functional/`;
+  const file = join(root, prefix, 'results.json');
+  gate(existsSync(file), `functional evidence ${prefix}results.json is missing`);
+  gate(existsSync(join(root, prefix, 'README.md')), `functional evidence ${prefix}README.md is missing`);
+  const d = readRecord(file);
+  const f = (c, m) => gate(c, `functional evidence: ${m}`);
+  f(d.schema === 'budlark-functional-evidence-v1', 'unknown schema');
+  f(d.candidateCommit === candidate, `candidate ${d.candidateCommit} does not match ${candidate}`);
+  f(d.installerSha256 === installerSha256, 'installer SHA-256 does not match the signed bytes');
+  f(d.artifact?.runId === artifact.runId && d.artifact?.artifactId === artifact.artifactId, 'artifact identity does not match the signed artifact');
+  f(d.environment?.kind === 'clean-windows-vm' && nonEmpty(d.environment?.os), 'must run on a clean Windows VM');
+  f(/^https:\/\//.test(d.run ?? ''), 'run must be an https link');
+  f(ISO.test(d.executedAt ?? ''), 'executedAt must be an ISO-8601 UTC timestamp');
+  f(d.baseline?.commit === contract.baselineCommit && /^https:\/\//.test(d.baseline?.run ?? ''),
+    `baseline must be ${contract.baselineCommit} with an https run link`);
+  f(Array.isArray(d.tests) && d.tests.length > 0, 'tests list is empty');
+  const reqs = new Map(contract.requirements.map((r) => [r.id, r]));
+  const path = (p, what) => {
+    f(typeof p === 'string' && p.startsWith(prefix) && !p.includes('..'), `${what} path ${p} must be under ${prefix}`);
+    f(existsSync(join(root, p)), `${what} ${p} does not exist`);
+  };
+  for (const t of d.tests) {
+    const r = reqs.get(t?.requirement);
+    f(r, `unknown requirement ${t?.requirement}`);
+    f(nonEmpty(t.id), `${r.id} test id is missing`);
+    f(t.result === 'PASS', `${t.id} (${r.id}) did not pass: ${t.result}`);
+    path(t.log, `${t.id} log`);
+    if (r.ui) {
+      f(t.screenshots?.light, `${t.id} needs a light screenshot`);
+      f(t.screenshots?.dark, `${t.id} needs a dark screenshot`);
+      path(t.screenshots.light, `${t.id} light screenshot`);
+      path(t.screenshots.dark, `${t.id} dark screenshot`);
+    }
+    if (r.regression) f(t.baselineResult === 'FAIL', `${t.id} (${r.id}) must prove it failed on the baseline build`);
+  }
+  const missing = [...reqs.keys()].filter((id) => !d.tests.some((t) => t.requirement === id));
+  f(missing.length === 0, `no passing test for ${missing.join(', ')}`);
+  return { tests: d.tests.length, requirements: reqs.size, environment: d.environment.os, run: d.run, executedAt: d.executedAt };
+}
+
 export function verifySignoffs({ root, stage, candidate, head, installerSha256, checkEvidence = false, git = realGit(root) }) {
   gate(['owner-test', 'public-launch'].includes(stage), `unknown stage ${stage}`);
   gate(SHA1.test(candidate ?? ''), 'candidate must be a full 40-hex commit SHA');
@@ -128,6 +186,7 @@ export function verifySignoffs({ root, stage, candidate, head, installerSha256, 
   gate(shas.size === 1, `installer SHA-256 differs across sign-offs: ${[...shas].join(', ')}`);
   const runs = new Set(records.map((r) => `${r.artifact.runId}/${r.artifact.artifactId}`));
   gate(runs.size === 1, `artifact identity differs across sign-offs: ${[...runs].join(', ')}`);
+  const functional = verifyFunctional(root, candidate, records[0].installerSha256, records[0].artifact);
 
   const result = {
     ok: true,
@@ -139,6 +198,7 @@ export function verifySignoffs({ root, stage, candidate, head, installerSha256, 
     installerSha256: records[0].installerSha256,
     artifact: records[0].artifact,
     ownerTrial,
+    functional,
     required,
     records: records.sort((a, b) => registry.roles.findIndex((x) => x.id === a.role) - registry.roles.findIndex((x) => x.id === b.role)),
     roles: registry.roles,
@@ -173,6 +233,7 @@ export function renderEvidence(result) {
     `| CI run | [${result.artifact.runId}](https://github.com/Sampath-K/bloomstep/actions/runs/${result.artifact.runId}) |`,
     `| Artifact id | ${result.artifact.artifactId} |`,
     `| Gate stage verified | ${result.stage} |`,
+    `| Functional tests | ${result.functional.tests} passing tests covering ${result.functional.requirements} requirements on a clean ${result.functional.environment} VM at ${result.functional.executedAt} ([run](${result.functional.run}); \`functional/README.md\`) |`,
     `| Owner trial | ${result.ownerTrial ? `${result.ownerTrial.result} by ${result.ownerTrial.by} at ${result.ownerTrial.testedAt} (${result.ownerTrial.reference})` : 'Not required at this stage (owner-test sign-off precedes the owner trial)'} |`,
     '',
     '## Role sign-offs',
@@ -198,6 +259,7 @@ export function renderEvidence(result) {
     '',
     '- Every required role recorded an explicit APPROVED/APPROVED_WITH_ACCEPTED_RISK verdict for this exact candidate, tree and installer SHA-256.',
     '- No CHANGES_REQUIRED verdicts and no OPEN findings; FIXED findings cite commits contained in the candidate; accepted risk is low severity with explicit owner acceptance.',
+    '- Every functional requirement passed on a clean Windows VM against these exact installer bytes, with light/dark screenshots and baseline-failure proof for owner-reported bugs.',
     `- Only ${SIGNOFF_PATH_PREFIXES.join(', ')} may change between the candidate and the released head.`,
     '',
   ];

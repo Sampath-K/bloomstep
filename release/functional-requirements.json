@@ -1,0 +1,240 @@
+{
+  "schema": "budlark-functional-requirements-v1",
+  "policy": "Before any installer reaches the owner, every requirement must pass on a clean Windows VM against the exact signed installer, with light and dark screenshots for UI requirements and, for owner-reported regressions, proof the same test failed on the baseline build.",
+  "baselineCommit": "083f2def66c1e084c56653238b85802ff260c3c3",
+  "ownerItemCount": 29,
+  "processOwnerItems": {
+    "16": "ux-content-accessibility sign-off includes a visual light/dark review of every changed screen",
+    "26": "growth-website sign-off covers the public website rebrand (PR #51)",
+    "28": "brand-marketing role exists and must sign off"
+  },
+  "requirements": [
+    {
+      "id": "FR-INSTALL",
+      "flow": "Install",
+      "description": "Clean install of the signed installer on a fresh Windows VM; Budlark name and icon in installer, Start menu and tray; app launches",
+      "ownerItems": [
+        24,
+        25,
+        29
+      ],
+      "ui": true,
+      "regression": false
+    },
+    {
+      "id": "FR-SIGNIN",
+      "flow": "Sign-in",
+      "description": "Sign in and out with Microsoft and Google accounts; Budlark name on every sign-in screen; account badge shows the user's name, never 'Unknown'",
+      "ownerItems": [
+        1,
+        25
+      ],
+      "ui": true,
+      "regression": true
+    },
+    {
+      "id": "FR-NO-DEBUG-TEXT",
+      "flow": "All screens",
+      "description": "No debug, cache, 'Unknown', raw exception or implementation text on any screen in light or dark mode",
+      "ownerItems": [
+        1,
+        14,
+        18
+      ],
+      "ui": true,
+      "regression": true
+    },
+    {
+      "id": "FR-MAIN-SIMPLE",
+      "flow": "Main screen",
+      "description": "Main screen shows only the garden and primary actions; device and garden details live in Settings",
+      "ownerItems": [
+        2
+      ],
+      "ui": true,
+      "regression": false
+    },
+    {
+      "id": "FR-PLANT",
+      "flow": "Plant a tiny step",
+      "description": "Plant flow completes with a suggested and with a custom typed anchor and behavior; custom entry is visible without hunting",
+      "ownerItems": [
+        3,
+        5
+      ],
+      "ui": true,
+      "regression": false
+    },
+    {
+      "id": "FR-CELEBRATION",
+      "flow": "Celebration",
+      "description": "Celebration practice is recommended, optional, and explains why it helps",
+      "ownerItems": [
+        4
+      ],
+      "ui": true,
+      "regression": false
+    },
+    {
+      "id": "FR-SEED-CARD",
+      "flow": "Seed card",
+      "description": "Did it / Did it more / Not today are aligned, clearly buttons, and record a check-in; secondary actions are in the overflow menu",
+      "ownerItems": [
+        6
+      ],
+      "ui": true,
+      "regression": true
+    },
+    {
+      "id": "FR-REFLECTION",
+      "flow": "Weekly reflection",
+      "description": "Weekly reflection and other secondary actions open from the overflow menu and save",
+      "ownerItems": [
+        6
+      ],
+      "ui": true,
+      "regression": false
+    },
+    {
+      "id": "FR-INVITE-COPY",
+      "flow": "Invite",
+      "description": "Copy link creates a working invite link on the installed build",
+      "ownerItems": [
+        7
+      ],
+      "ui": true,
+      "regression": true
+    },
+    {
+      "id": "FR-INVITE-EMAIL",
+      "flow": "Invite",
+      "description": "Email invite opens a draft containing the invite link and the chosen recipe card",
+      "ownerItems": [
+        7,
+        9
+      ],
+      "ui": true,
+      "regression": true
+    },
+    {
+      "id": "FR-INVITE-QR",
+      "flow": "Invite",
+      "description": "Show QR renders a scannable QR code for the invite",
+      "ownerItems": [
+        7,
+        9
+      ],
+      "ui": true,
+      "regression": true
+    },
+    {
+      "id": "FR-INVITE-SHARE",
+      "flow": "Invite",
+      "description": "Windows Share opens the share sheet with the invite and the chosen recipe card",
+      "ownerItems": [
+        7,
+        9
+      ],
+      "ui": true,
+      "regression": true
+    },
+    {
+      "id": "FR-RECIPE-CARD",
+      "flow": "Share a recipe card",
+      "description": "Recipe picker shows real cards matching the main-screen seed card and shares the chosen card with no extra category step",
+      "ownerItems": [
+        8,
+        9
+      ],
+      "ui": true,
+      "regression": false
+    },
+    {
+      "id": "FR-ANALYTICS-CONSENT",
+      "flow": "Privacy",
+      "description": "Analytics consent follows the expert-approved design; nothing is collected without consent where law requires it",
+      "ownerItems": [
+        10,
+        21
+      ],
+      "ui": true,
+      "regression": false
+    },
+    {
+      "id": "FR-PASTE",
+      "flow": "Text entry",
+      "description": "Ctrl+V paste works in Send Feedback and every other text field",
+      "ownerItems": [
+        11
+      ],
+      "ui": true,
+      "regression": true
+    },
+    {
+      "id": "FR-FEEDBACK",
+      "flow": "Send feedback",
+      "description": "Feedback sends in one step with a star rating and no type choice; the primary action is Send; no technical copy or My Feedback list; the team receives it",
+      "ownerItems": [
+        12,
+        13,
+        14,
+        15
+      ],
+      "ui": true,
+      "regression": false
+    },
+    {
+      "id": "FR-SETTINGS",
+      "flow": "Settings",
+      "description": "Settings shows 4-5 items with 2-3 word labels and info tips, with no long scroll",
+      "ownerItems": [
+        17,
+        18,
+        22
+      ],
+      "ui": true,
+      "regression": false
+    },
+    {
+      "id": "FR-DEFAULTS",
+      "flow": "Settings",
+      "description": "After a fresh install, reminders and launch at Windows sign-in are ON by default",
+      "ownerItems": [
+        19,
+        20,
+        21
+      ],
+      "ui": true,
+      "regression": false
+    },
+    {
+      "id": "FR-REMINDER-TOGGLE",
+      "flow": "Settings",
+      "description": "The Windows reminders toggle turns on and off, persists across restart, and a reminder is delivered",
+      "ownerItems": [
+        23
+      ],
+      "ui": true,
+      "regression": true
+    },
+    {
+      "id": "FR-BRAND",
+      "flow": "Brand",
+      "description": "The brand-marketing approved theme, icon, lark motif and names appear on every customer-facing surface",
+      "ownerItems": [
+        24,
+        27
+      ],
+      "ui": true,
+      "regression": false
+    },
+    {
+      "id": "FR-UNINSTALL",
+      "flow": "Lifecycle",
+      "description": "Uninstall leaves no app residue; reinstall and sign-in restore the account",
+      "ownerItems": [],
+      "ui": false,
+      "regression": false
+    }
+  ]
+}
