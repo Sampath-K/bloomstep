@@ -56,7 +56,7 @@ void main() {
       expect(
         tester
             .getSemantics(find.byType(SelectableText))
-            .hasFlag(SemanticsFlag.liveRegion),
+            .flagsCollection.isLiveRegion,
         isTrue,
       );
       expect(expirations, 1);

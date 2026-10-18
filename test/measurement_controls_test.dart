@@ -128,7 +128,7 @@ void main() {
     expect(find.text(failure), findsOneWidget);
     expect(find.textContaining('Receipt action failed:'), findsNothing);
     expect(
-      tester.getSemantics(find.text(failure)).hasFlag(SemanticsFlag.liveRegion),
+      tester.getSemantics(find.text(failure)).flagsCollection.isLiveRegion,
       isTrue,
     );
     expect((await tester.runAsync(store.export))!['events'], isEmpty);
