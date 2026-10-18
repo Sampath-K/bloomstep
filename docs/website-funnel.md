@@ -7,10 +7,23 @@ older categories-only/no-stored-campaign/transient-dedup description below.
 First/last touch still means one consented page epoch, never unique visitors or
 automatic account linkage.
 
-The customer site explains Bloomstep without presenting operator tooling as a
+The customer site explains Budlark without presenting operator tooling as a
 product feature. `/releases/` preserves the release evidence and checksums;
 `/console.html` is a separate noindex operator surface. Downloads remain ordinary
 links and work without JavaScript, analytics, authentication, or the API.
+
+Website branding is ported from the approved Budlark source at
+`d8f450ba8f80ba273606fb314b4ff49ed52902ad`, including the wordmark and social
+card at their existing asset paths. This is website-only: app, installer,
+infrastructure, authentication, canonical-origin configuration and workflows
+are unchanged. Historical screenshots and their provenance are retained;
+the sample garden is explicitly labeled as a pre-rename Bloomstep capture.
+
+Both customer pages state that **Budlark NEXT is not yet available**, with no
+NEXT download link. The existing `0.1.0-preview.14` files are labeled as legacy
+Bloomstep, unsigned and designated-owner-test-only. Their published URLs,
+filenames, sizes and checksums remain unchanged. Website publication does not
+establish installer safety, signing, successful launch or general availability.
 
 ## Behaviour and privacy contract
 

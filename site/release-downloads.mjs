@@ -24,7 +24,7 @@ export function renderDownloads(html, release) {
   const secondary = `<details><summary>Other files (owner testing only)</summary>
         <p class="small">The secondary x64 and ARM64 installers are for troubleshooting by designated testers. Windows needs a 64-bit version; 32-bit Windows is not supported.</p>
         ${exactSize}
-        <p><a data-download="x64" href="${release.x64.url}">Bloomstep x64</a> · <a data-download="arm64" href="${release.arm64.url}">Bloomstep ARM64</a></p>
+        <p><a data-download="x64" href="${release.x64.url}">Legacy Bloomstep x64</a> · <a data-download="arm64" href="${release.arm64.url}">Legacy Bloomstep ARM64</a></p>
       </details>`;
   const size = release.universal.bytes === undefined ? '' :
     `\n      <p class="small">Download size: ${(release.universal.bytes / 1e6).toFixed(2)} MB.</p>`;

@@ -4,7 +4,7 @@ import { existsSync, readFileSync } from 'node:fs';
 
 const read = path => readFileSync(new URL(`../${path}`, import.meta.url), 'utf8');
 const readRepositoryFile = path => readFileSync(new URL(`../../${path}`, import.meta.url), 'utf8');
-const limited = 'Bloomstep is an early, unsigned Windows app for trying tiny, routine-linked habits, check-ins and a personal growing garden. This version is for designated owner testing only; it has not been verified for general use. Sign-in is required, and some features and sign-in options are still being refined. It is not a complete release or medical care. There is no Microsoft Store version yet. Private feedback is available in the app after sign-in.';
+const limited = 'The legacy Bloomstep preview is an early, unsigned Windows app for trying tiny, routine-linked habits, check-ins and a personal growing garden. This version is for designated owner testing only; it has not been verified for general use. Sign-in is required, and some features and sign-in options are still being refined. It is not a complete release or medical care. There is no Microsoft Store version yet. Private feedback is available in the app after sign-in.';
 
 test('hero sells the small first step without front-loading installer warning language', () => {
   const page = read('index.html');
@@ -16,7 +16,7 @@ test('hero sells the small first step without front-loading installer warning la
   assert.match(hero, /Early Windows preview · Owner testing only · Sign-in required/);
   assert.doesNotMatch(hero, /unsigned|not the full MVP|engineering preview|Windows protected your PC|SmartScreen/i);
   assert.match(page, /src="\/assets\/sample-garden\.png"[^>]+alt="[^"]+"/);
-  assert.match(page, /Isolated synthetic sample garden; example app content, not customer data/);
+  assert.match(page, /Isolated synthetic sample garden from before the Budlark rename; example app content, not customer data/);
   assert.equal(readFileSync(new URL('../assets/sample-garden.png', import.meta.url))
     .subarray(0, 8).equals(Buffer.from('89504e470d0a1a0a', 'hex')), true);
   assert.match(page, /id="download-footer-cta"/);
@@ -25,7 +25,7 @@ test('hero sells the small first step without front-loading installer warning la
 test('unsigned installer wording is neutral, factual, safely bounded and linked beside downloads', () => {
   const page = read('index.html');
   assert.match(page, /href="#windows-install-help"[^>]*>Windows installation help before opening the installer/);
-  assert.match(page, /<details id="windows-install-help"><summary>Why might Windows ask before opening Bloomstep\?/);
+  assert.match(page, /<details id="windows-install-help"><summary>Why might Windows ask before opening the legacy Bloomstep preview\?/);
   assert.doesNotMatch(page, /<details id="windows-install-help"[^>]*\bopen/);
   assert.match(page, /This preview installer is not digitally signed, so Windows may show an unknown-publisher\/reputation prompt/);
   assert.match(page, /A warning alone doesn't establish malware, and we cannot guarantee safety/);
@@ -124,7 +124,7 @@ test('download help is static, browser-specific, conditional and honest about il
     assert.ok(readFileSync(new URL(`../assets/${name}-downloads.png`, import.meta.url))
       .subarray(0, 8).equals(Buffer.from('89504e470d0a1a0a', 'hex')));
   }
-  assert.match(page, /benign sample text file, not a Bloomstep installer/);
+  assert.match(page, /benign sample text file, not a Budlark installer/);
   assert.equal((page.match(/Example download view; installer\/security warnings may differ/g) ?? []).length, 1);
   const provenance = JSON.parse(read('assets/download-capture-provenance.json'));
   assert.equal(provenance.sampleName, 'bloomstep-download-help-sample.txt');

@@ -42,15 +42,15 @@ test('stable Windows storage is installed before instance, invitations and crede
   assert.match(workflow, /Branding altered the synthetic upgrade preservation marker/);
 });
 
-test('site, operator popup and download labels are product-branded', () => {
+test('site and operator popup use Budlark while downloads retain legacy Bloomstep labels', () => {
   const site = read('site/index.html');
   assert.match(site, /Owner-test download \(designated testers only\)/);
-  assert.match(site, /Bloomstep ARM64/);
-  assert.match(site, /Bloomstep x64/);
+  assert.match(site, /Legacy Bloomstep ARM64/);
+  assert.match(site, /Legacy Bloomstep x64/);
   assert.doesNotMatch(site, /Sign in to Bloomstep operator console/);
-  assert.match(read('site/console.html'), /Sign in to Bloomstep (?:operator )?console/);
+  assert.match(read('site/console.html'), /Sign in to Budlark (?:operator )?console/);
   assert.match(site, /rel="icon"/);
-  assert.match(read('site/operator-callback.html'), /Completing Bloomstep operator sign-in/);
+  assert.match(read('site/operator-callback.html'), /Completing Budlark operator sign-in/);
 });
 
 test('customer release page makes the owner-test restriction clear and excludes operator evidence', () => {
