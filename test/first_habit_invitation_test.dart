@@ -62,6 +62,7 @@ Future<void> ready(
     'Sign out',
     'Couldn’t open your account garden',
     'Sign-in didn’t complete',
+    'Your account needs attention',
     'ST',
     'Viewing your device garden',
     'Return to account garden',
@@ -69,8 +70,6 @@ Future<void> ready(
     "Couldn't copy",
     'Clear saved sign-in',
     'Saved sign-in cleared',
-    'offline session ended',
-    'Couldn’t finish sign-out',
   ].any(finder.toString().contains);
   for (var i = 0; i < 600; i++) {
     await tester.runAsync(
@@ -101,10 +100,6 @@ Future<void> ready(
       }
     }
     final profile = find.byType(ProfileSection);
-    final profileBusy =
-        needsProfile &&
-        profile.evaluate().isNotEmpty &&
-        tester.widget<ProfileSection>(profile).busy;
     if (finder.evaluate().isNotEmpty) {
       missingBeforeSettings = 0;
       if (needsProfile) {
@@ -117,7 +112,7 @@ Future<void> ready(
     final settings = find.byTooltip('Settings and privacy');
     if (needsProfile &&
         !settingsPending &&
-        missingBeforeSettings >= 50 &&
+        missingBeforeSettings >= 5 &&
         find.byType(AlertDialog).evaluate().isEmpty &&
         settings.evaluate().isNotEmpty) {
       settingsPending = true;
@@ -134,25 +129,6 @@ Future<void> ready(
       await tester.ensureVisible(profileGroup);
       await settleUi();
       await tester.tap(profileGroup);
-      await settleUi();
-    }
-    final details = find.descendant(
-      of: profile,
-      matching: find.ancestor(
-        of: find.text('Details'),
-        matching: find.byType(ListTile),
-      ),
-    );
-    if (needsProfile &&
-        details.evaluate().isNotEmpty &&
-        !profileBusy &&
-        find
-            .descendant(of: profile, matching: find.byType(SelectableText))
-            .evaluate()
-            .isEmpty) {
-      await tester.ensureVisible(details);
-      await settleUi();
-      await tester.tap(details);
       await settleUi();
     }
   }

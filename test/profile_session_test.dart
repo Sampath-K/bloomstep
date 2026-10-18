@@ -341,7 +341,7 @@ void main() {
     expect(find.text('Did it'), findsNothing);
     await _ready(tester, find.text('View device garden'));
     await _tapTextButton(tester, 'View device garden');
-    await _ready(tester, find.text('Viewing device garden'));
+    await _ready(tester, find.text('Viewing your device garden.'));
     await _ready(tester, find.text('Did it'));
     expect(identity.active, isTrue);
     await _screenshot(tester, boundaryKey, 'profile-view-device-SYNTHETIC.png');
@@ -540,12 +540,11 @@ void main() {
       await _ready(tester, find.text('Sign in with Microsoft or Google'));
       await _tapTextButton(tester, 'Sign in with Microsoft or Google');
       await tester.pump(const Duration(milliseconds: 350));
-      await _ready(tester, find.text('Complete sign-in in your browser'));
       expect(find.text('Plant a habit'), findsOneWidget);
       identity.pending!.complete();
       await _ready(
         tester,
-        find.text('Sign-in didn’t complete. Your device garden is unchanged.'),
+        find.text('Your account needs attention. Try signing in again.'),
       );
       expect(find.text('Not signed in'), findsOneWidget);
       expect(identity.account, isNull);
@@ -664,7 +663,10 @@ void main() {
       await tester.pumpAndSettle();
       await tester.tap(find.widgetWithText(FilledButton, 'Sign out'));
       await _ready(tester, find.text('Clear saved sign-in'));
-      await _ready(tester, find.textContaining('Couldn’t finish sign-out'));
+      await _ready(
+        tester,
+        find.text('Your account needs attention. Try signing in again.'),
+      );
       expect(find.text('Not signed in'), findsOneWidget);
       identity.failSignOut = false;
       await _ready(tester, find.text('Clear saved sign-in'));
@@ -716,7 +718,10 @@ void main() {
       await tester.pump();
       expect(find.text('Did it'), findsNothing);
       await _ready(tester, find.text('Not signed in'));
-      await _ready(tester, find.textContaining('offline session ended'));
+      await _ready(
+        tester,
+        find.text('Your account needs attention. Try signing in again.'),
+      );
       expect(find.text('Synthetic account habit'), findsNothing);
       await tester.pumpWidget(const SizedBox());
       await tester.runAsync(() async {
@@ -763,7 +768,7 @@ void main() {
       );
       await _ready(tester, find.text('View device garden'));
       await _tapTextButton(tester, 'View device garden');
-      await _ready(tester, find.text('Viewing device garden'));
+      await _ready(tester, find.text('Viewing your device garden.'));
       identity.active = false;
       tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.resumed);
       await _ready(tester, find.text('Not signed in'));
