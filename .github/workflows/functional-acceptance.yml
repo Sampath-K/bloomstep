@@ -100,10 +100,11 @@ jobs:
         shell: pwsh
         run: |
           $u = Join-Path $env:INSTALL_DIR 'unins000.exe'
-          if (Test-Path -LiteralPath $u) {
+          $message = if (Test-Path -LiteralPath $u) {
             $p = Start-Process -FilePath $u -ArgumentList '/VERYSILENT /SUPPRESSMSGBOXES /NORESTART' -Wait -PassThru
             "uninstalled $u exit $($p.ExitCode)"
-          } else { "no uninstaller at $u (harness already cleaned up or install did not occur)" } | Tee-Object (Join-Path $env:OUT 'workflow-uninstall.txt')
+          } else { "no uninstaller at $u (harness already cleaned up or install did not occur)" }
+          $message | Tee-Object -FilePath (Join-Path $env:OUT 'workflow-uninstall.txt')
       - name: Preserve evidence
         if: always() && env.OUT != ''
         uses: actions/upload-artifact@v4
