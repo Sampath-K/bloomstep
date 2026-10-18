@@ -50,6 +50,7 @@ Future<void> ready(
 }) async {
   var settingsPending = false;
   var dialogWasOpen = false;
+  Future<void> settleUi() => tester.pump(const Duration(milliseconds: 350));
   final needsProfile = [
     'Sign in with Microsoft or Google',
     'Complete sign-in in your browser',
@@ -87,9 +88,9 @@ Future<void> ready(
         matching: find.text('Cancel'),
       );
       await tester.ensureVisible(cancel);
-      await tester.pumpAndSettle();
+      await settleUi();
       await tester.tap(cancel);
-      await tester.pumpAndSettle();
+      await settleUi();
     }
     final profile = find.byType(ProfileSection);
     if (needsProfile && profile.evaluate().isNotEmpty) {
@@ -100,20 +101,20 @@ Future<void> ready(
           : tester.widget<HabitHome>(home).testIdentity;
       if (identity != null && section.signedIn != identity.hasValidSession) {
         await tester.tap(find.text('Done'));
-        await tester.pumpAndSettle();
+        await settleUi();
         continue;
       }
       if (section.busy &&
           !finder.toString().contains('Complete sign-in in your browser')) {
         await tester.tap(find.text('Done'));
-        await tester.pumpAndSettle();
+        await settleUi();
         continue;
       }
     }
     if (finder.evaluate().isNotEmpty) {
       if (needsProfile) {
         await tester.ensureVisible(finder);
-        await tester.pumpAndSettle();
+        await settleUi();
       }
       return;
     }
@@ -129,16 +130,16 @@ Future<void> ready(
         settings.evaluate().isNotEmpty) {
       settingsPending = true;
       await tester.tap(settings);
-      await tester.pumpAndSettle();
+      await settleUi();
     }
     final profileGroup = find.text('Profile & account');
     if (needsProfile &&
         profile.evaluate().isEmpty &&
         profileGroup.evaluate().isNotEmpty) {
       await tester.ensureVisible(profileGroup);
-      await tester.pumpAndSettle();
+      await settleUi();
       await tester.tap(profileGroup);
-      await tester.pumpAndSettle();
+      await settleUi();
     }
     final details = find.descendant(
       of: profile,
@@ -155,9 +156,9 @@ Future<void> ready(
         matching: find.text('Details'),
       );
       await tester.ensureVisible(title);
-      await tester.pumpAndSettle();
+      await settleUi();
       await tester.tap(title);
-      await tester.pumpAndSettle();
+      await settleUi();
     }
   }
   final profiles = find
