@@ -42,7 +42,23 @@ AppName=Budlark
 #endif
 AppVersion={#AppVersion}
 AppPublisher=Budlark contributors
-AppPublisherURL=https://github.com/Sampath-K/bloomstep
+AppPublisherURL=https://budlark.com/
+AppSupportURL=https://github.com/Sampath-K/bloomstep/issues
+AppUpdatesURL=https://budlark.com/
+#if Pos("-", AppVersion) > 0
+  #define NumericAppVersion Copy(AppVersion, 1, Pos("-", AppVersion) - 1)
+#else
+  #define NumericAppVersion AppVersion
+#endif
+VersionInfoVersion={#NumericAppVersion}
+VersionInfoTextVersion={#AppVersion}
+VersionInfoCompany=Budlark contributors
+VersionInfoDescription=Budlark Setup
+VersionInfoCopyright=Copyright (C) Budlark contributors
+#ifndef OnboardingJourneyFixture
+VersionInfoProductName=Budlark
+#endif
+VersionInfoProductTextVersion={#AppVersion}
 DefaultDirName={localappdata}\Programs\Bloomstep
 DefaultGroupName=Bloomstep
 PrivilegesRequired=lowest
