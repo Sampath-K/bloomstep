@@ -66,7 +66,10 @@ automatic page advances/clicks, hidden/minimized windows, artificial holds or
 custom message pumps. Original Anchor/Action/Celebrate artwork remains static.
 The source continues per-user `PrivilegesRequired=lowest`, offline native
 architecture routing and absent/zero installer observations. Checked launch is
-withheld for silent, elevated, suppressed or non-interactive contexts.
+withheld for silent or suppressed invocation using Inno's own state/arguments.
+Setup performs no custom window-station inspection or autorun cleanup.
+The native `runasoriginaluser` flag remains; no independent token/desktop
+runtime guarantee is inferred from source.
 
 This is a legitimate design change, **not an established Defender remediation**.
 The possible link between zero-click behavior and detection remains an untested

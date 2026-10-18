@@ -6,6 +6,16 @@ This ledger is updated with verified outcomes, not inferred from source code.
 
 ## Current installer launch contract
 
+**Owner-reported security hold:** candidate source `9085df1`, installer SHA-256
+`e1cfd59719ee5e9a14703159c6d9c4bea4532a5555936304094b62290250bce3`,
+was stopped by Defender with `Behavior:Win32/DefenseEvasion.A!ml` in the Inno
+setup runtime. Do not restore or rerun these bytes or bypass protection.
+The follow-up removes custom window-station inspection and unused setup
+autorun cleanup. The detection's cause is not established; these source changes
+are not proof of remediation. A replacement requires fresh exact-byte evidence
+and owner feedback. Authenticode signing of both setup and `bloomstep.exe`
+requires owner provisioning; unsigned builds do not establish durable trust.
+
 Hosted CI remains responsible for API tests, Windows x64/ARM64 build and test,
 installer compilation and correctness contracts, universal-package byte/hash
 verification, and the existing hosted website/security checks. The self-hosted

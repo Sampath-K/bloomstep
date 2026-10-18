@@ -104,7 +104,7 @@ test('installer UI changes but upgrade identity, paths, startup and protocol rem
   assert.match(setup, /^DefaultGroupName=Bloomstep$/m);
   assert.match(setup, /^OutputBaseFilename=Bloomstep-/m);
   assert.match(setup, /Name: "\{group\}\\Bloomstep"; Filename: "\{app\}\\bloomstep\.exe"/);
-  assert.match(setup, /ValueName: "Bloomstep"; Flags: uninsdeletevalue/);
+  assert.doesNotMatch(setup, /CurrentVersion\\Run|\{userstartup\}/);
   assert.match(setup, /ValueData: "URL:Budlark invitation"/);
   assert.match(read('lib/services/desktop_reminders.dart'), /appName: 'Budlark',\s*appUserModelId: 'Bloomstep\.Garden'/);
   assert.match(read('lib/services/desktop_reminders.dart'), /launchAtStartup\.setup\(\s*appName: 'Bloomstep'/);

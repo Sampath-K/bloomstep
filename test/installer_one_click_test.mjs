@@ -38,9 +38,11 @@ test('launch is a default-checked toggleable native Finish choice with original-
   assert.match(run, /Check: CanLaunchBloomstep/);
   const gate = /function CanLaunchBloomstep\(\): Boolean;([\s\S]*?)\nend;/.exec(setup)?.[1];
   assert.ok(gate);
-  for (const guard of ['not WizardSilent', 'not IsAdmin', 'InteractiveDesktop', 'SUPPRESSMSGBOXES']) {
+  for (const guard of ['InstallationSucceeded', 'not WizardSilent', 'SUPPRESSMSGBOXES', 'NOCANCEL']) {
     assert.ok(gate.includes(guard), guard);
   }
+  assert.doesNotMatch(setup, /GetProcessWindowStation|GetUserObjectInformation|InteractiveDesktop|TWindowStationFlags|user32\.dll|\bIsAdmin\b/);
+  assert.doesNotMatch(setup, /CurrentVersion\\Run|\{userstartup\}/);
   assert.doesNotMatch(setup, /PrivilegesRequiredOverridesAllowed|PrivilegesRequired=admin|ShellExec\(|DownloadTemporaryFile/);
 });
 

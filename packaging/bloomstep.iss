@@ -102,12 +102,10 @@ Name: "{group}\Bloomstep"; Filename: "{app}\bloomstep.exe"
 Name: "{group}\Uninstall Bloomstep"; Filename: "{uninstallexe}"
 
 [UninstallDelete]
-Type: files; Name: "{userstartup}\Bloomstep.lnk"
 Type: files; Name: "{app}\measurement-owner.txt"
 
 [Registry]
 #ifndef OnboardingJourneyFixture
-Root: HKCU; Subkey: "Software\Microsoft\Windows\CurrentVersion\Run"; ValueName: "Bloomstep"; Flags: uninsdeletevalue dontcreatekey
 Root: HKCU; Subkey: "Software\Classes\bloomstep"; ValueType: string; ValueData: "URL:Budlark invitation"
 Root: HKCU; Subkey: "Software\Classes\bloomstep"; ValueType: string; ValueName: "URL Protocol"; ValueData: ""
 Root: HKCU; Subkey: "Software\Classes\bloomstep\DefaultIcon"; ValueType: string; ValueData: "{app}\bloomstep.exe,0"
@@ -144,19 +142,8 @@ begin
 end;
 #endif
 
-type
-  TWindowStationFlags = record
-    Inherit, Reserved, Flags: LongWord;
-  end;
-
-function GetProcessWindowStation(): THandle;
-  external 'GetProcessWindowStation@user32.dll stdcall';
-function GetUserObjectInformation(Handle: THandle; Index: Integer;
-  var Flags: TWindowStationFlags; Size: LongWord; var Needed: LongWord): Boolean;
-  external 'GetUserObjectInformationW@user32.dll stdcall';
-
 var
-  InstallationSucceeded, InteractiveDesktop: Boolean;
+  InstallationSucceeded: Boolean;
 
 #include "install-progress.iss"
 
@@ -164,7 +151,7 @@ function CanLaunchBloomstep(): Boolean;
 var
   I: Integer;
 begin
-  Result := InstallationSucceeded and not WizardSilent and not IsAdmin and InteractiveDesktop;
+  Result := InstallationSucceeded and not WizardSilent;
   for I := 1 to ParamCount do
     if (CompareText(ParamStr(I), '/SUPPRESSMSGBOXES') = 0) or
        (CompareText(ParamStr(I), '/NOCANCEL') = 0) then Result := False;
@@ -181,13 +168,7 @@ begin
 end;
 
 procedure InitializeWizard();
-var
-  StationFlags: TWindowStationFlags;
-  Needed: LongWord;
 begin
-  if not GetUserObjectInformation(GetProcessWindowStation(), 1, StationFlags, 12, Needed) then
-    RaiseException('Windows desktop state could not be verified. Cancel setup and open it normally from your Windows account.');
-  InteractiveDesktop := (StationFlags.Flags and 1) <> 0;
   InitializeInstallMotion();
 end;
 
