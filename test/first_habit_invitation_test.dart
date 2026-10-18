@@ -48,9 +48,10 @@ Future<void> ready(
   Finder finder, {
   bool dismissRecipeBuilder = false,
 }) async {
-  var settingsRequested = find.byType(AlertDialog).evaluate().isNotEmpty;
+  var settingsPending = false;
   final needsProfile = [
     'Sign in with Microsoft or Google',
+    'Complete sign-in in your browser',
     'Not signed in',
     'Synthetic Gardener',
     'Copy device habits',
@@ -73,6 +74,9 @@ Future<void> ready(
       () => Future<void>.delayed(const Duration(milliseconds: 20)),
     );
     await tester.pump(const Duration(milliseconds: 350));
+    if (find.byType(AlertDialog).evaluate().isNotEmpty) {
+      settingsPending = false;
+    }
     if (dismissRecipeBuilder &&
         find.byType(RecipeBuilder).evaluate().isNotEmpty) {
       await tester.tap(find.text('Cancel'));
@@ -85,11 +89,16 @@ Future<void> ready(
           !finder.toString().contains('Complete sign-in in your browser')) {
         await tester.tap(find.text('Done'));
         await tester.pump(const Duration(milliseconds: 350));
-        settingsRequested = false;
         continue;
       }
     }
-    if (finder.evaluate().isNotEmpty) return;
+    if (finder.evaluate().isNotEmpty) {
+      if (needsProfile) {
+        await tester.ensureVisible(finder);
+        await tester.pump(const Duration(milliseconds: 350));
+      }
+      return;
+    }
     final settings = find.byWidgetPredicate(
       (widget) =>
           widget is IconButton &&
@@ -97,10 +106,10 @@ Future<void> ready(
           widget.onPressed != null,
     );
     if (needsProfile &&
-        !settingsRequested &&
+        !settingsPending &&
         find.byType(AlertDialog).evaluate().isEmpty &&
         settings.evaluate().isNotEmpty) {
-      settingsRequested = true;
+      settingsPending = true;
       await tester.tap(settings);
       await tester.pump(const Duration(milliseconds: 350));
     }
@@ -109,6 +118,7 @@ Future<void> ready(
         profile.evaluate().isEmpty &&
         profileGroup.evaluate().isNotEmpty) {
       await tester.ensureVisible(profileGroup);
+      await tester.pump(const Duration(milliseconds: 350));
       await tester.tap(profileGroup);
       await tester.pump(const Duration(milliseconds: 350));
     }
@@ -122,8 +132,13 @@ Future<void> ready(
             .descendant(of: profile, matching: find.byType(SelectableText))
             .evaluate()
             .isEmpty) {
-      await tester.ensureVisible(details);
-      await tester.tap(details);
+      final title = find.descendant(
+        of: details,
+        matching: find.text('Details'),
+      );
+      await tester.ensureVisible(title);
+      await tester.pump(const Duration(milliseconds: 350));
+      await tester.tap(title);
       await tester.pump(const Duration(milliseconds: 350));
     }
   }
@@ -530,6 +545,8 @@ void main() {
       expect(identity.hasValidSession, isTrue);
       expect(find.byType(RecipeBuilder), findsNothing);
       expect(find.text('Did it'), findsNothing);
+      await tester.tap(find.text('Done'));
+      await tester.pumpAndSettle();
       await tester.tap(find.text('Plant a habit'));
       await tester.pumpAndSettle();
       expect(find.byType(RecipeBuilder), findsOneWidget);

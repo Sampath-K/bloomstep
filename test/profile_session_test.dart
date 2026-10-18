@@ -546,6 +546,8 @@ void main() {
       );
       expect(find.text('Not signed in'), findsOneWidget);
       expect(identity.account, isNull);
+      await tester.tap(find.text('Done'));
+      await tester.pumpAndSettle();
       await tester.tap(find.text('Plant a habit'));
       await tester.pumpAndSettle();
       expect(find.text('pour my morning drink'), findsOneWidget);
@@ -711,7 +713,7 @@ void main() {
       await tester.pump();
       expect(find.text('Did it'), findsNothing);
       await _ready(tester, find.text('Not signed in'));
-      expect(find.textContaining('offline session ended'), findsOneWidget);
+      await _ready(tester, find.textContaining('offline session ended'));
       expect(find.text('Synthetic account habit'), findsNothing);
       await tester.pumpWidget(const SizedBox());
       await tester.runAsync(() async {

@@ -379,7 +379,7 @@ void main() {
             {
               'habitId': h.id,
               'day': localDate(DateTime.now()),
-              'notificationId': 'synthetic-notification',
+              'notificationId': '12345678-1234-4234-8234-123456789abc',
               'handled': <String>[],
             },
           ]),
@@ -405,7 +405,7 @@ void main() {
             'account': store.account,
             'habitId': h.id,
             'day': localDate(DateTime.now()),
-            'notificationId': 'synthetic-notification',
+            'notificationId': '12345678-1234-4234-8234-123456789abc',
             'action': 'did',
           }),
         ),
