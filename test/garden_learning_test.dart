@@ -547,6 +547,8 @@ void main() {
       });
       await tester.tap(find.byTooltip('Settings and privacy'));
       await settleDatabase(tester);
+      await tester.tap(find.text('App & support'));
+      await tester.pumpAndSettle();
       await tester.tap(find.text('Reduced motion'));
       await settleDatabase(tester);
       expect(
@@ -589,6 +591,8 @@ void main() {
         expect(updates.checks, 0);
         await tester.tap(find.byTooltip('Settings and privacy'));
         await settleDatabase(tester);
+        await tester.tap(find.text('App & support'));
+        await tester.pumpAndSettle();
         await tester.ensureVisible(find.text('Check for updates'));
         await tester.tap(find.text('Check for updates'));
         await tester.pumpAndSettle();
@@ -602,8 +606,12 @@ void main() {
           expect(find.text('Open release page'), findsNothing);
         } else if (scenario == 'error') {
           expect(
-            find.textContaining('Release service unavailable'),
+            find.text('Couldn’t check for updates. Please try again.'),
             findsOneWidget,
+          );
+          expect(
+            find.textContaining('Release service unavailable'),
+            findsNothing,
           );
           expect(find.text('Open release page'), findsNothing);
         } else {

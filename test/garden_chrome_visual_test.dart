@@ -217,11 +217,11 @@ void main() {
       if (variant.populated &&
           (variant.scale >= 2 || variant.size.height <= 480)) {
         expect(
-          find.widgetWithText(FilledButton, 'Did it').hitTestable(),
+          find.widgetWithText(OutlinedButton, 'Did it').hitTestable(),
           findsOneWidget,
           reason: 'The primary practice action must be hit-testable without scrolling.',
         );
-        final practice = find.widgetWithText(FilledButton, 'Did it');
+        final practice = find.widgetWithText(OutlinedButton, 'Did it');
         final practiceRect = tester.getRect(practice);
         expect(
           practiceRect.left,
@@ -254,17 +254,10 @@ void main() {
         );
         if (!variant.device) {
           expect(find.byTooltip('Settings and privacy'), findsOneWidget);
-          expect(
-            find.text('Separate gardens; switch any time.'),
-            findsOneWidget,
-          );
-          final details = find.byKey(const ValueKey('profile-details'));
+          expect(find.text('Separate gardens; switch any time.'), findsNothing);
+          final details = find.byTooltip('Settings and privacy');
           expect(details, findsOneWidget);
-          expect(
-            tester.getTopLeft(details).dy,
-            greaterThan(tester.getTopLeft(practice).dy),
-            reason: 'Profile details follow the primary practice action.',
-          );
+          expect(find.byKey(const ValueKey('profile-details')), findsNothing);
           Future<bool> isFocusedWithin(Finder finder) async {
             await tester.pump();
             final focused = FocusManager.instance.primaryFocus?.context;
@@ -298,11 +291,11 @@ void main() {
           expect(
             await isFocusedWithin(details),
             isTrue,
-            reason: 'Keyboard focus reaches profile details after practice.',
+            reason: 'Keyboard focus reaches Settings for profile details.',
           );
         }
       } else if (variant.populated) {
-        final practice = find.widgetWithText(FilledButton, 'Did it');
+        final practice = find.widgetWithText(OutlinedButton, 'Did it');
         await tester.ensureVisible(practice);
         await tester.pumpAndSettle();
         expect(

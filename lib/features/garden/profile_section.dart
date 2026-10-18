@@ -37,9 +37,37 @@ class ProfileSection extends StatelessWidget {
   final bool compactSummary;
   final bool detailsOnly;
 
+  Future<void> _runProfileAction(
+    BuildContext context,
+    Future<void> Function() action,
+  ) async {
+    if (ModalRoute.of(context) is PopupRoute) {
+      Navigator.of(context).pop();
+    }
+    await action();
+  }
+
+  String? get _displayName {
+    final name = profile?.displayName?.trim();
+    return name == null || name.isEmpty || name.toLowerCase() == 'unknown'
+        ? null
+        : name;
+  }
+
+  Widget _accountError() => Column(
+    crossAxisAlignment: CrossAxisAlignment.start,
+    children: [
+      const Text('Your account needs attention. Try signing in again.'),
+      ExpansionTile(
+        title: const Text('Details'),
+        children: [Semantics(liveRegion: true, child: SelectableText(error!))],
+      ),
+    ],
+  );
+
   @override
   Widget build(BuildContext context) {
-    if (detailsOnly) return _detailsOnly();
+    if (detailsOnly) return _detailsOnly(context);
     if (compactSummary) return _compactSummary(context);
     return Card(
       child: Padding(
@@ -52,7 +80,7 @@ class ProfileSection extends StatelessWidget {
   }
 
   Widget _compactSummary(BuildContext context) {
-    final name = profile?.displayName;
+    final name = _displayName;
     final initials = _initials(name);
     return Card(
       child: Padding(
@@ -104,45 +132,50 @@ class ProfileSection extends StatelessWidget {
     );
   }
 
-  Widget _detailsOnly() => Card(
+  Widget _detailsOnly(BuildContext context) => Card(
     child: ExpansionTile(
       key: const ValueKey('profile-details'),
       title: const Text('Profile and garden details'),
       childrenPadding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
-      children: signedIn ? _signedInDetails() : _signedOutDetails(),
+      children: signedIn
+          ? _signedInDetails(context)
+          : _signedOutDetails(context),
     ),
   );
 
-  List<Widget> _signedInDetails() => [
+  List<Widget> _signedInDetails(BuildContext context) => [
     if (notice != null &&
         notice != 'Device garden stays separate; switch any time.')
       Semantics(liveRegion: true, child: Text(notice!)),
-    if (error != null)
-      Semantics(liveRegion: true, child: SelectableText(error!)),
+    if (error != null) _accountError(),
     if (onCopyDeviceGarden != null)
       TextButton(
-        onPressed: busy ? null : onCopyDeviceGarden,
+        onPressed: busy
+            ? null
+            : () => _runProfileAction(context, onCopyDeviceGarden!),
         child: const Text('Copy device habits to this account'),
       ),
     if (onSwitchGarden != null)
       TextButton(
-        onPressed: busy ? null : onSwitchGarden,
+        onPressed: busy
+            ? null
+            : () => _runProfileAction(context, onSwitchGarden!),
         child: const Text('View device garden'),
       ),
-    if (error != null)
-      Semantics(liveRegion: true, child: SelectableText(error!)),
     if (onClearSavedSignIn != null)
       TextButton(
-        onPressed: busy ? null : onClearSavedSignIn,
+        onPressed: busy
+            ? null
+            : () => _runProfileAction(context, onClearSavedSignIn!),
         child: const Text('Clear saved sign-in'),
       ),
     TextButton(
-      onPressed: busy ? null : onSignOut,
+      onPressed: busy ? null : () => _runProfileAction(context, onSignOut),
       child: Text(busy ? 'Updating profile...' : 'Sign out'),
     ),
   ];
 
-  List<Widget> _signedOutDetails() => [
+  List<Widget> _signedOutDetails(BuildContext context) => [
     if (!configured)
       const Text('Account sign-in is not configured in this build.'),
     if (configured && !returningToAccount)
@@ -150,7 +183,9 @@ class ProfileSection extends StatelessWidget {
         'Choose Microsoft personal account, Google or another enabled option in the system browser. Budlark never collects your password.',
       ),
     TextButton.icon(
-      onPressed: busy || (!configured && !returningToAccount) ? null : onSignIn,
+      onPressed: busy || (!configured && !returningToAccount)
+          ? null
+          : () => _runProfileAction(context, onSignIn),
       icon: const Icon(Icons.login),
       label: Text(
         busy
@@ -163,17 +198,18 @@ class ProfileSection extends StatelessWidget {
       ),
     ),
     if (notice != null) Text(notice!),
-    if (error != null)
-      Semantics(liveRegion: true, child: SelectableText(error!)),
+    if (error != null) _accountError(),
     if (onClearSavedSignIn != null)
       TextButton(
-        onPressed: busy ? null : onClearSavedSignIn,
+        onPressed: busy
+            ? null
+            : () => _runProfileAction(context, onClearSavedSignIn!),
         child: const Text('Clear saved sign-in'),
       ),
   ];
 
   Widget _signedInProfile(BuildContext context) {
-    final name = profile?.displayName;
+    final name = _displayName;
     final initials = _initials(name);
     final fallback = initials.isEmpty
         ? const Icon(Icons.person_outline)
@@ -226,7 +262,9 @@ class ProfileSection extends StatelessWidget {
             ),
             Flexible(
               child: TextButton.icon(
-                onPressed: busy ? null : onSignOut,
+                onPressed: busy
+                    ? null
+                    : () => _runProfileAction(context, onSignOut),
                 icon: const Icon(Icons.logout),
                 label: Text(busy ? 'Updating profile...' : 'Sign out'),
               ),
@@ -241,19 +279,24 @@ class ProfileSection extends StatelessWidget {
           Semantics(liveRegion: true, child: Text(notice!)),
         if (onCopyDeviceGarden != null)
           TextButton(
-            onPressed: busy ? null : onCopyDeviceGarden,
+            onPressed: busy
+                ? null
+                : () => _runProfileAction(context, onCopyDeviceGarden!),
             child: const Text('Copy device habits to this account'),
           ),
         if (onSwitchGarden != null)
           TextButton(
-            onPressed: busy ? null : onSwitchGarden,
+            onPressed: busy
+                ? null
+                : () => _runProfileAction(context, onSwitchGarden!),
             child: const Text('View device garden'),
           ),
-        if (error != null)
-          Semantics(liveRegion: true, child: SelectableText(error!)),
+        if (error != null) _accountError(),
         if (onClearSavedSignIn != null)
           TextButton(
-            onPressed: busy ? null : onClearSavedSignIn,
+            onPressed: busy
+                ? null
+                : () => _runProfileAction(context, onClearSavedSignIn!),
             child: const Text('Clear saved sign-in'),
           ),
       ],
@@ -277,7 +320,7 @@ class ProfileSection extends StatelessWidget {
           TextButton.icon(
             onPressed: busy || (!configured && !returningToAccount)
                 ? null
-                : onSignIn,
+                : () => _runProfileAction(context, onSignIn),
             icon: const Icon(Icons.login),
             label: Text(
               busy
@@ -308,11 +351,12 @@ class ProfileSection extends StatelessWidget {
           'Choose Microsoft personal account, Google or another enabled option in the system browser. Budlark never collects your password.',
         ),
       if (notice != null) Text(notice!),
-      if (error != null)
-        Semantics(liveRegion: true, child: SelectableText(error!)),
+      if (error != null) _accountError(),
       if (onClearSavedSignIn != null)
         TextButton(
-          onPressed: busy ? null : onClearSavedSignIn,
+          onPressed: busy
+              ? null
+              : () => _runProfileAction(context, onClearSavedSignIn!),
           child: const Text('Clear saved sign-in'),
         ),
     ],

@@ -67,6 +67,22 @@ class _SyntheticIdentity extends IdentityService {
 
 Future<void> _ready(WidgetTester tester, Finder finder) async {
   var expandedProfile = false;
+  final description = finder.toString();
+  final needsProfile = [
+    'ST',
+    'Not signed in',
+    'Sign in with Microsoft or Google',
+    'View device garden',
+    'Viewing your device garden',
+    'Return to account garden',
+    'Copy device habits',
+    'Copied ',
+    "Couldn't copy",
+    'Sign out',
+    'Clear saved sign-in',
+    'Saved sign-in cleared',
+    'offline session ended',
+  ].any(description.contains);
   for (var i = 0; i < 100; i++) {
     await tester.runAsync(
       () => Future<void>.delayed(const Duration(milliseconds: 30)),
@@ -93,6 +109,21 @@ Future<void> _ready(WidgetTester tester, Finder finder) async {
         await tester.pumpAndSettle();
       }
       return;
+    }
+    if (needsProfile &&
+        find.byType(AlertDialog).evaluate().isEmpty &&
+        find.byTooltip('Settings and privacy').evaluate().isNotEmpty) {
+      await tester.tap(find.byTooltip('Settings and privacy'));
+      await tester.pumpAndSettle();
+    }
+    final profileGroup = find.text('Profile & account');
+    if (needsProfile &&
+        !expandedProfile &&
+        profileGroup.evaluate().isNotEmpty) {
+      await tester.ensureVisible(profileGroup);
+      await tester.tap(profileGroup);
+      await tester.pumpAndSettle();
+      expandedProfile = true;
     }
     final profileDetails = find.text('Profile and garden details');
     if (!expandedProfile && profileDetails.evaluate().isNotEmpty) {
@@ -228,6 +259,8 @@ void main() {
     expect(find.text('Not signed in'), findsOneWidget);
     expect(find.byType(BackButton), findsNothing);
     expect(find.byTooltip('Settings and privacy'), findsOneWidget);
+    await tester.tap(find.text('Done'));
+    await tester.pumpAndSettle();
     await tester.tap(find.text('Plant a habit'));
     await tester.pumpAndSettle();
     expect(find.text('Sign in securely'), findsNothing);
@@ -330,7 +363,7 @@ void main() {
       ),
     );
     await _ready(tester, find.text('Did it'));
-    expect(find.byTooltip('Settings and privacy'), findsNothing);
+    expect(find.byTooltip('Settings and privacy'), findsOneWidget);
     await _screenshot(tester, boundaryKey, 'profile-signed-out.png');
     await _ready(tester, find.text('Sign in with Microsoft or Google'));
     await tester.tap(find.text('Sign in with Microsoft or Google'));
@@ -466,13 +499,19 @@ void main() {
           ),
         ),
       );
-      await _ready(tester, find.text('ST'));
+      await _ready(tester, find.text('Plant a habit'));
       expect(find.byTooltip('Settings and privacy'), findsOneWidget);
       await tester.tap(find.byTooltip('Settings and privacy'));
-      await _ready(tester, find.text('Your garden, your choices'));
+      await _ready(tester, find.text('Settings'));
+      await tester.tap(find.text('Garden & data'));
+      await tester.pumpAndSettle();
       expect(find.text('Export my data (JSON)'), findsOneWidget);
       expect(find.text('Delete local garden'), findsOneWidget);
       expect(find.text('Delete account data everywhere'), findsOneWidget);
+      await tester.tap(find.text('Garden & data'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Privacy & measurement'));
+      await tester.pumpAndSettle();
       final consent = find.widgetWithText(
         SwitchListTile,
         'Share product event counts',
@@ -480,7 +519,7 @@ void main() {
       expect(tester.widget<SwitchListTile>(consent).onChanged, isNotNull);
       await tester.tap(find.text('Done'));
       await tester.pumpAndSettle();
-      expect(find.text('Sign out'), findsOneWidget);
+      expect(find.text('Sign out'), findsNothing);
       await tester.pumpWidget(const SizedBox());
       await tester.runAsync(
         () => Future<void>.delayed(const Duration(milliseconds: 150)),
@@ -793,7 +832,7 @@ void main() {
       await _ready(tester, find.text('Not signed in'));
       expect(find.text('Did it'), findsOneWidget);
       expect(find.text('Return to account garden'), findsNothing);
-      expect(find.byTooltip('Settings and privacy'), findsNothing);
+      expect(find.byTooltip('Settings and privacy'), findsOneWidget);
       await tester.pumpWidget(const SizedBox());
       await tester.runAsync(
         () => Future<void>.delayed(const Duration(milliseconds: 150)),

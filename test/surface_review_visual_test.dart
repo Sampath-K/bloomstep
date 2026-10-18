@@ -106,9 +106,13 @@ void main() {
     await tap('Not today');
     await capture('rest-reason');
     await escape();
+    await tester.tap(find.byTooltip('More for Synthetic calm'));
+    await tester.pumpAndSettle();
     await tap('Weekly reflection / Recipe Doctor');
     await capture('weekly-reflection');
     await escape();
+    await tester.tap(find.byTooltip('More for Synthetic calm'));
+    await tester.pumpAndSettle();
     await tap('Check naturalness');
     expect(
       find.byWidgetPredicate(
@@ -120,13 +124,15 @@ void main() {
     );
     await capture('naturalness');
     await escape();
-    await tester.ensureVisible(find.byTooltip('Edit recipe'));
-    await tester.tap(find.byTooltip('Edit recipe'));
+    await tester.tap(find.byTooltip('More for Synthetic calm'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Edit recipe'));
     await tester.pumpAndSettle();
     await capture('edit-recipe');
     await escape();
-    await tester.ensureVisible(find.byTooltip('Delete this recipe'));
-    await tester.tap(find.byTooltip('Delete this recipe'));
+    await tester.tap(find.byTooltip('More for Synthetic calm'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Delete this recipe'));
     await tester.pumpAndSettle();
     await capture('delete-recipe-confirm');
     await escape();
@@ -139,32 +145,18 @@ void main() {
       ),
       findsOneWidget,
     );
-    expect(
-      tester
-          .widget<DropdownButtonFormField<String>>(
-            find.byType(DropdownButtonFormField<String>),
-          )
-          .decoration
-          .labelText,
-      'Feedback type',
-    );
+    expect(find.byType(DropdownButtonFormField<String>), findsNothing);
     await capture('feedback-compose');
-    await tester.tap(find.byType(DropdownButtonFormField<String>));
-    await tester.pumpAndSettle();
-    await tester.tap(find.text('Rating').last);
+    await tester.tap(find.byTooltip('5 of 5 stars'));
     await tester.pumpAndSettle();
     await capture('rating-compose');
-    await tap('Cancel');
-    await capture('feedback-empty');
-    await tap('Done');
+    await tap('Close');
     await tester.tap(find.byTooltip('Invite a friend'));
     await tester.pumpAndSettle();
     await tap('Include a recipe? Optional');
     await tap('Choose and approve a recipe card');
     await capture('share-recipe-picker');
     await tap('Synthetic calm');
-    await capture('share-category');
-    await tap('calm');
     await capture('share-exact-approval');
     await tap('Share this exact card');
     expect(find.text('Approved recipe included'), findsOneWidget);
@@ -189,10 +181,9 @@ void main() {
     await escape();
     await tester.tap(find.byTooltip('Settings and privacy'));
     await settleDatabase(tester);
+    await tap('Privacy & measurement');
     expect(
-      find.textContaining(
-        'private account details, sensitive habit details',
-      ),
+      find.textContaining('private account details, sensitive habit details'),
       findsOneWidget,
     );
     expect(
@@ -200,15 +191,23 @@ void main() {
       findsOneWidget,
     );
     expect(
-      find.textContaining('Turning off stops future sharing and clears unsent counts'),
+      find.textContaining(
+        'Turning off stops future sharing and clears unsent counts',
+      ),
       findsOneWidget,
     );
     await capture('settings-consent');
+    await tap('Privacy & measurement');
+    await tap('Garden & data');
     await tester.ensureVisible(find.text('Export my data (JSON)'));
     await capture('settings-export');
+    await tap('Garden & data');
+    await tap('App & support');
     await tap('Check for updates');
     await capture('updates-empty');
     await escape();
+    await tap('App & support');
+    await tap('Garden & data');
     await tap('Delete local garden');
     const localDeleteDisclosure =
         'This deletes habits, check-ins, and reflections saved on this '
@@ -234,6 +233,7 @@ void main() {
     });
     await tester.tap(find.byTooltip('Settings and privacy'));
     await settleDatabase(tester);
+    await tap('App & support');
     await tap('Reduced motion');
     await tap('Done');
     await tap('Plant a habit');
@@ -278,22 +278,30 @@ void main() {
       expect(tester.takeException(), isNull);
       await tester.ensureVisible(
         find.text(
-          'Private by default. Saved locally first; queued is not the same as received by the team.',
+          'Sent only when you choose Send feedback. Unsent feedback stays on this device until it can sync.',
         ),
       );
       await captureVisual(tester, key, 'surface-feedback-200percent-short');
-      await tester.tap(find.text('Cancel'));
+      await tester.tap(find.text('Close'));
       await settleDatabase(tester);
-      await tester.tap(find.text('Done'));
-      await tester.pumpAndSettle();
       await tester.tap(find.byTooltip('Settings and privacy'));
       await settleDatabase(tester);
-      expect(find.text('Privacy choices'), findsOneWidget);
+      await tester.tap(find.text('Privacy & measurement'));
+      await tester.pumpAndSettle();
       expect(find.text('What these counts include'), findsOneWidget);
       await tester.ensureVisible(find.text('What these counts include'));
       await tester.tap(find.text('What these counts include'));
       await tester.pumpAndSettle();
-      expect(find.textContaining('Device-only gardens do not send counts'), findsOneWidget);
+      expect(
+        find.textContaining('Device-only gardens send no counts'),
+        findsOneWidget,
+      );
+      await tester.ensureVisible(find.text('Privacy & measurement'));
+      await tester.tap(find.text('Privacy & measurement'));
+      await tester.pumpAndSettle();
+      await tester.ensureVisible(find.text('Garden & data'));
+      await tester.tap(find.text('Garden & data'));
+      await tester.pumpAndSettle();
       await tester.ensureVisible(find.text('Delete local garden'));
       await tester.tap(find.text('Delete local garden'));
       await tester.pumpAndSettle();

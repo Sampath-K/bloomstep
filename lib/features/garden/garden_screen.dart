@@ -1,5 +1,6 @@
 import 'dart:convert';
 import 'dart:async';
+import 'dart:io';
 
 import 'package:file_selector/file_selector.dart';
 import 'package:flutter/material.dart';
@@ -47,6 +48,7 @@ class GardenScreen extends StatefulWidget {
     this.diagnostics,
     this.installerMeasurement,
     this.analyticsSandbox,
+    this.feedbackSender,
     this.testExportPathSelector,
     this.clock,
     this.deviceGuest = false,
@@ -72,6 +74,7 @@ class GardenScreen extends StatefulWidget {
   final SessionDiagnostics? diagnostics;
   final InstallerMeasurement? installerMeasurement;
   final AnalyticsSandbox? analyticsSandbox;
+  final Future<bool> Function(String feedbackId)? feedbackSender;
   final Future<String?> Function()? testExportPathSelector;
   final DateTime Function()? clock;
   final bool deviceGuest;
@@ -106,6 +109,7 @@ class _GardenScreenState extends State<GardenScreen> {
   String? error;
   String? configWarning;
   String? reminderSetupError;
+  String? startupWarning;
   String syncStatus = 'Local garden';
   bool syncing = false;
   bool closing = false;
@@ -123,6 +127,7 @@ class _GardenScreenState extends State<GardenScreen> {
   InvitationStatus? invitationStatus;
   Map<String, dynamic>? acceptedCard;
   String? invitationWarning;
+  String? invitationSupportInfo;
   @override
   void initState() {
     super.initState();
@@ -170,7 +175,8 @@ class _GardenScreenState extends State<GardenScreen> {
               });
             }
           })
-          .whenComplete(() {
+          .whenComplete(() async {
+            await _initializeStartup();
             if (mounted) setState(() => reminderSetupInProgress = false);
           });
       _refreshConfig();
@@ -312,19 +318,26 @@ class _GardenScreenState extends State<GardenScreen> {
             reminders?.config = RemoteConfig.defaults;
             if (mounted) {
               setState(
-                () => configWarning = 'Remote configuration expired; using reviewed local control copy. No experiment is active.',
+                () =>
+                    configWarning = 'Your garden is using its usual settings.',
               );
             }
           },
         );
       }
-      if (mounted) setState(() => configWarning = result.warning);
+      if (mounted) {
+        setState(
+          () => configWarning = result.warning == null
+              ? null
+              : 'Your garden is using its usual settings.',
+        );
+      }
     } catch (_) {
       reminders?.config = RemoteConfig.defaults;
       configExpiryTimer?.cancel();
       if (mounted) {
         setState(
-          () => configWarning = 'Remote configuration unavailable; using reviewed local control copy. No experiment is active.',
+          () => configWarning = 'Your garden is using its usual settings.',
         );
       }
     }
@@ -357,12 +370,6 @@ class _GardenScreenState extends State<GardenScreen> {
           loading = false;
         });
         _scheduleFirstHabit();
-        if (!profileShown && widget.profileBuilder != null) {
-          profileShown = true;
-          WidgetsBinding.instance.addPostFrameCallback((_) {
-            if (mounted) widget.onProfileShown?.call();
-          });
-        }
       }
     } catch (e) {
       if (mounted) {
@@ -402,16 +409,81 @@ class _GardenScreenState extends State<GardenScreen> {
     }
     if (failure is StateError) {
       final message = failure.message;
-      if (message is String &&
-          (message.startsWith(
-                'Windows notifications are blocked by device policy',
-              ) ||
-              message.startsWith('Windows notifications are disabled'))) {
+      if (message.startsWith(
+            'Windows notifications are blocked by device policy',
+          ) ||
+          message.startsWith('Windows notifications are disabled')) {
         return message;
       }
     }
     return 'Windows reminders couldn’t be started. Check Windows Settings > System > Notifications, then try again.';
   }
+
+  Future<void> _initializeStartup() async {
+    if (!mounted ||
+        !Platform.isWindows ||
+        widget.testDisableServices ||
+        widget.reminderGateway != null) {
+      return;
+    }
+    final owner = widget.store.account;
+    final generation = widget.store.syncGeneration;
+    try {
+      if (await widget.store.setting('launchAtStartup') != null) return;
+      widget.store.requireSyncSession(owner, generation);
+      if (!await launchAtStartup.enable()) {
+        throw StateError('Windows startup registration failed.');
+      }
+      widget.store.requireSyncSession(owner, generation);
+      await widget.store.setSetting('launchAtStartup', 'true');
+    } catch (_) {
+      if (mounted) {
+        setState(
+          () => startupWarning = 'Could not start Budlark at Windows sign-in. Try again in Reminders.',
+        );
+      }
+    }
+  }
+
+  Widget _statusDetails(String message, String details) => Column(
+    crossAxisAlignment: CrossAxisAlignment.start,
+    mainAxisSize: MainAxisSize.min,
+    children: [
+      Text(message),
+      ExpansionTile(
+        title: const Text('Details'),
+        children: [
+          Padding(
+            padding: const EdgeInsets.all(12),
+            child: SelectableText(details),
+          ),
+        ],
+      ),
+    ],
+  );
+
+  Widget _invitationStatusDetails() => ExpansionTile(
+    title: const Text('Invitation status'),
+    subtitle: Text(
+      invitationStatus!.cached ? 'Last saved status' : 'Up to date',
+    ),
+    children: [
+      if (invitationStatus!.rewards.isNotEmpty)
+        const ListTile(
+          title: Text('Rare flower — server-granted cosmetic'),
+          subtitle: Text(
+            'A cosmetic only. No growth, ranking or streak advantage.',
+          ),
+        ),
+      for (final receipt in invitationStatus!.invitations)
+        ListTile(
+          title: Text('${receipt['direction']} · ${receipt['status']}'),
+          subtitle: Text(
+            'Expires ${localDate(DateTime.parse(receipt['expiresAt']).toLocal())}',
+          ),
+        ),
+    ],
+  );
 
   Future<void> _changeReminderPreference(
     bool value,
@@ -458,7 +530,9 @@ class _GardenScreenState extends State<GardenScreen> {
     final habit = matches.first;
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
-        content: Text('Saved. That tiny step counts! Now ${habit.celebration}.'),
+        content: Text(
+          'Saved. That tiny step counts! Now ${habit.celebration}.',
+        ),
         duration: const Duration(seconds: 3),
       ),
     );
@@ -570,7 +644,7 @@ class _GardenScreenState extends State<GardenScreen> {
       saved = true;
     });
     if (saved) await reminders?.practiced(habit.id);
-    if (!saved || result == CheckInResult.notToday) return;
+    if (!mounted || !saved || result == CheckInResult.notToday) return;
     final celebration = messenger.showSnackBar(
       SnackBar(
         content: Text(
@@ -853,16 +927,22 @@ class _GardenScreenState extends State<GardenScreen> {
         setState(() {
           invitationStatus = status;
           invitationWarning = null;
+          invitationSupportInfo = null;
         });
       }
     } catch (error) {
       if (mounted) {
-        setState(
-          () {
-            invitationWarning =
-                '${invitationErrorMessage(error, phase: InvitationPhase.status)} Cached cosmetics are last-known server receipts, not a new grant.';
-          },
-        );
+        setState(() {
+          final failure = error is InvitationFailure
+              ? error
+              : const InvitationFailure(
+                  InvitationFailureKind.unknown,
+                  InvitationPhase.status,
+                );
+          invitationWarning = failure.message;
+          invitationSupportInfo =
+              '${failure.supportCode}\nSaved invitation status is last-known information, not a new reward.';
+        });
       }
     }
   }
@@ -930,30 +1010,15 @@ class _GardenScreenState extends State<GardenScreen> {
       ),
     );
     if (habit == null || !mounted) return null;
-    final category = await showDialog<String>(
-      context: context,
-      builder: (context) => SimpleDialog(
-        title: const Text('Choose shared recipe category'),
-        children: [
-          for (final c in invitationCategories)
-            SimpleDialogOption(
-              onPressed: () => Navigator.pop(context, c),
-              child: Text(c),
-            ),
-        ],
-      ),
-    );
-    if (category == null) return null;
     if (!await _confirm(
       'Approve this private recipe card?',
-      'This deliberately shares these recipe fields:\n${habit.aspiration}\nAfter I ${habit.anchor}, I will ${habit.behavior}.\nThen I ${habit.celebration}.\nSpecies: ${habit.species}\nCategory: $category\n\nNo account identity, progress or habit ID is shared.',
+      'This deliberately shares these recipe fields:\n${habit.aspiration}\nAfter I ${habit.anchor}, I will ${habit.behavior}.\nThen I ${habit.celebration}.\nSpecies: ${habit.species}\n\nNo account identity, progress or habit ID is shared.',
       'Share this exact card',
     )) {
       return null;
     }
     return {
       'explicitChoice': true,
-      'templateCategory': category,
       'aspiration': habit.aspiration,
       'anchor': habit.anchor,
       'behavior': habit.behavior,
@@ -982,153 +1047,149 @@ class _GardenScreenState extends State<GardenScreen> {
     );
   }
 
-  Future<void> _voice({String initialKind = 'Idea'}) async {
+  Future<void> _voice() async {
     final body = TextEditingController();
-    var kind = initialKind;
-    var rating = 5;
+    int? rating;
+    String? feedbackId;
+    String? status;
+    bool sending = false;
+    bool received = false;
+    final owner = widget.store.account;
+    final generation = widget.store.syncGeneration;
     try {
-      final submitted = await showDialog<bool>(
+      await showDialog<void>(
         context: context,
+        barrierDismissible: false,
         builder: (context) => StatefulBuilder(
           builder: (context, update) => AlertDialog(
             scrollable: true,
-            title: const Text('Help us grow'),
+            title: const Text('Send feedback'),
             content: SizedBox(
               width: 460,
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  DropdownButtonFormField<String>(
-                    decoration: const InputDecoration(
-                      labelText: 'Feedback type',
-                    ),
-                    initialValue: kind,
-                    items: [
-                      for (final k in [
-                        'Idea',
-                        'Bug',
-                        'Question',
-                        'Praise',
-                        'This felt wrong',
-                        'Rating',
-                      ])
-                        DropdownMenuItem(value: k, child: Text(k)),
+                  const Text('How does Budlark feel? A rating is optional.'),
+                  Wrap(
+                    children: [
+                      for (var star = 1; star <= 5; star++)
+                        IconButton(
+                          tooltip: '$star of 5 stars',
+                          isSelected: rating != null && star <= rating!,
+                          onPressed: sending || feedbackId != null
+                              ? null
+                              : () => update(() => rating = star),
+                          icon: const Icon(Icons.star_border),
+                          selectedIcon: const Icon(Icons.star),
+                        ),
                     ],
-                    onChanged: (v) => update(() => kind = v!),
                   ),
-                  if (kind == 'Rating')
-                    Semantics(
-                      label: 'Your rating',
-                      child: Slider(
-                        value: rating.toDouble(),
-                        min: 1,
-                        max: 5,
-                        divisions: 4,
-                        label: '$rating stars',
-                        onChanged: (v) => update(() => rating = v.round()),
-                        semanticFormatterCallback: (value) =>
-                            '${value.round()} of 5 stars',
-                      ),
-                    ),
                   TextField(
                     controller: body,
+                    enabled: !sending && feedbackId == null,
                     maxLength: 2000,
                     maxLines: 4,
-                    decoration: InputDecoration(
-                      labelText: kind == 'Rating'
-                          ? 'Optional feedback'
-                          : 'Your feedback',
-                      hintText:
-                          'Leave out passwords, private account information and sensitive habit details.',
+                    decoration: const InputDecoration(
+                      labelText: 'Your feedback',
+                      hintText: 'Leave out passwords, private account information and sensitive habit details.',
                     ),
                   ),
-                  const Text(
-                    'Private by default. Saved locally first; queued is not the same as received by the team.',
+                  Text(
+                    widget.deviceGuest
+                        ? 'This device garden cannot send feedback. Sign in to send it to the team.'
+                        : 'Sent only when you choose Send feedback. Unsent feedback stays on this device until it can sync.',
                   ),
+                  if (status != null)
+                    Semantics(liveRegion: true, child: Text(status!)),
                 ],
               ),
             ),
             actions: [
               TextButton(
-                onPressed: () => Navigator.pop(context, false),
-                child: const Text('Cancel'),
+                onPressed: sending ? null : () => Navigator.pop(context),
+                child: Text(received ? 'Done' : 'Close'),
               ),
-              FilledButton(
-                onPressed: () => Navigator.pop(context, true),
-                child: const Text('Save feedback'),
-              ),
-            ],
-          ),
-        ),
-      );
-      if (submitted == true) {
-        await _act(
-          () => widget.store.submitVoice(
-            kind,
-            body.text,
-            rating: kind == 'Rating' ? rating : null,
-          ),
-        );
-      }
-    } finally {
-      body.dispose();
-    }
-    final records = await widget.store.voice();
-    if (!mounted) return;
-    await showDialog<void>(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('My feedback'),
-        content: SizedBox(
-          width: 520,
-          height: 350,
-          child: ListView(
-            children: [
-              if (records.isEmpty)
-                const Text('No feedback yet. Your voice is welcome.'),
-              for (final record in records)
-                ListTile(
-                  title: Text(
-                    record['kind'] == 'Rating'
-                        ? '${record['rating']} / 5${(record['body'] as String).isEmpty ? '' : ' — ${record['body']}'}'
-                        : record['body'] as String,
-                  ),
-                  subtitle: Text(
-                    '${record['kind']} - ${record['status']}\n${(jsonDecode(record['replies'] as String) as List).join('\n')}',
-                  ),
-                  trailing: IconButton(
-                    tooltip: 'Delete this feedback',
-                    icon: const Icon(Icons.delete_outline),
-                    onPressed: () async {
-                      if (await _removeRecord(
-                            'voice',
-                            record['id'] as String,
-                          ) &&
-                          context.mounted) {
-                        Navigator.pop(context);
-                      }
-                    },
+              if (!received)
+                FilledButton(
+                  onPressed: sending || widget.deviceGuest
+                      ? null
+                      : () async {
+                          if (body.text.trim().isEmpty && rating == null) {
+                            update(
+                              () => status = 'Add a rating or a message first.',
+                            );
+                            return;
+                          }
+                          update(() {
+                            sending = true;
+                            status = 'Sending…';
+                          });
+                          try {
+                            widget.store.requireSyncSession(owner, generation);
+                            feedbackId ??= await widget.store.submitVoice(
+                              'General',
+                              body.text,
+                              rating: rating,
+                            );
+                            bool acknowledged = false;
+                            if (widget.feedbackSender != null) {
+                              acknowledged = await widget.feedbackSender!(
+                                feedbackId!,
+                              );
+                            } else if (widget.identity != null) {
+                              final service = SyncService(
+                                widget.identity!,
+                                widget.store,
+                              );
+                              await service.sync();
+                              acknowledged = (await widget.store.voice()).any(
+                                (row) =>
+                                    row['id'] == feedbackId &&
+                                    row['status'] == 'received',
+                              );
+                            }
+                            widget.store.requireSyncSession(owner, generation);
+                            if (context.mounted) {
+                              update(() {
+                                received = acknowledged;
+                                status = acknowledged
+                                    ? 'Received by the team.'
+                                    : 'Not sent — retry when you are connected.';
+                              });
+                            }
+                          } catch (_) {
+                            if (context.mounted) {
+                              update(
+                                () => status =
+                                    'Not sent — retry when you are connected.',
+                              );
+                            }
+                          } finally {
+                            if (context.mounted) update(() => sending = false);
+                          }
+                        },
+                  child: Text(
+                    feedbackId == null ? 'Send feedback' : 'Retry sending',
                   ),
                 ),
             ],
           ),
         ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('Done'),
-          ),
-        ],
-      ),
-    );
+      );
+    } finally {
+      body.dispose();
+    }
   }
 
   Future<void> _settings() async {
+    final owner = widget.store.account;
+    final generation = widget.store.syncGeneration;
     var analytics = await widget.store.setting('analytics') == 'true';
     var reminderObservation = await widget.store.reminderObservationOptedIn();
     String? analyticsWarning;
     var personalized =
         await widget.store.setting('personalizedTiming') == 'true';
+    var startOnSignIn = await widget.store.setting('launchAtStartup') == 'true';
     if (!mounted) return;
     if (reminderSetupError != null && error == reminderSetupError) {
       setState(() => error = null);
@@ -1137,374 +1198,456 @@ class _GardenScreenState extends State<GardenScreen> {
       context: context,
       builder: (context) => StatefulBuilder(
         builder: (context, update) => AlertDialog(
-          title: const Text('Your garden, your choices'),
+          title: const Text('Settings'),
           content: SizedBox(
             width: 460,
             child: SingleChildScrollView(
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  ListTile(
-                    leading: const Icon(Icons.spa_outlined),
-                    title: Semantics(
-                      header: true,
-                      child: const Text('Comfort and motion'),
-                    ),
-                  ),
-                  SwitchListTile(
-                    title: const Text('Reduced motion'),
-                    value: reducedMotion,
-                    onChanged: (v) async {
-                      await _act(
-                        () => widget.store.setSetting('reducedMotion', '$v'),
-                      );
-                      update(() {});
+                  ExpansionTile(
+                    title: const Text('Profile & account'),
+                    onExpansionChanged: (expanded) {
+                      if (expanded &&
+                          !profileShown &&
+                          widget.profileBuilder != null) {
+                        profileShown = true;
+                        widget.onProfileShown?.call();
+                      }
                     },
-                  ),
-                  ListTile(
-                    leading: const Icon(Icons.shield_outlined),
-                    title: Semantics(
-                      header: true,
-                      child: const Text('Privacy choices'),
-                    ),
-                  ),
-                  SwitchListTile(
-                    title: const Text('Share product event counts'),
-                    subtitle: const Text(
-                      'Optional, off by default. Shares up to 10 error types and 10 sign-in or session attempts per session, plus basic counts. No error messages or stacks, passwords or credentials, private account details, sensitive habit details, email or feedback. Device-only gardens send nothing. Turning off stops future sharing and clears unsent counts; sent counts follow account deletion and retention rules.',
-                    ),
-                    value: analytics,
-                    onChanged: widget.deviceGuest
-                        ? null
-                        : (v) async {
-                            await _act(() async {
-                              await widget.store.setSetting('analytics', '$v');
-                              await widget.diagnostics?.consentChanged();
-                              if (!v) {
-                                await widget.analyticsSandbox?.consentChanged(
-                                  false,
-                                );
-                                await widget.installerMeasurement?.clear();
-                              }
-                            });
-                            analytics =
-                                await widget.store.setting('analytics') ==
-                                'true';
-                            reminderObservation = await widget.store
-                                .reminderObservationOptedIn();
-                            if (context.mounted) {
-                              update(() => analyticsWarning = error);
-                            }
-                          },
-                  ),
-                  const ExpansionTile(
-                    title: Text('What these counts include'),
                     children: [
-                      Padding(
-                        padding: EdgeInsets.fromLTRB(16, 0, 16, 16),
-                        child: Text(
-                          'Counts use set categories, app stages and elapsed time for errors Budlark sees while open, plus sign-in and session attempts after sign-in. We do not collect error messages or stacks, what you type, passwords or credentials, private account details, sensitive habit details, email, feedback or which sign-in provider you use. Device-only gardens send no counts. App closures Budlark cannot observe are not included, so this is not a crash-free measure.',
+                      if (widget.profileBuilder != null)
+                        widget.profileBuilder!(_signOut, () {})
+                      else
+                        const ListTile(
+                          title: Text('Device garden'),
+                          subtitle: Text('Your habits stay on this device.'),
                         ),
+                      ListTile(
+                        title: const Text('Garden status'),
+                        subtitle: Text(syncStatus),
+                      ),
+                      if (widget.identity != null)
+                        ListTile(
+                          title: const Text('Sync now'),
+                          leading: const Icon(Icons.sync),
+                          onTap: syncing ? null : _sync,
+                        ),
+                    ],
+                  ),
+                  ExpansionTile(
+                    title: const Text('Privacy & measurement'),
+                    children: [
+                      SwitchListTile(
+                        title: const Text('Share product event counts'),
+                        subtitle: const Text(
+                          'Optional, off by default. Shares up to 10 error types and 10 sign-in or session attempts per session, plus basic counts. No error messages or stacks, passwords or credentials, private account details, sensitive habit details, email or feedback. Device-only gardens send nothing. Turning off stops future sharing and clears unsent counts; sent counts follow account deletion and retention rules.',
+                        ),
+                        value: analytics,
+                        onChanged: widget.deviceGuest
+                            ? null
+                            : (v) async {
+                                await _act(() async {
+                                  await widget.store.setSetting(
+                                    'analytics',
+                                    '$v',
+                                  );
+                                  await widget.diagnostics?.consentChanged();
+                                  if (!v) {
+                                    await widget.analyticsSandbox
+                                        ?.consentChanged(false);
+                                    await widget.installerMeasurement?.clear();
+                                  }
+                                });
+                                analytics =
+                                    await widget.store.setting('analytics') ==
+                                    'true';
+                                reminderObservation = await widget.store
+                                    .reminderObservationOptedIn();
+                                if (context.mounted) {
+                                  update(() => analyticsWarning = error);
+                                }
+                              },
+                      ),
+                      const ExpansionTile(
+                        title: Text('What these counts include'),
+                        children: [
+                          Padding(
+                            padding: EdgeInsets.fromLTRB(16, 0, 16, 16),
+                            child: Text(
+                              'Counts use set categories, app stages and elapsed time for errors Budlark sees while open, plus sign-in and session attempts after sign-in. We do not collect error messages or stacks, what you type, passwords or credentials, private account details, sensitive habit details, email, feedback or which sign-in provider you use. Device-only gardens send no counts. App closures Budlark cannot observe are not included, so this is not a crash-free measure.',
+                            ),
+                          ),
+                        ],
+                      ),
+                      if (analyticsWarning != null)
+                        SelectableText(
+                          'Product-event choice: $analyticsWarning',
+                        ),
+                      if (widget.analyticsSandbox != null)
+                        AnalyticsSandboxControls(
+                          key: ValueKey(analytics),
+                          sandbox: widget.analyticsSandbox!,
+                        ),
+                      ReminderObservationControls(
+                        analyticsEnabled: analytics,
+                        optedIn: reminderObservation,
+                        onChanged: (value) async {
+                          await _act(
+                            () => widget.store.setReminderObservationConsent(
+                              value,
+                            ),
+                          );
+                          reminderObservation = await widget.store
+                              .reminderObservationOptedIn();
+                          if (context.mounted) {
+                            update(() => analyticsWarning = error);
+                          }
+                        },
+                      ),
+                      MeasurementControls(
+                        store: widget.store,
+                        analytics: analytics,
+                        installer: widget.installerMeasurement,
                       ),
                     ],
                   ),
-                  if (analyticsWarning != null)
-                    SelectableText('Product-event choice: $analyticsWarning'),
-                  if (widget.analyticsSandbox != null)
-                    AnalyticsSandboxControls(
-                      key: ValueKey(analytics),
-                      sandbox: widget.analyticsSandbox!,
-                    ),
-                  ReminderObservationControls(
-                    analyticsEnabled: analytics,
-                    optedIn: reminderObservation,
-                    onChanged: (value) async {
-                      await _act(
-                        () => widget.store.setReminderObservationConsent(value),
-                      );
-                      reminderObservation = await widget.store
-                          .reminderObservationOptedIn();
-                      if (context.mounted) {
-                        update(() => analyticsWarning = error);
-                      }
-                    },
-                  ),
-                  MeasurementControls(
-                    store: widget.store,
-                    analytics: analytics,
-                    installer: widget.installerMeasurement,
-                  ),
-                  if (reminders != null)
-                    ListTile(
-                      leading: const Icon(Icons.notifications_none),
-                      title: Semantics(
-                        header: true,
-                        child: const Text('Gentle reminders'),
-                      ),
-                    ),
-                  if (reminders != null)
-                    SwitchListTile(
-                      title: const Text('Gentle Windows reminders'),
-                      subtitle: const Text(
-                        'On by default. Switch off any time. Closing the window keeps Budlark running. Delivery stops when you exit.',
-                      ),
-                      value: reminders!.requestedEnabled,
-                      onChanged: working || reminderSetupInProgress
-                          ? null
-                          : (value) => _changeReminderPreference(
-                              value,
-                              update,
-                              context,
-                            ),
-                    ),
-                  if (reminders != null &&
-                      reminders!.requestedEnabled &&
-                      !reminders!.enabled)
-                    Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 16),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            reminderSetupInProgress
-                                ? 'Windows reminders are starting.'
-                                : 'Your reminder preference is on, but Windows delivery is not active.',
+                  ExpansionTile(
+                    title: const Text('Reminders'),
+                    children: [
+                      if (reminders == null)
+                        const ListTile(
+                          title: Text(
+                            'Windows reminders are unavailable here.',
                           ),
-                          if (!reminderSetupInProgress)
-                            TextButton(
-                              onPressed: working
-                                  ? null
-                                  : () => _changeReminderPreference(
-                                      true,
-                                      update,
-                                      context,
-                                    ),
-                              child: const Text('Retry Windows reminders'),
-                            ),
-                        ],
-                      ),
-                    ),
-                  if (reminders != null && reminderSetupError != null)
-                    Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 16),
-                      child: Text(reminderSetupError!),
-                    ),
-                  if (reminders != null) ...[
-                    SwitchListTile(
-                      title: const Text('Personalized reminder timing'),
-                      subtitle: const Text(
-                        'Device-only, off by default. When enabled, uses your last 14 practice times after five samples, rounded to 15 minutes. Local time, daylight-saving changes, quiet hours and daily limits still apply.',
-                      ),
-                      value: personalized,
-                      onChanged: (value) async {
-                        await widget.store.setSetting(
-                          'personalizedTiming',
-                          '$value',
-                        );
-                        update(() => personalized = value);
-                      },
-                    ),
-                    ListTile(
-                      title: const Text('Choose check-in time'),
-                      onTap: () => _chooseMinute('reminderMinute', 1080),
-                    ),
-                    ListTile(
-                      title: const Text('Quiet hours start'),
-                      subtitle: const Text('Default 21:30'),
-                      onTap: () => _chooseMinute('quietStart', 1290),
-                    ),
-                    ListTile(
-                      title: const Text('Quiet hours end'),
-                      subtitle: const Text('Default 07:30'),
-                      onTap: () => _chooseMinute('quietEnd', 450),
-                    ),
-                    ListTile(
-                      title: const Text('Quiet for one hour'),
-                      subtitle: const Text(
-                        'Postpones unsent reminders only. A request already made today will not be repeated.',
-                      ),
-                      onTap: () => _act(reminders!.snooze),
-                    ),
-                    ListTile(
-                      title: const Text('Enable launch at Windows sign-in'),
-                      subtitle: const Text(
-                        'Optional. Starts only this installed app, not a system service.',
-                      ),
-                      onTap: () => _act(() async {
-                        if (!await launchAtStartup.enable()) {
-                          throw StateError(
-                            'Windows startup registration failed.',
+                        ),
+                      if (reminders != null)
+                        SwitchListTile(
+                          title: const Text('Gentle Windows reminders'),
+                          subtitle: const Text(
+                            'On by default. Switch off any time. Closing the window keeps Budlark running. Delivery stops when you exit.',
+                          ),
+                          value: reminders!.requestedEnabled,
+                          onChanged: working || reminderSetupInProgress
+                              ? null
+                              : (value) => _changeReminderPreference(
+                                  value,
+                                  update,
+                                  context,
+                                ),
+                        ),
+                      if (reminders != null &&
+                          reminders!.requestedEnabled &&
+                          !reminders!.enabled)
+                        Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 16),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                reminderSetupInProgress
+                                    ? 'Windows reminders are starting.'
+                                    : 'Your reminder preference is on, but Windows delivery is not active.',
+                              ),
+                              if (!reminderSetupInProgress)
+                                TextButton(
+                                  onPressed: working
+                                      ? null
+                                      : () => _changeReminderPreference(
+                                          true,
+                                          update,
+                                          context,
+                                        ),
+                                  child: const Text('Retry Windows reminders'),
+                                ),
+                            ],
+                          ),
+                        ),
+                      if (reminders != null && reminderSetupError != null)
+                        _statusDetails(
+                          'Windows reminders need your attention.',
+                          reminderSetupError!,
+                        ),
+                      if (reminders != null) ...[
+                        SwitchListTile(
+                          title: const Text('Personalized reminder timing'),
+                          subtitle: const Text(
+                            'Device-only, off by default. When enabled, uses your last 14 practice times after five samples, rounded to 15 minutes. Local time, daylight-saving changes, quiet hours and daily limits still apply.',
+                          ),
+                          value: personalized,
+                          onChanged: (value) async {
+                            await widget.store.setSetting(
+                              'personalizedTiming',
+                              '$value',
+                            );
+                            update(() => personalized = value);
+                          },
+                        ),
+                        ListTile(
+                          title: const Text('Choose check-in time'),
+                          onTap: () => _chooseMinute('reminderMinute', 1080),
+                        ),
+                        ListTile(
+                          title: const Text('Quiet hours start'),
+                          subtitle: const Text('Default 21:30'),
+                          onTap: () => _chooseMinute('quietStart', 1290),
+                        ),
+                        ListTile(
+                          title: const Text('Quiet hours end'),
+                          subtitle: const Text('Default 07:30'),
+                          onTap: () => _chooseMinute('quietEnd', 450),
+                        ),
+                        ListTile(
+                          title: const Text('Quiet for one hour'),
+                          subtitle: const Text(
+                            'Postpones unsent reminders only. A request already made today will not be repeated.',
+                          ),
+                          onTap: () => _act(reminders!.snooze),
+                        ),
+                        SwitchListTile(
+                          title: const Text('Launch at Windows sign-in'),
+                          subtitle: const Text(
+                            'On by default for new choices. Starts only this installed app, not a system service.',
+                          ),
+                          value: startOnSignIn,
+                          onChanged: (value) async {
+                            try {
+                              widget.store.requireSyncSession(
+                                owner,
+                                generation,
+                              );
+                              final changed = value
+                                  ? await launchAtStartup.enable()
+                                  : await launchAtStartup.disable();
+                              if (!changed) {
+                                throw StateError('Startup preference failed.');
+                              }
+                              widget.store.requireSyncSession(
+                                owner,
+                                generation,
+                              );
+                              await widget.store.setSetting(
+                                'launchAtStartup',
+                                '$value',
+                              );
+                              if (context.mounted) {
+                                update(() {
+                                  startOnSignIn = value;
+                                  startupWarning = null;
+                                });
+                              }
+                            } catch (_) {
+                              if (context.mounted) {
+                                update(
+                                  () => startupWarning = 'Could not change Windows sign-in launch. Check your Windows startup settings and retry.',
+                                );
+                              }
+                            }
+                          },
+                        ),
+                        if (startupWarning != null)
+                          ListTile(title: Text(startupWarning!)),
+                      ],
+                    ],
+                  ),
+                  ExpansionTile(
+                    title: const Text('Garden & data'),
+                    children: [
+                      if (weeklyDue && habits.isNotEmpty)
+                        const ListTile(
+                          title: Text('Weekly reflection is ready'),
+                          subtitle: Text('Open More on a recipe to reflect.'),
+                        ),
+                      if (invitationStatus != null) _invitationStatusDetails(),
+                      ListTile(
+                        title: const Text('Export my data (JSON)'),
+                        leading: const Icon(Icons.download),
+                        onTap: () => _act(() async {
+                          final owner = widget.store.account;
+                          final generation = widget.store.syncGeneration;
+                          final targetPath =
+                              widget.testExportPathSelector == null
+                              ? (await getSaveLocation(
+                                  suggestedName: 'bloomstep-export.json',
+                                ))?.path
+                              : await widget.testExportPathSelector!();
+                          if (targetPath == null) return;
+                          widget.store.requireSyncSession(owner, generation);
+                          Map<String, Object?> data;
+                          final warnings = <String>[];
+                          if (widget.identity != null) {
+                            final prepared =
+                                await SyncService(
+                                  widget.identity!,
+                                  widget.store,
+                                ).prepareOwnerExport(
+                                  invitationExport: invitations == null
+                                      ? null
+                                      : () async =>
+                                            (await invitations!.refreshStatus(
+                                              export: true,
+                                            )).json,
+                                );
+                            data = prepared.data;
+                            warnings.addAll(prepared.warnings);
+                          } else {
+                            data = await widget.store.export();
+                            data['supportReceiptExportWarning'] = 'No authenticated service session: server support receipts were not exported.';
+                            warnings.add(
+                              'No authenticated server support receipts.',
+                            );
+                          }
+                          widget.store.requireSyncSession(owner, generation);
+                          if (widget.identity != null &&
+                              widget.identity!.account != owner) {
+                            throw StateError(
+                              'Account changed; export cancelled before saving. Sign in to the garden owner and try again.',
+                            );
+                          }
+                          final bytes = utf8.encode(
+                            const JsonEncoder.withIndent('  ').convert(data),
                           );
-                        }
-                      }),
-                    ),
-                    ListTile(
-                      title: const Text('Disable launch at Windows sign-in'),
-                      onTap: () => _act(() async {
-                        if (!await launchAtStartup.disable()) {
-                          throw StateError('Windows startup removal failed.');
-                        }
-                      }),
-                    ),
-                  ],
-                  ListTile(
-                    leading: const Icon(Icons.folder_outlined),
-                    title: Semantics(
-                      header: true,
-                      child: const Text('Your data and app'),
-                    ),
-                  ),
-                  ListTile(
-                    title: const Text('Export my data (JSON)'),
-                    leading: const Icon(Icons.download),
-                    onTap: () => _act(() async {
-                      final owner = widget.store.account;
-                      final generation = widget.store.syncGeneration;
-                      final targetPath = widget.testExportPathSelector == null
-                          ? (await getSaveLocation(
-                              suggestedName: 'bloomstep-export.json',
-                            ))?.path
-                          : await widget.testExportPathSelector!();
-                      if (targetPath == null) return;
-                      widget.store.requireSyncSession(owner, generation);
-                      Map<String, Object?> data;
-                      final warnings = <String>[];
-                      if (widget.identity != null) {
-                        final prepared =
-                            await SyncService(
-                              widget.identity!,
-                              widget.store,
-                            ).prepareOwnerExport(
-                              invitationExport: invitations == null
-                                  ? null
-                                  : () async =>
-                                        (await invitations!.refreshStatus(
-                                          export: true,
-                                        )).json,
-                            );
-                        data = prepared.data;
-                        warnings.addAll(prepared.warnings);
-                      } else {
-                        data = await widget.store.export();
-                        data['supportReceiptExportWarning'] = 'No authenticated service session: server support receipts were not exported.';
-                        warnings.add(
-                          'No authenticated server support receipts.',
-                        );
-                      }
-                      widget.store.requireSyncSession(owner, generation);
-                      if (widget.identity != null &&
-                          widget.identity!.account != owner) {
-                        throw StateError(
-                          'Account changed; export cancelled before saving. Sign in to the garden owner and try again.',
-                        );
-                      }
-                      final bytes = utf8.encode(
-                        const JsonEncoder.withIndent('  ').convert(data),
-                      );
-                      await XFile.fromData(
-                        bytes,
-                        mimeType: 'application/json',
-                        name: 'bloomstep-export.json',
-                      ).saveTo(targetPath);
-                      if (mounted && warnings.isNotEmpty) {
-                        ScaffoldMessenger.of(this.context).showSnackBar(
-                          SnackBar(
-                            content: Text(
-                              'Local export saved. ${warnings.join(' ')} See the JSON export warnings; this is not a complete server export.',
-                            ),
-                          ),
-                        );
-                      }
-                    }),
-                  ),
-                  ListTile(
-                    title: const Text('Check for updates'),
-                    leading: const Icon(Icons.system_update),
-                    onTap: _checkUpdates,
-                  ),
-                  ListTile(
-                    title: const Text('Delete local garden'),
-                    subtitle: const Text(
-                      'Cloud account deletion requires the connected service.',
-                    ),
-                    leading: const Icon(Icons.delete_outline),
-                    onTap: () async {
-                      if (await _confirm(
-                        'Delete local data?',
-                        'This deletes habits, check-ins, and reflections saved on this device—not your Microsoft or Google account.',
-                        'Delete',
-                      )) {
-                        await _act(() async {
-                          closing = true;
-                          while (syncing) {
-                            await Future<void>.delayed(
-                              const Duration(milliseconds: 50),
+                          await XFile.fromData(
+                            bytes,
+                            mimeType: 'application/json',
+                            name: 'bloomstep-export.json',
+                          ).saveTo(targetPath);
+                          if (mounted && warnings.isNotEmpty) {
+                            ScaffoldMessenger.of(this.context).showSnackBar(
+                              SnackBar(
+                                content: Text(
+                                  'Local export saved. ${warnings.join(' ')} See the JSON export warnings; this is not a complete server export.',
+                                ),
+                              ),
                             );
                           }
-                          await reminders?.disable(explicitChoice: false);
-                          await widget.store.deleteLocalAccount();
-                          if (pendingInvitation != null) {
-                            await _clearCurrentInvitation(
-                              pendingInvitation!.code,
-                            );
-                          }
-                          invitationStatus = null;
-                          acceptedCard = null;
-                          closing = false;
-                        });
-                      }
-                    },
-                  ),
-                  if (widget.identity != null)
-                    ListTile(
-                      title: const Text('Delete account data everywhere'),
-                      subtitle: const Text(
-                        'Requires internet. Keeps a deletion marker so old devices cannot restore deleted records. Does not delete your Microsoft/Google identity.',
+                        }),
                       ),
-                      onTap: () async {
-                        if (!await _confirm(
-                          'Delete account data everywhere?',
-                          'This is permanent. Export first. The server must confirm deletion before local data is cleared.',
-                          'Delete everywhere',
-                        )) {
-                          return;
-                        }
-                        await _act(() async {
-                          closing = true;
-                          while (syncing) {
-                            await Future<void>.delayed(
-                              const Duration(milliseconds: 50),
-                            );
+                      ListTile(
+                        title: const Text('Delete local garden'),
+                        subtitle: const Text(
+                          'Cloud account deletion requires the connected service.',
+                        ),
+                        leading: const Icon(Icons.delete_outline),
+                        onTap: () async {
+                          if (await _confirm(
+                            'Delete local data?',
+                            'This deletes habits, check-ins, and reflections saved on this device—not your Microsoft or Google account.',
+                            'Delete',
+                          )) {
+                            await _act(() async {
+                              closing = true;
+                              while (syncing) {
+                                await Future<void>.delayed(
+                                  const Duration(milliseconds: 50),
+                                );
+                              }
+                              await reminders?.disable(explicitChoice: false);
+                              await widget.store.deleteLocalAccount();
+                              if (pendingInvitation != null) {
+                                await _clearCurrentInvitation(
+                                  pendingInvitation!.code,
+                                );
+                              }
+                              invitationStatus = null;
+                              acceptedCard = null;
+                              closing = false;
+                            });
                           }
-                          await reminders?.disable(explicitChoice: false);
-                          await SyncService(
-                            widget.identity!,
-                            widget.store,
-                          ).deleteAccount();
-                          if (pendingInvitation != null) {
-                            await _clearCurrentInvitation(
-                              pendingInvitation!.code,
-                            );
-                          }
-                        });
-                        if (context.mounted && mounted && error == null) {
-                          Navigator.pop(context);
-                          if (widget.onSignedOut != null) {
-                            await widget.onSignedOut!(null);
-                          } else if (mounted) {
-                            Navigator.of(this.context)
-                                .popUntil((route) => route.isFirst);
-                          }
-                        } else {
-                          closing = false;
-                        }
-                      },
-                    ),
-                  const Padding(
-                    padding: EdgeInsets.all(12),
-                    child: Text(
-                      'No streak penalties. Your habit text is never sold or used for ads. AI features, if added, will be explained and optional. Original content inspired by behavior design research. Health recipes are not medical advice. Ages 16+.',
-                    ),
+                        },
+                      ),
+                      if (widget.identity != null)
+                        ListTile(
+                          title: const Text('Delete account data everywhere'),
+                          subtitle: const Text(
+                            'Requires internet. Keeps a deletion marker so old devices cannot restore deleted records. Does not delete your Microsoft/Google identity.',
+                          ),
+                          onTap: () async {
+                            if (!await _confirm(
+                              'Delete account data everywhere?',
+                              'This is permanent. Export first. The server must confirm deletion before local data is cleared.',
+                              'Delete everywhere',
+                            )) {
+                              return;
+                            }
+                            await _act(() async {
+                              closing = true;
+                              while (syncing) {
+                                await Future<void>.delayed(
+                                  const Duration(milliseconds: 50),
+                                );
+                              }
+                              await reminders?.disable(explicitChoice: false);
+                              await SyncService(
+                                widget.identity!,
+                                widget.store,
+                              ).deleteAccount();
+                              if (pendingInvitation != null) {
+                                await _clearCurrentInvitation(
+                                  pendingInvitation!.code,
+                                );
+                              }
+                            });
+                            if (context.mounted && mounted && error == null) {
+                              Navigator.pop(context);
+                              if (widget.onSignedOut != null) {
+                                await widget.onSignedOut!(null);
+                              } else if (mounted) {
+                                Navigator.of(this.context)
+                                    .popUntil((route) => route.isFirst);
+                              }
+                            } else {
+                              closing = false;
+                            }
+                          },
+                        ),
+                    ],
+                  ),
+                  ExpansionTile(
+                    title: const Text('App & support'),
+                    children: [
+                      SwitchListTile(
+                        title: const Text('Reduced motion'),
+                        value: reducedMotion,
+                        onChanged: (value) async {
+                          await _act(
+                            () => widget.store.setSetting(
+                              'reducedMotion',
+                              '$value',
+                            ),
+                          );
+                          if (context.mounted) update(() {});
+                        },
+                      ),
+                      ListTile(
+                        title: const Text('Check for updates'),
+                        leading: const Icon(Icons.system_update),
+                        onTap: _checkUpdates,
+                      ),
+                      ListTile(
+                        title: const Text('Send feedback'),
+                        leading: const Icon(Icons.chat_bubble_outline),
+                        onTap: _voice,
+                      ),
+                      if (configWarning != null)
+                        ListTile(title: Text(configWarning!)),
+                      if (invitations != null)
+                        ListTile(
+                          title: const Text('Refresh invitation status'),
+                          onTap: () => _act(_refreshInvitations),
+                        ),
+                      if (invitationWarning != null)
+                        _statusDetails(
+                          invitationWarning!,
+                          invitationSupportInfo ?? 'Try refreshing invitation status when connected.',
+                        ),
+                      const Padding(
+                        padding: EdgeInsets.all(12),
+                        child: Text(
+                          'No streak penalties. Your habit text is never sold or used for ads. AI features, if added, will be explained and optional. Original content inspired by behavior design research. Health recipes are not medical advice. Ages 16+.',
+                        ),
+                      ),
+                    ],
                   ),
                 ],
               ),
@@ -1604,7 +1747,10 @@ class _GardenScreenState extends State<GardenScreen> {
                       if (snapshot.connectionState != ConnectionState.done)
                         const Text('Checking GitHub Releases…')
                       else if (failure != null)
-                        Text('Update check failed: $failure')
+                        _statusDetails(
+                          'Couldn’t check for updates. Please try again.',
+                          'Check your connection and retry from App & support. No installer was downloaded or started.',
+                        )
                       else if (release == null)
                         const Text('No newer published release found')
                       else ...[
@@ -1717,10 +1863,6 @@ class _GardenScreenState extends State<GardenScreen> {
     final compactPracticeFirst =
         habits.isNotEmpty &&
         (viewport.height <= 600 || (viewport.width <= 700 && textScale >= 1.5));
-    final splitProfile =
-        compactPracticeFirst &&
-        widget.profileSummaryBuilder != null &&
-        widget.profileDetailsBuilder != null;
     final habitCardWidth = compactPracticeFirst && viewport.height <= 600
         ? (viewport.width - 32).clamp(0, double.infinity).toDouble()
         : (viewport.width - 64).clamp(0, 350).toDouble();
@@ -1739,12 +1881,11 @@ class _GardenScreenState extends State<GardenScreen> {
             onPressed: working ? null : _voice,
             icon: const Icon(Icons.chat_bubble_outline),
           ),
-          if (widget.profileBuilder == null || !widget.deviceGuest)
-            IconButton(
-              tooltip: 'Settings and privacy',
-              onPressed: working ? null : _settings,
-              icon: const Icon(Icons.settings_outlined),
-            ),
+          IconButton(
+            tooltip: 'Settings and privacy',
+            onPressed: working ? null : _settings,
+            icon: const Icon(Icons.settings_outlined),
+          ),
         ],
       ),
       body: loading
@@ -1759,17 +1900,6 @@ class _GardenScreenState extends State<GardenScreen> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      if (splitProfile) ...[
-                        widget.profileSummaryBuilder!(_signOut, () {
-                          if (!working && !closing) unawaited(_settings());
-                        }),
-                        SizedBox(height: shortWindow ? 4 : 8),
-                      ] else if (widget.profileBuilder != null) ...[
-                        widget.profileBuilder!(_signOut, () {
-                          if (!working && !closing) unawaited(_settings());
-                        }),
-                        const SizedBox(height: 16),
-                      ],
                       if (!compactPracticeFirst || habits.isEmpty) ...[
                         GardenCanopy(
                           key: const ValueKey('garden-canopy'),
@@ -1790,18 +1920,6 @@ class _GardenScreenState extends State<GardenScreen> {
                           ),
                         ),
                         const SizedBox(height: 24),
-                        Text(
-                          weeklyDue && habits.isNotEmpty
-                              ? '$syncStatus • Weekly reflection is ready'
-                              : syncStatus,
-                          style: theme.textTheme.bodySmall,
-                        ),
-                        if (widget.identity != null)
-                          TextButton.icon(
-                            onPressed: syncing ? null : _sync,
-                            icon: const Icon(Icons.sync),
-                            label: const Text('Sync now'),
-                          ),
                       ],
                       if (pendingInvitation != null)
                         Card(
@@ -1848,71 +1966,14 @@ class _GardenScreenState extends State<GardenScreen> {
                             'Review shared recipe before planting',
                           ),
                         ),
-                      if (invitations != null)
-                        TextButton(
-                          onPressed: working
-                              ? null
-                              : () => _act(_refreshInvitations),
-                          child: const Text('Refresh invitation status'),
-                        ),
-                      if (invitationStatus != null &&
-                          invitationStatus!.rewards.isNotEmpty)
-                        Card(
-                          child: Padding(
-                            padding: const EdgeInsets.all(16),
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                const Icon(
-                                  Icons.local_florist,
-                                  semanticLabel: 'Rare flower cosmetic',
-                                ),
-                                if (invitationStatus != null &&
-                                    invitationStatus!.invitations.isNotEmpty)
-                                  ExpansionTile(
-                                    title: const Text(
-                                      'Invitation status',
-                                    ),
-                                    subtitle: Text(
-                                      '${invitationStatus!.cached ? "Cached" : "Server"} status as of ${invitationStatus!.fetchedAt.toLocal()}',
-                                    ),
-                                    children: [
-                                      for (final receipt
-                                          in invitationStatus!.invitations)
-                                        ListTile(
-                                          title: Text(
-                                            '${receipt['direction']} • ${receipt['channel']} • ${receipt['status']}',
-                                          ),
-                                          subtitle: Text(
-                                            'Receipt expires ${DateTime.parse(receipt['expiresAt']).toLocal()}',
-                                          ),
-                                        ),
-                                    ],
-                                  ),
-                                const Text(
-                                  'Rare flower — server-granted cosmetic',
-                                ),
-                                Text(
-                                  '${invitationStatus!.rewards.length} server grant(s). ${invitationStatus!.cached ? "Cached receipt" : "Server status"} as of ${invitationStatus!.fetchedAt.toLocal()}. No growth, ranking or streak advantage.',
-                                ),
-                                Text(invitationStatus!.json['definition']),
-                              ],
-                            ),
-                          ),
-                        ),
-                      if (invitationWarning != null) Text(invitationWarning!),
-                      if (configWarning != null)
-                        Card(
-                          child: Padding(
-                            padding: const EdgeInsets.all(16),
-                            child: Text(configWarning!),
-                          ),
-                        ),
                       if (error != null)
                         Card(
                           child: Padding(
                             padding: const EdgeInsets.all(16),
-                            child: SelectableText(error!),
+                            child: _statusDetails(
+                              'Something needs your attention.',
+                              error!,
+                            ),
                           ),
                         ),
                       if (ratingInvitation && error == null)
@@ -1935,7 +1996,7 @@ class _GardenScreenState extends State<GardenScreen> {
                                               setState(
                                                 () => ratingInvitation = false,
                                               );
-                                              _voice(initialKind: 'Rating');
+                                              _voice();
                                             },
                                       child: const Text('Rate Budlark'),
                                     ),
@@ -2019,26 +2080,63 @@ class _GardenScreenState extends State<GardenScreen> {
                                                   : theme.textTheme.titleLarge,
                                             ),
                                           ),
-                                          IconButton(
-                                            tooltip: 'Edit recipe',
-                                            onPressed: working
-                                                ? null
-                                                : () => _edit(habit),
-                                            icon: const Icon(
-                                              Icons.edit_outlined,
-                                            ),
-                                          ),
-                                          IconButton(
-                                            tooltip: 'Delete this recipe',
-                                            onPressed: working
-                                                ? null
-                                                : () => _removeRecord(
+                                          PopupMenuButton<String>(
+                                            tooltip:
+                                                'More for ${habit.aspiration}',
+                                            enabled: !working,
+                                            onSelected: (action) async {
+                                              switch (action) {
+                                                case 'edit':
+                                                  await _edit(habit);
+                                                case 'delete':
+                                                  await _removeRecord(
                                                     'habits',
                                                     habit.id,
-                                                  ),
-                                            icon: const Icon(
-                                              Icons.delete_outline,
-                                            ),
+                                                  );
+                                                case 'weekly':
+                                                  await _weeklyReflection(
+                                                    habit,
+                                                  );
+                                                case 'naturalness':
+                                                  await _reflection(habit);
+                                              }
+                                            },
+                                            itemBuilder: (_) => [
+                                              const PopupMenuItem(
+                                                value: 'edit',
+                                                child: Text('Edit recipe'),
+                                              ),
+                                              const PopupMenuItem(
+                                                value: 'weekly',
+                                                child: Text(
+                                                  'Weekly reflection / Recipe Doctor',
+                                                ),
+                                              ),
+                                              PopupMenuItem(
+                                                value: 'naturalness',
+                                                enabled:
+                                                    !(naturalnessDates[habit.id]
+                                                            ?.isAfter(
+                                                              _now().toUtc(),
+                                                            ) ??
+                                                        false),
+                                                child: Text(
+                                                  naturalnessDates[habit.id]
+                                                              ?.isAfter(
+                                                                _now().toUtc(),
+                                                              ) ??
+                                                          false
+                                                      ? 'Naturalness available ${localDate(naturalnessDates[habit.id]!.toLocal())}'
+                                                      : 'Check naturalness',
+                                                ),
+                                              ),
+                                              const PopupMenuItem(
+                                                value: 'delete',
+                                                child: Text(
+                                                  'Delete this recipe',
+                                                ),
+                                              ),
+                                            ],
                                           ),
                                         ],
                                       ),
@@ -2101,36 +2199,72 @@ class _GardenScreenState extends State<GardenScreen> {
                                             : 16,
                                       ),
                                       if (habit.status != 'graduated')
-                                        Wrap(
-                                          spacing: 8,
-                                          runSpacing: 8,
+                                        Row(
                                           children: [
-                                            FilledButton(
-                                              onPressed: working
-                                                  ? null
-                                                  : () => _check(
-                                                      habit,
-                                                      CheckInResult.did,
-                                                    ),
-                                              child: const Text('Did it'),
+                                            Expanded(
+                                              child: OutlinedButton(
+                                                style: OutlinedButton.styleFrom(
+                                                  padding:
+                                                      const EdgeInsets.symmetric(
+                                                        horizontal: 4,
+                                                      ),
+                                                  minimumSize: const Size(
+                                                    0,
+                                                    48,
+                                                  ),
+                                                ),
+                                                onPressed: working
+                                                    ? null
+                                                    : () => _check(
+                                                        habit,
+                                                        CheckInResult.did,
+                                                      ),
+                                                child: const Text('Did it'),
+                                              ),
                                             ),
-                                            OutlinedButton(
-                                              onPressed: working
-                                                  ? null
-                                                  : () => _check(
-                                                      habit,
-                                                      CheckInResult.didMore,
-                                                    ),
-                                              child: const Text('Did more'),
+                                            const SizedBox(width: 6),
+                                            Expanded(
+                                              child: OutlinedButton(
+                                                style: OutlinedButton.styleFrom(
+                                                  padding:
+                                                      const EdgeInsets.symmetric(
+                                                        horizontal: 4,
+                                                      ),
+                                                  minimumSize: const Size(
+                                                    0,
+                                                    48,
+                                                  ),
+                                                ),
+                                                onPressed: working
+                                                    ? null
+                                                    : () => _check(
+                                                        habit,
+                                                        CheckInResult.didMore,
+                                                      ),
+                                                child: const Text('Did more'),
+                                              ),
                                             ),
-                                            TextButton(
-                                              onPressed: working
-                                                  ? null
-                                                  : () => _check(
-                                                      habit,
-                                                      CheckInResult.notToday,
-                                                    ),
-                                              child: const Text('Not today'),
+                                            const SizedBox(width: 6),
+                                            Expanded(
+                                              child: OutlinedButton(
+                                                style: OutlinedButton.styleFrom(
+                                                  padding:
+                                                      const EdgeInsets.symmetric(
+                                                        horizontal: 4,
+                                                      ),
+                                                  minimumSize: const Size(
+                                                    0,
+                                                    48,
+                                                  ),
+                                                ),
+                                                onPressed: working
+                                                    ? null
+                                                    : () => _check(
+                                                        habit,
+                                                        CheckInResult.notToday,
+                                                      ),
+                                                child: const Text('Not today'),
+                                              ),
                                             ),
                                           ],
                                         ),
@@ -2185,36 +2319,6 @@ class _GardenScreenState extends State<GardenScreen> {
                                           ),
                                         ),
                                       ],
-                                      TextButton.icon(
-                                        onPressed: working
-                                            ? null
-                                            : () => _weeklyReflection(habit),
-                                        icon: const Icon(
-                                          Icons.self_improvement,
-                                        ),
-                                        label: const Text(
-                                          'Weekly reflection / Recipe Doctor',
-                                        ),
-                                      ),
-                                      TextButton(
-                                        onPressed:
-                                            working ||
-                                                (naturalnessDates[habit.id]
-                                                        ?.isAfter(
-                                                          _now().toUtc(),
-                                                        ) ??
-                                                    false)
-                                            ? null
-                                            : () => _reflection(habit),
-                                        child: Text(
-                                          naturalnessDates[habit.id]?.isAfter(
-                                                    _now().toUtc(),
-                                                  ) ??
-                                                  false
-                                              ? 'Naturalness available ${localDate(naturalnessDates[habit.id]!.toLocal())}'
-                                              : 'Check naturalness',
-                                        ),
-                                      ),
                                     ],
                                   ),
                                 ),
@@ -2223,10 +2327,6 @@ class _GardenScreenState extends State<GardenScreen> {
                         ],
                       ),
                       if (compactPracticeFirst) ...[
-                        if (splitProfile)
-                          widget.profileDetailsBuilder!(_signOut, () {
-                            if (!working && !closing) unawaited(_settings());
-                          }),
                         const SizedBox(height: 8),
                         GardenCanopy(
                           key: const ValueKey('garden-canopy'),
@@ -2243,18 +2343,6 @@ class _GardenScreenState extends State<GardenScreen> {
                           ),
                         ),
                         const SizedBox(height: 8),
-                        Text(
-                          weeklyDue
-                              ? '$syncStatus • Weekly reflection is ready'
-                              : syncStatus,
-                          style: theme.textTheme.bodySmall,
-                        ),
-                        if (widget.identity != null)
-                          TextButton.icon(
-                            onPressed: syncing ? null : _sync,
-                            icon: const Icon(Icons.sync),
-                            label: const Text('Sync now'),
-                          ),
                         Center(
                           child: Padding(
                             padding: const EdgeInsets.symmetric(vertical: 12),
