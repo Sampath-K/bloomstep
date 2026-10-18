@@ -82,7 +82,10 @@ Future<void> ready(
     }
     dialogWasOpen = dialogOpen;
     if (dismissRecipeBuilder &&
-        find.byType(RecipeBuilder).evaluate().isNotEmpty) {
+        find.byType(RecipeBuilder).evaluate().isNotEmpty &&
+        (find.text('Choose a moment').evaluate().isNotEmpty ||
+            find.text('Plant one tiny step').evaluate().isNotEmpty ||
+            find.text('Adjust your recipe').evaluate().isNotEmpty)) {
       final cancel = find.descendant(
         of: find.byType(RecipeBuilder),
         matching: find.widgetWithText(TextButton, 'Cancel'),
@@ -90,8 +93,10 @@ Future<void> ready(
       if (cancel.evaluate().isNotEmpty) {
         await tester.ensureVisible(cancel);
         await settleUi();
-        await tester.tap(cancel);
-        await settleUi();
+        if (cancel.evaluate().isNotEmpty) {
+          await tester.tap(cancel);
+          await settleUi();
+        }
       }
     }
     final profile = find.byType(ProfileSection);
@@ -111,7 +116,10 @@ Future<void> ready(
       await tester.tap(settings);
       await settleUi();
     }
-    final profileGroup = find.text('Profile & account');
+    final profileGroup = find.widgetWithText(
+      ExpansionTile,
+      'Profile & account',
+    );
     if (needsProfile &&
         profile.evaluate().isEmpty &&
         profileGroup.evaluate().isNotEmpty) {
@@ -130,13 +138,9 @@ Future<void> ready(
             .descendant(of: profile, matching: find.byType(SelectableText))
             .evaluate()
             .isEmpty) {
-      final title = find.descendant(
-        of: details,
-        matching: find.text('Details'),
-      );
-      await tester.ensureVisible(title);
+      await tester.ensureVisible(details);
       await settleUi();
-      await tester.tap(title);
+      await tester.tap(details);
       await settleUi();
     }
   }
@@ -226,7 +230,7 @@ void main() {
     await ready(tester, find.byType(RecipeBuilder));
     expect(find.text('Choose a moment'), findsOneWidget);
     await captureFirstHabitScreen(tester, screenshotKey);
-    await tester.tap(find.text('Cancel'));
+    await tester.tap(find.widgetWithText(TextButton, 'Cancel'));
     await tester.pumpAndSettle();
     expect(find.byType(RecipeBuilder), findsNothing);
     expect(find.text('Plant a habit'), findsOneWidget);
@@ -241,7 +245,7 @@ void main() {
       ),
     );
     await ready(tester, find.byType(RecipeBuilder));
-    await tester.tap(find.text('Cancel'));
+    await tester.tap(find.widgetWithText(TextButton, 'Cancel'));
     await tester.pumpAndSettle();
     expect(find.byType(RecipeBuilder), findsNothing);
     await tester.pumpWidget(const SizedBox());
@@ -394,7 +398,7 @@ void main() {
       final semantics = tester.ensureSemantics();
       await expectLater(tester, meetsGuideline(labeledTapTargetGuideline));
       semantics.dispose();
-      await tester.tap(find.text('Cancel'));
+      await tester.tap(find.widgetWithText(TextButton, 'Cancel'));
       await tester.pumpAndSettle();
       expect(find.byType(RecipeBuilder), findsNothing);
       expect(find.text('Plant a habit'), findsOneWidget);
@@ -442,7 +446,7 @@ void main() {
       await tester.pumpWidget(app(true));
       await tester.pumpAndSettle();
       expect(find.byType(RecipeBuilder), findsOneWidget);
-      await tester.tap(find.text('Cancel'));
+      await tester.tap(find.widgetWithText(TextButton, 'Cancel'));
       await tester.pumpAndSettle();
       await tester.pumpWidget(app(true, guest: false));
       await tester.pumpAndSettle();
@@ -507,7 +511,7 @@ void main() {
           screenshotKey,
           name: 'first-habit-returning-${signedIn ? 'account' : 'device'}.png',
         );
-        await tester.tap(find.text('Cancel'));
+        await tester.tap(find.widgetWithText(TextButton, 'Cancel'));
         await tester.pumpAndSettle();
         expect(find.byType(RecipeBuilder), findsNothing);
         await tester.pump(const Duration(seconds: 5));
@@ -554,28 +558,32 @@ void main() {
       await ready(tester, find.text('Did it'));
       expect(find.byType(RecipeBuilder), findsNothing);
       await ready(tester, find.text('Sign in with Microsoft or Google'));
-      await tester.tap(find.text('Sign in with Microsoft or Google'));
+      await tester.tap(
+        find.widgetWithText(TextButton, 'Sign in with Microsoft or Google'),
+      );
       await ready(tester, find.text('Copy device habits to this account'));
       expect(identity.hasValidSession, isTrue);
       expect(find.byType(RecipeBuilder), findsNothing);
       expect(find.text('Did it'), findsNothing);
-      await tester.tap(find.text('Done'));
+      await tester.tap(find.widgetWithText(TextButton, 'Done'));
       await tester.pumpAndSettle();
       await tester.tap(find.text('Plant a habit'));
       await tester.pumpAndSettle();
       expect(find.byType(RecipeBuilder), findsOneWidget);
-      await tester.tap(find.text('Cancel'));
+      await tester.tap(find.widgetWithText(TextButton, 'Cancel'));
       await tester.pumpAndSettle();
       expect(find.byType(RecipeBuilder), findsNothing);
       await tester.pump(const Duration(seconds: 5));
       expect(find.byType(RecipeBuilder), findsNothing);
       await ready(tester, find.text('Sign out'));
-      await tester.tap(find.text('Sign out'));
+      await tester.tap(find.widgetWithText(TextButton, 'Sign out'));
       await tester.pumpAndSettle();
       await tester.tap(find.widgetWithText(FilledButton, 'Sign out'));
       await ready(tester, find.text('Did it'));
       await ready(tester, find.text('Sign in with Microsoft or Google'));
-      await tester.tap(find.text('Sign in with Microsoft or Google'));
+      await tester.tap(
+        find.widgetWithText(TextButton, 'Sign in with Microsoft or Google'),
+      );
       await ready(tester, find.text('Sign out'));
       await tester.pumpAndSettle();
       expect(find.byType(RecipeBuilder), findsNothing);

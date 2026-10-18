@@ -68,6 +68,9 @@ class _SyntheticIdentity extends IdentityService {
 Future<void> _ready(WidgetTester tester, Finder finder) =>
     first_habit.ready(tester, finder, dismissRecipeBuilder: true);
 
+Future<void> _tapTextButton(WidgetTester tester, String label) =>
+    tester.tap(find.widgetWithText(TextButton, label));
+
 void main() {
   for (final scenario in [
     'no receipt',
@@ -191,7 +194,7 @@ void main() {
     expect(find.text('Not signed in'), findsOneWidget);
     expect(find.byType(BackButton), findsNothing);
     expect(find.byTooltip('Settings and privacy'), findsOneWidget);
-    await tester.tap(find.text('Done'));
+    await _tapTextButton(tester, 'Done');
     await tester.pumpAndSettle();
     await tester.tap(find.text('Plant a habit'));
     await tester.pumpAndSettle();
@@ -298,7 +301,7 @@ void main() {
     expect(find.byTooltip('Settings and privacy'), findsOneWidget);
     await _screenshot(tester, boundaryKey, 'profile-signed-out.png');
     await _ready(tester, find.text('Sign in with Microsoft or Google'));
-    await tester.tap(find.text('Sign in with Microsoft or Google'));
+    await _tapTextButton(tester, 'Sign in with Microsoft or Google');
     await _ready(tester, find.text('ST'));
     expect(find.text('Signed in'), findsNothing);
     expect(find.text('Synthetic Garden Tester'), findsOneWidget);
@@ -311,7 +314,7 @@ void main() {
     expect(find.textContaining('Device garden stays separate'), findsOneWidget);
     expect(find.byType(BackButton), findsNothing);
     await tester.pump(const Duration(seconds: 5));
-    await tester.pumpAndSettle();
+    await tester.pump(const Duration(milliseconds: 350));
     expect(find.textContaining('Device garden stays separate'), findsOneWidget);
     expect(find.text('Copy device habits to this account'), findsOneWidget);
     await _screenshot(
@@ -319,7 +322,7 @@ void main() {
       boundaryKey,
       'profile-signed-in-before-copy-SYNTHETIC.png',
     );
-    await tester.tap(find.text('Copy device habits to this account'));
+    await _tapTextButton(tester, 'Copy device habits to this account');
     await tester.pumpAndSettle();
     const copyDisclosure =
         'Device habits, check-ins, and reflections copy to your account and may '
@@ -337,18 +340,18 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.text('Did it'), findsNothing);
     await _ready(tester, find.text('View device garden'));
-    await tester.tap(find.text('View device garden'));
+    await _tapTextButton(tester, 'View device garden');
     await _ready(tester, find.text('Viewing device garden'));
     await _ready(tester, find.text('Did it'));
     expect(identity.active, isTrue);
     await _screenshot(tester, boundaryKey, 'profile-view-device-SYNTHETIC.png');
     await _ready(tester, find.text('Return to account garden'));
-    await tester.tap(find.text('Return to account garden'));
+    await _tapTextButton(tester, 'Return to account garden');
     await _ready(tester, find.text('ST'));
     expect(find.text('Did it'), findsNothing);
     failDeviceRead = true;
     await _ready(tester, find.text('Copy device habits to this account'));
-    await tester.tap(find.text('Copy device habits to this account'));
+    await _tapTextButton(tester, 'Copy device habits to this account');
     await tester.pumpAndSettle();
     await tester.tap(find.widgetWithText(FilledButton, 'Copy'));
     await _ready(tester, find.textContaining("Couldn't copy device habits"));
@@ -356,14 +359,14 @@ void main() {
     expect(find.textContaining('No changes were saved.'), findsOneWidget);
     failDeviceRead = false;
     await _ready(tester, find.text('Copy device habits to this account'));
-    await tester.tap(find.text('Copy device habits to this account'));
+    await _tapTextButton(tester, 'Copy device habits to this account');
     await tester.pumpAndSettle();
     await tester.tap(find.widgetWithText(FilledButton, 'Copy'));
     await _ready(tester, find.text('Did it'));
     await _ready(tester, find.textContaining('Copied 1 habit'));
     expect(find.textContaining('Copied 1 habit'), findsOneWidget);
     await _ready(tester, find.text('Copy device habits to this account'));
-    await tester.tap(find.text('Copy device habits to this account'));
+    await _tapTextButton(tester, 'Copy device habits to this account');
     await tester.pumpAndSettle();
     await tester.tap(find.widgetWithText(FilledButton, 'Copy'));
     await _ready(tester, find.textContaining('Copied 0 habits'));
@@ -374,14 +377,14 @@ void main() {
     await _screenshot(tester, boundaryKey, 'profile-signed-in-SYNTHETIC.png');
     final account = identity.account!;
     await _ready(tester, find.text('Sign out'));
-    await tester.tap(find.text('Sign out'));
+    await _tapTextButton(tester, 'Sign out');
     await tester.pumpAndSettle();
-    await tester.tap(find.text('Cancel'));
+    await _tapTextButton(tester, 'Cancel');
     await tester.pumpAndSettle();
     expect(find.text('ST'), findsOneWidget);
     expect(identity.account, account);
     await _ready(tester, find.text('Sign out'));
-    await tester.tap(find.text('Sign out'));
+    await _tapTextButton(tester, 'Sign out');
     await tester.pumpAndSettle();
     const signOutDisclosure =
         'Unsynced account data is removed from this device; your separate '
@@ -449,7 +452,7 @@ void main() {
         'Share product event counts',
       );
       expect(tester.widget<SwitchListTile>(consent).onChanged, isNotNull);
-      await tester.tap(find.text('Done'));
+      await _tapTextButton(tester, 'Done');
       await tester.pumpAndSettle();
       expect(find.text('Sign out'), findsNothing);
       await tester.pumpWidget(const SizedBox());
@@ -498,7 +501,7 @@ void main() {
     );
     await _ready(tester, find.text('Copy device habits to this account'));
     await tester.ensureVisible(find.text('Copy device habits to this account'));
-    await tester.tap(find.text('Copy device habits to this account'));
+    await _tapTextButton(tester, 'Copy device habits to this account');
     await tester.pumpAndSettle();
     expect(
       tester.widget<AlertDialog>(find.byType(AlertDialog)).scrollable,
@@ -535,7 +538,7 @@ void main() {
         ),
       );
       await _ready(tester, find.text('Sign in with Microsoft or Google'));
-      await tester.tap(find.text('Sign in with Microsoft or Google'));
+      await _tapTextButton(tester, 'Sign in with Microsoft or Google');
       await tester.pump(const Duration(milliseconds: 350));
       await _ready(tester, find.text('Complete sign-in in your browser'));
       expect(find.text('Plant a habit'), findsOneWidget);
@@ -546,7 +549,7 @@ void main() {
       );
       expect(find.text('Not signed in'), findsOneWidget);
       expect(identity.account, isNull);
-      await tester.tap(find.text('Done'));
+      await _tapTextButton(tester, 'Done');
       await tester.pumpAndSettle();
       await tester.tap(find.text('Plant a habit'));
       await tester.pumpAndSettle();
@@ -620,7 +623,7 @@ void main() {
         ),
       );
       await _ready(tester, find.text('Sign in with Microsoft or Google'));
-      await tester.tap(find.text('Sign in with Microsoft or Google'));
+      await _tapTextButton(tester, 'Sign in with Microsoft or Google');
       await _ready(
         tester,
         find.text(
@@ -657,7 +660,7 @@ void main() {
         ),
       );
       await _ready(tester, find.text('Sign out'));
-      await tester.tap(find.text('Sign out'));
+      await _tapTextButton(tester, 'Sign out');
       await tester.pumpAndSettle();
       await tester.tap(find.widgetWithText(FilledButton, 'Sign out'));
       await _ready(tester, find.text('Clear saved sign-in'));
@@ -759,7 +762,7 @@ void main() {
         ),
       );
       await _ready(tester, find.text('View device garden'));
-      await tester.tap(find.text('View device garden'));
+      await _tapTextButton(tester, 'View device garden');
       await _ready(tester, find.text('Viewing device garden'));
       identity.active = false;
       tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.resumed);
