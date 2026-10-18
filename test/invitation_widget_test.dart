@@ -107,7 +107,7 @@ void main() {
     await tester.pumpAndSettle();
     expect(
       find.text(
-        'Optional analytics is off by default; when enabled, Bloomstep records '
+        'Optional analytics is off by default; when enabled, Budlark records '
         'invitation creation and the sharing method. Recipe cards show only '
         'the fields you approve—not your name, email, or practice history.',
       ),
