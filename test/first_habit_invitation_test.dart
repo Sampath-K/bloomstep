@@ -116,9 +116,9 @@ Future<void> ready(
       await tester.tap(settings);
       await settleUi();
     }
-    final profileGroup = find.widgetWithText(
-      ExpansionTile,
-      'Profile & account',
+    final profileGroup = find.ancestor(
+      of: find.text('Profile & account'),
+      matching: find.byType(ListTile),
     );
     if (needsProfile &&
         profile.evaluate().isEmpty &&
@@ -130,7 +130,10 @@ Future<void> ready(
     }
     final details = find.descendant(
       of: profile,
-      matching: find.widgetWithText(ExpansionTile, 'Details'),
+      matching: find.ancestor(
+        of: find.text('Details'),
+        matching: find.byType(ListTile),
+      ),
     );
     if (needsProfile &&
         details.evaluate().isNotEmpty &&
