@@ -49,6 +49,11 @@ Future<void> ready(WidgetTester tester, Finder finder) async {
     'Sign in with Microsoft or Google',
     'Not signed in',
     'Synthetic Gardener',
+    'Copy device habits',
+    'View device garden',
+    'Sign out',
+    'Couldn’t open your account garden',
+    'Sign-in didn’t complete',
   ].any(finder.toString().contains);
   for (var i = 0; i < 100; i++) {
     await tester.runAsync(

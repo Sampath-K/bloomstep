@@ -592,6 +592,12 @@ void main() {
       );
       expect(redeemed, 1);
       expect((await tester.runAsync(store.habits))!, isEmpty);
+      await waitInvitationCondition(tester, () {
+        final settings = tester.widget<IconButton>(
+          find.byTooltip('Settings and privacy'),
+        );
+        return settings.onPressed != null;
+      });
       await tester.tap(find.byTooltip('Settings and privacy'));
       await waitInvitation(tester, find.text('Garden & data'));
       await tester.ensureVisible(find.text('Garden & data'));

@@ -116,11 +116,13 @@ void main() {
         findsOneWidget,
       );
       await tester.tap(find.text('Done'));
-      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 350));
       await tester.tap(find.byTooltip('Settings and privacy'));
       await ready(tester, find.text('Privacy & measurement'));
-      await tester.tap(find.text('Privacy & measurement'));
-      await tester.pump();
+      await tester.tap(
+        find.widgetWithText(ExpansionTile, 'Privacy & measurement'),
+      );
+      await tester.pump(const Duration(milliseconds: 350));
       final toggle = find.widgetWithText(
         SwitchListTile,
         'Personalized reminder timing',

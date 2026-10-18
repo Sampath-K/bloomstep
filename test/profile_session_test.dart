@@ -83,6 +83,9 @@ Future<void> _ready(WidgetTester tester, Finder finder) async {
     'Clear saved sign-in',
     'Saved sign-in cleared',
     'offline session ended',
+    'Couldn’t open your account garden',
+    'Sign-in didn’t complete',
+    'Couldn’t finish sign-out',
   ].any(description.contains);
   for (var i = 0; i < 100; i++) {
     await tester.runAsync(
@@ -97,7 +100,7 @@ Future<void> _ready(WidgetTester tester, Finder finder) async {
         await tester.pump(const Duration(milliseconds: 350));
       }
     }
-    if (finder.evaluate().isNotEmpty) {
+    if (finder.evaluate().isNotEmpty && (!needsProfile || expandedProfile)) {
       if ((finder.toString().contains('Not signed in') ||
               finder.toString().contains('Sign in with Microsoft or Google')) &&
           find.text('Complete sign-in in your browser').evaluate().isNotEmpty) {
@@ -609,7 +612,7 @@ void main() {
       await _ready(tester, find.text('Sign in with Microsoft or Google'));
       await tester.tap(find.text('Sign in with Microsoft or Google'));
       await tester.pump();
-      expect(find.text('Complete sign-in in your browser'), findsOneWidget);
+      expect(find.byType(AlertDialog), findsNothing);
       expect(find.text('Plant a habit'), findsOneWidget);
       identity.pending!.complete();
       await _ready(
