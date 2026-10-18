@@ -74,8 +74,8 @@ test('owner-test downloads match the exact preview.14 release without implying g
   assert.equal(config.release.tag, 'v0.1.0-preview.14');
   assert.equal(config.release.universal.bytes, 22261590);
   for (const [architecture, asset] of Object.entries(assets)) {
-    const filename = `Bloomstep-0.1.0-preview.14-windows-${architecture}-setup.exe`;
-    const url = `https://github.com/Sampath-K/bloomstep/releases/download/v0.1.0-preview.14/${filename}`;
+    const filename = `Budlark-0.1.0-preview.14-windows-${architecture}-setup.exe`;
+    const url = `https://github.com/Sampath-K/budlark/releases/download/v0.1.0-preview.14/${filename}`;
     assert.equal(config.release[architecture].url, url);
     assert.equal(config.release[architecture].sha256, asset.sha256);
     assert.ok(home.includes(url));

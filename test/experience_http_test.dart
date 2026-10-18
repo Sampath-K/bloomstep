@@ -2,10 +2,10 @@ import 'dart:convert';
 import 'dart:io';
 import 'dart:math';
 
-import 'package:bloomstep/core/garden_store.dart';
-import 'package:bloomstep/core/models.dart';
-import 'package:bloomstep/services/experience_experiments.dart';
-import 'package:bloomstep/services/sync_service.dart';
+import 'package:budlark/core/garden_store.dart';
+import 'package:budlark/core/models.dart';
+import 'package:budlark/services/experience_experiments.dart';
+import 'package:budlark/services/sync_service.dart';
 import 'package:crypto/crypto.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:http/http.dart' as http;
@@ -40,7 +40,7 @@ class _LostPurgeAck extends http.BaseClient {
 void main() {
   test('real app SQLite to authenticated HTTP: restart, effective practice, offline purge retry and suppression', () async {
     final root = await Directory.systemTemp.createTemp(
-      'bloomstep-it-experience-',
+      'budlark-it-experience-',
     );
     final secret = List.generate(
       32,

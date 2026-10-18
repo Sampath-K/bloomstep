@@ -14,12 +14,12 @@ class UpdateService {
   UpdateService({this.client});
   final http.Client? client;
   static const bundledVersion = String.fromEnvironment(
-    'BLOOMSTEP_RELEASE_VERSION',
+    'BUDLARK_RELEASE_VERSION',
     defaultValue: '0.1.0-preview',
   );
   static final _endpoint = Uri.https(
     'api.github.com',
-    '/repos/Sampath-K/bloomstep/releases',
+    '/repos/Sampath-K/budlark/releases',
     {'per_page': '20'},
   );
 
@@ -62,7 +62,7 @@ class UpdateService {
             uri.userInfo.isNotEmpty ||
             uri.hasQuery ||
             uri.hasFragment ||
-            uri.path != '/Sampath-K/bloomstep/releases/tag/$tag') {
+            uri.path != '/Sampath-K/budlark/releases/tag/$tag') {
           throw const FormatException(
             'Release link is not the approved Budlark repository.',
           );

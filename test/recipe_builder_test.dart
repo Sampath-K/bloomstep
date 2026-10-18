@@ -1,12 +1,12 @@
-import 'package:bloomstep/core/models.dart';
-import 'package:bloomstep/core/garden_store.dart';
-import 'package:bloomstep/features/garden/recipe_builder.dart';
+import 'package:budlark/core/models.dart';
+import 'package:budlark/core/garden_store.dart';
+import 'package:budlark/features/garden/recipe_builder.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 
-import '../integration_test/bloomstep_windows_e2e_test.dart' as journey;
+import '../integration_test/budlark_windows_e2e_test.dart' as journey;
 
 void main() {
   testWidgets('Windows Ctrl+V works in each custom recipe step', (tester) async {

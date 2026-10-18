@@ -391,7 +391,7 @@ class InvitationService {
     try {
       final request = http.Request(body == null ? 'GET' : 'POST', endpoint)
         ..followRedirects = false
-        ..headers['X-Bloomstep-Authorization'] = 'Bearer $token';
+        ..headers['X-Budlark-Authorization'] = 'Bearer $token';
       if (body != null) {
         request.headers['Content-Type'] = 'application/json';
         request.body = jsonEncode(body);

@@ -7,7 +7,7 @@ $resumeRequested=[bool]$Resume
 $package=Assert-PackageInventory $packageRoot
 . "$packageRoot\harness\Run-InstallerTrial.ps1" -LoadHelpersOnly
 $root=$packageRoot
-$destination=Join-Path $env:LOCALAPPDATA 'BloomstepController'
+$destination=Join-Path $env:LOCALAPPDATA 'BudlarkController'
 $state=Join-Path $destination 'state'
 $headers=$null
 $secret=$null
@@ -23,7 +23,7 @@ function Invoke-ControllerApi([string]$Path,[string]$Method='GET',$Body=$null) {
   if ($Path -notmatch '^(/collaborators\?per_page=100|/actions/permissions(/selected-actions|/workflow)?|/actions/runners(/registration-token)?|/actions/variables(/DEVBOX_CONNECTION_AUDITED)?|/actions/workflows/validate\.yml|/actions/workflows/validate\.yml/dispatches|/commits/main|/contents/(\.github/workflows/validate\.yml|controller/Verify-Candidate\.ps1)\?ref=[a-f0-9]{40})?$') {
     throw 'Controller API path is not allowlisted.'
   }
-  $arguments=@{Uri=("https://api.github.com/repos/Sampath-K/bloomstep-vm-controller"+$Path); Headers=$headers; Method=$Method; TimeoutSec=60; MaximumRedirection=0; UseBasicParsing=$true}
+  $arguments=@{Uri=("https://api.github.com/repos/Sampath-K/budlark-vm-controller"+$Path); Headers=$headers; Method=$Method; TimeoutSec=60; MaximumRedirection=0; UseBasicParsing=$true}
   if ($null -ne $Body) { $arguments.Body=($Body|ConvertTo-Json -Depth 5); $arguments.ContentType='application/json' }
   try {
     $response=Invoke-WebRequest @arguments
@@ -62,7 +62,7 @@ try {
   Write-Host 'ALL controller writers/admins/apps can execute as you; a single workflow, labels or ephemeral mode cannot isolate them.'
   Write-Host 'Only trusted owner/apps may have write access. Corporate IT approval must permit this. No service, autologon, lock bypass or inbound access.'
   Write-Host 'Stop the listener to stop accepting work; remove its registration in the private repository Settings to revoke credentials.'
-  Write-Host "Budlock supplemental trials retain the legacy Bloomstep candidate: approved runs may install into $env:LOCALAPPDATA\Programs\Bloomstep and remove ONLY their verified owned program, shortcuts, protocol/startup registration using its native uninstaller."
+  Write-Host "Budlock supplemental trials retain the legacy Budlark candidate: approved runs may install into $env:LOCALAPPDATA\Programs\Budlark and remove ONLY their verified owned program, shortcuts, protocol/startup registration using its native uninstaller."
   Write-Host 'Existing user data is preserved; preexisting/unowned product state blocks execution. Uninstall is NOT VM rollback. No force kills or broad cleanup.'
   if (-not (Confirm-Operator 'Confirm dedicated VM/IT authorization and completed owner audit of ALL controller writers and installed/authorized apps, plus standing reviewed installer execution and owned uninstall.' 'PERSISTENT PRIVATE CONTROLLER')) {
     throw 'Required one-time persistent-access/trust audit confirmation declined.'
@@ -71,10 +71,10 @@ try {
   $secret=Read-Host 'Private controller setup token (masked; memory only, not saved)' -AsSecureString
   $pointer=[Runtime.InteropServices.Marshal]::SecureStringToBSTR($secret)
   try {
-    $headers=@{Authorization=('Bearer '+[Runtime.InteropServices.Marshal]::PtrToStringBSTR($pointer));Accept='application/vnd.github+json';'User-Agent'='bloomstep-owner-setup'}
+    $headers=@{Authorization=('Bearer '+[Runtime.InteropServices.Marshal]::PtrToStringBSTR($pointer));Accept='application/vnd.github+json';'User-Agent'='budlark-owner-setup'}
   } finally { [Runtime.InteropServices.Marshal]::ZeroFreeBSTR($pointer) }
   $repo=Invoke-ControllerApi ''
-  if (-not $repo.private -or $repo.full_name -cne 'Sampath-K/bloomstep-vm-controller' -or $repo.owner.login -cne 'Sampath-K') { throw 'Private repo identity verification failed.' }
+  if (-not $repo.private -or $repo.full_name -cne 'Sampath-K/budlark-vm-controller' -or $repo.owner.login -cne 'Sampath-K') { throw 'Private repo identity verification failed.' }
   $collaborators=@(Invoke-ControllerApi '/collaborators?per_page=100')
   if ($collaborators.Count -ne 1 -or $collaborators[0].login -cne 'Sampath-K' -or -not $collaborators[0].permissions.admin) {
     throw 'Effective human collaborator set is not owner-only; stop for owner review.'
@@ -152,7 +152,7 @@ try {
     $config=Get-Content -LiteralPath $configPath -Raw|ConvertFrom-Json
     $serverMatches=@($runners.runners|Where-Object {$_.id -eq $config.agentId -and $_.name -ceq $config.agentName})
     if ($runners.total_count -ne 1 -or $serverMatches.Count -ne 1 -or
-        $config.gitHubUrl -cne 'https://github.com/Sampath-K/bloomstep-vm-controller' -or
+        $config.gitHubUrl -cne 'https://github.com/Sampath-K/budlark-vm-controller' -or
         $serverMatches[0].status -cne 'offline' -or $serverMatches[0].busy) {
       throw 'Existing registration/repository differs or another listener is active. Never start a concurrent listener.'
     }
@@ -161,10 +161,10 @@ try {
     $registration=Invoke-ControllerApi '/actions/runners/registration-token' 'POST'
     $env:ACTIONS_RUNNER_INPUT_TOKEN=$registration.token
     $receipt.runnerRegistrationStarted=$true
-    $runnerName="bloomstep-private-$arch"
+    $runnerName="budlark-private-$arch"
     Push-Location $runnerDirectory
     try {
-      & .\config.cmd --unattended --url https://github.com/Sampath-K/bloomstep-vm-controller --name $runnerName --labels "bloomstep-private-controller,$arch" --work _work --disableupdate
+      & .\config.cmd --unattended --url https://github.com/Sampath-K/budlark-vm-controller --name $runnerName --labels "budlark-private-controller,$arch" --work _work --disableupdate
       if($LASTEXITCODE -ne 0){throw 'Runner registration failed. No listener started.'}
     } finally {Pop-Location; $env:ACTIONS_RUNNER_INPUT_TOKEN=$null; $registration=$null}
   }

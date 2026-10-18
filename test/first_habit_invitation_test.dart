@@ -2,12 +2,13 @@ import 'dart:async';
 import 'dart:io';
 import 'dart:ui' as ui;
 
-import 'package:bloomstep/app/theme.dart';
-import 'package:bloomstep/app/bloomstep_app.dart';
-import 'package:bloomstep/core/garden_store.dart';
-import 'package:bloomstep/features/garden/garden_screen.dart';
-import 'package:bloomstep/features/garden/recipe_builder.dart';
-import 'package:bloomstep/services/identity.dart';
+import 'package:budlark/app/theme.dart';
+import 'package:budlark/app/budlark_app.dart';
+import 'package:budlark/core/garden_store.dart';
+import 'package:budlark/features/garden/garden_screen.dart';
+import 'package:budlark/features/garden/recipe_builder.dart';
+import 'package:budlark/features/garden/profile_section.dart';
+import 'package:budlark/services/identity.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
 import 'package:flutter/services.dart';
@@ -42,9 +43,11 @@ class _RestoringIdentity extends IdentityService {
   }
 }
 
-Future<void> ready(WidgetTester tester, Finder finder) async {
-  var settingsOpened = false;
-  var expandedProfile = false;
+Future<void> ready(
+  WidgetTester tester,
+  Finder finder, {
+  bool dismissRecipeBuilder = false,
+}) async {
   final needsProfile = [
     'Sign in with Microsoft or Google',
     'Not signed in',
@@ -54,31 +57,66 @@ Future<void> ready(WidgetTester tester, Finder finder) async {
     'Sign out',
     'Couldn’t open your account garden',
     'Sign-in didn’t complete',
+    'ST',
+    'Viewing your device garden',
+    'Return to account garden',
+    'Copied ',
+    "Couldn't copy",
+    'Clear saved sign-in',
+    'Saved sign-in cleared',
+    'offline session ended',
+    'Couldn’t finish sign-out',
   ].any(finder.toString().contains);
-  for (var i = 0; i < 100; i++) {
+  for (var i = 0; i < 200; i++) {
     await tester.runAsync(
       () => Future<void>.delayed(const Duration(milliseconds: 20)),
     );
-    await tester.pump(const Duration(milliseconds: 20));
-    if (finder.evaluate().isNotEmpty && (!needsProfile || expandedProfile)) {
-      return;
+    await tester.pump(const Duration(milliseconds: 350));
+    if (dismissRecipeBuilder &&
+        find.byType(RecipeBuilder).evaluate().isNotEmpty) {
+      await tester.tap(find.text('Cancel'));
+      await tester.pump(const Duration(milliseconds: 350));
     }
+    final profile = find.byType(ProfileSection);
+    if (needsProfile && profile.evaluate().isNotEmpty) {
+      final section = tester.widget<ProfileSection>(profile);
+      if (section.busy &&
+          !finder.toString().contains('Complete sign-in in your browser')) {
+        await tester.tap(find.text('Done'));
+        await tester.pump(const Duration(milliseconds: 350));
+        continue;
+      }
+    }
+    if (finder.evaluate().isNotEmpty) return;
+    final settings = find.byWidgetPredicate(
+      (widget) => widget is IconButton &&
+          widget.tooltip == 'Settings and privacy' && widget.onPressed != null,
+    );
     if (needsProfile &&
-        !settingsOpened &&
-        find.byTooltip('Settings and privacy').evaluate().isNotEmpty) {
-      await tester.tap(find.byTooltip('Settings and privacy'));
-      settingsOpened = true;
+        find.byType(AlertDialog).evaluate().isEmpty &&
+        settings.evaluate().isNotEmpty) {
+      await tester.tap(settings);
       await tester.pump(const Duration(milliseconds: 350));
     }
     final profileGroup = find.text('Profile & account');
     if (needsProfile &&
-        settingsOpened &&
-        !expandedProfile &&
+        profile.evaluate().isEmpty &&
         profileGroup.evaluate().isNotEmpty) {
       await tester.ensureVisible(profileGroup);
       await tester.tap(profileGroup);
       await tester.pump(const Duration(milliseconds: 350));
-      expandedProfile = true;
+    }
+    final details = find.descendant(
+      of: profile,
+      matching: find.widgetWithText(ExpansionTile, 'Details'),
+    );
+    if (needsProfile &&
+        details.evaluate().isNotEmpty &&
+        find.descendant(of: profile, matching: find.byType(SelectableText))
+            .evaluate().isEmpty) {
+      await tester.ensureVisible(details);
+      await tester.tap(details);
+      await tester.pump(const Duration(milliseconds: 350));
     }
   }
   fail('Timed out waiting for $finder');
@@ -91,7 +129,7 @@ void main() {
     await tester.binding.setSurfaceSize(const Size(1200, 920));
     addTearDown(() => tester.binding.setSurfaceSize(null));
     final root = (await tester.runAsync(
-      () => Directory.systemTemp.createTemp('bloomstep-first-habit-'),
+      () => Directory.systemTemp.createTemp('budlark-first-habit-'),
     ))!;
     addTearDown(() => tester.runAsync(() => root.delete(recursive: true)));
     final identity = _RestoringIdentity();
@@ -129,7 +167,7 @@ void main() {
         key: screenshotKey,
         child: MaterialApp(
           debugShowCheckedModeBanner: false,
-          theme: BloomstepTheme.light(),
+          theme: BudlarkTheme.light(),
           home: HabitHome(testIdentity: identity, testOpenStore: open),
         ),
       ),
@@ -179,7 +217,7 @@ void main() {
     tester,
   ) async {
     final root = (await tester.runAsync(
-      () => Directory.systemTemp.createTemp('bloomstep-first-habit-'),
+      () => Directory.systemTemp.createTemp('budlark-first-habit-'),
     ))!;
     addTearDown(() => tester.runAsync(() => root.delete(recursive: true)));
     final identity = _RestoringIdentity()
@@ -399,7 +437,7 @@ void main() {
         await tester.binding.setSurfaceSize(const Size(1200, 920));
         addTearDown(() => tester.binding.setSurfaceSize(null));
         final root = (await tester.runAsync(
-          () => Directory.systemTemp.createTemp('bloomstep-returning-empty-'),
+          () => Directory.systemTemp.createTemp('budlark-returning-empty-'),
         ))!;
         addTearDown(() => tester.runAsync(() => root.delete(recursive: true)));
         final identity = _RestoringIdentity()
@@ -421,7 +459,7 @@ void main() {
             key: screenshotKey,
             child: MaterialApp(
               debugShowCheckedModeBanner: false,
-              theme: BloomstepTheme.light(),
+              theme: BudlarkTheme.light(),
               home: HabitHome(testIdentity: identity, testOpenStore: open),
             ),
           ),
@@ -450,7 +488,7 @@ void main() {
     'saved device habits show continuity choice before the empty account builder',
     (tester) async {
       final root = (await tester.runAsync(
-        () => Directory.systemTemp.createTemp('bloomstep-signin-empty-'),
+        () => Directory.systemTemp.createTemp('budlark-signin-empty-'),
       ))!;
       addTearDown(() => tester.runAsync(() => root.delete(recursive: true)));
       Future<GardenStore> open(String account) =>
@@ -515,7 +553,7 @@ Future<void> captureFirstHabitScreen(
   GlobalKey key, {
   String name = 'first-habit-auto-open.png',
 }) async {
-  final output = Platform.environment['BLOOMSTEP_SCREENSHOTS'];
+  final output = Platform.environment['BUDLARK_SCREENSHOTS'];
   if (output == null) return;
   await tester.pumpAndSettle();
   final boundary =

@@ -13,7 +13,7 @@ SOURCE_FILES = (
     "README.md",
 )
 ARTIFACT_FILES = (
-    "Bloomstep-0.1.0-preview-windows-universal-setup.exe",
+    "Budlark-0.1.0-preview-windows-universal-setup.exe",
     "universal-manifest.json",
     "payload-manifest-x64.json",
     "payload-manifest-arm64.json",
@@ -48,7 +48,7 @@ def build(source, artifact_dir, output):
         if hashlib.sha256(files[payload]).hexdigest() != trial["payloadManifests"][arch]:
             raise ValueError(f"The {arch} payload manifest does not match its pinned SHA-256.")
     manifest = {
-        "kind": "bloomstep-devbox-installer-trial-package-v1",
+        "kind": "budlark-devbox-installer-trial-package-v1",
         "sourceCommit": source,
         "files": [
             {"path": name, "sha256": hashlib.sha256(data).hexdigest()}
@@ -60,7 +60,7 @@ def build(source, artifact_dir, output):
     output.parent.mkdir(parents=True, exist_ok=True)
     with zipfile.ZipFile(output, "w", compression=zipfile.ZIP_DEFLATED) as archive:
         for name, data in sorted(files.items()):
-            info = zipfile.ZipInfo(f"bloomstep-devbox-installer-trial/{name}", (2026, 1, 1, 0, 0, 0))
+            info = zipfile.ZipInfo(f"budlark-devbox-installer-trial/{name}", (2026, 1, 1, 0, 0, 0))
             info.compress_type = zipfile.ZIP_DEFLATED
             archive.writestr(info, data)
     return hashlib.sha256(output.read_bytes()).hexdigest()

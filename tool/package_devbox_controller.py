@@ -32,7 +32,7 @@ def build(source, output):
         for target, path in FILES.items()
     }
     manifest = {
-        "kind": "bloomstep-private-controller-connection-v1",
+        "kind": "budlark-private-controller-connection-v1",
         "source": source,
         "files": [
             {"path": name, "sha256": hashlib.sha256(data).hexdigest()}
@@ -44,7 +44,7 @@ def build(source, output):
     output.parent.mkdir(parents=True, exist_ok=True)
     with zipfile.ZipFile(output, "w", compression=zipfile.ZIP_DEFLATED) as archive:
         for name, data in sorted(files.items()):
-            info = zipfile.ZipInfo(f"bloomstep-private-controller/{name}", (2026, 1, 1, 0, 0, 0))
+            info = zipfile.ZipInfo(f"budlark-private-controller/{name}", (2026, 1, 1, 0, 0, 0))
             info.compress_type = zipfile.ZIP_DEFLATED
             archive.writestr(info, data)
     return hashlib.sha256(output.read_bytes()).hexdigest()

@@ -5,7 +5,7 @@ import { parseInvitation, rememberInvitation, savedInvitation, nativeInvitationU
 const token = 'A'.repeat(43);
 test('landing hands off only opaque canonical invitation parameters', () => {
   const intent = parseInvitation(`?invite=${token}&channel=qr`);
-  assert.equal(nativeInvitationUrl(intent), `bloomstep://invite?code=${token}&channel=qr`);
+  assert.equal(nativeInvitationUrl(intent), `budlark://invite?code=${token}&channel=qr`);
   assert.equal(parseInvitation(''), null);
   assert.equal(parseInvitation('?invite=garden').generic, true);
   for (const query of [`?invite=${token}&channel=evil`, `?invite=${token}&invite=${token}`,

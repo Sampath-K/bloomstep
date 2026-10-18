@@ -14,7 +14,7 @@ const sourceConfig = JSON.parse(await readFile(new URL('./sources.json', import.
 const required = ['api', 'native'];
 const job = (name, conclusion = 'success', status = 'completed') => ({ name, conclusion, status });
 const config = {
-  repo: 'Sampath-K/bloomstep', maxAgeSeconds: 300, target: 'candidate',
+  repo: 'Sampath-K/budlark', maxAgeSeconds: 300, target: 'candidate',
   workstreams: [
     { id: 'code', title: 'Code', owner: 'Engineering', nextAction: 'Review exact head', kind: 'pull', number: 48, requiredJobs: required, dependencies: [] },
     { id: 'candidate', title: 'Candidate', owner: 'Integrator', nextAction: 'Compose after review', kind: 'gate',
@@ -153,7 +153,7 @@ test('contract: freshness expires, invalid/future timestamps are unknown', () =>
 });
 
 test('contract: auth failure retains last-known evidence but never current success', async () => {
-  const previous = { workstreams: [{ id: 'code', state: 'merged', observedAt: now, evidence: [{ title: 'PR', url: 'https://github.com/Sampath-K/bloomstep/pull/48' }] }] };
+  const previous = { workstreams: [{ id: 'code', state: 'merged', observedAt: now, evidence: [{ title: 'PR', url: 'https://github.com/Sampath-K/budlark/pull/48' }] }] };
   let reads = 0;
   const result = await collect(config, { now, previous, auth: async () => { throw Error('secret token'); }, read: async () => { reads++; } });
   assert.equal(reads, 0);
@@ -165,8 +165,8 @@ test('contract: auth failure retains last-known evidence but never current succe
   assert.ok(!JSON.stringify(result).includes('secret token'));
 });
 
-const pull = { number: 48, state: 'open', draft: false, head: { sha: 'a'.repeat(40) }, html_url: 'https://github.com/Sampath-K/bloomstep/pull/48' };
-const run = { id: 42, head_sha: pull.head.sha, html_url: 'https://github.com/Sampath-K/bloomstep/actions/runs/42', run_attempt: 1 };
+const pull = { number: 48, state: 'open', draft: false, head: { sha: 'a'.repeat(40) }, html_url: 'https://github.com/Sampath-K/budlark/pull/48' };
+const run = { id: 42, head_sha: pull.head.sha, html_url: 'https://github.com/Sampath-K/budlark/actions/runs/42', run_attempt: 1 };
 function reader(path) {
   if (path.endsWith('/pulls/48')) return pull;
   if (path.includes('/actions/workflows/ci.yml/runs?')) return [{ total_count: 1, workflow_runs: [run] }];
@@ -226,7 +226,7 @@ test('contract: stale, released and merged do not satisfy verified dependencies;
 test('contract: release resolves immutable annotated tag, never target_commitish branch', async () => {
   const c = { ...config, target: 'release', workstreams: [{ ...config.workstreams[0], id: 'release', kind: 'release' }] };
   const result = await collect(c, { now, auth: async () => {}, read: async path => {
-    if (path.includes('/releases?')) return [[{ tag_name: 'v1', draft: false, published_at: now, html_url: 'https://github.com/Sampath-K/bloomstep/releases/tag/v1', target_commitish: 'main' }]];
+    if (path.includes('/releases?')) return [[{ tag_name: 'v1', draft: false, published_at: now, html_url: 'https://github.com/Sampath-K/budlark/releases/tag/v1', target_commitish: 'main' }]];
     if (path.includes('/git/ref/tags/v1')) return { object: { type: 'tag', sha: 'b'.repeat(40) } };
     if (path.includes('/git/tags/')) return { object: { type: 'commit', sha: 'c'.repeat(40) } };
     throw Error('Unexpected read');
@@ -294,13 +294,13 @@ test('contract: a satisfied direct state cannot bypass unmet transitive prerequi
 test('contract: gh transport is GET-only, bounded and sanitizes timeout failures', async () => {
   await assert.rejects(ghRead('https://example.org/token'), /path/i);
   await assert.rejects(ghRead('repos/another/repo/issues'), /path/i);
-  await assert.rejects(ghRead('repos/Sampath-K/bloomstep/pulls/48', false, async () => { throw Object.assign(Error('secret'), { code: 'ETIMEDOUT' }); }), /timed out/i);
-  await assert.rejects(ghRead('repos/Sampath-K/bloomstep/pulls/48', false, async () => {
+  await assert.rejects(ghRead('repos/Sampath-K/budlark/pulls/48', false, async () => { throw Object.assign(Error('secret'), { code: 'ETIMEDOUT' }); }), /timed out/i);
+  await assert.rejects(ghRead('repos/Sampath-K/budlark/pulls/48', false, async () => {
     throw Object.assign(Error('secret'), { stderr: 'gh: private details (HTTP 404)' });
   }), error => error.message.includes('HTTP 404') && !error.message.includes('private details'));
-  await ghRead('repos/Sampath-K/bloomstep/pulls/48', true, async (file, args, options) => {
+  await ghRead('repos/Sampath-K/budlark/pulls/48', true, async (file, args, options) => {
     assert.equal(file, 'gh');
-    assert.deepEqual(args, ['api', '--hostname', 'github.com', '--method', 'GET', 'repos/Sampath-K/bloomstep/pulls/48', '--paginate', '--slurp']);
+    assert.deepEqual(args, ['api', '--hostname', 'github.com', '--method', 'GET', 'repos/Sampath-K/budlark/pulls/48', '--paginate', '--slurp']);
     assert.equal(options.timeout, 20000);
     assert.equal(options.windowsHide, true);
     return { stdout: '[[]]' };
@@ -320,7 +320,7 @@ test('contract: protected verification requires current published tag SHA and ev
     [[job('api')], 'unknown'],
   ]) {
     const result = await collect(c, { now, auth: async () => {}, read: async path => {
-      if (path.includes('/releases?')) return [[{ tag_name: 'v1', draft: false, published_at: now, html_url: 'https://github.com/Sampath-K/bloomstep/releases/tag/v1' }]];
+      if (path.includes('/releases?')) return [[{ tag_name: 'v1', draft: false, published_at: now, html_url: 'https://github.com/Sampath-K/budlark/releases/tag/v1' }]];
       if (path.includes('/git/ref/tags/')) return { object: { type: 'commit', sha: pull.head.sha } };
       if (path.includes('/runs?')) {
         assert.ok(path.includes('branch=v1'));
@@ -347,7 +347,7 @@ test('contract: no published releases is unknown, and manual gates never auto-ve
 });
 
 test('contract: atomic snapshot and loopback server expose only fixed read-only routes', async () => {
-  const dir = await mkdtemp(join(tmpdir(), 'bloomstep-status-'));
+  const dir = await mkdtemp(join(tmpdir(), 'budlark-status-'));
   let server;
   try {
     await writeSnapshot(dir, { schemaVersion: 1, collectedAt: now, workstreams: [] });

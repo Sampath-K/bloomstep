@@ -1,4 +1,4 @@
-const storageKey = 'bloomstep.pending-invitation.v1';
+const storageKey = 'budlark.pending-invitation.v1';
 const channels = new Set(['link', 'email', 'qr', 'native']);
 
 function validCode(code) {
@@ -27,7 +27,7 @@ export function nativeInvitationUrl(intent) {
   if (!intent || !validCode(intent.code) || !channels.has(intent.channel)) {
     throw new Error('This invitation is not ready to open.');
   }
-  return 'bloomstep://invite?' + new URLSearchParams({ code: intent.code, channel: intent.channel });
+  return 'budlark://invite?' + new URLSearchParams({ code: intent.code, channel: intent.channel });
 }
 
 export function rememberInvitation(storage, intent, now = Date.now()) {

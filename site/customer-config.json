@@ -5,16 +5,16 @@
   "release": {
     "tag": "v0.1.0-preview.14",
     "universal": {
-      "url": "https://github.com/Sampath-K/bloomstep/releases/download/v0.1.0-preview.14/Bloomstep-0.1.0-preview.14-windows-universal-setup.exe",
+      "url": "https://github.com/Sampath-K/budlark/releases/download/v0.1.0-preview.14/Budlark-0.1.0-preview.14-windows-universal-setup.exe",
       "sha256": "7ad56cc3c71a40d78dd7cb043b43aa42ea884cb0484da982cffa386c9384b094",
       "bytes": 22261590
     },
     "arm64": {
-      "url": "https://github.com/Sampath-K/bloomstep/releases/download/v0.1.0-preview.14/Bloomstep-0.1.0-preview.14-windows-arm64-setup.exe",
+      "url": "https://github.com/Sampath-K/budlark/releases/download/v0.1.0-preview.14/Budlark-0.1.0-preview.14-windows-arm64-setup.exe",
       "sha256": "c9750eb5985e97f99282b8bb958235c86d597eefb4e14ba18801795c92eb723d"
     },
     "x64": {
-      "url": "https://github.com/Sampath-K/bloomstep/releases/download/v0.1.0-preview.14/Bloomstep-0.1.0-preview.14-windows-x64-setup.exe",
+      "url": "https://github.com/Sampath-K/budlark/releases/download/v0.1.0-preview.14/Budlark-0.1.0-preview.14-windows-x64-setup.exe",
       "sha256": "f452014788d88eed80f1609180dc89660fe26dceec5598e843d2ec51a088b9cf"
     }
   }

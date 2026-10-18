@@ -17,7 +17,7 @@ The tracked-file inventory contained 682 files. This was a bounded architect rev
 - `README.md`, `pubspec.yaml`, `api/package.json`, `site/package.json`
 - `lib/core/garden_store.dart` (lines 1–250), `lib/core/models.dart`
 - `lib/services/sync_service.dart` (lines 1–260, 310–352), `lib/services/identity.dart` (lines 1–240)
-- `lib/app/bloomstep_app.dart` (lines 1–220)
+- `lib/app/budlark_app.dart` (lines 1–220)
 - `api/src/backend.mjs` (lines 1–570), `api/src/contracts.mjs`, `api/src/storage-target.mjs`
 - `api/src/primary-auth.mjs`, `api/src/auth-transport.mjs`, `api/src/invitations.mjs` (lines 1–290)
 - `site/build.mjs`

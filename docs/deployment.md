@@ -26,10 +26,10 @@ not committed config. Creation is authorized separately from enabling public use
 
 ### Synthetic-only nonproduction storage binding
 
-The API defaults remain Cosmos database `bloomstep`, container `data`. A separate
+The API defaults remain Cosmos database `budlark`, container `data`. A separate
 target requires both `COSMOS_DATABASE_NAME` and `COSMOS_CONTAINER_NAME`; partial,
 empty or invalid names fail startup rather than falling back to production.
-Set `BLOOMSTEP_SYNTHETIC_ACCEPTANCE=enabled` for acceptance deployments. In this
+Set `BUDLARK_SYNTHETIC_ACCEPTANCE=enabled` for acceptance deployments. In this
 mode both names must start with `synthetic-` (for example database
 `synthetic-pr34`, container `synthetic-data`); the production database or container
 is rejected before storage access or route registration. Any other value for
@@ -69,7 +69,7 @@ subscription/resource group, geography and domain. Then sign in to that
 **customer** tenant before registering applications.
 
 Register an API exposing delegated `Garden.ReadWrite`. Use v2 tokens and an
-explicit audience. Add an application role `Bloomstep.Admin`, assigned explicitly
+explicit audience. Add an application role `Budlark.Admin`, assigned explicitly
 to product team users, never inferred from email or display name.
 
 Register a public desktop client (no secret) with system-browser redirect:
@@ -150,7 +150,7 @@ controller/contact/copyright approval is still required, not invented.
 `path_provider_windows` and secure-storage v4 derive their default data path from
 executable company/product metadata. Before either storage or the instance lock
 opens, Budlark pins their support/cache directory to the existing machine
-namespace `com.bloomstep\bloomstep` under the corresponding Windows known folder.
+namespace `com.budlark\budlark` under the corresponding Windows known folder.
 Changing customer-visible branding therefore neither relocates gardens/DPAPI
 credentials nor creates a second instance lock. No private file is copied,
 decoded, migrated or deleted; the legacy folder name is a deliberate persistent
@@ -175,12 +175,12 @@ outputs remain ignored.
 Hosted Budlark updates applied by the operator: the customer tenant organization
 displayName and the Microsoft-account federation app are now `Budlark`; Entra
 customer branding was applied. The hosted page's `sCompanyDisplayName` still
-reported "Bloomstep Customers" at last check (propagation pending).
+reported "Budlark Customers" at last check (propagation pending).
 See [the branding inventory](branding.md) for preserved paths, historical evidence,
 the registered `budlark.com` domain and deferred external changes.
 After separate explicit customer-branding authorization, run
 `infra/configure-customer-branding.ps1 -TenantId <customer-id> -LogoPath
-site\assets\bloomstep-wordmark.png -ConfirmCustomerBranding` with existing
+site\assets\budlark-wordmark.png -ConfirmCustomerBranding` with existing
 customer-tenant Graph access. It verifies the tenant before mutations, creates
 branding only if absent, preserves unrelated content keys/MFA strings, writes
 only supported product text/banner/favicon, and verifies readback.
@@ -189,7 +189,7 @@ is `/branding/localizations/0`, distinct from `/localizations/en-US`.
 The observed tenant returned500 for parent-alias PATCH, while both documented
 localization writes succeeded. Do not waive service errors or claim English-only
 branding covers other browser languages. Actual isolated English and French
-fallback pages showed the Bloomstep wordmark and "Sign in to Bloomstep" at the
+fallback pages showed the Budlark wordmark and "Sign in to Budlark" at the
 time of that observation. This is historical evidence, not Budlark readback.
 The fallback text is English, not a claim of fully localized product copy.
 
@@ -212,7 +212,7 @@ verification; shared Microsoft broker domains can need provider-specific review,
 so no approval or displayed-name guarantee is inferred. Do not submit external
 review, invent contacts, switch production audience or change credentials without
 operator approval. The Google App name was saved as **Budlark** and confirmed after
-reload (project `bloomstep-510615`); no logo, verification submission, contact,
+reload (project `budlark-510615`); no logo, verification submission, contact,
 domain or audience change was made, so production display still awaits Google
 brand verification.
 
@@ -245,7 +245,7 @@ since verified authentication. A refresh never resets that authentication deadli
 Managed SWA replaces the standard `Authorization` header with its own backend
 token ([Azure team's confirmation](https://github.com/Azure/static-web-apps/issues/34)).
 Native sync/deletion and the same-origin operator console therefore carry the
-real broker token in **`X-Bloomstep-Authorization: Bearer ...`**. The API validates
+real broker token in **`X-Budlark-Authorization: Bearer ...`**. The API validates
 that token's exact issuer, audience, signature, expiry, subject, scope and role.
 SWA's proxy token/client-principal header is never a substitute for app identity.
 Missing or invalid client tokens fail closed; this is not an authentication bypass.
@@ -287,19 +287,19 @@ no token extraction/export/logging script; MSAL completes its popup flow.
 `infra/configure-console-identity.ps1` requires:
 CustomerTenantId, ResourceTenantId, explicit SubscriptionId, ResourceGroup,
 SwaName, existing customer ApiClientId, AuthenticationEventsFlowId,
-CustomerIssuer, Repository (`Sampath-K/bloomstep`) and
+CustomerIssuer, Repository (`Sampath-K/budlark`) and
 `-ConfirmPersonalSubscription`. Run only after explicit owner approval.
 It validates enabled personal subscription/resource-directory binding, existing
 Free SWA/repository API_ORIGIN, exact HTTPS customer ciamlogin issuer/discovery,
 and Graph organization's selected customer tenant. Graph token acquisition is
 tenant-only (no mutually exclusive subscription argument).
 
-The script creates/reconciles the tagged `Bloomstep operator console (public SPA)`
+The script creates/reconciles the tagged `Budlark operator console (public SPA)`
 app/SP with only the exact SPA callback and delegated Garden.ReadWrite permission
 to the existing API; web/native fallback redirect platforms are cleared on that
 dedicated managed app. Existing secrets, mismatched bindings, ambiguous apps or
 broader consent grants fail for explicit review. Narrow AllPrincipals consent
-is granted for Garden.ReadWrite only; it does **not** assign Bloomstep.Admin.
+is granted for Garden.ReadWrite only; it does **not** assign Budlark.Admin.
 
 It preflights and associates the existing user flow via documented Graph v1.0:
 `POST /identity/authenticationEventsFlows/{flowId}/conditions/applications/includeApplications`
@@ -335,9 +335,9 @@ data. Local sign-out clears the console but does not promise global identity-
 provider SSO logout. Reload requires explicit sign-in; there is no raw token
 field/clipboard/persistent credential cache or automatic interactive fallback.
 
-Same-origin `/api/team/*` calls use only X-Bloomstep-Authorization with the actual
+Same-origin `/api/team/*` calls use only X-Budlark-Authorization with the actual
 customer API access token; redirects are rejected. API 401 explicitly asks for
-sign-in; 403 explicitly requires customer Bloomstep.Admin assignment. UI does not
+sign-in; 403 explicitly requires customer Budlark.Admin assignment. UI does not
 infer privileges from email/subscription owner or treat ID-token roles as API
 authorization. Founder/human customer identity must be explicitly selected and
 assigned the existing API Admin app role. Browser registration association and
@@ -384,9 +384,9 @@ directory):
   -SubscriptionId '<explicit-personal-subscription-guid>' `
   -ResourceGroup '<existing-resource-group>' `
   -SwaName '<existing-free-swa>' `
-  -Repository 'Sampath-K/bloomstep' `
-  -Environment 'bloomstep-operations' `
-  -FeatureBranch 'sampath-k-bloomstep-mvp-implementation' `
+  -Repository 'Sampath-K/budlark' `
+  -Environment 'budlark-operations' `
+  -FeatureBranch 'sampath-k-budlark-mvp-implementation' `
   -ConfirmPersonalResourceTenant
 ```
 
@@ -411,9 +411,9 @@ Graph access uses a cached delegated token acquired silently for that resource
 directory; no client-credentials request to the customer directory is made.
 
 It idempotently creates/reconciles one clearly tagged single-tenant app named
-`Bloomstep aggregate worker (personal resource directory)` and its service
+`Budlark aggregate worker (personal resource directory)` and its service
 principal. The app uses v2 access tokens, `api://<appId>`, and one enabled
-**Application-only** role `Bloomstep.AggregateWriter`. The worker service
+**Application-only** role `Budlark.AggregateWriter`. The worker service
 principal is explicitly assigned that role **on itself** as resource API; no
 scope/application permission or Azure subscription-owner role is inferred.
 Duplicate/untagged/mismatched apps, unexpected roles/application grants,
@@ -425,13 +425,13 @@ The single FIC is exactly:
 
 | Field | Value |
 | --- | --- |
-| Name | bloomstep-operations-github |
+| Name | budlark-operations-github |
 | Issuer | https://token.actions.githubusercontent.com |
-| Subject | repo:Sampath-K/bloomstep:environment:bloomstep-operations |
+| Subject | repo:Sampath-K/budlark:environment:budlark-operations |
 | Audience | api://AzureADTokenExchange |
 
 The stable GitHub environment uses custom **branch** deployment policies for
-exactly `main` and `sampath-k-bloomstep-mvp-implementation`; no tag/PR/wildcard
+exactly `main` and `sampath-k-budlark-mvp-implementation`; no tag/PR/wildcard
 policy is accepted. Unexpected pre-existing policies fail for review instead
 of silently admitting another ref. Existing wait timers/reviewers/admin-bypass
 settings are retained; unrecognized custom protection rules fail rather than
@@ -465,7 +465,7 @@ daily **02:20 UTC** schedule. GitHub scheduled runs become active **only after
 the workflow is merged onto the repository default branch**; pushing this
 feature branch does not activate cron. Before merge, owner can manually dispatch
 the approved feature branch once real provisioning and API deployment are
-verified. Job rejects other repositories/refs and uses `bloomstep-operations`.
+verified. Job rejects other repositories/refs and uses `budlark-operations`.
 Existing environment reviewers/wait timers may require human approval.
 
 The job grants only `contents:read` and `id-token:write`, has a five-minute
@@ -485,7 +485,7 @@ client_assertion=<masked GitHub assertion>
 
 The returned access token is masked before use. Then it sends strict body `{}`
 to `POST <API_ORIGIN>/api/internal/aggregates` using **only**
-`X-Bloomstep-Authorization: Bearer <actual resource-token>`. The backend chooses
+`X-Budlark-Authorization: Bearer <actual resource-token>`. The backend chooses
 the completed previous UTC day. The workflow refuses redirects, caps response
 bytes, uses bounded request timeouts, fails on HTTP/JSON/auth errors without
 printing response bodies, and emits only the completed snapshot count. It does

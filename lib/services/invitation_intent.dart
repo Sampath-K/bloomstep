@@ -38,7 +38,7 @@ class InvitationIntent {
   }
 
   static InvitationIntent parseNative(Uri uri) {
-    if (uri.scheme != 'bloomstep' ||
+    if (uri.scheme != 'budlark' ||
         uri.host != 'invite' ||
         uri.hasPort ||
         (uri.path.isNotEmpty && uri.path != '/')) {
@@ -61,7 +61,7 @@ class InvitationIntent {
   }
 
   Uri get nativeUri => Uri(
-    scheme: 'bloomstep',
+    scheme: 'budlark',
     host: 'invite',
     queryParameters: {'code': code, 'channel': channel},
   );

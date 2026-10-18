@@ -10,12 +10,12 @@ const root = new URL('../tool/protected-vm/', import.meta.url);
 const read = name => readFileSync(new URL(name, root), 'utf8');
 const run = code => spawnSync('pwsh', ['-NoProfile', '-NonInteractive', '-Command', `${code}\nexit 0`], {
   encoding: 'utf8',
-  env: { ...process.env, BLOOMSTEP_BOOTSTRAP_MODULE: fileURLToPath(new URL('Bootstrap.Common.ps1', root)) },
+  env: { ...process.env, BUDLARK_BOOTSTRAP_MODULE: fileURLToPath(new URL('Bootstrap.Common.ps1', root)) },
 });
 
 test('retry policy retries only bounded transient transport/status failures', () => {
   const result = run(`
-    . $env:BLOOMSTEP_BOOTSTRAP_MODULE
+    . $env:BUDLARK_BOOTSTRAP_MODULE
     foreach ($status in @(408,429,500,502,503,504)) {
       if (-not (Test-TransientDownloadFailure $status '')) { throw "Not transient: $status" }
     }
@@ -36,7 +36,7 @@ test('retry policy retries only bounded transient transport/status failures', ()
 
 test('resume never authorizes registration; terminal states distinguish readiness and reboot', () => {
   const result = run(`
-    . $env:BLOOMSTEP_BOOTSTRAP_MODULE
+    . $env:BUDLARK_BOOTSTRAP_MODULE
     if ((Get-InnoExitDisposition 0) -ne 'Installed') { throw 'Success lost' }
     if ((Get-InnoExitDisposition 3010) -ne 'RestartRequired') { throw 'Restart lost' }
     try { Get-InnoExitDisposition 5; throw 'Accepted installer failure' } catch { if ($_.Exception.Message -eq 'Accepted installer failure') { throw } }
@@ -47,10 +47,10 @@ test('resume never authorizes registration; terminal states distinguish readines
 });
 
 test('cached downloads, package inventory and partial portable extraction fail closed on tampering', () => {
-  const directory = mkdtempSync(join(tmpdir(), 'bloomstep-bootstrap-test-'));
+  const directory = mkdtempSync(join(tmpdir(), 'budlark-bootstrap-test-'));
   try {
     const result = run(`
-      . $env:BLOOMSTEP_BOOTSTRAP_MODULE
+      . $env:BUDLARK_BOOTSTRAP_MODULE
       $root = '${directory.replaceAll("'", "''")}'
       $file = Join-Path $root 'input.txt'
       [IO.File]::WriteAllText($file, 'verified')
@@ -97,7 +97,7 @@ test('all dependency downloads are immutable official assets with explicit SHA25
 test('single-entry bootstrap and elevation helper cannot register or weaken protection', () => {
   const text = read('Bootstrap.ps1') + read('Install-Inno.ps1');
   assert.doesNotMatch(text, /config\.cmd|run\.cmd|Set-ExecutionPolicy|Unblock-File|Set-MpPreference|Add-MpPreference|schtasks|New-Service/);
-  for (const word of ['TrustBlocked', 'BLOOMSTEP_DISPOSABLE_VM', 'Resume', 'checkpoint', 'corporate']) {
+  for (const word of ['TrustBlocked', 'BUDLARK_DISPOSABLE_VM', 'Resume', 'checkpoint', 'corporate']) {
     assert.ok(text.includes(word), word);
   }
   assert.ok(read('Install-Inno.ps1').includes('Get-AuthenticodeSignature'));

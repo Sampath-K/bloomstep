@@ -1,4 +1,4 @@
-param([string]$Output = (Join-Path $PSScriptRoot '..\site\assets\bloomstep-social.png'))
+param([string]$Output = (Join-Path $PSScriptRoot '..\site\assets\budlark-social.png'))
 $ErrorActionPreference = 'Stop'
 Add-Type -AssemblyName System.Drawing
 $bitmap = [Drawing.Bitmap]::new(1200, 630)

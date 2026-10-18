@@ -17,10 +17,10 @@ import '../services/analytics_sandbox.dart';
 import 'session_boundary.dart';
 import 'theme.dart';
 
-const _testBuild = bool.fromEnvironment('BLOOMSTEP_TEST_BUILD');
+const _testBuild = bool.fromEnvironment('BUDLARK_TEST_BUILD');
 
-class BloomstepApp extends StatelessWidget {
-  const BloomstepApp({
+class BudlarkApp extends StatelessWidget {
+  const BudlarkApp({
     super.key,
     this.invitationInbox,
     this.measurement,
@@ -33,8 +33,8 @@ class BloomstepApp extends StatelessWidget {
   Widget build(BuildContext context) => MaterialApp(
     title: 'Budlark',
     debugShowCheckedModeBanner: false,
-    theme: BloomstepTheme.light(),
-    darkTheme: BloomstepTheme.dark(),
+    theme: BudlarkTheme.light(),
+    darkTheme: BudlarkTheme.dark(),
     home: HabitHome(
       invitationInbox: invitationInbox,
       measurement: measurement,

@@ -2,7 +2,7 @@ using System;
 using System.IO;
 using System.Security.Principal;
 
-// Inert, isolated CI payload. This is not the Bloomstep app.
+// Inert, isolated CI payload. This is not the Budlark app.
 class InstallerLaunchProbe {
   static void Main() {
     var identity = WindowsIdentity.GetCurrent();

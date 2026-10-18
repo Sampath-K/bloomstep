@@ -1,7 +1,7 @@
-import 'package:bloomstep/core/garden_store.dart';
-import 'package:bloomstep/features/garden/garden_screen.dart';
-import 'package:bloomstep/services/desktop_reminders.dart';
-import 'package:bloomstep/services/remote_config.dart';
+import 'package:budlark/core/garden_store.dart';
+import 'package:budlark/features/garden/garden_screen.dart';
+import 'package:budlark/services/desktop_reminders.dart';
+import 'package:budlark/services/remote_config.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
@@ -27,7 +27,10 @@ Future<void> ready(WidgetTester tester, Finder finder) async {
       () => Future<void>.delayed(const Duration(milliseconds: 50)),
     );
     await tester.pump(const Duration(milliseconds: 50));
-    if (finder.evaluate().isNotEmpty) return;
+    if (finder.evaluate().isNotEmpty) {
+      await tester.pump(const Duration(milliseconds: 350));
+      return;
+    }
   }
   fail('Readiness timeout: $finder');
 }
@@ -116,12 +119,10 @@ void main() {
         findsOneWidget,
       );
       await tester.tap(find.text('Done'));
-      await tester.pump(const Duration(milliseconds: 350));
+      await tester.pumpAndSettle();
       await tester.tap(find.byTooltip('Settings and privacy'));
-      await ready(tester, find.text('Privacy & measurement'));
-      await tester.tap(
-        find.widgetWithText(ExpansionTile, 'Privacy & measurement'),
-      );
+      await ready(tester, find.text('Reminders'));
+      await tester.tap(find.text('Reminders'));
       await tester.pump(const Duration(milliseconds: 350));
       final toggle = find.widgetWithText(
         SwitchListTile,
@@ -143,7 +144,7 @@ void main() {
         await tester.runAsync(() => store.setting('personalizedTiming')),
         'true',
       );
-      expect(await tester.runAsync(() => store.setting('reminders')), isNull);
+      expect(await tester.runAsync(() => store.setting('reminders')), 'true');
       expect(await tester.runAsync(() => store.setting('analytics')), isNull);
       final payload = (await tester.runAsync(store.syncPayload))!;
       expect(

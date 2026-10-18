@@ -11,8 +11,8 @@ import { SignJWT } from 'jose';
 import { createLocalTestServer } from './support/local_api_server.mjs';
 import { accountKey } from '../src/contracts.mjs';
 
-const issuer = 'https://bloomstep.test';
-const audience = 'bloomstep-test-api';
+const issuer = 'https://budlark.test';
+const audience = 'budlark-test-api';
 const secret = () => randomBytes(32);
 const repositoryRoot = fileURLToPath(new URL('../../', import.meta.url));
 const apiServerEntry = fileURLToPath(
@@ -34,7 +34,7 @@ async function request(url, token, method = 'GET', payload = undefined) {
   return fetch(`${url}/api/sync`, {
     method,
     headers: {
-      'x-bloomstep-authorization': `Bearer ${token}`,
+      'x-budlark-authorization': `Bearer ${token}`,
       ...(payload === undefined ? {} : { 'content-type': 'application/json' }),
     },
     ...(payload === undefined ? {} : { body: JSON.stringify(payload) }),
@@ -43,10 +43,10 @@ async function request(url, token, method = 'GET', payload = undefined) {
 
 async function startServerProcess(databasePath, key, reuseDatabase = false) {
   const environment = {
-    BLOOMSTEP_TEST_AUTH_SECRET: key.toString('hex'),
-    BLOOMSTEP_TEST_DATABASE: databasePath,
-    BLOOMSTEP_TEST_PORT: '0',
-    BLOOMSTEP_TEST_REUSE_DATABASE: String(reuseDatabase),
+    BUDLARK_TEST_AUTH_SECRET: key.toString('hex'),
+    BUDLARK_TEST_DATABASE: databasePath,
+    BUDLARK_TEST_PORT: '0',
+    BUDLARK_TEST_REUSE_DATABASE: String(reuseDatabase),
     ...(process.env.PATH ? { PATH: process.env.PATH } : {}),
     ...(process.platform === 'win32' && process.env.SystemRoot
       ? { SystemRoot: process.env.SystemRoot }
@@ -115,13 +115,13 @@ async function startServerProcess(databasePath, key, reuseDatabase = false) {
 }
 
 test('signed two-account isolation receipts survive a server restart without peer content', async () => {
-  const root = await mkdtemp(join(tmpdir(), 'bloomstep-it-'));
+  const root = await mkdtemp(join(tmpdir(), 'budlark-it-'));
   const databasePath = join(root, 'server.json'), key = secret();
   let server = await createLocalTestServer({ databasePath, key });
   const aId = accountKey(issuer, 'synthetic-alice'), bId = accountKey(issuer, 'synthetic-bob');
   const alice = await sign(key, 'synthetic-alice'), bob = await sign(key, 'synthetic-bob');
   const call = (token, method = 'GET', body) => fetch(`${server.url}/api/account/isolation`, {
-    method, headers: { 'x-bloomstep-authorization': `Bearer ${token}`, 'content-type': 'application/json' },
+    method, headers: { 'x-budlark-authorization': `Bearer ${token}`, 'content-type': 'application/json' },
     ...(body ? { body: JSON.stringify(body) } : {}),
   });
   try {
@@ -159,7 +159,7 @@ test('signed two-account isolation receipts survive a server restart without pee
 });
 
 test('test-key auth runs production sync and deletion handlers on restartable disposable owner partitions', async () => {
-  const root = await mkdtemp(join(tmpdir(), 'bloomstep-it-'));
+  const root = await mkdtemp(join(tmpdir(), 'budlark-it-'));
   const databasePath = join(root, 'server.json');
   const key = secret();
   let server = await createLocalTestServer({ databasePath, key, port: 0 });
@@ -195,7 +195,7 @@ test('test-key auth runs production sync and deletion handlers on restartable di
       .sign(key);
     assert.equal((await request(server.url, expired)).status, 401);
     const adminClaim = await sign(key, 'synthetic-alice', {
-      roles: ['Bloomstep.Admin'],
+      roles: ['Budlark.Admin'],
     });
     assert.equal((await request(server.url, adminClaim)).status, 401);
     assert.equal(
@@ -273,7 +273,7 @@ test('test-key auth runs production sync and deletion handlers on restartable di
 });
 
 test('test API refuses missing keys and database paths outside a new temporary run', async () => {
-  const root = await mkdtemp(join(tmpdir(), 'bloomstep-it-'));
+  const root = await mkdtemp(join(tmpdir(), 'budlark-it-'));
   try {
     await assert.rejects(
       createLocalTestServer({
@@ -285,7 +285,7 @@ test('test API refuses missing keys and database paths outside a new temporary r
     );
     await assert.rejects(
       createLocalTestServer({
-        databasePath: join(tmpdir(), 'not-a-bloomstep-test.json'),
+        databasePath: join(tmpdir(), 'not-a-budlark-test.json'),
         key: secret(),
         port: 0,
       }),
@@ -297,7 +297,7 @@ test('test API refuses missing keys and database paths outside a new temporary r
 });
 
 test('test API process restart preserves owner data and deletion tombstones without forwarding credentials', async () => {
-  const root = await mkdtemp(join(tmpdir(), 'bloomstep-it-'));
+  const root = await mkdtemp(join(tmpdir(), 'budlark-it-'));
   const databasePath = join(root, 'server-process.json');
   const key = secret();
   let server;

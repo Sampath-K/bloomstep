@@ -9,12 +9,12 @@ const read = name => readFileSync(new URL(name, base), 'utf8');
 
 test('controller dispatch uses private main, fixed candidate choices and no public runner activation', () => {
   const workflow = read('validate.yml');
-  for (const expected of ['workflow_dispatch:', "refs/heads/main", 'Sampath-K/bloomstep-vm-controller',
-    'DEVBOX_CONNECTION_AUDITED', 'bloomstep-private-controller', 'cancel-in-progress: false',
+  for (const expected of ['workflow_dispatch:', "refs/heads/main", 'Sampath-K/budlark-vm-controller',
+    'DEVBOX_CONNECTION_AUDITED', 'budlark-private-controller', 'cancel-in-progress: false',
     'persist-credentials: false', 'Invoke-ControllerTrial.ps1']) {
     assert.ok(workflow.includes(expected), expected);
   }
-  assert.doesNotMatch(workflow, /pull_request_target:|pull_request:|defender-interactive|BLOOMSTEP_DISPOSABLE_VM|secrets\./);
+  assert.doesNotMatch(workflow, /pull_request_target:|pull_request:|defender-interactive|BUDLARK_DISPOSABLE_VM|secrets\./);
   for (const [, ref] of workflow.matchAll(/uses:\s+([^\s]+)/g)) assert.match(ref, /@[a-f0-9]{40}$/);
 });
 
@@ -49,7 +49,7 @@ test('connection setup and autonomous harness are gated, non-admin, local-auth a
   const setup = read('Connect-DevBox.ps1');
   const harness = read('Invoke-ControllerTrial.ps1');
   for (const source of [setup,harness]) {
-    assert.doesNotMatch(source, /Set-ExecutionPolicy|Set-MpPreference|Add-MpPreference|Unblock-File|New-Service|schtasks|Stop-Process|BLOOMSTEP_DISPOSABLE_VM|--runasservice|--windowslogonaccount/);
+    assert.doesNotMatch(source, /Set-ExecutionPolicy|Set-MpPreference|Add-MpPreference|Unblock-File|New-Service|schtasks|Stop-Process|BUDLARK_DISPOSABLE_VM|--runasservice|--windowslogonaccount/);
   }
   for (const required of ['Read-Host', '-AsSecureString', 'ZeroFreeBSTR', 'PERSISTENT PRIVATE CONTROLLER',
     'actions/permissions', 'collaborators', 'runnerRegistrationStarted', 'config.cmd', 'run.cmd']) assert.ok(setup.includes(required), required);
@@ -79,7 +79,7 @@ test('metadata token is sent only to exact GitHub build API without redirects or
     function Invoke-WebRequest {
       param($Headers,$Uri,$TimeoutSec,$MaximumRedirection)
       $script:calls++
-      if($Uri -cne 'https://api.github.com/repos/Sampath-K/bloomstep/actions/runs/123'){throw 'Wrong API host/path'}
+      if($Uri -cne 'https://api.github.com/repos/Sampath-K/budlark/actions/runs/123'){throw 'Wrong API host/path'}
       if($Headers.Authorization -cne 'Bearer test-only-not-a-credential' -or $MaximumRedirection -ne 0){throw 'Missing bounded authenticated API contract'}
       @{Content='{"head_sha":"reviewed"}'}
     }
@@ -176,7 +176,7 @@ test('owner guide gives exact app audit, local scoped token/revocation pages and
   for(const path of [
     '/settings/installations','/settings/apps/authorizations','/settings/applications',
     '/settings/personal-access-tokens/new',
-    '/bloomstep-vm-controller/settings/access','/bloomstep-vm-controller/settings/actions/runners',
+    '/budlark-vm-controller/settings/access','/budlark-vm-controller/settings/actions/runners',
   ]) assert.ok(readme.includes(path),path);
   const bodies=[...readme.matchAll(/```json\n([\s\S]*?)\n```/g)].map(match=>JSON.parse(match[1]));
   assert.deepEqual(bodies[0],{enabled:true,allowed_actions:'selected'});

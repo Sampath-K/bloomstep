@@ -18,7 +18,7 @@ test('generated registry is versioned, reproducible and self-contained', () => {
   execFileSync(process.execPath, ['tool/generate_event_registry.mjs', '--check'], { cwd: new URL('../../', import.meta.url) });
 });
 test('generated registry checks out as LF even with Windows autocrlf enabled', () => {
-  const dir = mkdtempSync(join(tmpdir(), 'bloomstep-registry-checkout-'));
+  const dir = mkdtempSync(join(tmpdir(), 'budlark-registry-checkout-'));
   try {
     const files = ['api/src/event_registry.g.mjs', 'api/src/event_registry.g.d.mts', 'lib/core/event_registry.g.dart'];
     execFileSync('git', ['-c', 'core.autocrlf=true', 'checkout-index', `--prefix=${dir}${sep}`, '--', ...files],

@@ -6,11 +6,11 @@ accessibility acceptance, full customer journeys or release approval. No
 snapshot is required; uninstall is not machine rollback. No runner has been
 registered or VM execution verified by the Linux authoring session.
 The pinned EXE, paths, repository slug and internal protocol identifiers retain
-their legacy **Bloomstep** identity; this package does not rename that candidate.
+their legacy **Budlark** identity; this package does not rename that candidate.
 
 ## Trust and owner-side publication
 
-The controller is `Sampath-K/bloomstep-vm-controller`, PRIVATE, owner-only human
+The controller is `Sampath-K/budlark-vm-controller`, PRIVATE, owner-only human
 collaboration. Personal repository runners cannot enforce selected-workflow
 access. **Every controller writer/admin and authorized app can execute as the
 Dev Box user**. Labels, activation variables and ephemeral mode do not create
@@ -50,11 +50,11 @@ using the locally entered owner token before it can register a runner.
 Before entering the setup confirmation, inspect these pages while signed in as
 the repository owner (never share screenshots containing tokens):
 
-- `https://github.com/Sampath-K/bloomstep-vm-controller/settings/access`:
+- `https://github.com/Sampath-K/budlark-vm-controller/settings/access`:
   private repository, only `Sampath-K` human admin; no unreviewed invitations.
 - `https://github.com/settings/installations`: open Configure for **every app**
   installed on the owner account. Check whether "All repositories" or the
-  selected repository list includes `bloomstep-vm-controller`, and review its
+  selected repository list includes `budlark-vm-controller`, and review its
   permissions. Any app able to write repository code/workflows, dispatch Actions
   or change repository access/settings belongs inside the trusted execution
   boundary. Repository labels cannot restrict such an app to one workflow.
@@ -62,22 +62,22 @@ the repository owner (never share screenshots containing tokens):
   `https://github.com/settings/applications`: review authorized GitHub and OAuth
   apps, including broad private-repository access. If effective access is unclear,
   **do not attest or register**; resolve it with the owner/app administrator.
-- `https://github.com/Sampath-K/bloomstep-vm-controller/settings/actions`:
+- `https://github.com/Sampath-K/budlark-vm-controller/settings/actions`:
   verify enabled Actions, read-only default token, no pull-request approval,
   and only the three exact selected action commits below.
-- `https://github.com/Sampath-K/bloomstep-vm-controller/settings/actions/runners`:
+- `https://github.com/Sampath-K/budlark-vm-controller/settings/actions/runners`:
   expect zero runners before first registration; subsequent resume expects only
   the exact locally registered runner and no active second listener.
 
 The owner-confirmed current body for
-`PUT /repos/Sampath-K/bloomstep-vm-controller/actions/permissions` is:
+`PUT /repos/Sampath-K/budlark-vm-controller/actions/permissions` is:
 
 ```json
 {"enabled":true,"allowed_actions":"selected"}
 ```
 
 The owner-confirmed current body for
-`PUT /repos/Sampath-K/bloomstep-vm-controller/actions/permissions/selected-actions`
+`PUT /repos/Sampath-K/budlark-vm-controller/actions/permissions/selected-actions`
 is exactly:
 
 ```json
@@ -124,7 +124,7 @@ Do not upload that folder.
 Create that setup token locally at
 `https://github.com/settings/personal-access-tokens/new`: resource owner
 `Sampath-K`, shortest available expiry, **Only select repositories** ->
-`bloomstep-vm-controller`; Repository permissions **Administration: read and
+`budlark-vm-controller`; Repository permissions **Administration: read and
 write**, **Actions: read and write**, **Contents: read-only**, **Variables: read
 and write**, plus automatically required **Metadata: read-only**. No account
 permissions, public-repository runner grants, Workflows write, or new PAT in

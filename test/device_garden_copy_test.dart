@@ -1,8 +1,8 @@
 import 'dart:convert';
 import 'dart:io';
 
-import 'package:bloomstep/core/garden_store.dart';
-import 'package:bloomstep/core/models.dart';
+import 'package:budlark/core/garden_store.dart';
+import 'package:budlark/core/models.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
@@ -158,7 +158,7 @@ void main() {
     'copy retry remains idempotent after closing and reopening the account',
     () async {
       final directory = await Directory.systemTemp.createTemp(
-        'bloomstep-copy-',
+        'budlark-copy-',
       );
       final file = '${directory.path}${Platform.pathSeparator}account.sqlite';
       var destination = await GardenStore.open(file, 'account-a');

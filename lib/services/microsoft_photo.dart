@@ -7,12 +7,12 @@ import 'package:http/http.dart' as http;
 /// email, a CIAM oid, or a subject from a different OIDC client.
 class MicrosoftPhotoIdentity {
   const MicrosoftPhotoIdentity({
-    required this.bloomstepAccount,
+    required this.budlarkAccount,
     required this.tenantId,
     required this.objectId,
   });
   static const consumerTenant = '9188040d-6c67-4c5b-b112-36a304b66dad';
-  final String bloomstepAccount;
+  final String budlarkAccount;
   final String tenantId;
   final String objectId;
 }
@@ -62,7 +62,7 @@ class MicrosoftPhotoConnection {
   Future<MicrosoftPhotoStatus> connect(MicrosoftPhotoIdentity? proof) async {
     clear();
     if (proof == null ||
-        proof.bloomstepAccount.isEmpty ||
+        proof.budlarkAccount.isEmpty ||
         proof.tenantId != MicrosoftPhotoIdentity.consumerTenant ||
         !RegExp(r'^[a-fA-F0-9-]{36}$').hasMatch(proof.objectId)) {
       return MicrosoftPhotoStatus.unlinked;
@@ -129,7 +129,7 @@ class MicrosoftPhotoConnection {
         if (!abort.isCompleted) abort.complete();
       }
       if (generation != _generation) return MicrosoftPhotoStatus.cancelled;
-      _account = proof.bloomstepAccount;
+      _account = proof.budlarkAccount;
       _bytes = bytes;
       return MicrosoftPhotoStatus.loaded;
     } on MicrosoftPhotoFailure {

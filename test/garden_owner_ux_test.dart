@@ -1,6 +1,6 @@
-import 'package:bloomstep/app/theme.dart';
-import 'package:bloomstep/features/garden/garden_screen.dart';
-import 'package:bloomstep/features/garden/profile_section.dart';
+import 'package:budlark/app/theme.dart';
+import 'package:budlark/features/garden/garden_screen.dart';
+import 'package:budlark/features/garden/profile_section.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
@@ -20,7 +20,7 @@ void main() {
         RepaintBoundary(
           key: boundary,
           child: MaterialApp(
-            theme: dark ? BloomstepTheme.dark() : BloomstepTheme.light(),
+            theme: dark ? BudlarkTheme.dark() : BudlarkTheme.light(),
             home: GardenScreen(
               store: store,
               testDisableServices: true,

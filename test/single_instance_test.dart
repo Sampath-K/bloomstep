@@ -1,8 +1,8 @@
 import 'dart:convert';
 import 'dart:io';
 
-import 'package:bloomstep/services/single_instance.dart';
-import 'package:bloomstep/services/invitation_intent.dart';
+import 'package:budlark/services/single_instance.dart';
+import 'package:budlark/services/invitation_intent.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
@@ -10,7 +10,7 @@ void main() {
     'second launch forwards only a validated opaque invitation to the owner',
     () async {
       final folder = await Directory.systemTemp.createTemp(
-        'bloomstep-instance-invite-',
+        'budlark-instance-invite-',
       );
       addTearDown(() => folder.delete(recursive: true));
       InvitationIntent? received;
@@ -40,7 +40,7 @@ void main() {
     'damaged descriptor cannot strand the owner lock during shutdown',
     () async {
       final folder = await Directory.systemTemp.createTemp(
-        'bloomstep-instance-close-',
+        'budlark-instance-close-',
       );
       addTearDown(() => folder.delete(recursive: true));
       final errors = <String>[];
@@ -62,7 +62,7 @@ void main() {
     'second launch activates one existing owner and releases the lock on exit',
     () async {
       final folder = await Directory.systemTemp.createTemp(
-        'bloomstep-instance-test-',
+        'budlark-instance-test-',
       );
       addTearDown(() => folder.delete(recursive: true));
       var activations = 0;
@@ -87,7 +87,7 @@ void main() {
 
   test('local activation requires the private descriptor token', () async {
     final folder = await Directory.systemTemp.createTemp(
-      'bloomstep-instance-auth-',
+      'budlark-instance-auth-',
     );
     addTearDown(() => folder.delete(recursive: true));
     var activations = 0;

@@ -34,12 +34,12 @@ test('loopback-only synthetic preview: actual console buttons, production auth i
     }
     const { token } = await (await fetch(origin + '/__preview/session')).json();
     assert.equal((await fetch(origin + '/api/sync', { method: 'POST',
-      headers: { 'X-Bloomstep-Authorization': `Bearer ${token}` }, body: '{}' })).status, 403);
+      headers: { 'X-Budlark-Authorization': `Bearer ${token}` }, body: '{}' })).status, 403);
     const { publicKey } = generateKeyPairSync('rsa', { modulusLength: 2048 });
     const authenticate = createPrimaryAuthenticator({ issuer: 'https://production.invalid', audience: 'production',
       keys: publicKey, databaseConfigured: () => true });
     const container = () => { throw Error('Production storage must not be reached'); };
-    const request = { headers: new Headers({ 'X-Bloomstep-Authorization': `Bearer ${token}` }),
+    const request = { headers: new Headers({ 'X-Budlark-Authorization': `Bearer ${token}` }),
       query: new URLSearchParams('days=14') };
     for (const handler of [
       createHandlers({ container, authenticate }).metrics,
@@ -93,7 +93,7 @@ test('loopback-only synthetic preview: actual console buttons, production auth i
     assert.equal(await page.$eval('#experiment-report details', node => node.open), true);
     assert.deepEqual(errors, []);
     assert.deepEqual(apiStatuses.map(row => row.status), [200, 200, 200]);
-    const out = resolve(process.env.PREVIEW_EVIDENCE_DIR ?? join(tmpdir(), 'bloomstep-console-preview-evidence'));
+    const out = resolve(process.env.PREVIEW_EVIDENCE_DIR ?? join(tmpdir(), 'budlark-console-preview-evidence'));
     await mkdir(out, { recursive: true });
     const screenshots = {};
     for (const [name, selector] of [['console-preview-all', null], ['console-preview-aarrr', '#aarrr-report'],

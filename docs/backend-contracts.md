@@ -126,7 +126,7 @@ Source readiness does not prove actual native/customer observation or genuine
 resource-directory app token: `SPEND_GUARD_OIDC_ISSUER`,
 `SPEND_GUARD_OIDC_AUDIENCE` (guard app GUID), `SPEND_GUARD_OIDC_JWKS_URI`.
 RS256, issuer, audience, signature and sub/iat/exp are required; delegated `scp`
-is forbidden and the sole app role must be `Bloomstep.SpendGuard`. There is no
+is forbidden and the sole app role must be `Budlark.SpendGuard`. There is no
 customer/Admin or AggregateWriter alternate-verifier fallback. Customer/team/
 garden routes still exclusively use primary customer JWT authentication.
 
@@ -150,7 +150,7 @@ write race: checks at entry and before each sync batch reject observed pause,
 but this is **not** an Azure spending hard cap or atomic global write barrier.
 
 `POST /api/team/operational-resume` requires a **selected real customer**
-Bloomstep.Admin plus Garden.ReadWrite, never SpendGuard/AggregateWriter.
+Budlark.Admin plus Garden.ReadWrite, never SpendGuard/AggregateWriter.
 Body exactly
 `{requestId:<UUID>,reviewedPauseRequestId:<current pause UUID>,
 confirmation:"reviewed-free-tier-and-spending-limit"}`. Response `{paused:false}`.
@@ -164,7 +164,7 @@ authorization to spend. A future pause requires another explicit human review.
 ## Authenticated invitations and mutual cosmetic rewards (§8.2)
 
 New routes all validate the **primary customer** broker JWT via
-`X-Bloomstep-Authorization: Bearer <customer API access token>`, including exact
+`X-Budlark-Authorization: Bearer <customer API access token>`, including exact
 issuer/audience/signature/expiry, and specifically require delegated
 `Garden.ReadWrite`. An Admin-only token without that scope is insufficient;
 resource-directory AggregateWriter authentication is never used on these routes.
@@ -357,7 +357,7 @@ or guarantee of convergence after all recovery metadata expires.
   deletion, so the cap does not block removal. Counterpart cosmetics linked by
   current receipts are removed conservatively; after attribution TTL expires,
   unlinked earned cosmetics carry no recoverable counterpart relation.
-- `BLOOMSTEP_INVITATIONS_DISABLED=true|1` pauses create/redeem/status and grant
+- `BUDLARK_INVITATIONS_DISABLED=true|1` pauses create/redeem/status and grant
   reconciliation during sync. Existing API/engagement switches also apply;
   garden-only sync and account deletion retain their existing availability rules.
   The first-practice eligibility latch can still record garden practice while
@@ -371,7 +371,7 @@ Reward copy: “After your friend's first completed tiny practice, you both earn
 rare flower. It is cosmetic only: no money, progress multiplier or streak pressure.”
 Codes are bearer capabilities. The owner-selected native link contract is
 `https://<API_ORIGIN-host>/?invite=<code>&channel=<link|email|qr|native>` and
-`bloomstep://invite?code=<code>&channel=<link|email|qr|native>`. The native inbox
+`budlark://invite?code=<code>&channel=<link|email|qr|native>`. The native inbox
 preserves only this opaque intent across sign-in/restart; no account/habit text
 is included by default. Query-string codes can appear in browser history,
 hosting/access logs and referrers; the owner must redact/exclude them, use
@@ -383,7 +383,7 @@ are owner follow-up work, not implemented by this backend job.
 
 ## Persisted daily worker → operator dashboard
 
-`GET /api/team/metrics?days=1..30` retains strict customer `Bloomstep.Admin`,
+`GET /api/team/metrics?days=1..30` retains strict customer `Budlark.Admin`,
 audit-before-disclosure, lifetime/daily read budgets and engagement/API kill
 switches. Existing top-level `daily`, `categories` and `dashboards` remain bounded
 **on-demand raw-event** calculations: compatibility includes today; typed
@@ -468,7 +468,7 @@ workstream. The native event-registry file is generated for client-owner wiring.
 
 Every registered route calls the existing real `jose` JWT verifier: HTTPS JWKS,
 RS256, exact configured issuer/audience, required sub/iss/exp/iat, and
-`Garden.ReadWrite` scope or explicit `Bloomstep.Admin` role. The separately pinned
+`Garden.ReadWrite` scope or explicit `Budlark.Admin` role. The separately pinned
 resource-tenant aggregate verifier admits only the internal worker endpoint; a token with
 that role but without Admin is explicitly denied garden/account operations,
 even if it also has a garden scope. Account partition
@@ -482,7 +482,7 @@ always supplies the strict verifier and configured Cosmos container.
 
 **Managed SWA transport:** every client, operator and worker must send its actual
 customer-broker API access token as
-`X-Bloomstep-Authorization: Bearer <token>`. The API reads **only** that header:
+`X-Budlark-Authorization: Bearer <token>`. The API reads **only** that header:
 no fallback to `Authorization`, `X-MS-CLIENT-PRINCIPAL`, forwarded platform
 claims or resource-tenant identity. Managed SWA can overwrite Authorization
 ([Azure team's confirmation](https://github.com/Azure/static-web-apps/issues/34));
@@ -683,16 +683,16 @@ existing deployment usage is not automatically globally censused.
 
 Environment controls (read by handlers, not supplied through API payloads):
 
-- `BLOOMSTEP_ENGAGEMENT_DISABLED=true` (or `1`) returns 503 for both admin
+- `BUDLARK_ENGAGEMENT_DISABLED=true` (or `1`) returns 503 for both admin
   endpoints and sync payloads containing voice/events. Pure garden/settings
   sync and account deletion remain available. Mixed batches are rejected before
   any garden write, so engagement is not silently dropped/acknowledged.
-- `BLOOMSTEP_API_DISABLED=true` (or `1`) returns 503 for all garden and admin
+- `BUDLARK_API_DISABLED=true` (or `1`) returns 503 for all garden and admin
   work before database access, after strict authentication. Existing-account
   `DELETE /api/account` remains available with
   `x-confirm-delete: delete-my-garden`. Cleanup preserves the permanent tombstone
   and drains bounded partition pages; retries can finish a failed cleanup.
-- `BLOOMSTEP_AGGREGATES_DISABLED=true` (or `1`) stops only the internal aggregate
+- `BUDLARK_AGGREGATES_DISABLED=true` (or `1`) stops only the internal aggregate
   writer endpoint; metrics, garden and feedback behavior is unchanged.
 
 All three switches default unset/off, with case-insensitive `true` or `1`
@@ -736,7 +736,7 @@ missing-configuration 503 responses. This is entrypoint/registration evidence,
 must observe a configured no-token 401 (not 404) on the new team paths and review
 host indexing logs; actual role-protected access still requires a real token.
 All caller token headers must simultaneously change to
-`X-Bloomstep-Authorization`. Owner deployment CI smoke should independently
+`X-Budlark-Authorization`. Owner deployment CI smoke should independently
 request served `/api/sync`, `/api/team/feedback`, `/api/team/metrics`, and POST
 `/api/internal/aggregates` with no custom bearer and assert 401 rather than 404.
 Also send only a synthetic Authorization/platform-principal header and confirm
@@ -930,8 +930,8 @@ events cannot prove complete capture. `experiment.enabled:false` remains fixed.
 ## Dedicated persisted daily aggregate worker
 
 `POST /api/internal/aggregates` requires either a primary customer-broker
-**Bloomstep.Admin** token for manual runs or a separately validated personal
-resource-tenant worker API token with **Bloomstep.AggregateWriter** role.
+**Budlark.Admin** token for manual runs or a separately validated personal
+resource-tenant worker API token with **Budlark.AggregateWriter** role.
 Worker tokens cannot sync/read/delete gardens, read/reply feedback or
 read team metrics; those routes accept only the primary broker issuer and never
 invoke the alternate verifier. Owner provisions the separate real worker app/service
@@ -959,7 +959,7 @@ Response:
 }
 ```
 
-Snapshots live in the **same** free `bloomstep/data` container, partition
+Snapshots live in the **same** free `budlark/data` container, partition
 `__daily_aggregates`, type `aggregate`, IDs `daily:YYYY-MM-DD`. Stored fields:
 day, registryVersion, digest, record, TTL 30 days. Record contains that day's
 compatibility aggregate plus that day's dashboards with retention cohorts from
@@ -991,7 +991,7 @@ from active accounts. No cross-partition instantaneous read snapshot is claimed.
 
 ### Owner integration and remaining gates
 
-- Register enabled **application-member** API role `Bloomstep.AggregateWriter`
+- Register enabled **application-member** API role `Budlark.AggregateWriter`
   on the **personal resource-tenant worker API app**, explicitly assign the
   dedicated worker service principal and configure its workload FIC. Never use
   a corporate tenant. Do not enable/request customer client_credentials: the
@@ -1002,7 +1002,7 @@ from active accounts. No cross-partition instantaneous read snapshot is claimed.
   `AGGREGATE_OIDC_AUDIENCE` = worker resource API audience,
   `AGGREGATE_OIDC_JWKS_URI` = that tenant's HTTPS JWKS URI.
   The worker token must match these exact settings, RS256 and required
-  sub/iss/exp/iat, plus explicit `roles:["Bloomstep.AggregateWriter"]`.
+  sub/iss/exp/iat, plus explicit `roles:["Budlark.AggregateWriter"]`.
   Resource-tenant Admin/owner alone is rejected; arbitrary alternate issuer or
   audience is rejected. All three settings default absent: worker auth fails
   closed (503 if custom token supplied and primary verification fails), while

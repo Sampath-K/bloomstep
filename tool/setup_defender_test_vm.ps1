@@ -2,7 +2,7 @@ param(
   [ValidateSet('Check','ScanCandidate','RunInstaller')][string]$Mode = 'Check',
   [string]$Installer,
   [string]$ExpectedSha256,
-  [string]$EvidenceDir = (Join-Path $env:TEMP 'bloomstep-protected-vm-evidence')
+  [string]$EvidenceDir = (Join-Path $env:TEMP 'budlark-protected-vm-evidence')
 )
 $ErrorActionPreference = 'Stop'
 $withdrawnHash = 'b58ba7fc3f39d66c7d3afc9022cbbeec2036fb58c0677940e20f1b036e4e2be5'
@@ -14,7 +14,7 @@ $report = [ordered]@{
 }
 try {
   $computer = Get-CimInstance Win32_ComputerSystem
-  if ($env:BLOOMSTEP_DISPOSABLE_VM -ne 'true' -or
+  if ($env:BUDLARK_DISPOSABLE_VM -ne 'true' -or
       $computer.Manufacturer -ne 'Microsoft Corporation' -or $computer.Model -ne 'Virtual Machine') {
     throw 'Only the explicitly marked disposable Hyper-V VM is permitted. Never run on the owner host.'
   }
@@ -28,11 +28,11 @@ try {
   if (-not [Environment]::UserInteractive -or (Get-Process -Id $PID).SessionId -eq 0) {
     throw 'An active standard-user interactive desktop is required; services are not supported.'
   }
-  if (-not ('BloomstepInputDesktop' -as [type])) {
+  if (-not ('BudlarkInputDesktop' -as [type])) {
     Add-Type @'
 using System;
 using System.Runtime.InteropServices;
-public static class BloomstepInputDesktop {
+public static class BudlarkInputDesktop {
   [DllImport("user32.dll", SetLastError=true)]
   public static extern IntPtr OpenInputDesktop(uint flags, bool inherit, uint access);
   [DllImport("user32.dll", SetLastError=true)]
@@ -40,9 +40,9 @@ public static class BloomstepInputDesktop {
 }
 '@
   }
-  $desktop = [BloomstepInputDesktop]::OpenInputDesktop(0, $false, 0x0100)
+  $desktop = [BudlarkInputDesktop]::OpenInputDesktop(0, $false, 0x0100)
   if ($desktop -eq [IntPtr]::Zero) { throw 'Interactive input desktop access is unavailable.' }
-  if (-not [BloomstepInputDesktop]::CloseDesktop($desktop)) { throw 'Input desktop handle could not be closed.' }
+  if (-not [BudlarkInputDesktop]::CloseDesktop($desktop)) { throw 'Input desktop handle could not be closed.' }
   $status = Get-MpComputerStatus
   $report.protection = @{
     antivirus = $status.AntivirusEnabled; realTime = $status.RealTimeProtectionEnabled
@@ -89,10 +89,10 @@ public static class BloomstepInputDesktop {
     $report.result = 'STATIC SCAN PASS ONLY; behavior and genuine launch unverified'
     return
   }
-  $target = Join-Path $env:LOCALAPPDATA 'Programs\Bloomstep'
-  $protocol = 'HKCU:\Software\Classes\bloomstep'
+  $target = Join-Path $env:LOCALAPPDATA 'Programs\Budlark'
+  $protocol = 'HKCU:\Software\Classes\budlark'
   if ((Test-Path $target) -or (Test-Path $protocol)) {
-    throw 'VM must start from a clean checkpoint without existing Bloomstep installation or protocol.'
+    throw 'VM must start from a clean checkpoint without existing Budlark installation or protocol.'
   }
   $log = Join-Path $EvidenceDir 'setup.log'
   $process = Start-Process -FilePath $Installer -ArgumentList "/LOG=`"$log`" /NORESTART" -PassThru

@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 
-const installer = readFileSync(new URL('../packaging/bloomstep.iss', import.meta.url), 'utf8');
+const installer = readFileSync(new URL('../packaging/budlark.iss', import.meta.url), 'utf8');
 const workflow = readFileSync(new URL('../.github/workflows/ci.yml', import.meta.url), 'utf8');
 test('Pascal code cannot be mistaken for an Inno section tag', () => {
   const code = installer.split('[Code]')[1];

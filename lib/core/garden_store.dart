@@ -14,7 +14,7 @@ import 'experience_policy.dart';
 
 part 'experience_store.dart';
 
-const _testBuild = bool.fromEnvironment('BLOOMSTEP_TEST_BUILD');
+const _testBuild = bool.fromEnvironment('BUDLARK_TEST_BUILD');
 
 class GardenStore {
   GardenStore._(this._db, this._account, this._clock);
@@ -364,7 +364,7 @@ class GardenStore {
     });
     String copyId(String table, String id) => _uuid.v5(
       Namespace.url.value,
-      'bloomstep/device-garden-copy/v1/$owner/$table/$id',
+      'budlark/device-garden-copy/v1/$owner/$table/$id',
     );
     return _db.transaction((txn) async {
       requireCopyAuthority();

@@ -1,7 +1,7 @@
 # One entry point: disposable protected VM preparation
 
 Extract the supplied pinned ZIP in the disposable VM. Open ordinary **Windows
-PowerShell as a true standard user**, in the extracted `bloomstep-vm-bootstrap`
+PowerShell as a true standard user**, in the extracted `budlark-vm-bootstrap`
 directory. No installed Git, Node or PowerShell 7 is needed to start.
 
 ```powershell
@@ -26,7 +26,7 @@ replaced ZIP/manifest, so the separately supplied outer digest is essential.
 1. Checks package inventory, true standard-user status, native x64/ARM64 Windows,
    actual Hyper-V identity, unlocked interactive input desktop and active Defender
    (existing `setup_defender_test_vm.ps1 -Mode Check`).
-2. Requires a clean guest with no Bloomstep state. Prompts for a host checkpoint
+2. Requires a clean guest with no Budlark state. Prompts for a host checkpoint
    name before setup. **The checkpoint is an operator attestation**, not a claim
    the script created/verified it. A guest cannot safely create its own Hyper-V
    host checkpoint; that host boundary cannot be automated from inside this VM.

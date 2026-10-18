@@ -47,7 +47,7 @@ test('installer-warning imagery is never implied without exact public-asset prov
     const provenance = JSON.parse(readFileSync(proof, 'utf8'));
     const config = JSON.parse(read('customer-config.json'));
     assert.equal(provenance.assetUrl, config.release.x64.url);
-    assert.equal(provenance.assetFile, 'Bloomstep-0.1.0-preview.8-windows-x64-setup.exe');
+    assert.equal(provenance.assetFile, 'Budlark-0.1.0-preview.8-windows-x64-setup.exe');
     assert.equal(provenance.sha256, config.release.x64.sha256);
     assert.equal(provenance.product, 'Microsoft Edge');
     assert.match(provenance.edgeVersion, /^\d+\.\d+\.\d+\.\d+$/);
@@ -75,7 +75,7 @@ test('Edge observation is exact-asset, policy-gated, non-executing and one-shot'
   assert.match(script, /edge:\/\/settings\/privacy\/security/);
   assert.match(script, /Protect from harmful sites and downloads/);
   assert.match(script, /microsoftEdgePoliciesAbsent/);
-  assert.match(script, /BLOOMSTEP_EDGE_PREFLIGHT_ONLY/);
+  assert.match(script, /BUDLARK_EDGE_PREFLIGHT_ONLY/);
   assert.match(script, /if \(evidence\.warningCategory === 'unknown-reputation'\)/);
   assert.match(script, /No Keep or other download action was selected/);
   assert.doesNotMatch(script, /--disable-features|--no-sandbox|SmartScreenEnabled\s*[:=]\s*false|Run anyway/i);
@@ -128,7 +128,7 @@ test('download help is static, browser-specific, conditional and honest about il
   assert.match(page, /benign sample text file, not a Budlark installer/);
   assert.equal((page.match(/Example download view; installer\/security warnings may differ/g) ?? []).length, 1);
   const provenance = JSON.parse(read('assets/download-capture-provenance.json'));
-  assert.equal(provenance.sampleName, 'bloomstep-download-help-sample.txt');
+  assert.equal(provenance.sampleName, 'budlark-download-help-sample.txt');
   assert.deepEqual(provenance.captures.map(value => value.browser), ['edge','chrome']);
   for (const capture of provenance.captures) {
     if (capture.browser === 'chrome') assert.ok(page.includes(`${capture.product} ${capture.version}`));

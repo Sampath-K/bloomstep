@@ -7,7 +7,7 @@
 
 Read-only review of release governance and role definitions, the CI/release workflow, release evidence and payload validators, installer packaging behavior, relevant installer/release contract tests, current status/handoff, and the public download pointer. No installer was executed, no tests were run, and no role-specific review/sign-off drafts or shared reviews were opened. The previous artifact’s hash and static-scan result below are reported from the repository status ledger, not independently re-downloaded or re-scanned here.
 
-Inspected: `.github/workflows/ci.yml`; `docs/release-governance.md`; `release/roles.json` and the evidence/reviews/signoffs README files; `docs/status.md`; `docs/release/preview15-handoff.md`; `tool/release_bundle.mjs`; `tool/release_payload.mjs`; `tool/verify_release_signoffs.mjs`; `packaging/bloomstep.iss`; `packaging/install-progress.iss`; `test/release_bundle_test.mjs`; `test/release_signoffs_test.mjs`; `test/universal_installer_test.mjs`; `test/installer_standard_flow_test.mjs`; `site/customer-config.json`; and `site/releases/index.html`.
+Inspected: `.github/workflows/ci.yml`; `docs/release-governance.md`; `release/roles.json` and the evidence/reviews/signoffs README files; `docs/status.md`; `docs/release/preview15-handoff.md`; `tool/release_bundle.mjs`; `tool/release_payload.mjs`; `tool/verify_release_signoffs.mjs`; `packaging/budlark.iss`; `packaging/install-progress.iss`; `test/release_bundle_test.mjs`; `test/release_signoffs_test.mjs`; `test/universal_installer_test.mjs`; `test/installer_standard_flow_test.mjs`; `site/customer-config.json`; and `site/releases/index.html`.
 
 ## Findings
 
@@ -38,7 +38,7 @@ Governance says sign-offs bind the producing run and artifact IDs (`docs/release
 ## Positive controls observed
 
 - Universal packaging is source/version/name/hash-bound and checksums both architecture payload-manifest hashes (`tool/release_bundle.mjs:20–40`); payload validation checks architecture, inventory, and file hashes (`tool/release_payload.mjs:34–67`).
-- Installer configuration specifies per-user installation, native x64/ARM64 payload selection, and a post-install launch option (`packaging/bloomstep.iss:62–89, 97–111, 132–141`).
+- Installer configuration specifies per-user installation, native x64/ARM64 payload selection, and a post-install launch option (`packaging/budlark.iss:62–89, 97–111, 132–141`).
 - The public site remains on preview.14 with its own published hashes (`site/customer-config.json:5–18`); this review did not change or promote that pointer.
 
 **Disposition:** No approval or accepted risk is recorded by this review. The previous artifact’s static “no threats reported” result and owner feedback status remain as documented; neither establishes acceptance for the reviewed baseline.

@@ -107,7 +107,7 @@ export function accountKey(issuer, subject) {
 
 /** @param {unknown} roles */
 export function isAdmin(roles) {
-  return Array.isArray(roles) && roles.includes('Bloomstep.Admin');
+  return Array.isArray(roles) && roles.includes('Budlark.Admin');
 }
 
 /** @param {string} value */

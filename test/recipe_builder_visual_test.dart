@@ -1,9 +1,9 @@
 import 'dart:io';
 import 'dart:ui' as ui;
 
-import 'package:bloomstep/app/theme.dart';
-import 'package:bloomstep/core/models.dart';
-import 'package:bloomstep/features/garden/recipe_builder.dart';
+import 'package:budlark/app/theme.dart';
+import 'package:budlark/core/models.dart';
+import 'package:budlark/features/garden/recipe_builder.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -42,7 +42,7 @@ void main() {
       final boundaryKey = GlobalKey();
       Future<void> capture(String stage) async {
         expect(tester.takeException(), isNull);
-        final output = Platform.environment['BLOOMSTEP_SCREENSHOTS'];
+        final output = Platform.environment['BUDLARK_SCREENSHOTS'];
         final boundary =
             boundaryKey.currentContext!.findRenderObject()!
                 as RenderRepaintBoundary;
@@ -72,8 +72,8 @@ void main() {
           child: MaterialApp(
             debugShowCheckedModeBanner: false,
             theme: variant.dark
-                ? BloomstepTheme.dark()
-                : BloomstepTheme.light(),
+                ? BudlarkTheme.dark()
+                : BudlarkTheme.light(),
             builder: (context, child) => MediaQuery(
               data: MediaQuery.of(context)
                   .copyWith(textScaler: TextScaler.linear(variant.scale)),

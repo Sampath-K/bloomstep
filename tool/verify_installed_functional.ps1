@@ -278,11 +278,11 @@ try {
   if ($signature.Status.ToString() -notin @('Valid','NotSigned')) {
     throw "Invalid/unverifiable present Authenticode signature: $($signature.Status); no trust bypass."
   }
-  if (@(Get-Process -Name bloomstep -ErrorAction SilentlyContinue).Count) { throw 'Existing app process; refusing input or cleanup.' }
+  if (@(Get-Process -Name budlark -ErrorAction SilentlyContinue).Count) { throw 'Existing app process; refusing input or cleanup.' }
   foreach ($p in @(
-    "$env:APPDATA\com.bloomstep\bloomstep", "$env:LOCALAPPDATA\com.bloomstep\bloomstep",
-    "$env:LOCALAPPDATA\Programs\Bloomstep", "$env:LOCALAPPDATA\Programs\Budlark",
-    'HKCU:\Software\Classes\bloomstep',
+    "$env:APPDATA\com.budlark\budlark", "$env:LOCALAPPDATA\com.budlark\budlark",
+    "$env:LOCALAPPDATA\Programs\Budlark", "$env:LOCALAPPDATA\Programs\Budlark",
+    'HKCU:\Software\Classes\budlark',
     'HKCU:\Software\Microsoft\Windows\CurrentVersion\Uninstall\{99BE7E95-0565-4C72-A4DD-46D1D5B6C679}_is1'
   )) {
     if (Test-Path -LiteralPath $p) { throw "Existing user app state/install registration: $p; no deletion permitted." }
@@ -295,7 +295,7 @@ try {
     if (Test-Path -LiteralPath $registry) {
       foreach ($key in Get-ChildItem -LiteralPath $registry) {
         $displayName = $key.GetValue('DisplayName', '')
-        if ($displayName -match '(?i)bloomstep|budlark') {
+        if ($displayName -match '(?i)budlark|budlark') {
           throw 'Existing user/machine app uninstall registration; no installation permitted.'
         }
       }
@@ -436,14 +436,14 @@ public static class InstalledFunctionalNative {
   if (!$script:installer.WaitForExit(60000)) { throw 'Installer exceeded 60s; no success inferred.' }
   Assert-Defender
   if ($script:installer.ExitCode -ne 0) { throw "Installer exit $($script:installer.ExitCode)." }
-  $script:exe = Join-Path $script:appDir 'bloomstep.exe'
+  $script:exe = Join-Path $script:appDir 'budlark.exe'
   Assert-NoReparse $script:exe
   $bytes = [IO.File]::ReadAllBytes($script:exe)
   if ($bytes.Length -lt 64 -or [BitConverter]::ToUInt16($bytes,0) -ne 0x5a4d) { throw 'Installed app is not PE.' }
   $pe = [BitConverter]::ToInt32($bytes,60)
   if ($pe -lt 64 -or $pe -gt $bytes.Length-6 -or [BitConverter]::ToUInt32($bytes,$pe) -ne 0x4550 -or
       [BitConverter]::ToUInt16($bytes,$pe+4) -ne 0x8664) { throw 'Installed app is not native x64 PE.' }
-  if (@(Get-Process -Name bloomstep -ErrorAction SilentlyContinue).Count) { throw 'Unexpected app already running after silent install.' }
+  if (@(Get-Process -Name budlark -ErrorAction SilentlyContinue).Count) { throw 'Unexpected app already running after silent install.' }
   $script:app = Start-Process -FilePath $script:exe -WorkingDirectory $script:appDir -PassThru
   $deadline = [DateTime]::UtcNow.AddSeconds(20)
   do {

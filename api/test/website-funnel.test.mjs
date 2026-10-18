@@ -21,7 +21,7 @@ function fixture({ clock = () => new Date('2026-10-05T23:59:59Z'), operationalEn
       return { code: 200 };
     }, query: () => ({ fetchAll: async () => ({ resources: [] }) }) },
   };
-  const handlers = createWebsiteHandlers({ container: () => store, authenticate: async () => ({ roles: ['Bloomstep.Admin'] }),
+  const handlers = createWebsiteHandlers({ container: () => store, authenticate: async () => ({ roles: ['Budlark.Admin'] }),
     clock, operationalEnabled });
   return { handlers, saved: () => {
     const values = [...documents.values()];
@@ -135,7 +135,7 @@ test('CAS conflicts fail closed, oversize chunked streams cancel before persiste
   const conflict = createWebsiteHandlers({
     container: () => ({ item: () => ({ read: async () => ({ resource: null }) }),
       items: { batch: async () => { throw { code: 409 }; } } }),
-    authenticate: async () => ({ roles: ['Bloomstep.Admin'] }),
+    authenticate: async () => ({ roles: ['Budlark.Admin'] }),
   });
   await assert.rejects(conflict.ingest(request()), e => e.status === 429);
   const f = fixture();
@@ -213,7 +213,7 @@ test('production synthetic proof is aggregate-worker-only and does not expose re
       read: async () => ({ resource: partition === '__website_synthetic' ? { accepted: 3 } : { accepted: 7 } }),
     }) }),
     authenticate: async () => ({ roles: [] }),
-    authenticateProof: async () => ({ roles: ['Bloomstep.AggregateWriter'] }),
+    authenticateProof: async () => ({ roles: ['Budlark.AggregateWriter'] }),
   });
   const result = await worker.proof(request());
   assert.deepEqual(result.jsonBody, { schemaVersion: 1, syntheticAccepted: 3, realAccepted: 7,

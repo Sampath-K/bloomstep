@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { readFileSync, readdirSync } from 'node:fs';
+import { readFileSync } from 'node:fs';
 import { spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 
@@ -18,11 +18,11 @@ test('native user-visible titles and publisher do not retain scaffold identifier
   assert.match(metadata, /VALUE "ProductName", "Budlark"/);
   assert.match(metadata, /VALUE "FileDescription", "Budlark"/);
   assert.match(metadata, /VALUE "CompanyName", "Budlark contributors"/);
-  assert.doesNotMatch(metadata, /com\.bloomstep/);
+  assert.doesNotMatch(metadata, /com\.budlark/);
 });
 
 test('native sign-in and both callback outcomes identify Budlark without hiding security errors', () => {
-  assert.match(read('lib/app/bloomstep_app.dart'), /profile_section\.dart/);
+  assert.match(read('lib/app/budlark_app.dart'), /profile_section\.dart/);
   const profile = read('lib/features/garden/profile_section.dart');
   assert.match(profile, /Choose Microsoft personal account, Google or another enabled option in the system browser/);
   assert.match(profile, /Budlark never collects your password/);
@@ -55,7 +55,7 @@ test('site, operator popup and download labels are product-branded', () => {
 test('customer release page makes the owner-test restriction clear and excludes operator evidence', () => {
   const site = read('site/releases/index.html');
   for (const arch of ['arm64', 'x64', 'universal']) {
-    assert.ok(site.includes(`releases/download/v0.1.0-preview.14/Bloomstep-0.1.0-preview.14-windows-${arch}-setup.exe`));
+    assert.ok(site.includes(`releases/download/v0.1.0-preview.14/Budlark-0.1.0-preview.14-windows-${arch}-setup.exe`));
   }
   assert.ok(site.includes('7ad56cc3c71a40d78dd7cb043b43aa42ea884cb0484da982cffa386c9384b094'));
   assert.match(site, /Early preview — not yet verified for general use/);
@@ -66,60 +66,60 @@ test('customer release page makes the owner-test restriction clear and excludes 
 });
 
 test('branding assets have genuine binary formats and do not replace protocol identifiers', () => {
-  const png = readFileSync(new URL('../site/assets/bloomstep-wordmark.png', import.meta.url));
+  const png = readFileSync(new URL('../site/assets/budlark-wordmark.png', import.meta.url));
   assert.equal(png.subarray(0, 8).toString('hex'), '89504e470d0a1a0a');
   assert.ok(png.readUInt32BE(16) <= 245);
   assert.ok(png.readUInt32BE(20) <= 36);
   const icon = readFileSync(new URL('../windows/runner/resources/app_icon.ico', import.meta.url));
   assert.equal(icon.readUInt16LE(2), 1);
   assert.match(read('lib/services/identity.dart'), /http:\/\/127\.0\.0\.1:43821\/callback/);
-  assert.match(read('packaging/bloomstep.iss'), /Software\\Classes\\bloomstep/);
+  assert.match(read('packaging/budlark.iss'), /Software\\Classes\\budlark/);
 });
 
-test('Budlark display metadata is consistent without renaming package or binary identities', () => {
-  assert.match(read('lib/app/bloomstep_app.dart'), /title: 'Budlark'/);
+test('Budlark display metadata, packages and binaries share the product identity', () => {
+  assert.match(read('lib/app/budlark_app.dart'), /title: 'Budlark'/);
   assert.match(read('android/app/src/main/AndroidManifest.xml'), /android:label="Budlark"/);
-  assert.match(read('android/app/build.gradle.kts'), /applicationId = "com\.bloomstep\.bloomstep"/);
+  assert.match(read('android/app/build.gradle.kts'), /applicationId = "com\.budlark\.budlark"/);
   assert.match(read('ios/Runner/Info.plist'), /<key>CFBundleDisplayName<\/key>\s*<string>Budlark<\/string>/);
   assert.match(read('macos/Runner/Info.plist'), /<key>CFBundleDisplayName<\/key>\s*<string>Budlark<\/string>/);
   for (const platform of ['ios', 'macos']) {
     assert.match(read(`${platform}/Runner/Info.plist`), /<key>CFBundleName<\/key>\s*<string>Budlark<\/string>/);
   }
-  assert.match(read('macos/Runner/Configs/AppInfo.xcconfig'), /PRODUCT_NAME = bloomstep/);
-  assert.match(read('windows/CMakeLists.txt'), /set\(BINARY_NAME "bloomstep"\)/);
-  assert.match(read('pubspec.yaml'), /^name: bloomstep\n/);
+  assert.match(read('macos/Runner/Configs/AppInfo.xcconfig'), /PRODUCT_NAME = budlark/);
+  assert.match(read('windows/CMakeLists.txt'), /set\(BINARY_NAME "budlark"\)/);
+  assert.match(read('pubspec.yaml'), /^name: budlark\n/);
   assert.match(read('pubspec.yaml'), /description: "Budlark -/);
 });
 
-test('installer UI changes but upgrade identity, paths, startup and protocol remain stable', () => {
-  const setup = read('packaging/bloomstep.iss');
+test('installer preserves its AppId while using the clean-break product identity', () => {
+  const setup = read('packaging/budlark.iss');
   assert.match(setup, /^AppName=Budlark$/m);
-  assert.match(setup, /^AppName=Bloomstep isolated journey proof$/m);
+  assert.match(setup, /^AppName=Budlark isolated journey proof$/m);
   assert.match(read('.github/workflows/ci.yml'), /Compile isolated standard-wizard contract fixture/);
   assert.match(setup, /^AppPublisher=Budlark contributors$/m);
   assert.match(setup, /Description: "Launch Budlark"/);
   assert.match(read('packaging/install-progress.iss'), /Welcome to Budlark/);
   assert.match(setup, /AppId=\{\{99BE7E95-0565-4C72-A4DD-46D1D5B6C679\}/);
-  assert.match(setup, /^DefaultDirName=\{localappdata\}\\Programs\\Bloomstep$/m);
-  assert.match(setup, /^DefaultGroupName=Bloomstep$/m);
-  assert.match(setup, /^OutputBaseFilename=Bloomstep-/m);
-  assert.match(setup, /Name: "\{group\}\\Bloomstep"; Filename: "\{app\}\\bloomstep\.exe"/);
+  assert.match(setup, /^DefaultDirName=\{localappdata\}\\Programs\\Budlark$/m);
+  assert.match(setup, /^DefaultGroupName=Budlark$/m);
+  assert.match(setup, /^OutputBaseFilename=Budlark-/m);
+  assert.match(setup, /Name: "\{group\}\\Budlark"; Filename: "\{app\}\\budlark\.exe"/);
   assert.doesNotMatch(setup, /CurrentVersion\\Run|\{userstartup\}/);
   assert.match(setup, /ValueData: "URL:Budlark invitation"/);
-  assert.match(read('lib/services/desktop_reminders.dart'), /appName: 'Budlark',\s*appUserModelId: 'Bloomstep\.Garden'/);
-  assert.match(read('lib/services/desktop_reminders.dart'), /launchAtStartup\.setup\(\s*appName: 'Bloomstep'/);
-  assert.match(read('lib/services/windows_storage_identity.dart'), /p\.join\(root, 'com\.bloomstep', 'bloomstep'\)/);
-  assert.match(read('lib/services/identity.dart'), /key: 'bloomstep-session'/);
-  assert.match(read('site/invitation-landing.mjs'), /bloomstep\.pending-invitation\.v1/);
+  assert.match(read('lib/services/desktop_reminders.dart'), /appName: 'Budlark',\s*appUserModelId: 'Budlark\.Garden'/);
+  assert.match(read('lib/services/desktop_reminders.dart'), /launchAtStartup\.setup\(\s*appName: 'Budlark'/);
+  assert.match(read('lib/services/windows_storage_identity.dart'), /p\.join\(root, 'Budlark'\)/);
+  assert.match(read('lib/services/identity.dart'), /key: 'budlark-session'/);
+  assert.match(read('site/invitation-landing.mjs'), /budlark\.pending-invitation\.v1/);
 });
 
-test('public metadata uses Budlark while authentic historical filenames stay exact', () => {
+test('public metadata and download labels use Budlark', () => {
   for (const path of ['site/index.html', 'site/releases/index.html']) {
     const html = read(path);
     assert.match(html, /<title>Budlark/);
     assert.match(html, /property="og:title" content="Budlark/);
     assert.match(html, /name="twitter:title" content="Budlark/);
-    assert.match(html, /Bloomstep-0\.1\.0-preview\.14-windows-universal-setup\.exe/);
+    assert.match(html, /Budlark-0\.1\.0-preview\.14-windows-universal-setup\.exe/);
   }
   assert.match(read('site/index.html'), /"name":"Budlark"/);
   assert.match(read('site/release-downloads.mjs'), />Budlark x64</);
@@ -127,31 +127,15 @@ test('public metadata uses Budlark while authentic historical filenames stay exa
   assert.match(read('tool/generate_brand_assets.py'), /"Budlark"/);
   assert.match(read('tool/create_social_image.ps1'), /DrawString\('Budlark'/);
   assert.match(read('infra/configure-customer-branding.ps1'), /SignIn_Title = 'Sign in to Budlark'/);
-  assert.match(read('site/console.html'), /server-assigned Bloomstep\.Admin/);
+  assert.match(read('site/console.html'), /server-assigned Budlark\.Admin/);
 });
 
-test('customer prose has no old product name beyond the explicit compatibility and evidence exceptions', () => {
-  const paths = [
-    ...readdirSync(new URL('../lib/', import.meta.url), { recursive: true })
-      .filter(path => path.endsWith('.dart'))
-      .map(path => `lib/${path.replaceAll('\\', '/')}`),
-    'site/index.html', 'site/releases/index.html', 'site/console.html',
-    'site/operator-callback.html', 'site/customer.mjs', 'site/console.mjs',
-    'site/invitation-landing.mjs', 'site/release-downloads.mjs',
-    'windows/runner/main.cpp', 'windows/runner/native_share.cpp',
-    'infra/configure-customer-branding.ps1',
-  ];
-  for (const path of paths) {
-    const prose = read(path)
-      .replaceAll('X-Bloomstep-Authorization', 'Legacy-Authorization')
-      .replaceAll('Bloomstep.Admin', 'Legacy.Admin')
-      .replaceAll('Bloomstep.Garden', 'Legacy.Garden')
-      .replaceAll("'Bloomstep', 'measurement'", "'Legacy', 'measurement'")
-      .replaceAll("launchAtStartup.setup(\n        appName: 'Bloomstep'", "launchAtStartup.setup(\n        appName: 'Legacy'")
-      .replaceAll('Earlier Bloomstep preview', 'Earlier preview')
-      .replace(/\bBloomstep-(?=[0-9$])/g, 'LegacyArtifact-');
-    assert.doesNotMatch(prose, /\bbudlock\b/i, path);
-    assert.doesNotMatch(prose, /\bbud lark\b/i, path);
-    assert.doesNotMatch(prose, /\bBloomstep\b/, path);
-  }
+test('retired product identity is absent from every tracked file and path with no exceptions', () => {
+  const retired = ['bloom', 'step'].join('');
+  const cwd = fileURLToPath(new URL('../', import.meta.url));
+  const content = spawnSync('git', ['grep', '-i', '-l', '--', retired], { cwd, encoding: 'utf8' });
+  assert.equal(content.status, 1, content.stdout || content.stderr || content.error?.message);
+  const paths = spawnSync('git', ['ls-files', '-z'], { cwd, encoding: 'utf8' });
+  assert.equal(paths.status, 0, paths.stderr || paths.error?.message);
+  assert.deepEqual(paths.stdout.split('\0').filter(path => path.toLowerCase().includes(retired)), []);
 });

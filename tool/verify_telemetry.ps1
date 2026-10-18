@@ -15,13 +15,13 @@ try {
     if ($LASTEXITCODE -ne 0) { throw 'Website bundle failed.' }
     node site\verify-telemetry.mjs
     if ($LASTEXITCODE -ne 0) { throw 'Browser persisted-readback acceptance failed.' }
-    $env:BLOOMSTEP_TEST_RECEIPT_PATH = Join-Path $env:EVIDENCE_DIR 'website-receipt.json'
-    flutter test --no-pub --dart-define=BLOOMSTEP_TEST_BUILD=true --reporter expanded test\telemetry_http_test.dart test\telemetry_test.dart test\measurement_receipt_test.dart test\sync_outbox_test.dart test\record_deletion_test.dart
+    $env:BUDLARK_TEST_RECEIPT_PATH = Join-Path $env:EVIDENCE_DIR 'website-receipt.json'
+    flutter test --no-pub --dart-define=BUDLARK_TEST_BUILD=true --reporter expanded test\telemetry_http_test.dart test\telemetry_test.dart test\measurement_receipt_test.dart test\sync_outbox_test.dart test\record_deletion_test.dart
     if ($LASTEXITCODE -ne 0) { throw 'App telemetry HTTP/SQLite acceptance failed.' }
     node site\verify-telemetry-app-results.mjs
     if ($LASTEXITCODE -ne 0) { throw 'Independent app report assertions failed.' }
 } finally {
-    Remove-Item Env:\BLOOMSTEP_TEST_RECEIPT_PATH -ErrorAction SilentlyContinue
+    Remove-Item Env:\BUDLARK_TEST_RECEIPT_PATH -ErrorAction SilentlyContinue
     Remove-Item Env:\EVIDENCE_DIR -ErrorAction SilentlyContinue
     Pop-Location
 }

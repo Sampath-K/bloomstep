@@ -1,5 +1,5 @@
-import 'package:bloomstep/features/garden/profile_section.dart';
-import 'package:bloomstep/services/identity.dart';
+import 'package:budlark/features/garden/profile_section.dart';
+import 'package:budlark/services/identity.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 

@@ -1,9 +1,9 @@
 import 'dart:io';
 import 'dart:ui' as ui;
 
-import 'package:bloomstep/app/theme.dart';
-import 'package:bloomstep/features/garden/profile_section.dart';
-import 'package:bloomstep/services/identity.dart';
+import 'package:budlark/app/theme.dart';
+import 'package:budlark/features/garden/profile_section.dart';
+import 'package:budlark/services/identity.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
 import 'package:flutter/services.dart';
@@ -59,7 +59,7 @@ void main() {
       final boundaryKey = GlobalKey();
       await tester.pumpWidget(
         MaterialApp(
-          theme: BloomstepTheme.light(),
+          theme: BudlarkTheme.light(),
           home: Scaffold(
             body: Align(
               alignment: Alignment.topCenter,
@@ -94,7 +94,7 @@ void main() {
       expect(find.text('Synthetic Photo'), findsOneWidget);
       expect(find.text('Signed in'), findsNothing);
       expect(tester.takeException(), isNull);
-      final output = Platform.environment['BLOOMSTEP_SCREENSHOTS'];
+      final output = Platform.environment['BUDLARK_SCREENSHOTS'];
       if (output != null) {
         final boundary =
             boundaryKey.currentContext!.findRenderObject()!

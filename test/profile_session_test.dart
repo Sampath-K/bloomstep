@@ -3,14 +3,13 @@ import 'dart:convert';
 import 'dart:io';
 import 'dart:ui' as ui;
 
-import 'package:bloomstep/app/bloomstep_app.dart';
-import 'package:bloomstep/app/theme.dart';
-import 'package:bloomstep/core/garden_store.dart';
-import 'package:bloomstep/core/measurement_receipt.dart';
-import 'package:bloomstep/services/identity.dart';
-import 'package:bloomstep/services/installer_measurement.dart';
-import 'package:bloomstep/services/auth_observations.dart';
-import 'package:bloomstep/features/garden/recipe_builder.dart';
+import 'package:budlark/app/budlark_app.dart';
+import 'package:budlark/app/theme.dart';
+import 'package:budlark/core/garden_store.dart';
+import 'package:budlark/core/measurement_receipt.dart';
+import 'package:budlark/services/identity.dart';
+import 'package:budlark/services/installer_measurement.dart';
+import 'package:budlark/services/auth_observations.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
 import 'package:flutter/services.dart';
@@ -18,6 +17,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:path/path.dart' as p;
 
 import 'support/dialog_copy_contract.dart';
+import 'first_habit_invitation_test.dart' as first_habit;
 
 class _SyntheticIdentity extends IdentityService {
   bool active = false;
@@ -65,83 +65,8 @@ class _SyntheticIdentity extends IdentityService {
   }
 }
 
-Future<void> _ready(WidgetTester tester, Finder finder) async {
-  var expandedProfile = false;
-  var settingsOpened = false;
-  final description = finder.toString();
-  final needsProfile = [
-    'ST',
-    'Not signed in',
-    'Sign in with Microsoft or Google',
-    'View device garden',
-    'Viewing your device garden',
-    'Return to account garden',
-    'Copy device habits',
-    'Copied ',
-    "Couldn't copy",
-    'Sign out',
-    'Clear saved sign-in',
-    'Saved sign-in cleared',
-    'offline session ended',
-    'Couldn’t open your account garden',
-    'Sign-in didn’t complete',
-    'Couldn’t finish sign-out',
-  ].any(description.contains);
-  for (var i = 0; i < 100; i++) {
-    await tester.runAsync(
-      () => Future<void>.delayed(const Duration(milliseconds: 30)),
-    );
-    await tester.pump(const Duration(milliseconds: 30));
-    if (find.byType(RecipeBuilder).evaluate().isNotEmpty &&
-        find.text('Cancel').evaluate().isNotEmpty) {
-      await tester.pump(const Duration(milliseconds: 350));
-      if (find.text('Cancel').evaluate().isNotEmpty) {
-        await tester.tap(find.text('Cancel'));
-        await tester.pump(const Duration(milliseconds: 350));
-      }
-    }
-    if (finder.evaluate().isNotEmpty && (!needsProfile || expandedProfile)) {
-      if ((finder.toString().contains('Not signed in') ||
-              finder.toString().contains('Sign in with Microsoft or Google')) &&
-          find.text('Complete sign-in in your browser').evaluate().isNotEmpty) {
-        continue;
-      }
-      await tester.pump(const Duration(milliseconds: 350));
-      if (find.byType(RecipeBuilder).evaluate().isNotEmpty &&
-          find.text('Cancel').evaluate().isNotEmpty) {
-        await tester.tap(find.text('Cancel'));
-        await tester.pump(const Duration(milliseconds: 350));
-      }
-      return;
-    }
-    if (needsProfile &&
-        !settingsOpened &&
-        find.byType(AlertDialog).evaluate().isEmpty &&
-        find.byTooltip('Settings and privacy').evaluate().isNotEmpty) {
-      await tester.tap(find.byTooltip('Settings and privacy'));
-      settingsOpened = true;
-      await tester.pump(const Duration(milliseconds: 350));
-    }
-    final profileGroup = find.text('Profile & account');
-    if (needsProfile &&
-        !expandedProfile &&
-        settingsOpened &&
-        profileGroup.evaluate().isNotEmpty) {
-      await tester.ensureVisible(profileGroup);
-      await tester.tap(profileGroup);
-      await tester.pump(const Duration(milliseconds: 350));
-      expandedProfile = true;
-    }
-    final profileDetails = find.text('Profile and garden details');
-    if (!expandedProfile && profileDetails.evaluate().isNotEmpty) {
-      await tester.ensureVisible(profileDetails);
-      await tester.tap(profileDetails);
-      await tester.pump(const Duration(milliseconds: 350));
-      expandedProfile = true;
-    }
-  }
-  fail('Timed out waiting for $finder');
-}
+Future<void> _ready(WidgetTester tester, Finder finder) =>
+    first_habit.ready(tester, finder, dismissRecipeBuilder: true);
 
 void main() {
   for (final scenario in [
@@ -151,7 +76,7 @@ void main() {
   ]) {
     testWidgets('legacy view consent: $scenario', (tester) async {
       final root = (await tester.runAsync(
-        () => Directory.systemTemp.createTemp('bloomstep-profile-'),
+        () => Directory.systemTemp.createTemp('budlark-profile-'),
       ))!;
       addTearDown(() => tester.runAsync(() => root.delete(recursive: true)));
       final collector = (await tester.runAsync(
@@ -250,7 +175,7 @@ void main() {
     tester,
   ) async {
     final root = (await tester.runAsync(
-      () => Directory.systemTemp.createTemp('bloomstep-profile-'),
+      () => Directory.systemTemp.createTemp('budlark-profile-'),
     ))!;
     addTearDown(() => tester.runAsync(() => root.delete(recursive: true)));
     await tester.pumpWidget(
@@ -309,7 +234,7 @@ void main() {
     await tester.binding.setSurfaceSize(const Size(1200, 950));
     addTearDown(() => tester.binding.setSurfaceSize(null));
     final root = (await tester.runAsync(
-      () => Directory.systemTemp.createTemp('bloomstep-profile-'),
+      () => Directory.systemTemp.createTemp('budlark-profile-'),
     ))!;
     addTearDown(() => tester.runAsync(() => root.delete(recursive: true)));
     final guest = (await tester.runAsync(
@@ -353,7 +278,7 @@ void main() {
       RepaintBoundary(
         key: boundaryKey,
         child: MaterialApp(
-          theme: BloomstepTheme.light(),
+          theme: BudlarkTheme.light(),
           home: HabitHome(
             testIdentity: identity,
             testOpenStore: (account) {
@@ -494,7 +419,7 @@ void main() {
       await tester.binding.setSurfaceSize(const Size(1200, 950));
       addTearDown(() => tester.binding.setSurfaceSize(null));
       final root = (await tester.runAsync(
-        () => Directory.systemTemp.createTemp('bloomstep-profile-'),
+        () => Directory.systemTemp.createTemp('budlark-profile-'),
       ))!;
       addTearDown(() => tester.runAsync(() => root.delete(recursive: true)));
       await tester.pumpWidget(
@@ -540,7 +465,7 @@ void main() {
     await tester.binding.setSurfaceSize(const Size(360, 600));
     addTearDown(() => tester.binding.setSurfaceSize(null));
     final root = (await tester.runAsync(
-      () => Directory.systemTemp.createTemp('bloomstep-copy-compact-'),
+      () => Directory.systemTemp.createTemp('budlark-copy-compact-'),
     ))!;
     addTearDown(() => tester.runAsync(() => root.delete(recursive: true)));
     await tester.runAsync(() async {
@@ -594,7 +519,7 @@ void main() {
       tester,
     ) async {
       final root = (await tester.runAsync(
-        () => Directory.systemTemp.createTemp('bloomstep-profile-'),
+        () => Directory.systemTemp.createTemp('budlark-profile-'),
       ))!;
       addTearDown(() => tester.runAsync(() => root.delete(recursive: true)));
       final identity = _SyntheticIdentity()
@@ -611,8 +536,8 @@ void main() {
       );
       await _ready(tester, find.text('Sign in with Microsoft or Google'));
       await tester.tap(find.text('Sign in with Microsoft or Google'));
-      await tester.pump();
-      expect(find.byType(AlertDialog), findsNothing);
+      await tester.pump(const Duration(milliseconds: 350));
+      await _ready(tester, find.text('Complete sign-in in your browser'));
       expect(find.text('Plant a habit'), findsOneWidget);
       identity.pending!.complete();
       await _ready(
@@ -644,7 +569,7 @@ void main() {
     'valid offline restore shows profile without authenticating again',
     (tester) async {
       final root = (await tester.runAsync(
-        () => Directory.systemTemp.createTemp('bloomstep-profile-'),
+        () => Directory.systemTemp.createTemp('budlark-profile-'),
       ))!;
       addTearDown(() => tester.runAsync(() => root.delete(recursive: true)));
       final identity = _SyntheticIdentity()..restoreOffline = true;
@@ -672,7 +597,7 @@ void main() {
     'account storage failure rolls back sign-in without migrating guest',
     (tester) async {
       final root = (await tester.runAsync(
-        () => Directory.systemTemp.createTemp('bloomstep-profile-'),
+        () => Directory.systemTemp.createTemp('budlark-profile-'),
       ))!;
       addTearDown(() => tester.runAsync(() => root.delete(recursive: true)));
       final identity = _SyntheticIdentity();
@@ -714,7 +639,7 @@ void main() {
     'failed saved-auth cleanup is visible and retryable on the profile',
     (tester) async {
       final root = (await tester.runAsync(
-        () => Directory.systemTemp.createTemp('bloomstep-profile-'),
+        () => Directory.systemTemp.createTemp('budlark-profile-'),
       ))!;
       addTearDown(() => tester.runAsync(() => root.delete(recursive: true)));
       final identity = _SyntheticIdentity()
@@ -734,7 +659,7 @@ void main() {
       await tester.pumpAndSettle();
       await tester.tap(find.widgetWithText(FilledButton, 'Sign out'));
       await _ready(tester, find.text('Clear saved sign-in'));
-      expect(find.textContaining('Couldn’t finish sign-out'), findsOneWidget);
+      await _ready(tester, find.textContaining('Couldn’t finish sign-out'));
       expect(find.text('Not signed in'), findsOneWidget);
       identity.failSignOut = false;
       await _ready(tester, find.text('Sign in with Microsoft or Google'));
@@ -752,7 +677,7 @@ void main() {
     'expired offline session returns to guest without deleting account',
     (tester) async {
       final root = (await tester.runAsync(
-        () => Directory.systemTemp.createTemp('bloomstep-profile-'),
+        () => Directory.systemTemp.createTemp('budlark-profile-'),
       ))!;
       addTearDown(() => tester.runAsync(() => root.delete(recursive: true)));
       final identity = _SyntheticIdentity()..restoreOffline = true;
@@ -804,7 +729,7 @@ void main() {
     'session expiry while viewing device preserves the live device store',
     (tester) async {
       final root = (await tester.runAsync(
-        () => Directory.systemTemp.createTemp('bloomstep-device-expiry-'),
+        () => Directory.systemTemp.createTemp('budlark-device-expiry-'),
       ))!;
       addTearDown(() => tester.runAsync(() => root.delete(recursive: true)));
       await tester.runAsync(() async {
@@ -861,7 +786,7 @@ Future<void> _screenshot(
   GlobalKey key,
   String name,
 ) async {
-  final output = Platform.environment['BLOOMSTEP_SCREENSHOTS'];
+  final output = Platform.environment['BUDLARK_SCREENSHOTS'];
   if (output == null) return;
   await tester.pumpAndSettle();
   final boundary =

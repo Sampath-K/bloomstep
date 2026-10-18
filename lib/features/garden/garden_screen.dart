@@ -32,7 +32,7 @@ import 'garden_canopy.dart';
 import 'experience_copy.dart';
 import '../../services/experience_experiments.dart';
 
-const _testBuild = bool.fromEnvironment('BLOOMSTEP_TEST_BUILD');
+const _testBuild = bool.fromEnvironment('BUDLARK_TEST_BUILD');
 
 class GardenScreen extends StatefulWidget {
   const GardenScreen({
@@ -1468,7 +1468,7 @@ class _GardenScreenState extends State<GardenScreen> {
                           final targetPath =
                               widget.testExportPathSelector == null
                               ? (await getSaveLocation(
-                                  suggestedName: 'bloomstep-export.json',
+                                  suggestedName: 'budlark-export.json',
                                 ))?.path
                               : await widget.testExportPathSelector!();
                           if (targetPath == null) return;
@@ -1510,7 +1510,7 @@ class _GardenScreenState extends State<GardenScreen> {
                           await XFile.fromData(
                             bytes,
                             mimeType: 'application/json',
-                            name: 'bloomstep-export.json',
+                            name: 'budlark-export.json',
                           ).saveTo(targetPath);
                           if (mounted && warnings.isNotEmpty) {
                             ScaffoldMessenger.of(this.context).showSnackBar(

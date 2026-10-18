@@ -22,8 +22,8 @@ export function verifyReleaseEvidence({ root, source, tag, runId, auditOnly = fa
   requireEvidence(!auditOnly || tag === 'v0.1.0-preview.11', 'Audit-only mode is restricted to the historical preview11 tag.');
   const packageDir = join(root, 'universal-output');
   const manifest = readJson(join(packageDir, 'universal-manifest.json'));
-  const expectedName = `Bloomstep-${tag.slice(1)}-windows-universal-setup.exe`;
-  requireEvidence(manifest.kind === 'bloomstep-offline-universal-v1' && manifest.source === source &&
+  const expectedName = `Budlark-${tag.slice(1)}-windows-universal-setup.exe`;
+  requireEvidence(manifest.kind === 'budlark-offline-universal-v1' && manifest.source === source &&
     tag === `v${manifest.version}` && manifest.installerFile === expectedName,
   'Release package source/version/name identity mismatch.');
   const bytes = readFileSync(join(packageDir, expectedName));
@@ -35,17 +35,17 @@ export function verifyReleaseEvidence({ root, source, tag, runId, auditOnly = fa
     const payloadFile = join(packageDir, `payload-manifest-${arch}.json`);
     const payload = readJson(payloadFile);
     requireEvidence(digest(readFileSync(payloadFile)) === manifest.payloadManifests[arch] &&
-      payload.kind === 'bloomstep-release-payload-v1' && payload.source === source &&
+      payload.kind === 'budlark-release-payload-v1' && payload.source === source &&
       payload.version === manifest.version && payload.arch === arch,
     `Same-run ${arch} payload manifest identity/hash mismatch.`);
   }
   return {
-    kind: 'bloomstep-owner-trial-release-evidence-v1',
+    kind: 'budlark-owner-trial-release-evidence-v1',
     source,
     tag,
     actionsRunId: runId,
     publicationAuthorized: !auditOnly,
-    origin: `https://github.com/Sampath-K/bloomstep/actions/runs/${runId}`,
+    origin: `https://github.com/Sampath-K/budlark/actions/runs/${runId}`,
     package: manifest,
     installerAcceptance: 'UNVERIFIED: owner manual installer verification pending',
     ownerManualVerification: {
@@ -69,7 +69,7 @@ if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.ur
   const output = join(root, mode ? 'release-proof-audit-NOT-FOR-PUBLICATION' : 'release-proof');
   mkdirSync(output, { recursive: true });
   writeFileSync(join(output, 'release-evidence.json'), `${JSON.stringify(receipt, null, 2)}\n`);
-  const url = `https://github.com/Sampath-K/bloomstep/releases/download/${tag}`;
+  const url = `https://github.com/Sampath-K/budlark/releases/download/${tag}`;
   const checklist = `# Budlark owner manual installer verification — ${tag}\n\n` +
     `Status: **PENDING**. The owner must verify this exact installer before customer launch. CI did not install or launch it; this record does not imply a pass.\n\n` +
     `- Installer: \`${receipt.ownerManualVerification.installerFile}\`\n` +

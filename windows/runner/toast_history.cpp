@@ -9,7 +9,7 @@
 
 ToastHistory::ToastHistory(flutter::BinaryMessenger* messenger) {
   channel_ = std::make_unique<flutter::MethodChannel<flutter::EncodableValue>>(
-      messenger, "bloomstep/toast_history",
+      messenger, "budlark/toast_history",
       &flutter::StandardMethodCodec::GetInstance());
   channel_->SetMethodCallHandler(
       [this](const auto& call,
@@ -52,12 +52,12 @@ ToastHistory::ToastHistory(flutter::BinaryMessenger* messenger) {
             winrt::init_apartment(winrt::apartment_type::single_threaded);
             runtime_initialized_ = true;
           }
-          constexpr auto app = L"Bloomstep.Garden";
+          constexpr auto app = L"Budlark.Garden";
           winrt::check_hresult(SetCurrentProcessExplicitAppUserModelID(app));
           const auto history =
               winrt::Windows::UI::Notifications::ToastNotificationManager::History();
           // Explicit AUMID overloads work without MSIX package identity.
-          constexpr auto group = L"Bloomstep";
+          constexpr auto group = L"Budlark";
           if (call.method_name() == "cancel") {
             history.Remove(winrt::to_hstring(id), group, app);
             result->Success();

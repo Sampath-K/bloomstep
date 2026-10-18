@@ -1,12 +1,12 @@
 import 'dart:convert';
 import 'dart:io';
 
-import 'package:bloomstep/core/garden_store.dart';
-import 'package:bloomstep/core/models.dart';
-import 'package:bloomstep/features/garden/garden_screen.dart';
-import 'package:bloomstep/services/desktop_reminders.dart';
-import 'package:bloomstep/services/remote_config.dart';
-import 'package:bloomstep/services/update_service.dart';
+import 'package:budlark/core/garden_store.dart';
+import 'package:budlark/core/models.dart';
+import 'package:budlark/features/garden/garden_screen.dart';
+import 'package:budlark/services/desktop_reminders.dart';
+import 'package:budlark/services/remote_config.dart';
+import 'package:budlark/services/update_service.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
@@ -135,6 +135,7 @@ void main() {
         (await tester.runAsync(store.voice))!.single['body'],
         'Pasted feedback',
       );
+      debugDefaultTargetPlatformOverride = null;
     },
   );
 
@@ -409,7 +410,8 @@ void main() {
           }),
         ),
       );
-      await settleDatabase(tester);
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 300));
 
       expect(
         find.text('Saved. That tiny step counts! Now smile.'),
@@ -573,7 +575,7 @@ void main() {
               ? UpdateInfo(
                   '0.2.0-preview',
                   Uri.parse(
-                    'https://github.com/Sampath-K/bloomstep/releases/tag/v0.2.0-preview',
+                    'https://github.com/Sampath-K/budlark/releases/tag/v0.2.0-preview',
                   ),
                   true,
                 )

@@ -17,7 +17,7 @@ Do not run these instructions on your normal Windows host.
 
 The reviewed release candidate is source
 `bd5ad93ad28988123ef7d3e28eab989f91cc4362`, run
-<https://github.com/Sampath-K/bloomstep/actions/runs/38994109408>.
+<https://github.com/Sampath-K/budlark/actions/runs/38994109408>.
 Preparation files added later do not change that candidate's identity or attest
 their own new CI head. Never substitute a different SHA without reviewing it.
 
@@ -88,7 +88,7 @@ No exclusions, quarantine restoration, warning bypass, autologon or policy chang
 If standard-user Defender cmdlets/scans are denied, STOP; do not elevate the runner.
 
 No customer data, provider credentials, personal/work tokens, shared host drives,
-clipboard/drive redirection or existing Bloomstep state. Disable VM integration
+clipboard/drive redirection or existing Budlark state. Disable VM integration
 sharing manually. Take a clean checkpoint. Sign in as the standard user and keep
 the local VM console unlocked. Never use a runner service or a background session.
 
@@ -105,12 +105,12 @@ In ordinary, non-administrator PowerShell 7 inside the guest:
 ```powershell
 # Replace this with the independently supplied full preparation commit SHA.
 $ReviewedPreparationSha = '<40-character preparation commit SHA>'
-git clone https://github.com/Sampath-K/bloomstep.git Bloomstep-reviewed
+git clone https://github.com/Sampath-K/budlark.git Budlark-reviewed
 if ($LASTEXITCODE -ne 0) { throw 'Clone failed' }
-Set-Location Bloomstep-reviewed
+Set-Location Budlark-reviewed
 git checkout --detach $ReviewedPreparationSha
 if ($LASTEXITCODE -ne 0) { throw 'Reviewed source checkout failed' }
-$env:BLOOMSTEP_DISPOSABLE_VM = 'true'
+$env:BUDLARK_DISPOSABLE_VM = 'true'
 .\tool\prepare_protected_runner.ps1 -ExpectedArch x64 `
   -ExpectedSource $ReviewedPreparationSha
 ```
@@ -118,7 +118,7 @@ $env:BLOOMSTEP_DISPOSABLE_VM = 'true'
 Use `-ExpectedArch arm64` only on native ARM64 Windows. The script asks you to type
 `CHECK DISPOSABLE VM`. It checks source/clean checkout, dependencies, architecture,
 existing product state, standard-user interactive/input desktop and Defender.
-It writes receipts in `$env:TEMP\bloomstep-runner-readiness`.
+It writes receipts in `$env:TEMP\budlark-runner-readiness`.
 It also uses the repository's existing compile-only Inno toolchain probe (output
 disabled) to verify the engine banner, not unreliable executable version metadata.
 It neither downloads nor installs anything, registers a runner, nor executes
@@ -142,7 +142,7 @@ Token retrieval can happen on the owner's trusted machine:
 
 ```powershell
 # Owner only, trusted machine: response contains a secret; do not share/log it.
-gh api --method POST repos/Sampath-K/bloomstep/actions/runners/registration-token
+gh api --method POST repos/Sampath-K/budlark/actions/runners/registration-token
 ```
 
 Alternatively use the repository Settings UI. Enter only that registration token
@@ -156,9 +156,9 @@ $secret = Read-Host 'Fresh repository runner registration token' -AsSecureString
 $ptr = [Runtime.InteropServices.Marshal]::SecureStringToBSTR($secret)
 try {
   $env:ACTIONS_RUNNER_INPUT_TOKEN = [Runtime.InteropServices.Marshal]::PtrToStringBSTR($ptr)
-  & .\config.cmd --unattended --url https://github.com/Sampath-K/bloomstep `
+  & .\config.cmd --unattended --url https://github.com/Sampath-K/budlark `
     --labels defender-interactive --ephemeral `
-    --name "bloomstep-disposable-$([Guid]::NewGuid().ToString('N').Substring(0,8))" `
+    --name "budlark-disposable-$([Guid]::NewGuid().ToString('N').Substring(0,8))" `
     --work _work
   if ($LASTEXITCODE -ne 0) { throw 'Runner registration failed' }
 } finally {
@@ -180,7 +180,7 @@ After a final independently verified trust/queue check and explicit owner approv
 ```powershell
 if ((Read-Host 'Type RUN ONE REVIEWED JOB to start the interactive listener') `
     -cne 'RUN ONE REVIEWED JOB') { throw 'Execution not authorized' }
-$env:BLOOMSTEP_DISPOSABLE_VM = 'true'
+$env:BUDLARK_DISPOSABLE_VM = 'true'
 & .\run.cmd
 if ($LASTEXITCODE -ne 0) { throw 'Runner exited with failure; preserve evidence' }
 ```

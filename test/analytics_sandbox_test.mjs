@@ -36,7 +36,7 @@ test('GA4 withdrawal disables transport synchronously before consent update and 
     ad_user_data: 'denied', ad_personalization: 'denied',
   }]);
   const settings = [...win.dataLayer.find(args => args[0] === 'config')][2];
-  assert.equal(settings.page_title, 'Bloomstep sandbox');
+  assert.equal(settings.page_title, 'Budlark sandbox');
   assert.equal(settings.page_location, 'https://example.test/');
   assert.equal(settings.page_referrer, '');
   win.gtag = (...args) => {
@@ -100,7 +100,7 @@ test('missing keys disable each vendor and invalid IDs fail explicitly', () => {
   assert.throws(() => websiteConfig({ GA4_ID: '</script>' }));
 });
 test('release snapshot preserves unknown traffic instead of inventing zeros', async () => {
-  const data = await snapshot({ repo: 'Sampath-K/bloomstep', token: 'fake',
+  const data = await snapshot({ repo: 'Sampath-K/budlark', token: 'fake',
     request: async url => url.includes('/releases?')
       ? { ok: true, json: async () => [{ tag_name: 'v1', published_at: '2026-10-09', assets: [{ id: 1, name: 'test.exe', download_count: 7 }] }] }
       : { ok: false, status: 403 } });
@@ -109,12 +109,12 @@ test('release snapshot preserves unknown traffic instead of inventing zeros', as
   assert.equal(data.traffic.views.status, 403);
 });
 test('unexpected GitHub failures stop the snapshot', async () => {
-  await assert.rejects(snapshot({ repo: 'Sampath-K/bloomstep', token: 'fake',
+  await assert.rejects(snapshot({ repo: 'Sampath-K/budlark', token: 'fake',
     request: async () => ({ ok: false, status: 500 }) }), /HTTP 500/);
 });
 test('release builds cannot enable sandbox even with compile-time flag', async () => {
   const source = await readFile(new URL('../lib/services/analytics_sandbox.dart', import.meta.url), 'utf8');
-  assert.match(source, /!kReleaseMode && bool\.fromEnvironment\('BLOOMSTEP_ANALYTICS_SANDBOX'\)/);
+  assert.match(source, /!kReleaseMode && bool\.fromEnvironment\('BUDLARK_ANALYTICS_SANDBOX'\)/);
 });
 test('live GA4 evidence excludes identifiers and parses batched event bodies', () => {
   const events = collectionEvents('https://region1.google-analytics.com/g/collect?tid=G-TEST&cid=private-client&sid=private-session&gcs=G101',

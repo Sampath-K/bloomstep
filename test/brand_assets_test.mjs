@@ -12,8 +12,8 @@ const pngSize = path => {
 
 test('original Budlark mark is used for the site and supported launcher icons', () => {
   const expected = new Map([
-    ['site/assets/bloomstep-icon.png', 256],
-    ['site/assets/bloomstep-favicon.png', 32],
+    ['site/assets/budlark-icon.png', 256],
+    ['site/assets/budlark-favicon.png', 32],
     ['windows/runner/resources/app_icon.ico', null],
     ['android/app/src/main/res/mipmap-mdpi/ic_launcher.png', 48],
     ['android/app/src/main/res/mipmap-hdpi/ic_launcher.png', 72],
@@ -69,7 +69,7 @@ test('original Budlark mark is used for the site and supported launcher icons', 
 });
 
 test('generated wordmark keeps the exact product spelling and original vector source', () => {
-  const wordmark = file('site/assets/bloomstep-wordmark.png');
+  const wordmark = file('site/assets/budlark-wordmark.png');
   assert.equal(wordmark.subarray(0, 8).toString('hex'), '89504e470d0a1a0a');
   assert.deepEqual([wordmark.readUInt32BE(16), wordmark.readUInt32BE(20)], [245, 36]);
 
@@ -81,8 +81,8 @@ test('generated wordmark keeps the exact product spelling and original vector so
 
   const generator = file('tool/generate_brand_assets.py').toString('utf8');
   for (const path of [
-    'bloomstep-icon.png',
-    'bloomstep-favicon.png',
+    'budlark-icon.png',
+    'budlark-favicon.png',
     'app_icon.ico',
     'mipmap-',
     'Icon-App-',

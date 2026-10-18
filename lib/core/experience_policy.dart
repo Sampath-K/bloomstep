@@ -54,7 +54,7 @@ class ExperienceConfig {
     required DateTime startAt,
     int version = 1,
   }) {
-    if (!const bool.fromEnvironment('BLOOMSTEP_TEST_BUILD')) {
+    if (!const bool.fromEnvironment('BUDLARK_TEST_BUILD')) {
       throw StateError('Synthetic experience config requires a test build.');
     }
     if (version < 1 || !startAt.isUtc) {

@@ -1,9 +1,9 @@
 import 'dart:async';
 import 'dart:convert';
 
-import 'package:bloomstep/core/garden_store.dart';
-import 'package:bloomstep/services/identity.dart';
-import 'package:bloomstep/services/sync_service.dart';
+import 'package:budlark/core/garden_store.dart';
+import 'package:budlark/services/identity.dart';
+import 'package:budlark/services/sync_service.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
@@ -106,7 +106,7 @@ void main() {
       expect(request.method, 'GET');
       expect(request.url.path, '/api/sync');
       expect(
-        request.headers['X-Bloomstep-Authorization'],
+        request.headers['X-Budlark-Authorization'],
         'Bearer synthetic-token',
       );
       expect(request.headers.containsKey('Authorization'), isFalse);

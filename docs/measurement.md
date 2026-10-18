@@ -19,13 +19,13 @@ the historical browser-storage receipt flow below is not its collection path.
 
 The website has no product-analytics upload endpoint. Optional local consent is
 unchecked unless a valid prior consented receipt is present. The browser-owned
-key `bloomstep.measurement-receipt.v1` stores at most32 actual post-consent page,
+key `budlark.measurement-receipt.v1` stores at most32 actual post-consent page,
 valid current invitation-view and download-click observations. No URL/referrer,
 invitation code, fingerprint, account, architecture or private text is stored.
 A click is not download completion, installation or referral redemption.
 Exports are user-requested JSON receipts, never automatic account linkage.
 
-**Current installer coverage:** `packaging/bloomstep.iss` has no measurement
+**Current installer coverage:** `packaging/budlark.iss` has no measurement
 checkbox and creates no receipt or ownership marker. Interactive and silent
 installs collect no new installation/first-launch observations. Install and
 first-launch denominators are unavailable, not zero. Upgrades remove the old
@@ -35,7 +35,7 @@ ownership marker; this does not authorize replacement collection.
 contract used a separate unchecked local choice to observe the actual
 file-installation phase (`installer_started`, not earlier bootstrap) and
 post-install completion. Its owned local file was
-`%LOCALAPPDATA%\Bloomstep\measurement\installer-receipt.json`. A random
+`%LOCALAPPDATA%\Budlark\measurement\installer-receipt.json`. A random
 `measurement-owner.txt` in the installed directory binds subsequent app
 observations to that installation without exporting a path/device identifier.
 The retained compatibility reader allows only a matching, completed, explicitly opted-in historical installation to add one
@@ -139,7 +139,7 @@ console (deployment verification)** near the footer, use its real operator
 sign-in, select the bounded day window and **Load private preview measurements**.
 It is first-party static UI plus private Functions/Cosmos APIs, not an
 AppInsights/PostHog dashboard. The API requires an explicitly selected/assigned
-customer `Bloomstep.Admin`; repo/subscription ownership or asking to view metrics
+customer `Budlark.Admin`; repo/subscription ownership or asking to view metrics
 is not permission to grant that role. No current population counts are claimed
 without that separately authorized channel.
 

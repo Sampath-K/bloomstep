@@ -27,7 +27,7 @@ design that obtains the upstream MSA's immutable `tid` and `oid` from a validate
 provider token, binds them to the existing CIAM issuer/subject on the trusted
 server side, and emits that binding in a validated, non-user-editable CIAM
 token or an equivalently authenticated server response. The adapter must return
-the signed-in Bloomstep account hash and the bound MSA tenant/object identifiers
+the signed-in Budlark account hash and the bound MSA tenant/object identifiers
 only for the actual Microsoft provider. Claim names and portal mapping steps
 cannot honestly be prescribed until a supported mechanism has been verified;
 this draft does not invent them or change provider configuration.
@@ -44,7 +44,7 @@ No registration, tenant setting, Azure configuration, terms acceptance, release,
 or merge was performed.
 
 1. In a normal Microsoft identity-platform tenant, create a **separate**
-   registration named `Bloomstep Microsoft profile photos`. Do not reuse or
+   registration named `Budlark Microsoft profile photos`. Do not reuse or
    modify the CIAM desktop registration or confidential MSA federation
    registration. Choose **Personal Microsoft accounts only**
    (`signInAudience: PersonalMicrosoftAccount`). Workforce accounts are out of
@@ -81,7 +81,7 @@ Consent is left to Microsoft: the flow does not force `prompt=consent`, so an
 existing grant need not be consented again. It attempts at most once per signed-in
 account per app launch; declining/failing does not loop. A subsequent launch may
 open the browser again because nothing about the photo connection is persisted.
-Revoking the Microsoft grant is owner-controlled; Bloomstep sign-out clears the
+Revoking the Microsoft grant is owner-controlled; Budlark sign-out clears the
 local connection but does not sign out the system browser or revoke consent.
 
 ## Transport and privacy contract
@@ -123,7 +123,7 @@ Synthetic tests exercise absent proof/no browser/no Graph, mismatch rejection,
 account-scoped memory bytes, denial, bounded content, redirect refusal, malformed
 callbacks, sign-out during authentication/token refresh/download, and cache
 eviction. `microsoft_photo_avatar_test.dart` writes
-`microsoft-photo-SYNTHETIC.png` to `BLOOMSTEP_SCREENSHOTS` when set; the drawing is
+`microsoft-photo-SYNTHETIC.png` to `BUDLARK_SCREENSHOTS` when set; the drawing is
 synthetic, not a Microsoft user's photo. Existing profile/startup tests remain
 app-path regressions, not installed-executable acceptance.
 
@@ -214,7 +214,7 @@ documents the callout data rather than an upstream-token forwarding channel.
    validated token; neither email nor two successful logins is sufficient.
 5. The server returns the resulting consumer tenant/object-ID binding only
    through an authenticated HTTPS operation-result read by the initiating
-   Bloomstep account. It does not issue it to another account or put it in a
+   Budlark account. It does not issue it to another account or put it in a
    browser redirect. State/results are one-use and expire within minutes;
    keep tokens and binding data in scoped ephemeral server memory, with an
    instance-affinity or reviewed shared ephemeral-state strategy. Do not add a

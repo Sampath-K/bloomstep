@@ -4,7 +4,7 @@ $ErrorActionPreference = 'Stop'
 function New-DevBoxTrialReceipt([string]$Source, [string]$Architecture, [string]$InstallerSha256) {
   [ordered]@{
     schema = 2
-    kind = 'bloomstep-devbox-installer-trial'
+    kind = 'budlark-devbox-installer-trial'
     evidenceClass = 'supplemental-manual-owner-trial'
     createdAt = [DateTime]::UtcNow.ToString('o')
     source = $Source

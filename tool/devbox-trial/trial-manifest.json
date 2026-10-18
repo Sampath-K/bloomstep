@@ -1,11 +1,11 @@
 {
-  "kind": "bloomstep-devbox-installer-trial-v1",
+  "kind": "budlark-devbox-installer-trial-v1",
   "source": "bd5ad93ad28988123ef7d3e28eab989f91cc4362",
   "artifact": {
     "runId": "38994109408",
     "artifactId": "12086798368",
-    "name": "bloomstep-universal-installer",
-    "installerFile": "Bloomstep-0.1.0-preview-windows-universal-setup.exe",
+    "name": "budlark-universal-installer",
+    "installerFile": "Budlark-0.1.0-preview-windows-universal-setup.exe",
     "installerSha256": "664b60d44929da601e22832568d0c88d8baa70f119764958336e065ff4892162",
     "bytes": 22312142,
     "signatureStatus": "NotSigned",

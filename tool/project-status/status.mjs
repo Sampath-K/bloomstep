@@ -10,7 +10,7 @@ const root = fileURLToPath(new URL('../../', import.meta.url));
 const defaultDirectory = join(root, '.project-status');
 const states = ['planned', 'implementing', 'validating', 'blocked', 'review-ready', 'merged', 'released', 'verified', 'unknown'];
 const shaPattern = /^[a-f0-9]{40}$/;
-const githubBase = 'https://github.com/Sampath-K/bloomstep';
+const githubBase = 'https://github.com/Sampath-K/budlark';
 
 class ReadError extends Error {}
 
@@ -19,7 +19,7 @@ function need(condition) {
 }
 
 export function validateConfig(config) {
-  need(config?.repo === 'Sampath-K/bloomstep');
+  need(config?.repo === 'Sampath-K/budlark');
   need(Number.isInteger(config.maxAgeSeconds) && config.maxAgeSeconds > 0);
   need(Array.isArray(config.workstreams) && config.workstreams.length > 0);
   const ids = new Set();
@@ -116,7 +116,7 @@ export function dependencyView(config, rows, now) {
 }
 
 export async function ghRead(path, paginate = false, execute = exec, signal) {
-  if (!/^repos\/Sampath-K\/bloomstep\/(?:pulls(?:\/\d+|\?)|branches\/|releases\?|git\/(?:ref\/tags\/|tags\/)|actions\/(?:workflows\/[\w.-]+\.yml\/runs\?|runs\/\d+\/attempts\/\d+\/jobs\?))/.test(path) ||
+  if (!/^repos\/Sampath-K\/budlark\/(?:pulls(?:\/\d+|\?)|branches\/|releases\?|git\/(?:ref\/tags\/|tags\/)|actions\/(?:workflows\/[\w.-]+\.yml\/runs\?|runs\/\d+\/attempts\/\d+\/jobs\?))/.test(path) ||
       /[\r\n\\]/.test(path)) throw new ReadError('Unsupported GitHub read path.');
   try {
     const args = ['api', '--hostname', 'github.com', '--method', 'GET', path];
@@ -162,11 +162,11 @@ async function workflowEvidence(definition, sha, read, releaseTag = null) {
   need(shaPattern.test(sha));
   const workflow = definition.workflow ?? 'ci.yml';
   const branchQuery = releaseTag ? `&branch=${encodeURIComponent(releaseTag)}` : '';
-  const runs = listPages(await read(`repos/Sampath-K/bloomstep/actions/workflows/${workflow}/runs?head_sha=${sha}&event=push${branchQuery}&per_page=100`, true), 'workflow_runs');
+  const runs = listPages(await read(`repos/Sampath-K/budlark/actions/workflows/${workflow}/runs?head_sha=${sha}&event=push${branchQuery}&per_page=100`, true), 'workflow_runs');
   need(runs.length > 0 && runs.every(run => run.head_sha === sha && (!releaseTag || run.head_branch === releaseTag) &&
     Number.isSafeInteger(run.id) && Number.isSafeInteger(run.run_attempt)));
   const run = runs.sort((a, b) => b.id - a.id)[0];
-  const jobs = listPages(await read(`repos/Sampath-K/bloomstep/actions/runs/${run.id}/attempts/${run.run_attempt}/jobs?per_page=100`, true), 'jobs');
+  const jobs = listPages(await read(`repos/Sampath-K/budlark/actions/runs/${run.id}/attempts/${run.run_attempt}/jobs?per_page=100`, true), 'jobs');
   need(jobs.length > 0 && jobs.every(job => typeof job.name === 'string' &&
     ['queued', 'in_progress', 'completed', 'waiting', 'pending', 'requested'].includes(job.status) &&
     (job.status !== 'completed' || ['success', 'failure', 'cancelled', 'skipped', 'neutral', 'timed_out', 'action_required', 'startup_failure', 'stale'].includes(job.conclusion))));
@@ -191,7 +191,7 @@ async function pullEvidence(definition, pull, read) {
 }
 
 async function observe(definition, read, releaseRows) {
-  const base = 'repos/Sampath-K/bloomstep';
+  const base = 'repos/Sampath-K/budlark';
   if (definition.kind === 'pull') {
     return pullEvidence(definition, await read(`${base}/pulls/${definition.number}`), read);
   }

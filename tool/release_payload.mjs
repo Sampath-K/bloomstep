@@ -34,7 +34,7 @@ export function peMachine(bytes) {
 export function createPayloadManifest(root, expected) {
   identity(expected);
   const inventory = files(root);
-  for (const required of ['bloomstep.exe', 'flutter_windows.dll', 'data/app.so', 'data/icudtl.dat', 'data/flutter_assets/AssetManifest.bin']) {
+  for (const required of ['budlark.exe', 'flutter_windows.dll', 'data/app.so', 'data/icudtl.dat', 'data/flutter_assets/AssetManifest.bin']) {
     if (!inventory.includes(required)) throw Error(`Missing required Release payload: ${required}`);
   }
   const machine = expected.arch === 'arm64' ? 0xaa64 : 0x8664;
@@ -42,7 +42,7 @@ export function createPayloadManifest(root, expected) {
     if (peMachine(readFileSync(join(root, file))) !== machine) throw Error(`Wrong payload architecture: ${file}`);
   }
   return {
-    kind: 'bloomstep-release-payload-v1',
+    kind: 'budlark-release-payload-v1',
     arch: expected.arch, source: expected.source, version: expected.version,
     files: inventory.map(path => {
       const bytes = readFileSync(join(root, path));
@@ -52,7 +52,7 @@ export function createPayloadManifest(root, expected) {
 }
 export function verifyPayloadManifest(root, manifest, expected) {
   identity(expected);
-  if (manifest.kind !== 'bloomstep-release-payload-v1' || manifest.arch !== expected.arch ||
+  if (manifest.kind !== 'budlark-release-payload-v1' || manifest.arch !== expected.arch ||
       manifest.source !== expected.source || manifest.version !== expected.version) {
     throw Error('Release payload identity mismatch.');
   }

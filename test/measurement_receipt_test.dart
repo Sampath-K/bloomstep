@@ -1,7 +1,7 @@
 import 'dart:convert';
 
-import 'package:bloomstep/core/garden_store.dart';
-import 'package:bloomstep/core/measurement_receipt.dart';
+import 'package:budlark/core/garden_store.dart';
+import 'package:budlark/core/measurement_receipt.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {

@@ -36,7 +36,7 @@ export async function operatorRequest(auth, origin, path, options = {}) {
   const session = await fetch('/__preview/session', { cache: 'no-store', signal: options.signal });
   if (!session.ok) throw Error('Local preview session unavailable.');
   const { token } = await session.json();
-  const response = await fetch(path, { ...options, headers: { 'X-Bloomstep-Authorization': 'Bearer ' + token } });
+  const response = await fetch(path, { ...options, headers: { 'X-Budlark-Authorization': 'Bearer ' + token } });
   if (!response.ok) throw Error('Local preview HTTP ' + response.status);
   return response.json();
 }
@@ -46,7 +46,7 @@ export function validatePublicConfig() { throw Error('Preview auth is not deploy
 async function seedExperiments(container, authenticate, sign) {
   let now = new Date(fixtureDate);
   const handler = createExperimentHandlers({ container, environment: 'isolated', authenticate,
-    authenticateWorker: async () => ({ roles: ['Bloomstep.AggregateWriter'] }),
+    authenticateWorker: async () => ({ roles: ['Budlark.AggregateWriter'] }),
     clock: () => now, stageSummary: async () => null });
   // Deliberately labeled aggregate fixtures, not observed exposures or efficacy evidence.
   const arm = (converted) => ({ exposed: 1000, converted: { primary_cta_click: converted, download_click: converted }, errors: 0 });
@@ -76,7 +76,7 @@ async function seedExperiments(container, authenticate, sign) {
   finalState.audit.push({ at: third.startAt, action: 'launch', experimentId: third.experimentId });
   await container().item('state', PARTITIONS.isolated).replace(finalState, { accessCondition: { condition: finalState._etag } });
   await handler.kill({ headers: new Headers({ 'Content-Type': 'application/json',
-    'X-Bloomstep-Authorization': `Bearer ${await sign('synthetic-admin')}` }),
+    'X-Budlark-Authorization': `Bearer ${await sign('synthetic-admin')}` }),
     text: async () => JSON.stringify({ killed: true, reason: 'Local synthetic preview kill-switch drill' }) });
   return handler;
 }

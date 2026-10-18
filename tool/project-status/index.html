@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Bloomstep | Private project status</title>
+<title>Budlark | Private project status</title>
 <script>
   (() => {
     const param = new URLSearchParams(window.location.search).get("scoutTheme");
@@ -122,7 +122,7 @@ footer { font-size: 0.85rem; color: var(--cp-text-muted); }
 <main>
   <header>
     <div class="eyebrow">Internal / loopback only / read-only GitHub evidence</div>
-    <h1>Bloomstep project status</h1>
+    <h1>Budlark project status</h1>
     <p class="muted">A dependency map, not a date-based Gantt or a claim of live agent progress.</p>
   </header>
   <section class="panel notice" aria-label="Source collection instructions">
@@ -195,9 +195,9 @@ footer { font-size: 0.85rem; color: var(--cp-text-muted); }
   $('legend').append(...states.map(badge));
   function links(items, parent) {
     for (const item of items ?? []) {
-      if (typeof item.url !== 'string' || !item.url.startsWith('https://github.com/Sampath-K/bloomstep/')) continue;
+      if (typeof item.url !== 'string' || !item.url.startsWith('https://github.com/Sampath-K/budlark/')) continue;
       const url = new URL(item.url);
-      if (url.protocol !== 'https:' || url.hostname !== 'github.com' || !url.pathname.startsWith('/Sampath-K/bloomstep/')) continue;
+      if (url.protocol !== 'https:' || url.hostname !== 'github.com' || !url.pathname.startsWith('/Sampath-K/budlark/')) continue;
       const p = el('p');
       const a = el('a', item.title);
       a.href = url.href;
@@ -209,7 +209,7 @@ footer { font-size: 0.85rem; color: var(--cp-text-muted); }
   }
   function validate(data) {
     if (data.schemaVersion !== 1 || !['complete', 'partial', 'failed'].includes(data.collectionState) ||
-        !Number.isFinite(Date.parse(data.collectedAt)) || data.config?.repo !== 'Sampath-K/bloomstep' ||
+        !Number.isFinite(Date.parse(data.collectedAt)) || data.config?.repo !== 'Sampath-K/budlark' ||
         !Number.isInteger(data.config.maxAgeSeconds) || data.config.maxAgeSeconds <= 0 ||
         !Array.isArray(data.config.workstreams) || !data.config.workstreams.length ||
         !Array.isArray(data.workstreams) || data.config.workstreams.length !== data.workstreams.length) throw Error('Unsupported or incomplete local snapshot.');

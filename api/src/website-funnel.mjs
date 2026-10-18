@@ -327,7 +327,7 @@ export function createWebsiteHandlers({ container, authenticate, authenticatePro
   /** @param {import('@azure/functions').HttpRequest} request */
   async function metrics(request) {
     const actor = await authenticate(request);
-    if (!isAdmin(actor.roles)) throw new ServiceError(403, 'Bloomstep.Admin required.');
+    if (!isAdmin(actor.roles)) throw new ServiceError(403, 'Budlark.Admin required.');
     admit();
     const query = new URL(request.url).searchParams;
     if ([...query.keys()].some(key => !['days','synthetic'].includes(key)) || [...query.keys()].length !== new Set(query.keys()).size ||
@@ -377,7 +377,7 @@ export function createWebsiteHandlers({ container, authenticate, authenticatePro
   /** @param {import('@azure/functions').HttpRequest} request */
   async function proof(request) {
     const actor = await authenticateProof(request);
-    if (!Array.isArray(actor.roles) || !actor.roles.includes('Bloomstep.AggregateWriter') || isAdmin(actor.roles)) {
+    if (!Array.isArray(actor.roles) || !actor.roles.includes('Budlark.AggregateWriter') || isAdmin(actor.roles)) {
       throw new ServiceError(403, 'Isolated aggregate worker proof role required.');
     }
     admit(); await operationalEnabled();

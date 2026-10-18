@@ -32,17 +32,17 @@ test('owner installer verification remains pending and is bound to exact package
 
   try {
     mkdirSync(packageDir);
-    const installerFile = `Bloomstep-${version}-windows-universal-setup.exe`;
+    const installerFile = `Budlark-${version}-windows-universal-setup.exe`;
     writeFileSync(join(packageDir, installerFile), packageBytes);
     const payloadManifests = {};
     for (const arch of ['x64', 'arm64']) {
-      const payload = JSON.stringify({ kind: 'bloomstep-release-payload-v1', source, version, arch });
+      const payload = JSON.stringify({ kind: 'budlark-release-payload-v1', source, version, arch });
       const path = `universal-output/payload-manifest-${arch}.json`;
       writeFileSync(join(root, path), payload);
       payloadManifests[arch] = sha(payload);
     }
     writeJson('universal-output/universal-manifest.json', {
-      kind: 'bloomstep-offline-universal-v1', source, version, installerFile,
+      kind: 'budlark-offline-universal-v1', source, version, installerFile,
       installerSha256: sha(packageBytes), bytes: packageBytes.length, payloadManifests,
     });
     writeFileSync(join(packageDir, 'SHA256-universal.txt'), `${sha(packageBytes)}  ${installerFile}\n`);

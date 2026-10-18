@@ -6,7 +6,7 @@ import { fileURLToPath } from 'node:url';
 import { createHash } from 'node:crypto';
 
 const read = path => readFileSync(new URL(`../${path}`, import.meta.url), 'utf8');
-const installer = read('packaging/bloomstep.iss');
+const installer = read('packaging/budlark.iss');
 
 test('the only preinstall page is native Ready with art and Install', () => {
   assert.match(installer, /DisableWelcomePage=yes/);

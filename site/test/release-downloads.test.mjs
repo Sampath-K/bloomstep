@@ -8,7 +8,7 @@ const fixtureTag = 'v0.0.0-universal-render-test';
 const fixture = {
   tag: fixtureTag,
   ...Object.fromEntries(['x64', 'arm64', 'universal'].map(arch => [arch, {
-    url: `https://github.com/Sampath-K/bloomstep/releases/download/${fixtureTag}/Bloomstep-${fixtureTag.slice(1)}-windows-${arch}-setup.exe`,
+    url: `https://github.com/Sampath-K/budlark/releases/download/${fixtureTag}/Budlark-${fixtureTag.slice(1)}-windows-${arch}-setup.exe`,
     sha256: 'a'.repeat(64),
   }])),
 };
@@ -33,7 +33,7 @@ test('both customer pages mark the current downloads as owner-test only and pres
     if (name.startsWith('releases/')) {
       assert.match(unified, /Universal SHA-256: a{64}/);
       assert.match(unified, /Other owner-test file fingerprints/);
-      assert.doesNotMatch(unified, /href="https:\/\/github\.com\/Sampath-K\/bloomstep\/releases\/tag\//);
+      assert.doesNotMatch(unified, /href="https:\/\/github\.com\/Sampath-K\/budlark\/releases\/tag\//);
     }
   }
 });

@@ -3,7 +3,7 @@ param(
   [ValidateSet('x64', 'arm64')][string]$ExpectedArch,
   [Parameter(Mandatory = $true)]
   [ValidatePattern('^[a-f0-9]{40}$')][string]$ExpectedSource,
-  [string]$EvidenceDir = (Join-Path $env:TEMP 'bloomstep-runner-readiness')
+  [string]$EvidenceDir = (Join-Path $env:TEMP 'budlark-runner-readiness')
 )
 $ErrorActionPreference = 'Stop'
 Set-StrictMode -Version Latest
@@ -14,7 +14,7 @@ if (-not $IsWindows -or $PSVersionTable.PSVersion.Major -lt 7) {
 if ((Read-Host 'Type CHECK DISPOSABLE VM to authorize readiness checks only') -cne 'CHECK DISPOSABLE VM') {
   throw 'Readiness checks were not authorized.'
 }
-if ($env:BLOOMSTEP_DISPOSABLE_VM -ne 'true') {
+if ($env:BUDLARK_DISPOSABLE_VM -ne 'true') {
   throw 'Explicitly mark the disposable guest before checking it.'
 }
 foreach ($command in @('git', 'node', 'pwsh')) {
@@ -42,15 +42,15 @@ if (-not (Test-Path -LiteralPath $inno)) {
 $csc = Join-Path $env:WINDIR 'Microsoft.NET\Framework64\v4.0.30319\csc.exe'
 if (-not (Test-Path -LiteralPath $csc)) { throw 'The workflow requires the Windows .NET Framework compiler.' }
 foreach ($path in @(
-  (Join-Path $env:LOCALAPPDATA 'Programs\Bloomstep'),
-  (Join-Path $env:LOCALAPPDATA 'Bloomstep'),
-  (Join-Path $env:APPDATA 'Bloomstep'),
-  'HKCU:\Software\Classes\bloomstep'
+  (Join-Path $env:LOCALAPPDATA 'Programs\Budlark'),
+  (Join-Path $env:LOCALAPPDATA 'Budlark'),
+  (Join-Path $env:APPDATA 'Budlark'),
+  'HKCU:\Software\Classes\budlark'
 )) {
-  if (Test-Path -LiteralPath $path) { throw 'Existing Bloomstep state: restore a clean checkpoint, do not delete data.' }
+  if (Test-Path -LiteralPath $path) { throw 'Existing Budlark state: restore a clean checkpoint, do not delete data.' }
 }
-if (Get-Process -Name bloomstep -ErrorAction SilentlyContinue) {
-  throw 'Existing Bloomstep process: restore a clean checkpoint.'
+if (Get-Process -Name budlark -ErrorAction SilentlyContinue) {
+  throw 'Existing Budlark process: restore a clean checkpoint.'
 }
 & "$PSScriptRoot\setup_defender_test_vm.ps1" -Mode Check -EvidenceDir $EvidenceDir
 if (-not $?) { throw 'Existing protected-VM preflight failed.' }

@@ -16,13 +16,13 @@ function Get-FileSha256([string]$Path) {
 
 function Assert-Package([string]$PackageRoot) {
   $package = Get-Content -LiteralPath (Join-Path $PackageRoot 'package-manifest.json') -Raw | ConvertFrom-Json
-  if ($package.kind -ne 'bloomstep-devbox-installer-trial-package-v1' -or
+  if ($package.kind -ne 'budlark-devbox-installer-trial-package-v1' -or
       $package.sourceCommit -notmatch '^[a-f0-9]{40}$') {
     throw 'Package source manifest is invalid. Re-download the ZIP and verify its external SHA-256.'
   }
   $expected = @(
     'Run-InstallerTrial.ps1', 'Trial.Common.ps1', 'trial-manifest.json', 'README.md',
-    'Bloomstep-0.1.0-preview-windows-universal-setup.exe',
+    'Budlark-0.1.0-preview-windows-universal-setup.exe',
     'universal-manifest.json', 'payload-manifest-x64.json', 'payload-manifest-arm64.json'
   )
   $actual = @($package.files | ForEach-Object path | Sort-Object -Unique)
@@ -51,7 +51,7 @@ function Assert-Package([string]$PackageRoot) {
 function Assert-NoPreviousBootstrapRunning {
   $processes = @(Get-CimInstance Win32_Process -ErrorAction Stop | Where-Object {
     $_.Name -in @('powershell.exe','pwsh.exe') -and
-    $_.CommandLine -match '(?i)bloomstep-vm-bootstrap[\\/]+(Bootstrap|Install-Inno)\.ps1'
+    $_.CommandLine -match '(?i)budlark-vm-bootstrap[\\/]+(Bootstrap|Install-Inno)\.ps1'
   })
   if ($processes.Count) {
     throw 'The prerequisite bootstrap is still running. Let it finish; do not start another setup concurrently.'
@@ -62,7 +62,7 @@ function Assert-PreviousBootstrapCache([string]$PreviousRoot, [string]$Architect
   $packageManifestPath = Join-Path $PreviousRoot 'package-manifest.json'
   if (-not (Test-Path -LiteralPath $packageManifestPath)) { return 'NOT_FOUND; no files changed' }
   $previousManifest = Get-Content -LiteralPath $packageManifestPath -Raw | ConvertFrom-Json
-  if ($previousManifest.kind -ne 'bloomstep-vm-bootstrap-package-v1' -or
+  if ($previousManifest.kind -ne 'budlark-vm-bootstrap-package-v1' -or
       $previousManifest.source -ne '33ca30f373a6883ad464834b3cd5c6dc69845c44') {
     throw 'A prior bootstrap folder exists but its source package is unrecognized; preserve it and stop.'
   }
@@ -130,11 +130,11 @@ function Assert-InteractiveStandardUser {
   if (-not [Environment]::UserInteractive -or (Get-Process -Id $PID).SessionId -eq 0) {
     throw 'An interactive signed-in desktop session is required.'
   }
-  if (-not ('BloomstepDevBoxInputDesktop' -as [type])) {
+  if (-not ('BudlarkDevBoxInputDesktop' -as [type])) {
     Add-Type @'
 using System;
 using System.Runtime.InteropServices;
-public static class BloomstepDevBoxInputDesktop {
+public static class BudlarkDevBoxInputDesktop {
   [DllImport("user32.dll", SetLastError=true)]
   public static extern IntPtr OpenInputDesktop(uint flags, bool inherit, uint access);
   [DllImport("user32.dll", SetLastError=true)]
@@ -142,9 +142,9 @@ public static class BloomstepDevBoxInputDesktop {
 }
 '@
   }
-  $desktop = [BloomstepDevBoxInputDesktop]::OpenInputDesktop(0, $false, 0x0100)
+  $desktop = [BudlarkDevBoxInputDesktop]::OpenInputDesktop(0, $false, 0x0100)
   if ($desktop -eq [IntPtr]::Zero) { throw 'The interactive input desktop is unavailable.' }
-  if (-not [BloomstepDevBoxInputDesktop]::CloseDesktop($desktop)) { throw 'The input desktop could not be closed cleanly.' }
+  if (-not [BudlarkDevBoxInputDesktop]::CloseDesktop($desktop)) { throw 'The input desktop could not be closed cleanly.' }
 }
 
 function Get-DefenderSnapshot {
@@ -178,7 +178,7 @@ function Confirm-Operator([string]$Prompt, [string]$RequiredText) {
 function Assert-TrialRegistration([string]$Target) {
   $registration = Get-ItemProperty -LiteralPath $registrationPath -ErrorAction Stop
   $expectedUninstall = '"' + (Join-Path $Target 'unins000.exe') + '"'
-  if ($registration.DisplayName -ne 'Bloomstep version 0.1.0-preview' -or
+  if ($registration.DisplayName -ne 'Budlark version 0.1.0-preview' -or
       $registration.UninstallString -cne $expectedUninstall -or
       [IO.Path]::GetFullPath($registration.InstallLocation).TrimEnd('\') -cne [IO.Path]::GetFullPath($Target).TrimEnd('\')) {
     throw 'Product uninstall registration differs from the owned candidate/path; stop for review.'
@@ -196,10 +196,10 @@ function Assert-NoOtherProductRegistration([bool]$AllowOwned) {
     if (-not (Test-Path -LiteralPath $registryRoot)) { continue }
     foreach ($key in Get-ChildItem -LiteralPath $registryRoot -ErrorAction Stop) {
       $displayName = $key.GetValue('DisplayName')
-      if ($displayName -like 'Bloomstep*') {
+      if ($displayName -like 'Budlark*') {
         if (-not $AllowOwned -or
             $registryRoot -ne $roots[0] -or $key.PSChildName -ne '{99BE7E95-0565-4C72-A4DD-46D1D5B6C679}_is1') {
-          throw 'Another/preexisting Bloomstep uninstall registration exists. No install or uninstall authorized.'
+          throw 'Another/preexisting Budlark uninstall registration exists. No install or uninstall authorized.'
         }
       }
     }
@@ -211,34 +211,34 @@ function Get-ProductFootprint([string]$Target) {
   $runKey = $null
   if (Test-Path -LiteralPath $runPath) { $runKey = Get-Item -LiteralPath $runPath -ErrorAction Stop }
   $runValuePresent = $false
-  if ($null -ne $runKey) { $runValuePresent = $runKey.GetValueNames() -contains 'Bloomstep' }
+  if ($null -ne $runKey) { $runValuePresent = $runKey.GetValueNames() -contains 'Budlark' }
   [ordered]@{
-    executableRemains = (Test-Path -LiteralPath (Join-Path $Target 'bloomstep.exe')) -or
+    executableRemains = (Test-Path -LiteralPath (Join-Path $Target 'budlark.exe')) -or
       (Test-Path -LiteralPath (Join-Path $Target 'unins000.exe')) -or
       (Test-Path -LiteralPath (Join-Path $Target 'unins000.dat'))
     registrationRemains = (Test-Path -LiteralPath $registrationPath) -or
-      (Test-Path -LiteralPath 'Registry::HKEY_CURRENT_USER\Software\Classes\bloomstep') -or
-      (Test-Path -LiteralPath (Join-Path $env:APPDATA 'Microsoft\Windows\Start Menu\Programs\Bloomstep')) -or
-      (Test-Path -LiteralPath (Join-Path $env:APPDATA 'Microsoft\Windows\Start Menu\Programs\Startup\Bloomstep.lnk')) -or
+      (Test-Path -LiteralPath 'Registry::HKEY_CURRENT_USER\Software\Classes\budlark') -or
+      (Test-Path -LiteralPath (Join-Path $env:APPDATA 'Microsoft\Windows\Start Menu\Programs\Budlark')) -or
+      (Test-Path -LiteralPath (Join-Path $env:APPDATA 'Microsoft\Windows\Start Menu\Programs\Startup\Budlark.lnk')) -or
       $runValuePresent
-    processRemains = [bool](Get-Process -Name bloomstep -ErrorAction SilentlyContinue)
+    processRemains = [bool](Get-Process -Name budlark -ErrorAction SilentlyContinue)
   }
 }
 
 function Assert-NoInstallerProcess {
   $active = @(Get-CimInstance Win32_Process -ErrorAction Stop | Where-Object {
-    $_.Name -eq 'unins000.exe' -or $_.Name -eq 'Bloomstep-0.1.0-preview-windows-universal-setup.exe'
+    $_.Name -eq 'unins000.exe' -or $_.Name -eq 'Budlark-0.1.0-preview-windows-universal-setup.exe'
   })
   if ($active.Count) { throw 'An installer/uninstaller is still running. Finish or cancel its window normally before resuming. No concurrent operation authorized.' }
 }
 
 function Get-ResidualData {
   [ordered]@{
-    localAppDataPresent = Test-Path -LiteralPath (Join-Path $env:LOCALAPPDATA 'Bloomstep')
-    roamingAppDataPresent = Test-Path -LiteralPath (Join-Path $env:APPDATA 'Bloomstep')
-    flutterDataPresent = Test-Path -LiteralPath (Join-Path $env:APPDATA 'com.example\bloomstep')
-    applicationSupportDataPresent = Test-Path -LiteralPath (Join-Path $env:APPDATA 'Bloomstep contributors\Bloomstep')
-    productSettingsPresent = Test-Path -LiteralPath 'Registry::HKEY_CURRENT_USER\Software\Bloomstep'
+    localAppDataPresent = Test-Path -LiteralPath (Join-Path $env:LOCALAPPDATA 'Budlark')
+    roamingAppDataPresent = Test-Path -LiteralPath (Join-Path $env:APPDATA 'Budlark')
+    flutterDataPresent = Test-Path -LiteralPath (Join-Path $env:APPDATA 'com.example\budlark')
+    applicationSupportDataPresent = Test-Path -LiteralPath (Join-Path $env:APPDATA 'Budlark contributors\Budlark')
+    productSettingsPresent = Test-Path -LiteralPath 'Registry::HKEY_CURRENT_USER\Software\Budlark'
     dataDeletionAttempted = $false
     machineRestored = $false
   }
@@ -247,7 +247,7 @@ function Get-ResidualData {
 function Invoke-OwnedTrialUninstall([string]$Target, [string]$Architecture, $UniversalManifest, [string]$CandidateHash) {
   $receipt.stage = 'CleanupRequired'
   $receipt.residualUserData = Get-ResidualData
-  $receipt.nextAction = 'Close Bloomstep normally, then confirm product-only uninstall. -Resume retries only verified cleanup, never reinstalls.'
+  $receipt.nextAction = 'Close Budlark normally, then confirm product-only uninstall. -Resume retries only verified cleanup, never reinstalls.'
   Save-DevBoxTrialReceipt $receiptPath $receipt
   if (-not (Test-Path -LiteralPath $ownerPath)) {
     throw 'No installation ownership receipt exists. Cannot safely automate uninstall of ambiguous/preexisting state.'
@@ -260,11 +260,11 @@ function Invoke-OwnedTrialUninstall([string]$Target, [string]$Architecture, $Uni
   Assert-TrialRegistration $Target
   Assert-InstalledPayload $Target $Architecture $root $UniversalManifest | Out-Null
   $protectionBeforeCleanup = Get-DefenderSnapshot
-  Write-Host 'Close Bloomstep normally, including Exit from its tray menu, before continuing. No process will be killed.'
-  $confirm = Confirm-Operator "Remove only this trial's Bloomstep program, shortcuts and protocol using its verified uninstaller? App-created user data stays; this is NOT VM rollback. Target: $Target" 'UNINSTALL OWNED TRIAL'
+  Write-Host 'Close Budlark normally, including Exit from its tray menu, before continuing. No process will be killed.'
+  $confirm = Confirm-Operator "Remove only this trial's Budlark program, shortcuts and protocol using its verified uninstaller? App-created user data stays; this is NOT VM rollback. Target: $Target" 'UNINSTALL OWNED TRIAL'
   if (-not $confirm) { throw 'Uninstall declined. Product remains installed; rerun this entry point with -Resume for verified cleanup.' }
-  if (Get-Process -Name bloomstep -ErrorAction SilentlyContinue) {
-    throw 'Bloomstep is still running. Exit normally via its tray menu and rerun with -Resume; no force kill.'
+  if (Get-Process -Name budlark -ErrorAction SilentlyContinue) {
+    throw 'Budlark is still running. Exit normally via its tray menu and rerun with -Resume; no force kill.'
   }
   # Revalidate after the human confirmation, before executing any uninstall code.
   $uninstaller = Assert-OwnedUninstaller $owner $Target $sid $CandidateHash
@@ -313,7 +313,7 @@ try {
   if ([IntPtr]::Size -ne 8) { throw 'Use built-in 64-bit Windows PowerShell, not its x86 edition. No operation started.' }
   $package = Assert-Package $root
   $trial = Get-Content -LiteralPath (Join-Path $root 'trial-manifest.json') -Raw | ConvertFrom-Json
-  if ($trial.kind -ne 'bloomstep-devbox-installer-trial-v1' -or
+  if ($trial.kind -ne 'budlark-devbox-installer-trial-v1' -or
       $trial.source -ne 'bd5ad93ad28988123ef7d3e28eab989f91cc4362' -or
       $trial.artifact.runId -ne '38994109408' -or
       $trial.artifact.installerSha256 -ne '664b60d44929da601e22832568d0c88d8baa70f119764958336e065ff4892162' -or
@@ -368,7 +368,7 @@ try {
   $receipt.recoveryMode = 'owned-product-uninstall; no snapshot required; NOT machine rollback'
   if ($Resume) { $receipt.resume = 'All package, platform, Defender, and clean-state checks rerun; no prior approval reused.' }
   Assert-NoPreviousBootstrapRunning
-  $previousRoot = Join-Path (Split-Path (Split-Path $root -Parent) -Parent) 'BloomstepVM\bloomstep-vm-bootstrap'
+  $previousRoot = Join-Path (Split-Path (Split-Path $root -Parent) -Parent) 'BudlarkVM\budlark-vm-bootstrap'
   $receipt.previousBootstrapCache = Assert-PreviousBootstrapCache $previousRoot $architecture $trial.previousBootstrap.assets
   $system = Get-CimInstance Win32_ComputerSystem -ErrorAction Stop
   $receipt.virtualMachinePlatform = ($system.Manufacturer -eq 'Microsoft Corporation' -and $system.Model -eq 'Virtual Machine')
@@ -383,7 +383,7 @@ try {
   $defenderBefore = Get-DefenderSnapshot
   $baselineDetectionFingerprints = @($defenderBefore.detectionFingerprints)
   $receipt.defenderBefore = $defenderBefore.summary
-  $installTarget = Join-Path $env:LOCALAPPDATA 'Programs\Bloomstep'
+  $installTarget = Join-Path $env:LOCALAPPDATA 'Programs\Budlark'
   Assert-NoReparsePath $installTarget
   if ($null -ne $previousReceipt -and $previousReceipt.installerExecutionStarted) {
     if ($receipt.cleanupVerified) {
@@ -405,19 +405,19 @@ try {
   }
   $productPaths = @(
     $installTarget,
-    (Join-Path $env:LOCALAPPDATA 'Bloomstep'),
-    (Join-Path $env:APPDATA 'Bloomstep'),
-    'Registry::HKEY_CURRENT_USER\Software\Classes\bloomstep',
-    'Registry::HKEY_CURRENT_USER\Software\Bloomstep',
+    (Join-Path $env:LOCALAPPDATA 'Budlark'),
+    (Join-Path $env:APPDATA 'Budlark'),
+    'Registry::HKEY_CURRENT_USER\Software\Classes\budlark',
+    'Registry::HKEY_CURRENT_USER\Software\Budlark',
     $registrationPath,
-    (Join-Path $env:APPDATA 'com.example\bloomstep'),
-    (Join-Path $env:APPDATA 'Bloomstep contributors\Bloomstep')
+    (Join-Path $env:APPDATA 'com.example\budlark'),
+    (Join-Path $env:APPDATA 'Budlark contributors\Budlark')
   )
   Assert-NoOtherProductRegistration $false
   $preexistingFootprint = Get-ProductFootprint $installTarget
   if (@($productPaths | Where-Object { Test-Path -LiteralPath $_ }).Count -or
       $preexistingFootprint.registrationRemains -or $preexistingFootprint.processRemains) {
-    throw 'Unowned/preexisting Bloomstep installation or data exists. Nothing will be deleted or adopted. Preserve it and return the blocker for review.'
+    throw 'Unowned/preexisting Budlark installation or data exists. Nothing will be deleted or adopted. Preserve it and return the blocker for review.'
   }
   $receipt.preflightPassed = $true
   $receipt.stage = 'PreflightPassed'
@@ -476,10 +476,10 @@ try {
   $newDetections = @($defenderAfter.detectionFingerprints | Where-Object { $_ -notin $baselineDetectionFingerprints })
   $receipt.newOrChangedDetectionCount = $newDetections.Count
   if ($newDetections.Count) { throw 'New Microsoft Defender detections occurred during the owner trial; stop and preserve the Dev Box state.' }
-  $receipt.expectedInstallPathPresent = Test-Path -LiteralPath (Join-Path $installTarget 'bloomstep.exe')
+  $receipt.expectedInstallPathPresent = Test-Path -LiteralPath (Join-Path $installTarget 'budlark.exe')
   $receipt.nextAction = 'After the installer exits, manually check the finished wizard and launch/open the installed app. Confirm only what you personally observed.'
   Save-DevBoxTrialReceipt $receiptPath $receipt
-  Write-Host 'If the app did not open automatically, launch Bloomstep from its Start Menu shortcut now. Do not bypass any Windows warning.'
+  Write-Host 'If the app did not open automatically, launch Budlark from its Start Menu shortcut now. Do not bypass any Windows warning.'
   $wizardObserved = Confirm-Operator 'Did the visible installer finish normally without a warning or error?' 'YES'
   $appObserved = Confirm-Operator 'Did you personally observe the installed app open to its expected first screen?' 'YES'
   $receipt.ownerConfirmedInstallerWizard = $wizardObserved

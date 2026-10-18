@@ -39,7 +39,7 @@ Ranges indicate partial inspection.
 | Website/experiments | `site/customer.mjs`; `site/experiment-client.mjs`; `site/aarrr-panels.mjs`; `api/src/website-funnel.mjs:1–190,202–399`; `api/src/experiments.mjs:1–285`; `api/src/experiment-policy.mjs` — policy, assignment, statistics, evaluation and application sections |
 | Tests | `api/test/goals.test.mjs`; `api/test/experiments.test.mjs:1–100`; `test/telemetry_test.dart:1–140,255–282`; `test/site_console_test.mjs:1–85`; `test/measurement_packaging_test.mjs`; import/initial sections of `test/analytics_sandbox_test.mjs` and `test/reminder_panels_test.mjs` |
 | Tools/operations | `tool/funnel_acceptance.mjs:1–150`; `tool/experiment_acceptance.mjs:238–280` and withdrawal scenario search; `.github/workflows/aggregates.yml`; relevant sections of `tool/analytics_site_build.mjs`, `tool/analytics_config.mjs`, `tool/acquisition_snapshot.mjs`, `tool/analytics_ga4_staging_check.mjs` |
-| Installer measurement boundary | `packaging/bloomstep.iss:106–122,178–219`, plus measurement-symbol search |
+| Installer measurement boundary | `packaging/budlark.iss:106–122,178–219`, plus measurement-symbol search |
 
 ## Findings
 
@@ -137,8 +137,8 @@ The page can serve an experimental treatment outside the persisted exposure deno
 
 - `docs/measurement.md:28–36` describes an interactive installer opt-in, installation observations and owned launch collection.
 - `docs/funnel-telemetry.md:14` calls that checkbox the actual installer source.
-- `packaging/bloomstep.iss:186–195` initializes installation motion and records installation success, but contains no measurement choice or receipt creation.
-- `packaging/bloomstep.iss:113–114` removes the old ownership marker.
+- `packaging/budlark.iss:186–195` initializes installation motion and records installation success, but contains no measurement choice or receipt creation.
+- `packaging/budlark.iss:113–114` removes the old ownership marker.
 - `test/measurement_packaging_test.mjs:15–19` explicitly asserts absence of `MeasurementCheckBox`, `SaveStringToFile` and `MeasurementEvent`.
 - `docs/funnel-telemetry.md:148` separately states that installer receipts are withdrawn and install/first-launch time is unobservable.
 

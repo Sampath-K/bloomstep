@@ -4,7 +4,7 @@ import { readFileSync } from 'node:fs';
 
 const read = name => readFileSync(new URL(`../${name}`, import.meta.url), 'utf8');
 test('compiled rendered evidence waits for dialog transitions before capturing pixels', () => {
-  const capture = read('integration_test/bloomstep_windows_e2e_test.dart')
+  const capture = read('integration_test/budlark_windows_e2e_test.dart')
     .split('Future<void> _captureBuilderFrame(')[1].split('Future<void> _naturalnessReflection(')[0];
   assert.match(capture, /await tester\.pumpAndSettle\(\s*const Duration\(milliseconds: 100\),\s*EnginePhase\.sendSemanticsUpdate,\s*const Duration\(seconds: 10\),?\s*\);/);
   assert.ok(capture.indexOf('pumpAndSettle') < capture.indexOf('boundary.toImage'));
@@ -12,7 +12,7 @@ test('compiled rendered evidence waits for dialog transitions before capturing p
 test('native input fixture is bounded to the CI-only ARM64 synthetic profile', () => {
   const harness = read('tool/verify_synthetic_input.ps1');
   assert.match(harness, /GITHUB_ACTIONS/);
-  assert.match(harness, /build\\windows\\arm64\\runner\\Profile\\bloomstep\.exe/);
+  assert.match(harness, /build\\windows\\arm64\\runner\\Profile\\budlark\.exe/);
   assert.match(harness, /ISOLATED SYNTHETIC PREVIEW/);
   assert.match(harness, /Existing synthetic database; refusing overwrite/);
   assert.match(harness, /peMachine.*0xaa64/);
@@ -39,7 +39,7 @@ test('save, cancel, scoped practice, undo, delete and restart evidence stay synt
   for (const label of ['Plant another', 'Plant this seed', 'Cancel', 'Did it', 'Undo today', 'Delete this recipe', 'Delete recipe']) {
     assert.ok(harness.includes(`'${label}'`), `Missing actual fixture action: ${label}`);
   }
-  assert.match(harness, /Bloomstep acceptance test CI/);
+  assert.match(harness, /Budlark acceptance test CI/);
   assert.match(harness, /savedPersisted/);
   assert.match(harness, /cancelAbsentAfterRestart/);
   assert.match(harness, /deletedAbsentAfterRestart/);
@@ -47,7 +47,7 @@ test('save, cancel, scoped practice, undo, delete and restart evidence stay synt
   assert.match(harness, /readOnlyLocalState/);
   assert.match(harness, /originalSeedCheckinsPreserved/);
   assert.match(harness, /customerAcceptance.*false/);
-  assert.doesNotMatch(harness, /Sign in securely|Export my data|Delete my account|Bloomstep\.Admin/);
+  assert.doesNotMatch(harness, /Sign in securely|Export my data|Delete my account|Budlark\.Admin/);
 });
 test('CI explicitly invokes the current profile after build, without version churn', () => {
   const workflow = read('.github/workflows/ci.yml');
@@ -55,5 +55,5 @@ test('CI explicitly invokes the current profile after build, without version chu
   assert.match(workflow, /verify_native_input:[\s\S]*?default: false/);
   assert.match(workflow, /name: Verify synthetic native input[\s\S]*?timeout-minutes: 3[\s\S]*?inputs\.verify_native_input[\s\S]*?verify_synthetic_input\.ps1/);
   assert.match(workflow, /synthetic_native_contract_test\.mjs/);
-  assert.match(workflow, /bloomstep-synthetic-input-arm64-NOT-CUSTOMER-ACCEPTANCE/);
+  assert.match(workflow, /budlark-synthetic-input-arm64-NOT-CUSTOMER-ACCEPTANCE/);
 });

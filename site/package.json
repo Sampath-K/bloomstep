@@ -1,5 +1,5 @@
 {
-  "name":"bloomstep-operator-site",
+  "name":"budlark-operator-site",
   "private":true,
   "type":"module",
   "engines":{"node":">=22"},

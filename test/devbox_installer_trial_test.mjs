@@ -12,12 +12,12 @@ const entry = new URL('../tool/devbox-trial/Run-InstallerTrial.ps1', import.meta
 const text = url => readFileSync(url, 'utf8');
 const runPowerShell = (code, extra = {}) => spawnSync('pwsh', ['-NoProfile', '-NonInteractive', '-Command', code], {
   encoding: 'utf8',
-  env: { ...process.env, BLOOMSTEP_TRIAL_COMMON: fileURLToPath(common), ...extra },
+  env: { ...process.env, BUDLARK_TRIAL_COMMON: fileURLToPath(common), ...extra },
 });
 
 test('trial receipt and outcome cannot claim protected acceptance or release readiness', () => {
   const result = runPowerShell(`
-    . $env:BLOOMSTEP_TRIAL_COMMON
+    . $env:BUDLARK_TRIAL_COMMON
     $receipt = New-DevBoxTrialReceipt 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa' 'x64' 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa'
     if ($receipt.evidenceClass -ne 'supplemental-manual-owner-trial' -or
         $receipt.protectedGateStatus -ne 'UNVERIFIED' -or $receipt.releaseAuthorized -or
@@ -46,7 +46,7 @@ test('trial receipt and outcome cannot claim protected acceptance or release rea
 
 test('installer launch requires clean preflight and confirmation, not a snapshot', () => {
   const result = runPowerShell(`
-    . $env:BLOOMSTEP_TRIAL_COMMON
+    . $env:BUDLARK_TRIAL_COMMON
     foreach ($stage in @('Preflight','LaunchAuthorized','InstallerStarted','InstallerCompleted','Failed')) {
       if (Test-DevBoxTrialLaunchAllowed $stage $true $true) {
         throw "Unexpected launch permission at $stage"
@@ -60,11 +60,11 @@ test('installer launch requires clean preflight and confirmation, not a snapshot
 });
 
 test('previous portable-tool caches are validated read-only and reject modified or extra files', () => {
-  const directory = mkdtempSync(join(tmpdir(), 'bloomstep-devbox-cache-test-'));
+  const directory = mkdtempSync(join(tmpdir(), 'budlark-devbox-cache-test-'));
   try {
     const result = runPowerShell(`
-      . $env:BLOOMSTEP_TRIAL_COMMON
-      $root = $env:BLOOMSTEP_TRIAL_TEMP
+      . $env:BUDLARK_TRIAL_COMMON
+      $root = $env:BUDLARK_TRIAL_TEMP
       $source = Join-Path $root 'input.txt'
       [IO.File]::WriteAllText($source, 'pinned')
       $archive = Join-Path $root 'tool.zip'
@@ -86,7 +86,7 @@ test('previous portable-tool caches are validated read-only and reject modified 
       $rejected = $false
       try { Assert-VerifiedPortableCache $archive $destination $hash | Out-Null } catch { $rejected = $true }
       if (-not $rejected) { throw 'Unexpected extracted file was accepted.' }
-    `, { BLOOMSTEP_TRIAL_TEMP: directory });
+    `, { BUDLARK_TRIAL_TEMP: directory });
     assert.equal(result.status, 0, result.stderr || result.stdout || result.error?.message);
   } finally {
     rmSync(directory, { recursive: true, force: true });
@@ -94,18 +94,18 @@ test('previous portable-tool caches are validated read-only and reject modified 
 });
 
 test('installed native payload must match its architecture manifest and every SHA-256', () => {
-  const directory = mkdtempSync(join(tmpdir(), 'bloomstep-devbox-payload-test-'));
+  const directory = mkdtempSync(join(tmpdir(), 'budlark-devbox-payload-test-'));
   try {
     const result = runPowerShell(`
-      . $env:BLOOMSTEP_TRIAL_COMMON
-      $root = $env:BLOOMSTEP_TRIAL_TEMP
+      . $env:BUDLARK_TRIAL_COMMON
+      $root = $env:BUDLARK_TRIAL_TEMP
       $target = Join-Path $root 'installed'
       New-Item -ItemType Directory -Path $target | Out-Null
-      $filePath = Join-Path $target 'bloomstep.exe'
+      $filePath = Join-Path $target 'budlark.exe'
       [IO.File]::WriteAllText($filePath, 'native-test-binary')
       $hash = (Get-FileHash -Algorithm SHA256 -LiteralPath $filePath).Hash.ToLowerInvariant()
       $payloadPath = Join-Path $root 'payload-manifest-x64.json'
-      @{source='a'*40;arch='x64';files=@(@{path='bloomstep.exe';bytes=(Get-Item $filePath).Length;sha256=$hash})} |
+      @{source='a'*40;arch='x64';files=@(@{path='budlark.exe';bytes=(Get-Item $filePath).Length;sha256=$hash})} |
         ConvertTo-Json -Depth 4 | Set-Content -LiteralPath $payloadPath
       $manifestHash = (Get-FileHash -Algorithm SHA256 -LiteralPath $payloadPath).Hash.ToLowerInvariant()
       $universal = @{source='a'*40;payloadManifests=@{x64=$manifestHash}}
@@ -117,7 +117,7 @@ test('installed native payload must match its architecture manifest and every SH
       $rejected = $false
       try { Assert-InstalledPayload $target 'x64' $root $universal | Out-Null } catch { $rejected = $true }
       if (-not $rejected) { throw 'Tampered installed payload was accepted.' }
-    `, { BLOOMSTEP_TRIAL_TEMP: directory });
+    `, { BUDLARK_TRIAL_TEMP: directory });
     assert.equal(result.status, 0, result.stderr || result.stdout || result.error?.message);
   } finally {
     rmSync(directory, { recursive: true, force: true });
@@ -127,7 +127,7 @@ test('installed native payload must match its architecture manifest and every SH
 test('entry point is PS 5.1 parseable and avoids runner, policy, Defender, and reboot bypasses', () => {
   const source = `${text(common)}\n${text(entry)}`;
   assert.doesNotMatch(source, /config\.cmd|run\.cmd|registration-token|Set-ExecutionPolicy|Unblock-File|Set-MpPreference|Add-MpPreference|schtasks|New-Service|shutdown\.exe|Restart-Computer|Remove-Item|Invoke-WebRequest|az\.exe/);
-  assert.doesNotMatch(source, /BLOOMSTEP_DISPOSABLE_VM/);
+  assert.doesNotMatch(source, /BUDLARK_DISPOSABLE_VM/);
   assert.equal((text(entry).match(/Start-Process/g) || []).length, 2);
   assert.match(text(entry), /Start-Process -FilePath \$installer -ArgumentList '\/NORESTART' -PassThru/);
   assert.doesNotMatch(text(entry), /-Verb\s+RunAs|New-ItemProperty|Remove-ItemProperty/);
@@ -143,11 +143,11 @@ test('entry point is PS 5.1 parseable and avoids runner, policy, Defender, and r
 });
 
 test('uninstall authority binds exact owned path, SID, candidate and generated uninstaller bytes', () => {
-  const directory = mkdtempSync(join(tmpdir(), 'bloomstep-owned-uninstaller-'));
+  const directory = mkdtempSync(join(tmpdir(), 'budlark-owned-uninstaller-'));
   try {
     const result = runPowerShell(`
-      . $env:BLOOMSTEP_TRIAL_COMMON
-      $target = $env:BLOOMSTEP_TRIAL_TEMP
+      . $env:BUDLARK_TRIAL_COMMON
+      $target = $env:BUDLARK_TRIAL_TEMP
       [IO.File]::WriteAllText((Join-Path $target 'unins000.exe'), 'generated-uninstaller')
       [IO.File]::WriteAllText((Join-Path $target 'unins000.dat'), 'owned-uninstall-data')
       $owner = @{
@@ -177,16 +177,16 @@ test('uninstall authority binds exact owned path, SID, candidate and generated u
         if (-not $rejected) {throw "Residual $residual accepted"}
       }
       Assert-UninstallResult 0 $false $false $false | Out-Null
-    `, { BLOOMSTEP_TRIAL_TEMP: directory });
+    `, { BUDLARK_TRIAL_TEMP: directory });
     assert.equal(result.status, 0, result.stderr || result.stdout || result.error?.message);
   } finally { rmSync(directory, { recursive: true, force: true }); }
 });
 
 test('Windows-facing Defender guard fails closed for unavailable, passive, disabled or detected protection', () => {
   const result = runPowerShell(`
-    . $env:BLOOMSTEP_TRIAL_COMMON
+    . $env:BUDLARK_TRIAL_COMMON
     $tokens=$null; $errors=$null
-    $ast=[System.Management.Automation.Language.Parser]::ParseFile($env:BLOOMSTEP_TRIAL_ENTRY,[ref]$tokens,[ref]$errors)
+    $ast=[System.Management.Automation.Language.Parser]::ParseFile($env:BUDLARK_TRIAL_ENTRY,[ref]$tokens,[ref]$errors)
     $definition=$ast.Find({param($node) $node -is [System.Management.Automation.Language.FunctionDefinitionAst] -and $node.Name -eq 'Get-DefenderSnapshot'},$true)
     . ([scriptblock]::Create($definition.Extent.Text))
     $script:status=[pscustomobject]@{AntivirusEnabled=$true;RealTimeProtectionEnabled=$true;BehaviorMonitorEnabled=$true;AMServiceEnabled=$true;AMRunningMode='Normal'}
@@ -204,7 +204,7 @@ test('Windows-facing Defender guard fails closed for unavailable, passive, disab
       try{Get-DefenderSnapshot|Out-Null}catch{$rejected=$true}
       if(-not $rejected){throw "Defender $mode accepted"}
     }
-  `, { BLOOMSTEP_TRIAL_ENTRY: fileURLToPath(entry) });
+  `, { BUDLARK_TRIAL_ENTRY: fileURLToPath(entry) });
   assert.equal(result.status, 0, result.stderr || result.stdout || result.error?.message);
 });
 
@@ -225,10 +225,10 @@ test('cleanup requires explicit consequence, safe ownership, bounded visible exe
 test('trial bundle pins the retained unsigned CI candidate and states supplemental-only scope', () => {
   const manifestPath = new URL('../tool/devbox-trial/trial-manifest.json', import.meta.url);
   const manifest = JSON.parse(text(manifestPath));
-  assert.equal(manifest.kind, 'bloomstep-devbox-installer-trial-v1');
+  assert.equal(manifest.kind, 'budlark-devbox-installer-trial-v1');
   assert.equal(manifest.source, 'bd5ad93ad28988123ef7d3e28eab989f91cc4362');
   assert.equal(manifest.artifact.runId, '38994109408');
-  assert.equal(manifest.artifact.name, 'bloomstep-universal-installer');
+  assert.equal(manifest.artifact.name, 'budlark-universal-installer');
   assert.equal(manifest.artifact.installerSha256, '664b60d44929da601e22832568d0c88d8baa70f119764958336e065ff4892162');
   assert.equal(manifest.previousBootstrap.sourceCommit, '33ca30f373a6883ad464834b3cd5c6dc69845c44');
   assert.equal(manifest.protectedGatesAccepted, false);
@@ -240,19 +240,10 @@ test('trial bundle pins the retained unsigned CI candidate and states supplement
   }
 });
 
-test('operator runbook contains exactly two parseable commands and the published ZIP digest', () => {
+test('retired VM trial runbook cannot direct users to an executable archive', () => {
   const guidePath = new URL('../docs/devbox-installer-trial.md', import.meta.url);
-  const archivePath = new URL('../docs/downloads/bloomstep-devbox-installer-trial.zip', import.meta.url);
   const guide = text(guidePath);
-  const archiveHash = createHash('sha256').update(readFileSync(archivePath)).digest('hex');
-  assert.ok(guide.includes(archiveHash), 'runbook ZIP digest differs from the committed download');
-  assert.doesNotMatch(guide, /\bTBD\b/);
-  const blocks = [...guide.matchAll(/```powershell\n([\s\S]*?)```/g)].map(match => match[1].trim().split('\n'));
-  assert.equal(blocks.length, 1);
-  assert.equal(blocks[0].length, 2);
-  for (const block of blocks[0]) {
-    const result = runPowerShell(`$tokens=$null;$errors=$null;[System.Management.Automation.Language.Parser]::ParseInput($env:BLOOMSTEP_TRIAL_COMMAND,[ref]$tokens,[ref]$errors)|Out-Null;if($errors.Count){$errors|ForEach-Object{Write-Error $_};exit 1}`,
-      { BLOOMSTEP_TRIAL_COMMAND: block });
-    assert.equal(result.status, 0, result.stderr || result.error?.message);
-  }
+  assert.match(guide, /VM route is aborted/);
+  assert.match(guide, /archive has been removed/);
+  assert.doesNotMatch(guide, /```powershell|Expand-Archive|downloads\/.*\.zip/);
 });

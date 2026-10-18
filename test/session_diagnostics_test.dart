@@ -1,8 +1,8 @@
 import 'dart:io';
 import 'dart:convert';
 
-import 'package:bloomstep/core/garden_store.dart';
-import 'package:bloomstep/services/session_diagnostics.dart';
+import 'package:budlark/core/garden_store.dart';
+import 'package:budlark/services/session_diagnostics.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:flutter/foundation.dart';
 

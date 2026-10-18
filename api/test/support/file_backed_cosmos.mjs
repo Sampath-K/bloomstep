@@ -247,5 +247,5 @@ export function isWithinDisposableTestDirectory(databasePath) {
     relativePath !== '..' &&
     !relativePath.startsWith(`..${sep}`) &&
     !isAbsolute(relativePath) &&
-    root.split(sep).at(-1)?.startsWith('bloomstep-it-') === true;
+    root.split(sep).at(-1)?.startsWith('budlark-it-') === true;
 }

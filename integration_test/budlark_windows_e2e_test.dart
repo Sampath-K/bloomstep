@@ -9,10 +9,10 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:crypto/crypto.dart';
 import 'package:integration_test/integration_test.dart';
 import 'package:path/path.dart' as p;
-import 'package:bloomstep/core/garden_store.dart';
-import 'package:bloomstep/core/models.dart';
-import 'package:bloomstep/features/garden/garden_screen.dart';
-import 'package:bloomstep/services/sync_service.dart';
+import 'package:budlark/core/garden_store.dart';
+import 'package:budlark/core/models.dart';
+import 'package:budlark/features/garden/garden_screen.dart';
+import 'package:budlark/services/sync_service.dart';
 
 import 'support/local_test_api.dart';
 import 'support/test_only_app.dart';
@@ -61,12 +61,12 @@ void main() {
   testWidgets(
     'synthetic sign-in, real desktop UI, production sync handlers, isolation, export, restart and cleanup',
     (tester) async {
-      final secret = Platform.environment['BLOOMSTEP_TEST_AUTH_SECRET'];
+      final secret = Platform.environment['BUDLARK_TEST_AUTH_SECRET'];
       expect(TestOnlyAuthGate.validTestSecret(secret), isTrue);
-      final runRoot = await Directory.systemTemp.createTemp('bloomstep-it-');
+      final runRoot = await Directory.systemTemp.createTemp('budlark-it-');
       var testNow = syntheticJourneyStart(DateTime.now());
       DateTime testClock() => testNow;
-      final evidencePath = Platform.environment['BLOOMSTEP_TEST_EVIDENCE_PATH'];
+      final evidencePath = Platform.environment['BUDLARK_TEST_EVIDENCE_PATH'];
       Map<String, Object?>? completedEvidence;
       if (evidencePath != null && await File(evidencePath).exists()) {
         throw StateError(
@@ -123,7 +123,7 @@ void main() {
       await tester.pumpWidget(
         RepaintBoundary(
           key: captureBoundary,
-          child: TestOnlyBloomstepApp(
+          child: TestOnlyBudlarkApp(
             runRoot: runRoot,
             expectedSecret: secret,
             clock: testClock,
@@ -738,7 +738,7 @@ Future<void> _captureBuilderFrame(
   GlobalKey boundaryKey,
   String name,
 ) async {
-  final directory = Platform.environment['BLOOMSTEP_TEST_SCREENSHOTS_DIR'];
+  final directory = Platform.environment['BUDLARK_TEST_SCREENSHOTS_DIR'];
   if (directory == null) return;
   await tester.pumpAndSettle(
     const Duration(milliseconds: 100),
@@ -759,7 +759,7 @@ Future<void> _captureBuilderFrame(
       }
       await file.writeAsBytes(bytes);
       await File(p.join(directory, 'frames.jsonl')).writeAsString(
-        '${jsonEncode({'sourceRevision': Platform.environment['BLOOMSTEP_SOURCE_REVISION'], 'kind': 'compiled-Windows-Flutter-rendered-frame-synthetic-only', 'file': '$name.png', 'sha256': sha256.convert(bytes).toString(), 'width': image.width, 'height': image.height, 'customerAcceptance': false, 'nativeWindowOrDpiProof': false})}\n',
+        '${jsonEncode({'sourceRevision': Platform.environment['BUDLARK_SOURCE_REVISION'], 'kind': 'compiled-Windows-Flutter-rendered-frame-synthetic-only', 'file': '$name.png', 'sha256': sha256.convert(bytes).toString(), 'width': image.width, 'height': image.height, 'customerAcceptance': false, 'nativeWindowOrDpiProof': false})}\n',
         mode: FileMode.append,
       );
     } finally {

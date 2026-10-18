@@ -38,7 +38,7 @@ test('launch path discloses prerequisites and support/privacy limits without col
     assert.deepEqual([...page.matchAll(/href="mailto:([^"]+)"/g)].map(match => match[1]),
       Array((page.match(/href="mailto:/g) ?? []).length).fill('store-developer@outlook.com'));
   }
-  assert.match(releases, /bloomstep\/issues/);
+  assert.match(releases, /budlark\/issues/);
   assert.match(releases, /href="\/#privacy-notice"/);
   assert.match(home, /Sampath Kumar's personal independent project/);
   assert.match(home, /not operated by Microsoft/);

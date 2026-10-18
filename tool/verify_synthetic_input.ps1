@@ -5,12 +5,12 @@ param(
 $ErrorActionPreference='Stop'
 if($env:GITHUB_ACTIONS -ne 'true') {throw 'Synthetic native input harness is restricted to the approved CI runner.'}
 if([Runtime.InteropServices.RuntimeInformation]::OSArchitecture -ne 'Arm64') {throw 'Synthetic input requires the existing true ARM64 runner.'}
-$expected=Join-Path (Split-Path $PSScriptRoot) 'build\windows\arm64\runner\Profile\bloomstep.exe'
+$expected=Join-Path (Split-Path $PSScriptRoot) 'build\windows\arm64\runner\Profile\budlark.exe'
 if([IO.Path]::GetFullPath($Executable) -ne $expected) {throw 'Only the CI-built explicit synthetic profile path is permitted.'}
 $binary=[IO.File]::ReadAllBytes($expected)
 $peMachine=[BitConverter]::ToUInt16($binary,[BitConverter]::ToInt32($binary,60)+4)
 if($peMachine -ne 0xaa64) {throw 'Synthetic fixture architecture is not ARM64.'}
-$database=Join-Path ([IO.Path]::GetTempPath()) 'bloomstep-synthetic-preview.sqlite'
+$database=Join-Path ([IO.Path]::GetTempPath()) 'budlark-synthetic-preview.sqlite'
 $databaseFiles=@($database,($database+'-wal'),($database+'-shm'),($database+'-journal'))
 foreach($path in $databaseFiles) {
   if(Test-Path -LiteralPath $path) {throw 'Existing synthetic database; refusing overwrite.'}
@@ -155,7 +155,7 @@ public static class SyntheticInput {
       throw new InvalidOperationException("Targeted synthetic scroll queue rejected.");
   }
   public static string SetText(IntPtr view,uint owner,string label,string desired) {
-    if(!desired.StartsWith("Bloomstep acceptance test CI ")||desired.Length>200)throw new InvalidOperationException("Non-synthetic text refused.");
+    if(!desired.StartsWith("Budlark acceptance test CI ")||desired.Length>200)throw new InvalidOperationException("Non-synthetic text refused.");
     Ownership(view,owner);Foreground(owner);
     var field=Unique(view,label,42,null);string result="";
     try {field.node.set_accValue(field.child,desired);result+="setter=accepted;";}
@@ -294,8 +294,8 @@ try {
   Action 'take one slow breath'
   Action 'relax my shoulders and smile'
   Action 'Make it my own (optional)'
-  $saved='Bloomstep acceptance test CI save '+[Guid]::NewGuid().ToString('N').Substring(0,8)
-  $canceled='Bloomstep acceptance test CI cancel '+[Guid]::NewGuid().ToString('N').Substring(0,8)
+  $saved='Budlark acceptance test CI save '+[Guid]::NewGuid().ToString('N').Substring(0,8)
+  $canceled='Budlark acceptance test CI cancel '+[Guid]::NewGuid().ToString('N').Substring(0,8)
   $result.textEntry=[SyntheticInput]::SetText($script:view,[uint32]$script:app.Id,'I want more...',$saved)
   Action 'I practiced my celebration' 44
   Action 'Plant this seed'

@@ -1,16 +1,16 @@
 import 'dart:async';
 import 'dart:typed_data';
 
-import 'package:bloomstep/services/microsoft_photo.dart';
-import 'package:bloomstep/services/microsoft_photo_auth.dart';
-import 'package:bloomstep/services/identity.dart';
+import 'package:budlark/services/microsoft_photo.dart';
+import 'package:budlark/services/microsoft_photo_auth.dart';
+import 'package:budlark/services/identity.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
 import 'package:logging/logging.dart';
 
 const proof = MicrosoftPhotoIdentity(
-  bloomstepAccount: 'garden-a',
+  budlarkAccount: 'garden-a',
   tenantId: MicrosoftPhotoIdentity.consumerTenant,
   objectId: '00000000-0000-0000-0000-000000000001',
 );

@@ -15,7 +15,7 @@ function PngDimension([int]$Offset) {
   [BitConverter]::ToUInt32($bytes, 0)
 }
 if ((PngDimension 16) -gt 245 -or (PngDimension 20) -gt 36) { throw 'Wordmark exceeds the supported sign-in banner size.' }
-if (-not $IconPath) { $IconPath = Join-Path (Split-Path $LogoPath) 'bloomstep-favicon.png' }
+if (-not $IconPath) { $IconPath = Join-Path (Split-Path $LogoPath) 'budlark-favicon.png' }
 if (-not (Test-Path -LiteralPath $IconPath)) { throw 'Budlark favicon asset is missing.' }
 $logo = [IO.File]::ReadAllBytes((Resolve-Path -LiteralPath $IconPath).Path)
 if ($logo.Length -lt 24 -or [Convert]::ToHexString($logo[0..7]) -ne '89504E470D0A1A0A' -or

@@ -6,7 +6,7 @@ import { join } from 'node:path';
 import { FileBackedCosmosContainer } from './support/file_backed_cosmos.mjs';
 
 test('disposable store partitions owners, rejects stale writes, and validates batch conflicts atomically across restart', async () => {
-  const root = await mkdtemp(join(tmpdir(), 'bloomstep-it-'));
+  const root = await mkdtemp(join(tmpdir(), 'budlark-it-'));
   const path = join(root, 'server.json');
   const ownerA = 'owner-a';
   const ownerB = 'owner-b';

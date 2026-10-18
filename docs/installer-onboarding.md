@@ -127,12 +127,12 @@ baked-in text.
 moves on by itself to the destination page (per-user default, Browse). **Install**
 is the only click. There is no Ready page, no Finish page and no launch
 checkbox. After a successful interactive install Setup closes and opens
-Bloomstep as the original, non-elevated installing user (`ExecAsOriginalUser`).
+Budlark as the original, non-elevated installing user (`ExecAsOriginalUser`).
 
 **Zero-click (private experiment).** Double-clicking the installer shows the
 same visual while installing to the default per-user folder with no pages and
 no clicks; the visual is held until about 5 seconds have passed (a requested
-brand hold, not install work), then Bloomstep opens. Upgrades reuse the
+brand hold, not install work), then Budlark opens. Upgrades reuse the
 previous folder. Interactive Inno Setup always shows one pre-install page; the
 zero-click build puts the same visual on it and advances on the first timer
 tick without a click, so the generic Inno welcome text never appears.
@@ -144,7 +144,7 @@ Historical behavior and limitations (the standard redesign above is authoritativ
   exact verified file). This is not bypassed and signing is deferred.
 - no UAC: setup is per-user with `PrivilegesRequired=lowest`; it never asks for
   elevation. If someone runs it as administrator anyway, the app is not opened
-  elevated; a message asks them to open Bloomstep from the Start menu.
+  elevated; a message asks them to open Budlark from the Start menu.
 - Error, disk, close-running-app and cancel dialogs stay visible and actionable.
   Silent installs never open the app.
 
@@ -190,8 +190,8 @@ Inno's actual progress bar remains authoritative; scenes are not progress percen
 There is no sleep, minimum dwell, network host, WebView or added dependency.
 Windows `SPI_GETCLIENTAREAANIMATION` is queried read-only; disabled or unavailable
 preferences produce static art. Page changes, completion, modal interruptions
-and setup disposal stop the callback. Finish says **Bloomstep is ready** and
-**Open Bloomstep to create your first tiny habit**; existing successful,
+and setup disposal stop the callback. Finish says **Budlark is ready** and
+**Open Budlark to create your first tiny habit**; existing successful,
 interactive, non-elevated checked/unchecked/silent launch guards are unchanged.
 
 Installer observations are **disabled**, including silent installs: no prompt,
@@ -392,7 +392,7 @@ same verified immutable bytes if accepted, not a rebuild.
 
 The site supports an optional verified `release.universal` URL/SHA-256 entry.
 Without it current preview.9 rendering is unchanged. With it the static,
-no-JS primary link is "Download Bloomstep for Windows", with secondary
+no-JS primary link is "Download Budlark for Windows", with secondary
 architecture links collapsed. Browser CPU hints are not queried in that mode;
 its click uses the existing `unknown` architecture category without changing
 telemetry or consent. No invented candidate checksum is committed.
@@ -400,8 +400,8 @@ telemetry or consent. No invented candidate checksum is committed.
 ## Behaviour (contract before implementation)
 
 - Teach one routine-linked tiny action and a personal celebration using original
-  Bloomstep wording and illustrations, not book text, cover art or third-party
-  logos. Describe Bloomstep as an independent app inspired by the Tiny Habits
+  Budlark wording and illustrations, not book text, cover art or third-party
+  logos. Describe Budlark as an independent app inspired by the Tiny Habits
   method, not affiliated with or endorsed by BJ Fogg or Tiny Habits. Link only
   the official learning pages `https://tinyhabits.com` and
   `https://tinyhabits.com/book/`; learning is optional, never an install gate.
@@ -436,7 +436,7 @@ telemetry or consent. No invented candidate checksum is committed.
 
 Exact limited-scope text on the customer landing and releases paths:
 
-> Limited preview — Bloomstep is an early, unsigned Windows app for trying tiny, routine-linked habits, check-ins, and a personal growing garden. Sign-in is required; some features and sign-in options are still being refined. This is not the complete verified MVP, and it is not medical advice. There is no Microsoft Store version yet. If you use the app, private feedback is available in-app after sign-in.
+> Limited preview — Budlark is an early, unsigned Windows app for trying tiny, routine-linked habits, check-ins, and a personal growing garden. Sign-in is required; some features and sign-in options are still being refined. This is not the complete verified MVP, and it is not medical advice. There is no Microsoft Store version yet. If you use the app, private feedback is available in-app after sign-in.
 
 No controller, privacy contact, legal basis or processor/backup retention is
 invented. Existing disclosed retention and TODOs remain. No tester count,
@@ -499,7 +499,7 @@ Ready views at a host's 150% scale were canceled without creating a target;
 that is not evidence for the redesigned candidate. Exact-head actual 100% and
 one high-DPI capture remain the frozen-v1 review requirement. Exhaustive DPI
 and Narrator acceptance remain Store-readiness work, not inferred from names.
-The updated source candidate makes the native **Launch Bloomstep and plant your
+The updated source candidate makes the native **Launch Budlark and plant your
 first habit** Finish choice checked by default and freely user-toggleable.
 Launch is allowed only after successful interactive file installation on a
 visible desktop, without administrator elevation, explicit unattended flags or
@@ -512,7 +512,7 @@ unchecked/default-off, with no retrospective educational events.
 `tool/verify_installer_journey.ps1` is restricted to a named inert CI fixture,
 with a distinct AppId and no protocol registry writes. Its probe reports only
 launch count/token checks in sanitized artifacts; raw token information stays
-in the disposable target and is deleted. That fixture is not Bloomstep and
+in the disposable target and is deleted. That fixture is not Budlark and
 does not prove ordinary app launch, provider sign-in or first-recipe acceptance.
 Limited-task failures retain task state/result and a sanitized worker stage,
 error type/line, session ID, interactive flag and elevation flag. These are
@@ -529,7 +529,7 @@ recipe**, and **Watch it become a garden**, with native progress/text
 equivalents. `tool/installer_art_export_test.dart` exports original full-panel
 illustrations from the existing five-stage `PlantArt` renderer and original
 recipe icons; these are authored artwork, not screenshots or evidence of a
-customer garden. To re-author, set `BLOOMSTEP_EXPORT_INSTALLER_ART=true` and run
+customer garden. To re-author, set `BUDLARK_EXPORT_INSTALLER_ART=true` and run
 `flutter test --no-pub tool/installer_art_export_test.dart`; the exporter writes
 source/asset SHA-256 provenance (authored text source is normalized to UTF-8/LF
 for cross-platform checkout; bitmap bytes are hashed unchanged). This does not

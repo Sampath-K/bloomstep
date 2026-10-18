@@ -8,7 +8,7 @@ limits and build-versus-buy checkpoint are documented in [App experience experim
 
 ## What the loop does
 
-`POST /api/internal/experiments/tick` (worker role `Bloomstep.AggregateWriter`, same token as the daily aggregates
+`POST /api/internal/experiments/tick` (worker role `Budlark.AggregateWriter`, same token as the daily aggregates
 step in `.github/workflows/aggregates.yml`) runs one bounded step:
 
 1. **Observe** – reads the foundation `website_daily` counts (`/api/team/website` source) for the last 28 completed UTC days.
@@ -98,7 +98,7 @@ node --test tool\console_preview.test.mjs
 
 This checks actual load-button clicks, exact counts, campaign drilldowns, audit keyboard interaction,
 mobile overflow, clear/reload, production token rejection and loopback binding. It saves screenshots and a
-source/hash receipt under `%TEMP%\bloomstep-console-preview-evidence` (override with `PREVIEW_EVIDENCE_DIR`).
+source/hash receipt under `%TEMP%\budlark-console-preview-evidence` (override with `PREVIEW_EVIDENCE_DIR`).
 
 Screenshot evidence is arm-bound: for each catalog surface (`download-heading`, `hero-cta-label`,
 `hero-note-position`) the runner opens fresh consented visits until the deterministic assignment yields the intended
@@ -141,14 +141,14 @@ reviewed draft PR edits `site/experiment-promotions.json`, which `site/build.mjs
 ## Enabling production (not done)
 
 1. Run the acceptance tool on the exact deployed SHA; keep its receipt.
-2. Set app settings `BLOOMSTEP_EXPERIMENTS_PRODUCTION=enabled` and
-   `BLOOMSTEP_EXPERIMENTS_ACCEPTANCE_SHA256=<receipt hash>`.
+2. Set app settings `BUDLARK_EXPERIMENTS_PRODUCTION=enabled` and
+   `BUDLARK_EXPERIMENTS_ACCEPTANCE_SHA256=<receipt hash>`.
 3. An admin POSTs the receipt to `/api/team/experiments/acceptance`; the server parses it against a fixed schema
    (isolated, synthetic-only, ≥6 passing scenarios, no paid-service/new-billable dependency with bill `not_measured`, matching policy hash) and recomputes the hash.
 4. Update the `#experiment-disclosure` paragraph in `site/index.html`, which currently says page tests are off.
 5. The daily aggregates workflow already calls the tick; while disabled it returns `status: disabled`.
 
-Kill switch: `BLOOMSTEP_EXPERIMENTS_DISABLED=1` (no storage access) or admin
+Kill switch: `BUDLARK_EXPERIMENTS_DISABLED=1` (no storage access) or admin
 `POST /api/team/experiments/kill {"killed":true,"reason":"..."}`.
 
 ## Audit, retention, export

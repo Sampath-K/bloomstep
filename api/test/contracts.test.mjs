@@ -82,8 +82,8 @@ test('partition key binds issuer and subject, never email', () => {
   assert.notEqual(accountKey('https://issuer', 'alice'), accountKey('https://other', 'alice'));
 });
 test('admin never inferred from email, name or a truthy value', () => {
-  assert.equal(isAdmin(['Bloomstep.Admin']), true);
-  for (const value of [true, 'Bloomstep.Admin', ['User'], { role: 'Bloomstep.Admin' }]) assert.equal(isAdmin(value), false);
+  assert.equal(isAdmin(['Budlark.Admin']), true);
+  for (const value of [true, 'Budlark.Admin', ['User'], { role: 'Budlark.Admin' }]) assert.equal(isAdmin(value), false);
 });
 test('telemetry rejects habit text and unregistered events', () => {
   const event = { id: randomUUID(), name: 'checkin', ts: new Date().toISOString() };

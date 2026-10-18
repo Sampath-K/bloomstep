@@ -9,8 +9,8 @@ test('inert journey proof tests checked, unchecked, silent, suppressed, cancel, 
     assert.ok(proof.includes(scenario), scenario);
   }
   assert.match(proof, /GITHUB_ACTIONS/);
-  assert.match(proof, /BLOOMSTEP_ISOLATED_JOURNEY_FIXTURE/);
-  assert.match(proof, /BLOOMSTEP_DISPOSABLE_VM/);
+  assert.match(proof, /BUDLARK_ISOLATED_JOURNEY_FIXTURE/);
+  assert.match(proof, /BUDLARK_DISPOSABLE_VM/);
   assert.match(proof, /compiledFixture\.installerSha256[\s\S]*Get-FileHash/);
   assert.match(proof, /exact hash-authorized compiled inert journey fixture/);
   assert.match(proof, /Invoke-StandardWizardStep/);
@@ -35,7 +35,7 @@ test('proof fails closed on wrong token or desktop, never lowers or raises it', 
 });
 
 test('source never manufactures observations and installer launch is outside automated CI', () => {
-  const installer = read('packaging/bloomstep.iss');
+  const installer = read('packaging/budlark.iss');
   assert.doesNotMatch(installer, /CreateCustomPage|SaveStringToFile|CoCreateGuid|MeasurementCheckBox/);
   const workflow = read('.github/workflows/ci.yml');
   for (const job of ['installer-launch-evidence', 'protected-installer-lifecycle',

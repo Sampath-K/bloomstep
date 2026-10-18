@@ -332,7 +332,7 @@ class ProfileSection extends StatelessWidget {
                   : 'Sign in with Microsoft or Google',
             ),
           ),
-          if (onManage != null)
+          if (onManage != null && ModalRoute.of(context) is! PopupRoute)
             IconButton(
               tooltip: 'Settings and privacy',
               onPressed: onManage,

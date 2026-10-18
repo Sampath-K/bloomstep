@@ -9,7 +9,7 @@ import { fileURLToPath } from 'node:url';
 
 const read = name => readFileSync(new URL(`../${name}`, import.meta.url), 'utf8');
 test('universal installer bundles exclusive native OS payloads without bootstrap or privilege changes', () => {
-  const source = read('packaging/bloomstep.iss');
+  const source = read('packaging/budlark.iss');
   assert.match(source, /#if AppArch == "universal"[\s\S]*ArchitecturesAllowed=arm64 or x64os/);
   assert.match(source, /Source: "\{#SourceDirX64\}\\\*";.*Check: UseX64Payload/);
   assert.match(source, /Source: "\{#SourceDirArm64\}\\\*";.*Check: UseArm64Payload/);
@@ -38,13 +38,13 @@ test('hosted packaging remains required and owner installer verification stays p
 });
 test('release inputs require exact source, version, architecture, inventory and byte hashes', async () => {
   const { createPayloadManifest, verifyPayloadManifest } = await import('../tool/release_payload.mjs');
-  const root = mkdtempSync(fileURLToPath(new URL('../.bloomstep-payload-contract-', import.meta.url)));
+  const root = mkdtempSync(fileURLToPath(new URL('../.budlark-payload-contract-', import.meta.url)));
   const source = 'a'.repeat(40), version = '0.1.0-preview.11';
   const pe = Buffer.alloc(128); pe.write('MZ'); pe.writeUInt32LE(64, 60);
   pe.write('PE\0\0', 64); pe.writeUInt16LE(0xaa64, 68);
   try {
     mkdirSync(join(root, 'data', 'flutter_assets'), { recursive: true });
-    for (const file of ['bloomstep.exe', 'flutter_windows.dll']) writeFileSync(join(root, file), pe);
+    for (const file of ['budlark.exe', 'flutter_windows.dll']) writeFileSync(join(root, file), pe);
     writeFileSync(join(root, 'data', 'icudtl.dat'), 'fixture only');
     writeFileSync(join(root, 'data', 'app.so'), 'synthetic AOT shape fixture, never a genuine Release claim');
     writeFileSync(join(root, 'data', 'flutter_assets', 'AssetManifest.bin'), 'fixture only');
@@ -73,12 +73,12 @@ test('release inputs require exact source, version, architecture, inventory and 
     rmSync(join(root, 'outside'), { recursive: true });
     writeFileSync(join(root, 'data', 'icudtl.dat'), 'corrupt');
     assert.throws(() => verifyPayloadManifest(root, manifest, { arch: 'arm64', source, version }), /hash/);
-    rmSync(join(root, 'bloomstep.exe'));
+    rmSync(join(root, 'budlark.exe'));
     assert.throws(() => createPayloadManifest(root, { arch: 'arm64', source, version }), /required|missing/);
   } finally { rmSync(root, { recursive: true, force: true }); }
 });
 test('native routing source semantics reject unsupported hosts even with a misleading process architecture (simulation only)', () => {
-  const source = read('packaging/bloomstep.iss');
+  const source = read('packaging/budlark.iss');
   const selector = name => new RegExp(`function ${name}\\(\\): Boolean;\\s*begin\\s*Result := ProcessorArchitecture = (pa\\w+);\\s*end;`).exec(source)?.[1];
   assert.equal(selector('UseX64Payload'), 'paX64');
   assert.equal(selector('UseArm64Payload'), 'paArm64');
@@ -100,7 +100,7 @@ test('unified customer download is fail-closed after the owner-authorized previe
   const release = {
     ...current.release, tag: 'v0.1.0-preview.11',
     ...Object.fromEntries(['arm64','x64','universal'].map(arch => [arch, {
-      url: `https://github.com/Sampath-K/bloomstep/releases/download/v0.1.0-preview.11/Bloomstep-0.1.0-preview.11-windows-${arch}-setup.exe`,
+      url: `https://github.com/Sampath-K/budlark/releases/download/v0.1.0-preview.11/Budlark-0.1.0-preview.11-windows-${arch}-setup.exe`,
       sha256: 'a'.repeat(64),
     }])),
   };
@@ -125,7 +125,7 @@ test('actual proof requires package and native machine authority, cancel, instal
   assert.match(proof, /cancelBeforePayload/);
   assert.match(proof, /selectedPayloadAllHashesVerified/);
   assert.match(proof, /corruptedEmbeddedChecksumRollbackVerified/);
-  const source = read('packaging/bloomstep.iss');
+  const source = read('packaging/budlark.iss');
   assert.match(source, /#ifdef UniversalIntegrityFixture[\s\S]*#ifndef OnboardingJourneyFixture[\s\S]*#error/);
   const workflow = read('.github/workflows/ci.yml');
   assert.match(workflow, /universal-integrity-fixture/);
@@ -177,16 +177,16 @@ test('release records manual installer verification as pending and binds it to p
   const writeJson = (path, value) => writeFileSync(join(root, path), JSON.stringify(value));
   try {
     mkdirSync(join(root, 'universal-output'));
-    const installerFile = `Bloomstep-${version}-windows-universal-setup.exe`;
+    const installerFile = `Budlark-${version}-windows-universal-setup.exe`;
     writeFileSync(join(root, 'universal-output', installerFile), bytes);
     const payloadManifests = {};
     for (const arch of ['x64', 'arm64']) {
-      const payload = JSON.stringify({ kind: 'bloomstep-release-payload-v1', source, version, arch });
+      const payload = JSON.stringify({ kind: 'budlark-release-payload-v1', source, version, arch });
       writeFileSync(join(root, 'universal-output', `payload-manifest-${arch}.json`), payload);
       payloadManifests[arch] = sha(payload);
     }
     writeJson('universal-output/universal-manifest.json', {
-      kind: 'bloomstep-offline-universal-v1', source, version, installerFile,
+      kind: 'budlark-offline-universal-v1', source, version, installerFile,
       installerSha256: sha(bytes), bytes: bytes.length, payloadManifests,
     });
     writeFileSync(join(root, 'universal-output', 'SHA256-universal.txt'),
@@ -324,7 +324,7 @@ test('Windows native accessibility helpers compile without installer execution',
 
 test('Defender proof refuses new detections or changed protection and preserves sanitized receipt (mocked, no installer)', () => {
   const helper = fileURLToPath(new URL('../tool/universal_integrity_contract.ps1', import.meta.url)).replaceAll("'", "''");
-  const root = mkdtempSync(fileURLToPath(new URL('../.bloomstep-protection-contract-', import.meta.url)));
+  const root = mkdtempSync(fileURLToPath(new URL('../.budlark-protection-contract-', import.meta.url)));
   const script = `$ErrorActionPreference='Stop'; . '${helper}';
     $script:protection = $true; $script:detections = @();
     function Get-MpComputerStatus {
@@ -363,17 +363,17 @@ test('genuine Inno product authority permits only trailing ASCII resource paddin
   const helper = fileURLToPath(new URL('../tool/universal_integrity_contract.ps1', import.meta.url)).replaceAll("'", "''");
   const script = `$ErrorActionPreference='Stop'; . '${helper}';
     foreach ($valid in @('Budlark',('Budlark'+(' '*51)))) {
-      if (-not (Test-BloomstepInnoProductName $valid)) { throw 'Genuine padded resource rejected' }
+      if (-not (Test-BudlarkInnoProductName $valid)) { throw 'Genuine padded resource rejected' }
     }
-    if (-not (Test-BloomstepInnoProductName ('Bloomstep isolated journey proof'.PadRight(60,' ')) 'Bloomstep isolated journey proof')) { throw 'Known padded fixture rejected' }
-    if (Test-BloomstepInnoProductName ('Bloomstep isolated journey proof'.PadRight(60,' '))) { throw 'Fixture accepted as product' }
+    if (-not (Test-BudlarkInnoProductName ('Budlark isolated journey proof'.PadRight(60,' ')) 'Budlark isolated journey proof')) { throw 'Known padded fixture rejected' }
+    if (Test-BudlarkInnoProductName ('Budlark isolated journey proof'.PadRight(60,' '))) { throw 'Fixture accepted as product' }
     foreach ($invalid in @('',' Budlark','Budlark other','budlark',('Budlark'+[char]9),('Budlark'+[char]10),('Budlark'+[char]13),('Budlark'+[char]160))) {
-      if (Test-BloomstepInnoProductName $invalid) { throw 'Non-product identity accepted' }
+      if (Test-BudlarkInnoProductName $invalid) { throw 'Non-product identity accepted' }
     }
     'PASS'`;
   assert.match(execFileSync('pwsh', ['-NoProfile', '-NonInteractive', '-Command', script], { encoding: 'utf8' }), /PASS/);
-  assert.match(read('tool/verify_universal_app_launch.ps1'), /Test-BloomstepInnoProductName/);
-  assert.match(read('tool/verify_universal_installer.ps1'), /Test-BloomstepInnoProductName/);
+  assert.match(read('tool/verify_universal_app_launch.ps1'), /Test-BudlarkInnoProductName/);
+  assert.match(read('tool/verify_universal_installer.ps1'), /Test-BudlarkInnoProductName/);
 });
 test('owned Cancel and other modal wizard clicks cannot block the evidence deadline', () => {
   for (const name of ['tool/verify_universal_installer.ps1', 'tool/verify_universal_app_launch.ps1']) {

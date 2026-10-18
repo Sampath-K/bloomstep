@@ -230,7 +230,7 @@ export function renderEvidence(result) {
     `| Candidate commit | \`${result.candidate}\` |`,
     `| Source tree | \`${result.sourceTree}\` |`,
     `| Installer SHA-256 | \`${result.installerSha256}\` |`,
-    `| CI run | [${result.artifact.runId}](https://github.com/Sampath-K/bloomstep/actions/runs/${result.artifact.runId}) |`,
+    `| CI run | [${result.artifact.runId}](https://github.com/Sampath-K/budlark/actions/runs/${result.artifact.runId}) |`,
     `| Artifact id | ${result.artifact.artifactId} |`,
     `| Gate stage verified | ${result.stage} |`,
     `| Functional tests | ${result.functional.tests} passing tests covering ${result.functional.requirements} requirements on a clean ${result.functional.environment} VM at ${result.functional.executedAt} ([run](${result.functional.run}); \`functional/README.md\`) |`,
@@ -273,7 +273,7 @@ export function verifyArtifactProvenance({ candidate, artifact, repository, run,
   p(run.head_sha === candidate, `run built ${run.head_sha}, not the candidate`);
   p(run.event === 'push' && run.conclusion === 'success', 'signed run must be a successful push run');
   p(run.path === '.github/workflows/ci.yml' && run.repository?.full_name === repository, "signed run is not this repository's ci workflow");
-  const match = (artifacts?.artifacts ?? []).filter((a) => a.name === 'bloomstep-universal-installer');
+  const match = (artifacts?.artifacts ?? []).filter((a) => a.name === 'budlark-universal-installer');
   p(match.length === 1 && String(match[0].id) === artifact.artifactId, "signed artifact id is not the run's universal installer");
   p(match[0].expired === false, 'signed artifact has expired');
   return { ok: true };

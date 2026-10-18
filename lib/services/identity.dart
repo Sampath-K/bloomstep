@@ -96,7 +96,7 @@ class IdentityService {
     }
     _photoAttemptedAccount = account;
     final proof = microsoftPhotoIdentity;
-    if (proof == null || proof.bloomstepAccount != account) {
+    if (proof == null || proof.budlarkAccount != account) {
       _microsoftPhoto.clear();
       return MicrosoftPhotoStatus.unlinked;
     }
@@ -166,7 +166,7 @@ class IdentityService {
 
   Future<bool> restore() async {
     if (!configured) return false;
-    final raw = await _storage.read(key: 'bloomstep-session');
+    final raw = await _storage.read(key: 'budlark-session');
     if (raw == null) return false;
     final dynamic decoded;
     try {
@@ -367,7 +367,7 @@ class IdentityService {
       _lastObservedAt = now;
     }
     await _storage.write(
-      key: 'bloomstep-session',
+      key: 'budlark-session',
       value: jsonEncode({
         'issuer': issuerUrl,
         'clientId': clientId,
@@ -413,7 +413,7 @@ class IdentityService {
     }
     // Preserve the offline-session deadline; a refresh is not fresh user authentication.
     await guardAuthStep(AuthStep.save, () async {
-      final saved = await _storage.read(key: 'bloomstep-session');
+      final saved = await _storage.read(key: 'budlark-session');
       if (saved != null) {
         await _save((jsonDecode(saved) as Map)['validatedAt'] as String);
       }
@@ -427,6 +427,6 @@ class IdentityService {
     _validatedAt = null;
     _lastObservedAt = null;
     account = null;
-    await _serialized(() => _storage.delete(key: 'bloomstep-session'));
+    await _serialized(() => _storage.delete(key: 'budlark-session'));
   }
 }

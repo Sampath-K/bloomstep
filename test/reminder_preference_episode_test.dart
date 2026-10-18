@@ -1,4 +1,4 @@
-import 'package:bloomstep/core/reminder_preference_episode.dart';
+import 'package:budlark/core/reminder_preference_episode.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 const epoch = '38b822ed-afde-4906-a754-e6be1be6a756';

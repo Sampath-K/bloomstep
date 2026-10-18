@@ -1,4 +1,4 @@
-package com.bloomstep.bloomstep
+package com.budlark.budlark
 
 import io.flutter.embedding.android.FlutterActivity
 

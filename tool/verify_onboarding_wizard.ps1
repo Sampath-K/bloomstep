@@ -158,8 +158,8 @@ $protection = Start-ProtectedInstallerProof $Installer $compiledFixture.installe
 if (-not [OnboardingWizard]::SetProcessDpiAwarenessContext([IntPtr](-4))) {
   throw 'Capture process could not use per-monitor DPI coordinates.'
 }
-$target = Join-Path $env:LOCALAPPDATA 'Programs\Bloomstep'
-$receipt = Join-Path $env:LOCALAPPDATA 'Bloomstep\measurement\installer-receipt.json'
+$target = Join-Path $env:LOCALAPPDATA 'Programs\Budlark'
+$receipt = Join-Path $env:LOCALAPPDATA 'Budlark\measurement\installer-receipt.json'
 if ((Test-Path $target) -or (Test-Path $receipt)) { throw 'Capture refuses existing installation/receipt state.' }
 $states = [Collections.Generic.List[object]]::new()
 $report = @{ sourceRevision = $compiledFixture.sourceRevision; installerSha256 = $compiledFixture.installerSha256;

@@ -44,7 +44,7 @@ function record(role, overrides = {}) {
 function ownerTrial(overrides = {}) {
   return {
     schema: 'budlark-owner-trial-v1', candidateCommit: CANDIDATE, installerSha256: SHA, result: 'PASS',
-    by: 'Sampath-K', testedAt: '2026-10-21T06:00:00Z', reference: 'https://github.com/Sampath-K/bloomstep/pull/52#issuecomment-1', ...overrides,
+    by: 'Sampath-K', testedAt: '2026-10-21T06:00:00Z', reference: 'https://github.com/Sampath-K/budlark/pull/52#issuecomment-1', ...overrides,
   };
 }
 
@@ -72,8 +72,8 @@ function writeFunctional(root, mutate = () => {}) {
     schema: 'budlark-functional-evidence-v1', candidateCommit: CANDIDATE, installerSha256: SHA,
     artifact: { runId: '39100447327', artifactId: '12127077182' },
     environment: { kind: 'clean-windows-vm', os: 'Windows 11 24H2' },
-    run: 'https://github.com/Sampath-K/bloomstep/actions/runs/39100447327', executedAt: '2026-10-20T05:00:00Z',
-    baseline: { commit: BASELINE, run: 'https://github.com/Sampath-K/bloomstep/actions/runs/39100447300' },
+    run: 'https://github.com/Sampath-K/budlark/actions/runs/39100447327', executedAt: '2026-10-20T05:00:00Z',
+    baseline: { commit: BASELINE, run: 'https://github.com/Sampath-K/budlark/actions/runs/39100447300' },
     tests,
   };
   mutate(doc);
@@ -311,10 +311,10 @@ test('QA: public launch requires a passing owner trial bound to the same bytes; 
 
 test('ARCH-2: artifact provenance must match the signed run and artifact', () => {
   const good = {
-    run: { id: 39100447327, head_sha: CANDIDATE, event: 'push', conclusion: 'success', path: '.github/workflows/ci.yml', repository: { full_name: 'Sampath-K/bloomstep' } },
-    artifacts: { artifacts: [{ id: 12127077182, name: 'bloomstep-universal-installer', expired: false }] },
+    run: { id: 39100447327, head_sha: CANDIDATE, event: 'push', conclusion: 'success', path: '.github/workflows/ci.yml', repository: { full_name: 'Sampath-K/budlark' } },
+    artifacts: { artifacts: [{ id: 12127077182, name: 'budlark-universal-installer', expired: false }] },
   };
-  const args = { candidate: CANDIDATE, artifact: { runId: '39100447327', artifactId: '12127077182' }, repository: 'Sampath-K/bloomstep' };
+  const args = { candidate: CANDIDATE, artifact: { runId: '39100447327', artifactId: '12127077182' }, repository: 'Sampath-K/budlark' };
   assert.equal(verifyArtifactProvenance({ ...args, ...good }).ok, true);
   const bad = (patch) => assert.throws(() => verifyArtifactProvenance({ ...args, ...good, ...patch }), /provenance/);
   bad({ run: { ...good.run, head_sha: HEAD } });
@@ -322,8 +322,8 @@ test('ARCH-2: artifact provenance must match the signed run and artifact', () =>
   bad({ run: { ...good.run, conclusion: 'failure' } });
   bad({ run: { ...good.run, id: 1 } });
   bad({ run: { ...good.run, path: '.github/workflows/other.yml' } });
-  bad({ artifacts: { artifacts: [{ id: 999, name: 'bloomstep-universal-installer', expired: false }] } });
-  bad({ artifacts: { artifacts: [{ id: 12127077182, name: 'bloomstep-universal-installer', expired: true }] } });
+  bad({ artifacts: { artifacts: [{ id: 999, name: 'budlark-universal-installer', expired: false }] } });
+  bad({ artifacts: { artifacts: [{ id: 12127077182, name: 'budlark-universal-installer', expired: true }] } });
 });
 
 test('SEC-1/SEC-2: release job never interpolates record data into shell and requires the owner-approved environment', () => {
@@ -337,11 +337,11 @@ test('SEC-1/SEC-2: release job never interpolates record data into shell and req
 });
 test('QA-1: owner trial reference must resolve to an owner-authored comment in this repo naming the exact bytes', () => {
   const trial = { candidateCommit: CANDIDATE, installerSha256: SHA, result: 'PASS', by: 'Sampath-K',
-    reference: 'https://github.com/Sampath-K/bloomstep/pull/52#issuecomment-123' };
+    reference: 'https://github.com/Sampath-K/budlark/pull/52#issuecomment-123' };
   const comment = { id: 123, html_url: trial.reference, user: { login: 'Sampath-K', type: 'User' }, author_association: 'OWNER',
     created_at: '2026-10-21T00:00:00Z', updated_at: '2026-10-21T00:00:00Z',
     body: `Installer test PASS for ${CANDIDATE} installer ${SHA}` };
-  const args = { trial, comment, repository: 'Sampath-K/bloomstep', owner: 'Sampath-K' };
+  const args = { trial, comment, repository: 'Sampath-K/budlark', owner: 'Sampath-K' };
   assert.equal(verifyOwnerStatement(args).ok, true);
   const bad = (patch, re = /owner statement/) => assert.throws(() => verifyOwnerStatement({ ...args, ...patch }), re);
   bad({ trial: { ...trial, reference: 'https://example.com/x#issuecomment-123' } });

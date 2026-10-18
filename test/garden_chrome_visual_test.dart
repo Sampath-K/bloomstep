@@ -1,9 +1,9 @@
-import 'package:bloomstep/app/theme.dart';
-import 'package:bloomstep/core/garden_store.dart';
-import 'package:bloomstep/features/garden/garden_screen.dart';
-import 'package:bloomstep/features/garden/profile_section.dart';
-import 'package:bloomstep/features/garden/garden_canopy.dart';
-import 'package:bloomstep/services/identity.dart';
+import 'package:budlark/app/theme.dart';
+import 'package:budlark/core/garden_store.dart';
+import 'package:budlark/features/garden/garden_screen.dart';
+import 'package:budlark/features/garden/profile_section.dart';
+import 'package:budlark/features/garden/garden_canopy.dart';
+import 'package:budlark/services/identity.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -26,7 +26,7 @@ void main() {
           RepaintBoundary(
             key: key,
             child: MaterialApp(
-              theme: BloomstepTheme.light(),
+              theme: BudlarkTheme.light(),
               builder: (context, child) => MediaQuery(
                 data: MediaQuery.of(context)
                     .copyWith(disableAnimations: choice.os),
@@ -181,8 +181,8 @@ void main() {
           child: MaterialApp(
             debugShowCheckedModeBanner: false,
             theme: variant.dark
-                ? BloomstepTheme.dark()
-                : BloomstepTheme.light(),
+                ? BudlarkTheme.dark()
+                : BudlarkTheme.light(),
             builder: (context, child) => MediaQuery(
               data: MediaQuery.of(context).copyWith(
                 size: variant.size,

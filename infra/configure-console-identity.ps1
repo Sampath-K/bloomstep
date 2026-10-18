@@ -8,7 +8,7 @@ param(
   [Parameter(Mandatory)][ValidatePattern('^[0-9a-fA-F-]{36}$')][string]$ApiClientId,
   [Parameter(Mandatory)][ValidatePattern('^[0-9a-fA-F-]{36}$')][string]$AuthenticationEventsFlowId,
   [Parameter(Mandatory)][string]$CustomerIssuer,
-  [Parameter(Mandatory)][ValidateSet('Sampath-K/bloomstep')][string]$Repository,
+  [Parameter(Mandatory)][ValidateSet('Sampath-K/budlark')][string]$Repository,
   [Parameter(Mandatory)][switch]$ConfirmPersonalSubscription
 )
 $ErrorActionPreference = 'Stop'
@@ -66,8 +66,8 @@ try {
   # Preflight documented association endpoint before creating any app.
   $flowPath="identity/authenticationEventsFlows/$AuthenticationEventsFlowId/conditions/applications/includeApplications"
   $included=@(GraphList $flowPath)
-  $name='Bloomstep operator console (public SPA)'
-  $tag="Bloomstep-console:$Repository`:$SubscriptionId`:$SwaName"
+  $name='Budlark operator console (public SPA)'
+  $tag="Budlark-console:$Repository`:$SubscriptionId`:$SwaName"
   $apps=@(GraphList "applications?`$filter=displayName eq '$name'")
   if($apps.Count -gt 1){throw 'Duplicate operator SPA registrations.'}
   if($apps.Count){
@@ -79,7 +79,7 @@ try {
     }
   } else {
     $app=Graph 'applications' 'POST' @{
-      displayName=$name;signInAudience='AzureADMyOrg';tags=@('Bloomstep-managed-free',$tag)
+      displayName=$name;signInAudience='AzureADMyOrg';tags=@('Budlark-managed-free',$tag)
       spa=@{redirectUris=@("$origin/operator-callback.html")}
     }
   }

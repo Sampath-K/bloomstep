@@ -43,7 +43,7 @@ links and work without JavaScript, analytics, authentication, or the API.
   Existing authenticated ordered receipt cohorts are shown separately, never
   divided by anonymous counts. Web attribution requires a linked website
   receipt; installer-only and other app cohorts remain unknown channel.
-- Admin API and panel require the existing `Bloomstep.Admin` JWT authentication.
+- Admin API and panel require the existing `Budlark.Admin` JWT authentication.
   Linked counts and rates require 50 distinct contributing accounts in each
   relevant numerator and denominator. No anonymous-to-account matching.
 - Synthetic readback has a distinct count document, small caps, an admin-only
@@ -71,7 +71,7 @@ links and work without JavaScript, analytics, authentication, or the API.
 
 ## Free-tier limits and deployment
 
-Reuse `bloomstep/data`; no new Azure resources. A transactional lifetime budget
+Reuse `budlark/data`; no new Azure resources. A transactional lifetime budget
 and per-day count documents keep at most 90 UTC days. Daily TTL is anchored to
 the server UTC date, so expiry does not need another visitor or a timer.
 Limits: 400 accepted events/day, 10,000 lifetime accepted events, and a
@@ -93,7 +93,7 @@ submit `/sitemap.xml`. No real verification secret is committed. The configured
 website download pointer is the already-published `v0.1.0-preview.14` unsigned
 universal installer (22,261,590 bytes,
 `7ad56cc3c71a40d78dd7cb043b43aa42ea884cb0484da982cffa386c9384b094`,
-`https://github.com/Sampath-K/bloomstep/releases/download/v0.1.0-preview.14/Bloomstep-0.1.0-preview.14-windows-universal-setup.exe`);
+`https://github.com/Sampath-K/budlark/releases/download/v0.1.0-preview.14/Budlark-0.1.0-preview.14-windows-universal-setup.exe`);
 ARM64/x64 links are collapsed troubleshooting options only. This records the
 configured pointer, not a newer owner-test candidate or approval to upgrade the
 website pointer. The current download remains for designated owner testing;
@@ -119,7 +119,7 @@ customer pages, releases, console, robots, sitemap and original social image.
 Production evidence belongs in session artifacts, not customer source.
 
 `Website live readback` is a manual main-only GitHub workflow using the existing
-`bloomstep-operations` federated aggregate-worker identity, not a new Azure
+`budlark-operations` federated aggregate-worker identity, not a new Azure
 resource or paid service. Its isolated `/api/internal/website-proof` route
 accepts only that worker role and returns lifetime accepted counters, never
 customer data or real daily cells. The worker remains rejected by all customer

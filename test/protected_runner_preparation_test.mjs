@@ -29,16 +29,16 @@ test('guide fails closed on unpinned public runner scheduling and separates nati
 
 test('PowerShell preparation script parses without execution', () => {
   const result = spawnSync('pwsh', ['-NoProfile', '-NonInteractive', '-Command',
-    '$tokens = $null; $errors = $null; [System.Management.Automation.Language.Parser]::ParseFile($env:BLOOMSTEP_PREPARATION_SCRIPT, [ref]$tokens, [ref]$errors) | Out-Null; if ($errors.Count) { $errors | ForEach-Object { Write-Error $_ }; exit 1 }'],
-  { encoding: 'utf8', env: { ...process.env, BLOOMSTEP_PREPARATION_SCRIPT: fileURLToPath(script) } });
+    '$tokens = $null; $errors = $null; [System.Management.Automation.Language.Parser]::ParseFile($env:BUDLARK_PREPARATION_SCRIPT, [ref]$tokens, [ref]$errors) | Out-Null; if ($errors.Count) { $errors | ForEach-Object { Write-Error $_ }; exit 1 }'],
+  { encoding: 'utf8', env: { ...process.env, BUDLARK_PREPARATION_SCRIPT: fileURLToPath(script) } });
   assert.equal(result.status, 0, result.stderr || result.error?.message);
 });
 
 test('operator PowerShell command blocks parse without execution', () => {
   for (const [, block] of guide.matchAll(/```powershell\n([\s\S]*?)```/g)) {
     const result = spawnSync('pwsh', ['-NoProfile', '-NonInteractive', '-Command',
-      '$tokens = $null; $errors = $null; [System.Management.Automation.Language.Parser]::ParseInput($env:BLOOMSTEP_OPERATOR_BLOCK, [ref]$tokens, [ref]$errors) | Out-Null; if ($errors.Count) { $errors | ForEach-Object { Write-Error $_ }; exit 1 }'],
-    { encoding: 'utf8', env: { ...process.env, BLOOMSTEP_OPERATOR_BLOCK: block } });
+      '$tokens = $null; $errors = $null; [System.Management.Automation.Language.Parser]::ParseInput($env:BUDLARK_OPERATOR_BLOCK, [ref]$tokens, [ref]$errors) | Out-Null; if ($errors.Count) { $errors | ForEach-Object { Write-Error $_ }; exit 1 }'],
+    { encoding: 'utf8', env: { ...process.env, BUDLARK_OPERATOR_BLOCK: block } });
     assert.equal(result.status, 0, result.stderr || result.error?.message);
   }
 });

@@ -58,7 +58,7 @@ class WindowsReminderGateway implements ReminderGateway {
       settings: const InitializationSettings(
         windows: WindowsInitializationSettings(
           appName: 'Budlark',
-          appUserModelId: 'Bloomstep.Garden',
+          appUserModelId: 'Budlark.Garden',
           guid: 'dc9b4d34-b0de-4df7-aead-690d8a5304a2',
         ),
       ),
@@ -189,7 +189,7 @@ class DesktopReminders with TrayListener, WindowListener {
     if (_native && !Platform.isWindows) return;
     if (_native) {
       launchAtStartup.setup(
-        appName: 'Bloomstep',
+        appName: 'Budlark',
         appPath: Platform.resolvedExecutable,
       );
     }

@@ -22,7 +22,7 @@ const outcomeSchema = z.strictObject({
 const forgetSchema = z.strictObject({ subjectId: z.uuid() });
 const killSchema = z.strictObject({ killed: z.boolean(), reason: z.string().regex(/^[\w .,:;()/-]{1,160}$/) });
 export const receiptSchema = z.object({
-  schemaVersion: z.literal(1), kind: z.literal('bloomstep-experiment-isolated-acceptance'), result: z.literal('passed'),
+  schemaVersion: z.literal(1), kind: z.literal('budlark-experiment-isolated-acceptance'), result: z.literal('passed'),
   policyVersion: z.string(), policyHash: z.string().regex(/^[a-f0-9]{64}$/),
   segregation: z.object({ environment: z.literal('isolated'), productionDocuments: z.literal(0), syntheticOnly: z.literal(true) }),
   scenarios: z.array(z.object({ name: z.string(), passed: z.literal(true) })).min(6),
@@ -242,7 +242,7 @@ export function createExperimentHandlers({ container, environment, authenticate,
   /** Scheduled bounded worker step: evaluate active experiment, conclude/rollback, then prioritize & launch next. */
   async function tick(/** @type {import('@azure/functions').HttpRequest} */ request) {
     const actor = await authenticateWorker(request);
-    if (!Array.isArray(actor.roles) || !actor.roles.includes('Bloomstep.AggregateWriter') || isAdmin(actor.roles)) {
+    if (!Array.isArray(actor.roles) || !actor.roles.includes('Budlark.AggregateWriter') || isAdmin(actor.roles)) {
       throw new ServiceError(403, 'Isolated experiment worker role required.');
     }
     admit();
@@ -293,7 +293,7 @@ export function createExperimentHandlers({ container, environment, authenticate,
 
   async function requireAdmin(/** @type {import('@azure/functions').HttpRequest} */ request) {
     const actor = await authenticate(request);
-    if (!isAdmin(actor.roles)) throw new ServiceError(403, 'Bloomstep.Admin required.');
+    if (!isAdmin(actor.roles)) throw new ServiceError(403, 'Budlark.Admin required.');
     admit();
   }
 

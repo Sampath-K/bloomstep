@@ -1,8 +1,8 @@
 import 'dart:io';
 
-import 'package:bloomstep/core/garden_store.dart';
-import 'package:bloomstep/core/growthbook_experience_provider.dart';
-import 'package:bloomstep/services/experience_experiments.dart';
+import 'package:budlark/core/garden_store.dart';
+import 'package:budlark/core/growthbook_experience_provider.dart';
+import 'package:budlark/services/experience_experiments.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 class _FakeProvider implements ExperienceAssignmentProvider {

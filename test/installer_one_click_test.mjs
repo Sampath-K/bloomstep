@@ -12,12 +12,12 @@ test('Defender-blocked private candidate remains withdrawn, not a reputation war
 });
 
 test('obsolete autonomous variants are replaced by a standard native wizard', () => {
-  const setup = read('packaging/bloomstep.iss');
+  const setup = read('packaging/budlark.iss');
   for (const page of ['Ready', 'Finished']) {
     assert.match(setup, new RegExp(`Disable${page}Page=no`));
   }
   for (const page of ['Welcome', 'Dir']) assert.match(setup, new RegExp(`Disable${page}Page=yes`));
-  assert.match(setup, /DefaultDirName=\{localappdata\}\\Programs\\Bloomstep/);
+  assert.match(setup, /DefaultDirName=\{localappdata\}\\Programs\\Budlark/);
   assert.match(setup, /PrivilegesRequired=lowest/);
   assert.match(setup, /UsePreviousAppDir=yes/);
   assert.doesNotMatch(setup, /InstallFlow|ExecAsOriginalUser|BackButtonClick|NextButton\.OnClick|CreateCustomPage/);
@@ -26,17 +26,17 @@ test('obsolete autonomous variants are replaced by a standard native wizard', ()
 });
 
 test('launch is a default-checked toggleable native Finish choice with original-user guards', () => {
-  const setup = read('packaging/bloomstep.iss');
+  const setup = read('packaging/budlark.iss');
   const run = setup.split('[Run]')[1]?.split(/\n\[/)[0];
   assert.ok(run);
-  assert.match(run, /Filename: "\{app\}\\bloomstep.exe"/);
+  assert.match(run, /Filename: "\{app\}\\budlark.exe"/);
   assert.match(run, /Description: "Launch Budlark"/);
   for (const flag of ['postinstall', 'skipifsilent', 'runasoriginaluser']) {
     assert.match(run, new RegExp(`\\b${flag}\\b`));
   }
   assert.doesNotMatch(run, /\bunchecked\b/);
-  assert.match(run, /Check: CanLaunchBloomstep/);
-  const gate = /function CanLaunchBloomstep\(\): Boolean;([\s\S]*?)\nend;/.exec(setup)?.[1];
+  assert.match(run, /Check: CanLaunchBudlark/);
+  const gate = /function CanLaunchBudlark\(\): Boolean;([\s\S]*?)\nend;/.exec(setup)?.[1];
   assert.ok(gate);
   for (const guard of ['InstallationSucceeded', 'not WizardSilent', 'SUPPRESSMSGBOXES', 'NOCANCEL']) {
     assert.ok(gate.includes(guard), guard);

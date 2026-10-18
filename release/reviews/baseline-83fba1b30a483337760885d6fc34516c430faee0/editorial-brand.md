@@ -16,7 +16,7 @@ No `governance/roles/branding` directory was present. I used `release/roles.json
 
 ### ED-02 — P3: Active copy guide retains the former product name
 
-`docs/copy-guide.md:1,13–14` calls itself the “Bloomstep” editorial guide and says to use terms “unless Bloomstep has a user-tested term.” That conflicts with the current name in `docs/branding.md:3,8` and its statement that current documents should use Budlark (`:22`). Update the guide’s product references; this is internal editorial guidance, not a customer-facing defect.
+`docs/copy-guide.md:1,13–14` calls itself the “Budlark” editorial guide and says to use terms “unless Budlark has a user-tested term.” That conflicts with the current name in `docs/branding.md:3,8` and its statement that current documents should use Budlark (`:22`). Update the guide’s product references; this is internal editorial guidance, not a customer-facing defect.
 
 ### ED-03 — P2: Startup error suggests fixes that do not cover all caught failures
 
@@ -30,6 +30,6 @@ No `governance/roles/branding` directory was present. I used `release/roles.json
 
 ## Disposition and verdict
 
-Historical warning captures and published `Bloomstep-…` filenames, repository/package/protocol identifiers, and the explicitly documented `launchAtStartup.setup(appName: 'Bloomstep')` compatibility identity were **not** treated as rename findings. The customer-site source consistently describes an owner-only preview and warns that it is unverified for general use. The served public deployment was not checked.
+Historical warning captures and published `Budlark-…` filenames, repository/package/protocol identifiers, and the explicitly documented `launchAtStartup.setup(appName: 'Budlark')` compatibility identity were **not** treated as rename findings. The customer-site source consistently describes an owner-only preview and warns that it is unverified for general use. The served public deployment was not checked.
 
 **Editorial-brand assessment: not ready to record as a public-launch sign-off** while ED-01–03 remain unresolved. `release/roles.json:7,64–67` requires evidence-backed sign-off bound to the exact candidate commit, source tree, and installer SHA-256; this review does not provide or record that sign-off.

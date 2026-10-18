@@ -35,15 +35,15 @@ UsePreviousAppDir=yes
 #endif
 #endif
 #ifdef OnboardingJourneyFixture
-AppName=Bloomstep isolated journey proof
-VersionInfoProductName=Bloomstep isolated journey proof
+AppName=Budlark isolated journey proof
+VersionInfoProductName=Budlark isolated journey proof
 #else
 AppName=Budlark
 #endif
 AppVersion={#AppVersion}
 AppPublisher=Budlark contributors
 AppPublisherURL=https://budlark.com/
-AppSupportURL=https://github.com/Sampath-K/bloomstep/issues
+AppSupportURL=https://budlark.com
 AppUpdatesURL=https://budlark.com/
 #if Pos("-", AppVersion) > 0
   #define NumericAppVersion Copy(AppVersion, 1, Pos("-", AppVersion) - 1)
@@ -59,11 +59,11 @@ VersionInfoCopyright=Copyright (C) Budlark contributors
 VersionInfoProductName=Budlark
 #endif
 VersionInfoProductTextVersion={#AppVersion}
-DefaultDirName={localappdata}\Programs\Bloomstep
-DefaultGroupName=Bloomstep
+DefaultDirName={localappdata}\Programs\Budlark
+DefaultGroupName=Budlark
 PrivilegesRequired=lowest
 OutputDir=..\release-output
-OutputBaseFilename=Bloomstep-{#AppVersion}-windows-{#AppArch}-setup
+OutputBaseFilename=Budlark-{#AppVersion}-windows-{#AppArch}-setup
 Compression=lzma2
 SolidCompression=yes
 WizardStyle=modern
@@ -75,7 +75,7 @@ DisableFinishedPage=no
 DisableProgramGroupPage=yes
 WizardImageFile=assets\wizard-garden.bmp
 WizardSmallImageFile=assets\wizard-seed.bmp
-UninstallDisplayIcon={app}\bloomstep.exe
+UninstallDisplayIcon={app}\budlark.exe
 CloseApplications=yes
 RestartApplications=no
 #if AppArch == "universal"
@@ -108,24 +108,24 @@ Source: "{#IntegrityMarker}"; DestDir: "{app}"; DestName: "integrity-probe.txt";
 #endif
 
 [Run]
-Filename: "{app}\bloomstep.exe"; Description: "Launch Budlark"; Flags: postinstall skipifsilent runasoriginaluser; Check: CanLaunchBloomstep
+Filename: "{app}\budlark.exe"; Description: "Launch Budlark"; Flags: postinstall skipifsilent runasoriginaluser; Check: CanLaunchBudlark
 
 [InstallDelete]
 Type: files; Name: "{app}\measurement-owner.txt"
 
 [Icons]
-Name: "{group}\Bloomstep"; Filename: "{app}\bloomstep.exe"
-Name: "{group}\Uninstall Bloomstep"; Filename: "{uninstallexe}"
+Name: "{group}\Budlark"; Filename: "{app}\budlark.exe"
+Name: "{group}\Uninstall Budlark"; Filename: "{uninstallexe}"
 
 [UninstallDelete]
 Type: files; Name: "{app}\measurement-owner.txt"
 
 [Registry]
 #ifndef OnboardingJourneyFixture
-Root: HKCU; Subkey: "Software\Classes\bloomstep"; ValueType: string; ValueData: "URL:Budlark invitation"
-Root: HKCU; Subkey: "Software\Classes\bloomstep"; ValueType: string; ValueName: "URL Protocol"; ValueData: ""
-Root: HKCU; Subkey: "Software\Classes\bloomstep\DefaultIcon"; ValueType: string; ValueData: "{app}\bloomstep.exe,0"
-Root: HKCU; Subkey: "Software\Classes\bloomstep\shell\open\command"; ValueType: string; ValueData: """{app}\bloomstep.exe"" ""%1"""
+Root: HKCU; Subkey: "Software\Classes\budlark"; ValueType: string; ValueData: "URL:Budlark invitation"
+Root: HKCU; Subkey: "Software\Classes\budlark"; ValueType: string; ValueName: "URL Protocol"; ValueData: ""
+Root: HKCU; Subkey: "Software\Classes\budlark\DefaultIcon"; ValueType: string; ValueData: "{app}\budlark.exe,0"
+Root: HKCU; Subkey: "Software\Classes\budlark\shell\open\command"; ValueType: string; ValueData: """{app}\budlark.exe"" ""%1"""
 #endif
 
 [Code]
@@ -163,7 +163,7 @@ var
 
 #include "install-progress.iss"
 
-function CanLaunchBloomstep(): Boolean;
+function CanLaunchBudlark(): Boolean;
 var
   I: Integer;
 begin
@@ -180,7 +180,7 @@ end;
 
 function MeasurementPath(): String;
 begin
-  Result := ExpandConstant('{localappdata}\Bloomstep\measurement\installer-receipt.json');
+  Result := ExpandConstant('{localappdata}\Budlark\measurement\installer-receipt.json');
 end;
 
 procedure InitializeWizard();
@@ -212,9 +212,9 @@ begin
         if not DeleteFile(Filename) then
           MsgBox('Optional owned pending measurement receipt could not be removed. Clear the local pending receipt manually.', mbError, MB_OK);
     end;
-    if RegQueryStringValue(HKCU, 'Software\Classes\bloomstep\shell\open\command', '', Command) then
-      if CompareText(Command, ExpandConstant('"{app}\bloomstep.exe" "%1"')) = 0 then
-        RegDeleteKeyIncludingSubkeys(HKCU, 'Software\Classes\bloomstep');
+    if RegQueryStringValue(HKCU, 'Software\Classes\budlark\shell\open\command', '', Command) then
+      if CompareText(Command, ExpandConstant('"{app}\budlark.exe" "%1"')) = 0 then
+        RegDeleteKeyIncludingSubkeys(HKCU, 'Software\Classes\budlark');
   end;
 end;
 

@@ -206,8 +206,8 @@ def main():
         vector.write_text(
             svg_master(), encoding="utf-8"
         )
-        write_png(mark(256), assets / "bloomstep-icon.png")
-        write_png(mark(32), assets / "bloomstep-favicon.png")
+        write_png(mark(256), assets / "budlark-icon.png")
+        write_png(mark(32), assets / "budlark-favicon.png")
         mark(256).convert("RGBA").save(
             root / "windows" / "runner" / "resources" / "app_icon.ico",
             format="ICO",
@@ -234,10 +234,10 @@ def main():
         mac_icons = root / "macos" / "Runner" / "Assets.xcassets" / "AppIcon.appiconset"
         for path in mac_icons.glob("app_icon_*.png"):
             write_png(mark(int(path.stem.removeprefix("app_icon_"))), path)
-    write_png(wordmark(args.font), assets / "bloomstep-wordmark.png")
+    write_png(wordmark(args.font), assets / "budlark-wordmark.png")
     write_png(
         social(args.font, args.regular_font),
-        assets / "bloomstep-social.png",
+        assets / "budlark-social.png",
     )
 
 

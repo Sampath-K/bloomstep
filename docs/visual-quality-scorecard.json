@@ -191,7 +191,7 @@
       "checks":["Fourth recipe requires explicit existing decision; canceled without planting"], "gaps":["Native assistive technology unobserved"], "gate":"OPEN"
     },
     {
-      "id":"continuity-profile-auth", "source":"PR48 owner-approved implementation; lib/app/bloomstep_app.dart + profile_section.dart + garden_screen.dart", "conditions":"Synthetic identity and disposable SQLite gardens for sign-in/copy/view; 420x820 and 640x480 at 200%; no live provider or owner data",
+      "id":"continuity-profile-auth", "source":"PR48 owner-approved implementation; lib/app/budlark_app.dart + profile_section.dart + garden_screen.dart", "conditions":"Synthetic identity and disposable SQLite gardens for sign-in/copy/view; 420x820 and 640x480 at 200%; no live provider or owner data",
       "validationResult": "PASS_OBSERVED_SCOPE",
       "baseline":{"status":"NOT OBSERVED","scores":null,"evidence":[]},
       "current":{"status":"OBSERVED","scores":{"D":4,"H":4,"G":4,"A":4,"T":4},"evidence":["profile-signed-in-before-copy-SYNTHETIC.png","device-copy-confirmation-SYNTHETIC.png","profile-view-device-SYNTHETIC.png","profile-signed-in-SYNTHETIC.png"]},

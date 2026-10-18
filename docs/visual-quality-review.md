@@ -117,8 +117,8 @@ a separate gate.
 Reproduce synthetic renders without contacting a real server:
 
 ```powershell
-$env:BLOOMSTEP_SCREENSHOTS = '<new-private-output-directory>'
-flutter test --no-pub --no-test-assets --dart-define=BLOOMSTEP_TEST_BUILD=true test\profile_session_test.dart test\garden_chrome_visual_test.dart test\invitation_widget_test.dart test\invitation_visual_test.dart test\recipe_builder_visual_test.dart test\surface_review_visual_test.dart
+$env:BUDLARK_SCREENSHOTS = '<new-private-output-directory>'
+flutter test --no-pub --no-test-assets --dart-define=BUDLARK_TEST_BUILD=true test\profile_session_test.dart test\garden_chrome_visual_test.dart test\invitation_widget_test.dart test\invitation_visual_test.dart test\recipe_builder_visual_test.dart test\surface_review_visual_test.dart
 flutter test --no-pub --no-test-assets test\visual_quality_contract_test.dart
 flutter analyze --no-pub
 ```
@@ -186,7 +186,7 @@ subject in `garden_screen.dart` after extraction; the contract path is corrected
 without weakening the expected branded text. That run's hosted x64/ARM64 jobs
 were still in progress and its protected VM launch job queued when recorded.
 On exact combined code/test SHA `6c95718acbfee8dc5a3822692084e04ded805a88`,
-[CI run 38833006325](https://github.com/Sampath-K/bloomstep/actions/runs/38833006325)
+[CI run 38833006325](https://github.com/Sampath-K/budlark/actions/runs/38833006325)
 passes API, x64 and ARM64 Windows test/build, funnel acceptance, and universal
 installer compilation. Customer-site run 38833006303, telemetry run 38833006363,
 and the offline-sandbox/website run 38833006301 pass. The overall CI workflow

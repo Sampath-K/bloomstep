@@ -53,16 +53,16 @@ test('daily snapshot accepts bounded GrowthBook status and older absent instrume
   assert.equal(dailySnapshotRecordSchema.safeParse(unsafe).success, false);
 });
 test('authenticated experiment-epoch deletion is scoped, retryable and suppresses offline replay across API restart', async () => {
-  const root = await mkdtemp(join(tmpdir(), 'bloomstep-it-experience-'));
+  const root = await mkdtemp(join(tmpdir(), 'budlark-it-experience-'));
   const databasePath = join(root, 'experience.json'), key = randomBytes(32);
   let server = await createLocalTestServer({ databasePath, key });
   try {
     const token = async sub => new SignJWT({ scp: 'Garden.ReadWrite' })
-      .setProtectedHeader({ alg: 'HS256' }).setIssuer('https://bloomstep.test')
-      .setAudience('bloomstep-test-api').setSubject(sub).setIssuedAt().setExpirationTime('2m').sign(key);
+      .setProtectedHeader({ alg: 'HS256' }).setIssuer('https://budlark.test')
+      .setAudience('budlark-test-api').setSubject(sub).setIssuedAt().setExpirationTime('2m').sign(key);
     const owner = await token('synthetic-experience'), other = await token('synthetic-other');
     const send = (bearer, body) => fetch(`${server.url}/api/sync`, { method: 'POST',
-      headers: { 'x-bloomstep-authorization': `Bearer ${bearer}`, 'content-type': 'application/json' },
+      headers: { 'x-budlark-authorization': `Bearer ${bearer}`, 'content-type': 'application/json' },
       body: JSON.stringify(body) });
     const blank = { habits: [], checkins: [], reflections: [], voice: [], events: [], settings: [], deletions: [] };
     const row = exposure().record;

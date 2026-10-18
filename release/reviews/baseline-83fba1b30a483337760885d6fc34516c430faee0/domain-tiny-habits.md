@@ -66,7 +66,7 @@ Targeted claim-search excerpts were also inspected in `CHANGELOG.md`, `docs/meas
 - Targeted excerpts in `api/src/goals.mjs`, `api/src/engagement.mjs`, and `api/src/aarrr.mjs`
 - `site/index.html:1–226,260–309`
 - `site/releases/index.html:122–151`
-- Targeted excerpts in `site/customer.mjs` and `packaging/bloomstep.iss`
+- Targeted excerpts in `site/customer.mjs` and `packaging/budlark.iss`
 
 ### Tests and supporting source
 
@@ -78,7 +78,7 @@ Targeted claim-search excerpts were also inspected in `CHANGELOG.md`, `docs/meas
 - `test/reminder_scheduler_test.dart:1–260,426–465`, plus targeted search excerpts
 - `test/public_claims_test.mjs`
 - `site/test/onboarding.test.mjs:1–175`
-- `integration_test/bloomstep_windows_e2e_test.dart:120–295`
+- `integration_test/budlark_windows_e2e_test.dart:120–295`
 - Targeted excerpts in `site/test/launch.test.mjs` and `tool/installer_art_export_test.dart`
 
 Test source inspection establishes intended assertions, **not passing execution results**.

@@ -1,9 +1,9 @@
 import 'dart:convert';
 
-import 'package:bloomstep/app/theme.dart';
-import 'package:bloomstep/core/garden_store.dart';
-import 'package:bloomstep/features/garden/garden_screen.dart';
-import 'package:bloomstep/services/invitation_service.dart';
+import 'package:budlark/app/theme.dart';
+import 'package:budlark/core/garden_store.dart';
+import 'package:budlark/features/garden/garden_screen.dart';
+import 'package:budlark/services/invitation_service.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -66,7 +66,7 @@ void main() {
         key: key,
         child: MaterialApp(
           debugShowCheckedModeBanner: false,
-          theme: BloomstepTheme.light(),
+          theme: BudlarkTheme.light(),
           builder: (context, child) => Column(
             children: [
               const Material(
@@ -257,7 +257,7 @@ void main() {
         RepaintBoundary(
           key: key,
           child: MaterialApp(
-            theme: BloomstepTheme.light(),
+            theme: BudlarkTheme.light(),
             builder: (context, child) => MediaQuery(
               data: MediaQuery.of(context)
                   .copyWith(textScaler: const TextScaler.linear(2)),

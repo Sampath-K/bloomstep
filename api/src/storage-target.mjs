@@ -2,12 +2,12 @@
 export function storageTarget(settings) {
   const database = settings.COSMOS_DATABASE_NAME;
   const container = settings.COSMOS_CONTAINER_NAME;
-  const mode = settings.BLOOMSTEP_SYNTHETIC_ACCEPTANCE;
+  const mode = settings.BUDLARK_SYNTHETIC_ACCEPTANCE;
   if (mode !== undefined && mode !== 'enabled') {
     throw new Error('Invalid storage target: synthetic acceptance must be explicitly enabled or unset.');
   }
   if (database === undefined && container === undefined && mode === undefined) {
-    return { database: 'bloomstep', container: 'data' };
+    return { database: 'budlark', container: 'data' };
   }
   const validName = /^[a-zA-Z0-9][a-zA-Z0-9_-]{0,63}$/;
   if (!database || !container || !validName.test(database) || !validName.test(container)) {

@@ -52,7 +52,7 @@ test('paths and preexisting state are fail closed, install has no arbitrary exec
   for (const flag of ['/VERYSILENT', '/SUPPRESSMSGBOXES', '/NORESTART', '/DIR=']) {
     assert.ok(source.includes(flag));
   }
-  assert.match(source, /Join-Path \$script:appDir 'bloomstep.exe'/);
+  assert.match(source, /Join-Path \$script:appDir 'budlark.exe'/);
   assert.match(source, /Start-Process -FilePath \$script:exe -WorkingDirectory \$script:appDir/);
   assert.doesNotMatch(source, /\[string\]\$(Executable|AppPath)|Remove-Item|Set-MpPreference|Add-MpPreference|Unblock-File|-Verb RunAs/);
 });

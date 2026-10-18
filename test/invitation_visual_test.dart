@@ -1,11 +1,11 @@
 import 'dart:async';
 import 'dart:convert';
 
-import 'package:bloomstep/app/theme.dart';
-import 'package:bloomstep/core/garden_store.dart';
-import 'package:bloomstep/features/garden/invitation_dialog.dart';
-import 'package:bloomstep/services/invitation_service.dart';
-import 'package:bloomstep/services/experience_experiments.dart';
+import 'package:budlark/app/theme.dart';
+import 'package:budlark/core/garden_store.dart';
+import 'package:budlark/features/garden/invitation_dialog.dart';
+import 'package:budlark/services/invitation_service.dart';
+import 'package:budlark/services/experience_experiments.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -196,8 +196,8 @@ void main() {
           child: MaterialApp(
             debugShowCheckedModeBanner: false,
             theme: variant.dark
-                ? BloomstepTheme.dark()
-                : BloomstepTheme.light(),
+                ? BudlarkTheme.dark()
+                : BudlarkTheme.light(),
             builder: (context, child) => MediaQuery(
               data: MediaQuery.of(context).copyWith(
                 textScaler: TextScaler.linear(variant.scale),

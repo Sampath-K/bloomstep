@@ -17,7 +17,7 @@ export function initializeSandbox(config, win = window, doc = document) {
   }
   const pagePath = win.location.pathname === '/releases/' ? '/releases/' : '/';
   const pageProperties = { page_location: win.location.origin + pagePath,
-    page_referrer: '', page_title: 'Bloomstep sandbox', ...campaign };
+    page_referrer: '', page_title: 'Budlark sandbox', ...campaign };
   const productProperties = { $current_url: win.location.origin + pagePath,
     $referrer: '', ...campaign };
   function record(name, architecture) {

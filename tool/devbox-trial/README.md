@@ -9,7 +9,7 @@ The bundle contains the unsigned, unpublished universal CI candidate from source
 `bd5ad93ad28988123ef7d3e28eab989f91cc4362`, Actions run `38994109408`, artifact
 `12086798368`. It verifies the candidate, source inventory and native payload
 manifests before execution. Verify the separately supplied outer ZIP digest too.
-Existing portable-tool caches in the earlier sibling `BloomstepVM` folder are
+Existing portable-tool caches in the earlier sibling `BudlarkVM` folder are
 checked read-only; an incomplete/modified cache stops the trial, never overwrites
 it. Inno is not needed for an already-built installer.
 
@@ -17,7 +17,7 @@ it. Inno is not needed for an already-built installer.
 
 The script checks standard-user/interactive desktop, Defender protection,
 unresolved threats, clean product state and other product registrations. It
-refuses to adopt, uninstall or overwrite preexisting/unrelated Bloomstep state.
+refuses to adopt, uninstall or overwrite preexisting/unrelated Budlark state.
 It requires explicit `RUN UNSIGNED CANDIDATE` confirmation before starting the
 visible installer. Drive the wizard normally, observe the app and answer the
 in-script observation prompts. Windows warnings/quarantine are blockers: do not

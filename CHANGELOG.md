@@ -11,7 +11,7 @@
 ## 0.1.0-preview.14 - owner trial only
 
 - Native one-click Install page, progress and Finish with a freely toggleable,
-  default-checked Launch Bloomstep option; no automatic wizard advances.
+  default-checked Launch Budlark option; no automatic wizard advances.
 - Inline profile, separate device-only garden, avatar and Sign out for accounts,
   and a dismissible first-habit invitation once per empty garden per app launch.
 - Custom Anchor/Action/Celebration fields and save-before-success growth feedback.

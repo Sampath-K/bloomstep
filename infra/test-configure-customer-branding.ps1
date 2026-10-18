@@ -52,7 +52,7 @@ function global:Invoke-RestMethod {
 }
 try {
   $script = Join-Path $PSScriptRoot 'configure-customer-branding.ps1'
-  $logo = Join-Path $PSScriptRoot '..\site\assets\bloomstep-wordmark.png'
+  $logo = Join-Path $PSScriptRoot '..\site\assets\budlark-wordmark.png'
   $parameters = @{ TenantId = $global:brandingTenant; LogoPath = $logo; ConfirmCustomerBranding = $true }
   $null = & $script @parameters
   $null = & $script @parameters

@@ -13,7 +13,7 @@ Future<void> captureVisual(
 ) async {
   await tester.pump();
   expect(tester.takeException(), isNull);
-  final output = Platform.environment['BLOOMSTEP_SCREENSHOTS'];
+  final output = Platform.environment['BUDLARK_SCREENSHOTS'];
   if (output == null) return;
   final boundary =
       key.currentContext!.findRenderObject()! as RenderRepaintBoundary;

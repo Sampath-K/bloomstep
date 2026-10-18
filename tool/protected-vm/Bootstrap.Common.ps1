@@ -25,7 +25,7 @@ function Get-InnoExitDisposition([int]$Code) {
 
 function New-BootstrapReceipt([string]$Stage, [string]$Source, [string]$Arch) {
   return [ordered]@{
-    kind = 'bloomstep-vm-bootstrap-v1'; time = [DateTime]::UtcNow.ToString('o')
+    kind = 'budlark-vm-bootstrap-v1'; time = [DateTime]::UtcNow.ToString('o')
     stage = $Stage; source = $Source; nativeArchitecture = $Arch
     complete = $false; registrationAuthorized = $false; installerAcceptanceVerified = $false
     nextAction = 'Rerun the same Bootstrap.ps1 -Resume after resolving the reported prerequisite.'

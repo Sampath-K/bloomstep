@@ -225,7 +225,7 @@ function initializeReceipt(blocked) {
       const raw = JSON.stringify(receipt);
       validateReceipt(raw);
       const url = URL.createObjectURL(new Blob([raw], { type: 'application/json' }));
-      const link = document.createElement('a'); link.href = url; link.download = 'bloomstep-website-measurement.json'; link.click();
+      const link = document.createElement('a'); link.href = url; link.download = 'budlark-website-measurement.json'; link.click();
       setTimeout(() => URL.revokeObjectURL(url), 1000);
       status.textContent = 'Your browser was asked to download the receipt. Adding it in app Settings is a separate choice.';
     } catch {

@@ -11,8 +11,8 @@ function Assert-WelcomeCancelExit([int]$ExitCode) {
   if ($ExitCode -ne 2) { throw "Owned Welcome wizard did not return Inno's pre-install Cancel exit code 2: $ExitCode" }
 }
 
-function Test-BloomstepInnoProductName([string]$ProductName,
-    [ValidateSet('Budlark','Bloomstep isolated journey proof')][string]$ExpectedName = 'Budlark') {
+function Test-BudlarkInnoProductName([string]$ProductName,
+    [ValidateSet('Budlark','Budlark isolated journey proof')][string]$ExpectedName = 'Budlark') {
   if ($null -eq $ProductName) { return $false }
   return ($ProductName.TrimEnd([char]32) -ceq $ExpectedName)
 }
@@ -120,7 +120,7 @@ function Get-InstallerProtectionSnapshot {
 }
 
 function Start-ProtectedInstallerProof([string]$Installer, [string]$ExpectedSha256, [string]$EvidenceDir) {
-  if ($env:GITHUB_ACTIONS -ne 'true' -or $env:BLOOMSTEP_DISPOSABLE_VM -ne 'true') {
+  if ($env:GITHUB_ACTIONS -ne 'true' -or $env:BUDLARK_DISPOSABLE_VM -ne 'true') {
     throw 'Protected installer execution requires explicitly authorized disposable CI, never the local host.'
   }
   $baseline = Get-InstallerProtectionSnapshot

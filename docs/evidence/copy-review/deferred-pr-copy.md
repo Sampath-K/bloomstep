@@ -13,7 +13,7 @@ Review gallery:
 `docs/evidence/visual-quality/proposals/deferred-pr-gallery.html`.
 These are conceptual HTML proposals, not Flutter or installed-app screenshots.
 The gallery uses the Calm starter recipe so the practice action has its actual
-context. The review shell is not a proposed replacement for Bloomstep's garden
+context. The review shell is not a proposed replacement for Budlark's garden
 art or Windows theme. Existing garden art remains unchanged.
 
 | PR and exact source | Existing surface or copy | Proposed disposition and copy |

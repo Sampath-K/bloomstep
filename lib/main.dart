@@ -5,7 +5,7 @@ import 'package:path/path.dart' as p;
 import 'package:path_provider/path_provider.dart';
 import 'package:window_manager/window_manager.dart';
 
-import 'app/bloomstep_app.dart';
+import 'app/budlark_app.dart';
 import 'services/single_instance.dart';
 import 'services/invitation_intent.dart';
 import 'services/installer_measurement.dart';
@@ -66,7 +66,7 @@ Future<void> main(List<String> arguments) async {
       measurementWarning = 'Optional installer measurement path is unavailable. No local observations collected; sign-in still works.';
     } else {
       measurement = InstallerMeasurement(
-        p.join(local, 'Bloomstep', 'measurement'),
+        p.join(local, 'Budlark', 'measurement'),
       );
       try {
         final marker = File(
@@ -92,7 +92,7 @@ Future<void> main(List<String> arguments) async {
           }
         }
         measurement = InstallerMeasurement(
-          p.join(local, 'Bloomstep', 'measurement'),
+          p.join(local, 'Budlark', 'measurement'),
           ownerId: owner,
         );
         await measurement.observe('first_launch');
@@ -102,7 +102,7 @@ Future<void> main(List<String> arguments) async {
     }
   }
   runApp(
-    BloomstepApp(
+    BudlarkApp(
       invitationInbox: invitations,
       measurement: measurement,
       measurementWarning: measurementWarning,

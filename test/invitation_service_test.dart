@@ -1,8 +1,8 @@
 import 'dart:convert';
 import 'dart:async';
 
-import 'package:bloomstep/core/garden_store.dart';
-import 'package:bloomstep/services/invitation_service.dart';
+import 'package:budlark/core/garden_store.dart';
+import 'package:budlark/services/invitation_service.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
@@ -89,7 +89,7 @@ void main() {
       MockClient((request) async {
         expect(request.url.path, '/api/invitations');
         expect(
-          request.headers['X-Bloomstep-Authorization'],
+          request.headers['X-Budlark-Authorization'],
           'Bearer real-ciam-token',
         );
         expect(request.headers.containsKey('Authorization'), isFalse);

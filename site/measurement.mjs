@@ -1,6 +1,6 @@
 import { parseInvitation } from './invitation-landing.mjs';
 
-export const measurementKey = 'bloomstep.measurement-receipt.v1';
+export const measurementKey = 'budlark.measurement-receipt.v1';
 const lifetime = 7 * 86400000;
 const names = {
   website: new Set(['landing_view', 'invite_link_open', 'download_click']),
@@ -141,7 +141,7 @@ export function initializeMeasurement() {
     try {
       const url = URL.createObjectURL(new Blob([collector.export()], { type: 'application/json' }));
       const link = document.createElement('a');
-      link.href = url; link.download = 'bloomstep-website-measurement.json'; link.click();
+      link.href = url; link.download = 'budlark-website-measurement.json'; link.click();
       setTimeout(() => URL.revokeObjectURL(url), 1000);
       status.textContent = 'Receipt export requested. Linking to your signed-in account is a separate app choice.';
     } catch (error) { report(error); }

@@ -8,12 +8,12 @@ $policy = Get-Content -LiteralPath (Join-Path $PSScriptRoot 'approved-candidates
 $property = @($policy.candidates.PSObject.Properties | Where-Object Name -CEQ $CandidateId)
 if ($policy.schema -ne 1 -or $property.Count -ne 1) { throw 'Candidate is not in the committed reviewed allowlist.' }
 $candidate = $property[0].Value
-if ($candidate.repository -cne 'Sampath-K/bloomstep' -or
+if ($candidate.repository -cne 'Sampath-K/budlark' -or
     $candidate.source -notmatch '^[a-f0-9]{40}$' -or
     $candidate.installerSha256 -notmatch '^[a-f0-9]{64}$' -or
     $candidate.packageSha256 -notmatch '^[a-f0-9]{64}$' -or
     $candidate.runId -notmatch '^\d+$' -or $candidate.artifactId -notmatch '^\d+$' -or
-    $candidate.packageUrl -notmatch '^https://raw\.githubusercontent\.com/Sampath-K/bloomstep/[a-f0-9]{40}/docs/downloads/bloomstep-devbox-installer-trial\.zip$') {
+    $candidate.packageUrl -notmatch '^https://raw\.githubusercontent\.com/Sampath-K/budlark/[a-f0-9]{40}/docs/downloads/budlark-devbox-installer-trial\.zip$') {
   throw 'Reviewed candidate provenance is invalid.'
 }
 function Get-GitHubBuildMetadata([string]$Path) {
@@ -23,11 +23,11 @@ function Get-GitHubBuildMetadata([string]$Path) {
   if (-not $env:GITHUB_TOKEN) { throw 'Built-in controller read token missing; unauthenticated rate-limit fallback is not permitted.' }
   $headers = @{
     Accept='application/vnd.github+json'; 'X-GitHub-Api-Version'='2022-11-28'
-    'User-Agent'='bloomstep-private-controller'; Authorization="Bearer $env:GITHUB_TOKEN"
+    'User-Agent'='budlark-private-controller'; Authorization="Bearer $env:GITHUB_TOKEN"
   }
   for ($attempt=1; $attempt -le 3; $attempt++) {
     try {
-      $response=Invoke-WebRequest -Headers $headers -Uri ("https://api.github.com/repos/Sampath-K/bloomstep/" + $Path) -TimeoutSec 60 -MaximumRedirection 0
+      $response=Invoke-WebRequest -Headers $headers -Uri ("https://api.github.com/repos/Sampath-K/budlark/" + $Path) -TimeoutSec 60 -MaximumRedirection 0
       return ($response.Content | ConvertFrom-Json)
     } catch {
       $status=0
@@ -73,7 +73,7 @@ if ($run.head_sha -cne $candidate.source -or $run.repository.full_name -cne $can
   throw 'Upstream workflow/source/repository identity differs from the reviewed build.'
 }
 $artifact = Get-GitHubBuildMetadata "actions/artifacts/$($candidate.artifactId)"
-if ([string]$artifact.id -cne $candidate.artifactId -or $artifact.name -cne 'bloomstep-universal-installer' -or
+if ([string]$artifact.id -cne $candidate.artifactId -or $artifact.name -cne 'budlark-universal-installer' -or
     [string]$artifact.workflow_run.id -cne $candidate.runId -or $artifact.workflow_run.head_sha -cne $candidate.source) {
   throw 'Upstream artifact identity differs from the reviewed build.'
 }

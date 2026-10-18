@@ -20,18 +20,18 @@ try {
     throw 'Start as a true standard user, never an administrator or filtered admin token. No runner will start.'
   }
   Confirm-Bootstrap 'Dedicated disposable Hyper-V guest, no customer data, corporate DevBox/IT approval obtained if applicable?' 'PREPARE VM'
-  $env:BLOOMSTEP_DISPOSABLE_VM = 'true'
+  $env:BUDLARK_DISPOSABLE_VM = 'true'
   & "$root\harness\setup_defender_test_vm.ps1" -Mode Check -EvidenceDir (Join-Path $state 'preflight')
   if (-not $?) { throw 'Existing protected VM preflight failed.' }
   foreach ($path in @(
-    (Join-Path $env:LOCALAPPDATA 'Programs\Bloomstep'),
-    (Join-Path $env:LOCALAPPDATA 'Bloomstep'),
-    (Join-Path $env:APPDATA 'Bloomstep'),
-    'HKCU:\Software\Classes\bloomstep'
+    (Join-Path $env:LOCALAPPDATA 'Programs\Budlark'),
+    (Join-Path $env:LOCALAPPDATA 'Budlark'),
+    (Join-Path $env:APPDATA 'Budlark'),
+    'HKCU:\Software\Classes\budlark'
   )) {
     if (Test-Path -LiteralPath $path) { throw 'Existing product state; restore the clean checkpoint. Nothing is deleted.' }
   }
-  if (Get-Process -Name bloomstep -ErrorAction SilentlyContinue) { throw 'Existing product process; restore the clean checkpoint.' }
+  if (Get-Process -Name budlark -ErrorAction SilentlyContinue) { throw 'Existing product process; restore the clean checkpoint.' }
   if ($Resume) { Write-Output 'Resume revalidates protection, source and dependencies; no prior approval is reused.' }
   $checkpointFile = Join-Path $state 'checkpoint.json'
   if (-not (Test-Path -LiteralPath $checkpointFile)) {

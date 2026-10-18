@@ -63,7 +63,7 @@ forms without mismatch. The user subsequently confirmed genuine sign-in
 (provider unspecified), and normal installed preview.4's fresh authenticated
 sync/account-scoped export are now observed. Preserve that available session;
 do not force another login or infer which provider exchanged its code. Full
-authenticated garden acceptance is not yet complete. Authorized hosted Bloomstep
+authenticated garden acceptance is not yet complete. Authorized hosted Budlark
 branding is live; Google published/verified consent branding is a separate gate.
 See `deployment.md` for branding and upstream-versus-native callback boundaries.
 
@@ -106,7 +106,7 @@ each component test.
 | Gate | Required human action | Boundary |
 | --- | --- | --- |
 | Real customer identity | Sign in using the approved Microsoft personal, Google or email provider in its trusted system-browser page; complete any credentials, MFA or consent yourself. Actual provider coverage and two-account isolation require genuine approved identities. | Never paste passwords, tokens or one-time codes into agent chat. Subscription ownership is not a customer Admin role. |
-| Windows permission and surface | If reminders are wanted, review Windows Settings > System > Notifications. The observed device setting is2 (DisabledForUser). Bring Bloomstep itself to the foreground to open/cancel Windows Share. | No automatic change to global settings, foreground-policy bypass, contact selection or sending. API acknowledgment is not visible popup/share evidence. |
+| Windows permission and surface | If reminders are wanted, review Windows Settings > System > Notifications. The observed device setting is2 (DisabledForUser). Bring Budlark itself to the foreground to open/cancel Windows Share. | No automatic change to global settings, foreground-policy bypass, contact selection or sending. API acknowledgment is not visible popup/share evidence. |
 | Private product-team access | Explicitly select the customer identity that should receive the application's Admin role before granting it. | No inferred operator from email, provider or subscription-owner status. |
 | Public launch trust | Approve controller/contact/privacy/name wording, provider production settings and exact trial/billing status. Review the unsigned download/SmartScreen experience under device policy. | Billing is unknown, not zero. Do not remove the spending limit, upgrade the subscription, enable paid add-ons or bypass managed-device security policy. Work-school federation is not proved by consumer MSA support. |
 

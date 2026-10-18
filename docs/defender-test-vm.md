@@ -31,7 +31,7 @@ not ARM64 evidence.
 
 1. Import/create a dedicated Windows 11 VM in Hyper-V Manager. Disable clipboard,
    drive sharing and Enhanced Session resource redirection. Do not attach customer
-   data, work credentials, host directories, secrets or existing Bloomstep state.
+   data, work credentials, host directories, secrets or existing Budlark state.
    Use a dedicated disposable GitHub identity if runner registration is needed.
 2. Complete ordinary Windows setup/updates. Verify Windows Security shows active
    Defender antivirus, real-time and behavior protection. Do not disable tamper
@@ -39,16 +39,16 @@ not ARM64 evidence.
    stop; this environment is unsuitable.
 3. As the VM administrator, install Git, Node, PowerShell 7 and Inno Setup 6.7.1
    from their supported distributions for fixture compilation. Create a **standard user**
-   `BloomstepTest` through Settings > Accounts > Other users. Do not grant it
+   `BudlarkTest` through Settings > Accounts > Other users. Do not grant it
    Administrators membership. No script stores passwords.
-4. Shut down the clean VM and make a checkpoint `Bloomstep-clean-protected`.
-   Start it and sign in locally as `BloomstepTest`. Keep the VM console open and
+4. Shut down the clean VM and make a checkpoint `Budlark-clean-protected`.
+   Start it and sign in locally as `BudlarkTest`. Keep the VM console open and
    unlocked. Do not run PowerShell as administrator or install a runner service.
 5. In that VM only, clone the repo at the exact approved security-test source head.
    In the standard-user interactive PowerShell:
 
    ```powershell
-   $env:BLOOMSTEP_DISPOSABLE_VM = 'true'
+   $env:BUDLARK_DISPOSABLE_VM = 'true'
    .\tool\setup_defender_test_vm.ps1 -Mode Check
    ```
 
@@ -95,11 +95,11 @@ verify its supplied SHA-256. Never download the withdrawn hash
 The owner uses the exact new hash/path, not the placeholder:
 
 ```powershell
-$env:BLOOMSTEP_DISPOSABLE_VM = 'true'
+$env:BUDLARK_DISPOSABLE_VM = 'true'
 .\tool\setup_defender_test_vm.ps1 -Mode RunInstaller `
   -Installer 'C:\VM-Test\new-standard-setup.exe' `
   -ExpectedSha256 '<64-character SHA-256 from exact CI receipt>' `
-  -EvidenceDir 'C:\Users\BloomstepTest\AppData\Local\Temp\bloomstep-security-evidence'
+  -EvidenceDir 'C:\Users\BudlarkTest\AppData\Local\Temp\budlark-security-evidence'
 ```
 
 The script scans with already-enabled protection, rechecks the hash, then starts
@@ -121,7 +121,7 @@ private habit data in artifacts.
 
 Stop the runner with Ctrl+C after its job; verify the ephemeral entry was removed
 in repository Settings (remove it manually if registration was never consumed).
-Shut down the VM and restore `Bloomstep-clean-protected` before any new test.
+Shut down the VM and restore `Budlark-clean-protected` before any new test.
 Remove the exact test VM and its dedicated disks via Hyper-V Manager when finished;
 never delete host/root directories. Revoke unused registration tokens. Do not
 restore quarantine as part of teardown. An unresolved Defender detection keeps

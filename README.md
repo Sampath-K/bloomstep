@@ -4,7 +4,7 @@ Grow tiny habits into a flourishing garden. Inspired by the behavior design rese
 
 Budlark is a Flutter app: Windows first (direct download, then Microsoft Store), then iOS/iPadOS, Android and macOS from the same code.
 
-The product name is **Budlark**; `bloomstep` remains the repository and compatibility
+The product name is **Budlark**; `budlark` remains the repository and compatibility
 namespace. See the [branding inventory](docs/branding.md) for retained identifiers,
 historical evidence and external changes that have not been applied.
 
@@ -12,7 +12,7 @@ historical evidence and external changes that have not been applied.
 
 ```powershell
 flutter pub get
-flutter test --dart-define=BLOOMSTEP_TEST_BUILD=true
+flutter test --dart-define=BUDLARK_TEST_BUILD=true
 flutter run -d windows
 flutter build windows --release
 ```
@@ -76,15 +76,15 @@ The small static website lives in `site`; authenticated Functions live in `api`.
 ## Production two-account isolation acceptance
 
 **Preferred automated path:** dispatch **Production two-account isolation
-acceptance** (`production-isolation.yml`). Dedicated `bloomstep-test-a`,
-`bloomstep-test-b` and `bloomstep-test-admin` local customer accounts use only the
-separate `bloomstep-test-email-password` flow and assignment-required
-**Bloomstep automation test client**. Production OTP, Google and MSA providers
+acceptance** (`production-isolation.yml`). Dedicated `budlark-test-a`,
+`budlark-test-b` and `budlark-test-admin` local customer accounts use only the
+separate `budlark-test-email-password` flow and assignment-required
+**Budlark automation test client**. Production OTP, Google and MSA providers
 are unchanged. The test client is a native public client with a localhost
 callback; headless Chromium uses hosted sign-in plus authorization-code PKCE,
 never ROPC, saved browser sessions or owner credentials.
 
-The workflow obtains credentials from the six `BLOOMSTEP_TEST_*` GitHub secrets,
+The workflow obtains credentials from the six `BUDLARK_TEST_*` GitHub secrets,
 and the public client ID/provisioning receipt from repository variables.
 `infra/provision-automation.mjs` is the source provisioning contract: approved
 cached customer-tenant Graph access creates a temporary confidential principal

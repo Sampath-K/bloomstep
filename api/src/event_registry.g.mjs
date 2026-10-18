@@ -1460,7 +1460,7 @@ export const eventRegistry = {
 };
 export const eventJsonSchema = {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "title": "Bloomstep telemetry v1",
+  "title": "Budlark telemetry v1",
   "oneOf": [
     {
       "type": "object",

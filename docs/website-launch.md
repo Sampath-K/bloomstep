@@ -77,7 +77,7 @@ and abuse protection. Existing aggregate telemetry cannot substitute for that ag
 | Acquisition / intent | Real browser -> HTTP -> disk confirms allowlisted campaign, footer/hero dedup, consent-off zero writes, withdrawal and small-cell suppression. Synthetic proof only. |
 | Privacy | Default-off preserved; owner-approved public contact `store-developer@outlook.com` is linked without sign-in (mailbox delivery untested; no response deadline). **Owner decisions:** product owner to confirm applicable jurisdiction-specific obligations. **Evidence gaps:** service/project owner to confirm provider log/identity retention; coordinating project session `b3eaa24c-99fa-4b3f-b6e8-d0601e0b6ea8` owns future isolated restore-marker verification coordination. Synthetic file-backed app/API restart tests do not establish cloud-restore behavior. Public issues accept non-sensitive bugs only. |
 | Production collection / console | Local synthetic preview is usable. **Unverified:** approved live deployment, Functions/OIDC/Admin roles, deployed collector/readback, retention/erasure operations and hosting logs/billing facts. No new paid resources provisioned. |
-| Download / install / first launch | The configured website pointer is `v0.1.0-preview.14`, the unsigned universal installer (22,261,590 bytes; SHA-256 `7ad56cc3c71a40d78dd7cb043b43aa42ea884cb0484da982cffa386c9384b094`): `https://github.com/Sampath-K/bloomstep/releases/download/v0.1.0-preview.14/Bloomstep-0.1.0-preview.14-windows-universal-setup.exe`. It remains an owner-test download, not a general release or an upgrade to the newer owner-test candidate. **Blocked:** owner manual verification of that newer exact installer is pending; hosted build/package checks do not establish installation or first launch. The withdrawn PR26 `b58ba7fc` candidate was Defender-quarantined (`Behavior:Win32/DefenseEvasion.A!ml`) and remains excluded; this does not characterize every artifact on PR26. See the artifact-specific evidence below. |
+| Download / install / first launch | The configured website pointer is `v0.1.0-preview.14`, the unsigned universal installer (22,261,590 bytes; SHA-256 `7ad56cc3c71a40d78dd7cb043b43aa42ea884cb0484da982cffa386c9384b094`): `https://github.com/Sampath-K/budlark/releases/download/v0.1.0-preview.14/Budlark-0.1.0-preview.14-windows-universal-setup.exe`. It remains an owner-test download, not a general release or an upgrade to the newer owner-test candidate. **Blocked:** owner manual verification of that newer exact installer is pending; hosted build/package checks do not establish installation or first launch. The withdrawn PR26 `b58ba7fc` candidate was Defender-quarantined (`Behavior:Win32/DefenseEvasion.A!ml`) and remains excluded; this does not characterize every artifact on PR26. See the artifact-specific evidence below. |
 | App activation / retention | Existing separate account reports, not website or campaign conversion. Revenue and referral-delivery/attributed activation remain unsupported. |
 | Experiments | Public OFF; no sufficient customer evidence or deployment authorization. Existing isolated loop proof is not live efficacy. |
 | Public demand / deployment | Owner conditionally approved production promotion after exact-head functional, security and privacy gates. This does not waive contact disclosure, installer acceptance or authorize outreach. No merge, deploy, release or outreach was performed. |
@@ -164,17 +164,17 @@ the public download pointer or describing a candidate as owner-verified.
 ### Privacy evidence (read-only, 10 October 2026)
 
 `site/index.html#privacy-notice` is the shared public draft notice; the releases page links to it.
-The owner explicitly authorized publication of `store-developer@outlook.com` as Bloomstep's support and
+The owner explicitly authorized publication of `store-developer@outlook.com` as Budlark's support and
 privacy contact. Both customer entry pages link that exact address without sign-in. The parent coordinator
 confirmed the scoped publication approval and owner monitoring, relayed on 12 October 2026.
 Rendered-link verification is not mailbox-delivery testing. No mailbox,
 account, mailing list, response deadline or binding terms were created.
 
-Verified Azure metadata for the existing personal `bloomstep-free` resource group:
-`bloomstep-free` Static Web Apps, `bloomstep-free-261004` Cosmos DB, `bloomstepcustomers261004` External ID
-directory and separate `bloomstep-analytics-staging` Static Web Apps. Cosmos readback: active region Central India,
+Verified Azure metadata for the existing personal `budlark-free` resource group:
+`budlark-free` Static Web Apps, `budlark-free-261004` Cosmos DB, `budlarkcustomers261004` External ID
+directory and separate `budlark-analytics-staging` Static Web Apps. Cosmos readback: active region Central India,
 analytical storage disabled, Periodic backups, interval 240 minutes, retention 8 hours, Geo redundancy;
-`bloomstep/data` has `/userId` partitioning and default TTL `-1` (individual event/audit records supply TTL).
+`budlark/data` has `/userId` partitioning and default TTL `-1` (individual event/audit records supply TTL).
 No secrets, user records or access policies were read or changed.
 
 Source facts: app event TTL 34,214,400 seconds (396 days), audits/snapshots 2,592,000 seconds (30 days);
@@ -209,7 +209,7 @@ With existing API/site dependencies installed and trusted Edge installed (or `CH
 
 ```powershell
 npm --prefix site run build
-$env:EVIDENCE_DIR = Join-Path $env:TEMP 'bloomstep-public-launch-evidence'
+$env:EVIDENCE_DIR = Join-Path $env:TEMP 'budlark-public-launch-evidence'
 node site\verify-launch.mjs
 ```
 

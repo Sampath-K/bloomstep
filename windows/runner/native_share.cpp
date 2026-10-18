@@ -11,7 +11,7 @@ using winrt::Windows::Foundation::Uri;
 NativeShare::NativeShare(flutter::BinaryMessenger* messenger, HWND window)
     : window_(window) {
   channel_ = std::make_unique<flutter::MethodChannel<flutter::EncodableValue>>(
-      messenger, "bloomstep/native_share",
+      messenger, "budlark/native_share",
       &flutter::StandardMethodCodec::GetInstance());
   channel_->SetMethodCallHandler(
       [this](const auto& call, std::unique_ptr<flutter::MethodResult<flutter::EncodableValue>> result) {

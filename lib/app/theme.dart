@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 
-class BloomstepTheme {
+class BudlarkTheme {
   static const canvas = Color(0xFFF7F4EF);
   static const lightSurface = Color(0xFFFFFFFF);
   static const lightText = Color(0xFF242424);

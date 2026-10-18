@@ -1,7 +1,7 @@
 import 'package:flutter/services.dart';
 
 class NativeShare {
-  static const _channel = MethodChannel('bloomstep/native_share');
+  static const _channel = MethodChannel('budlark/native_share');
 
   static Future<void> share(Uri url) async {
     if (url.scheme != 'https' ||

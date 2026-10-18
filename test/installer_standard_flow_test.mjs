@@ -4,7 +4,7 @@ import { readFileSync } from 'node:fs';
 const read = path => readFileSync(new URL(`../${path}`, import.meta.url), 'utf8');
 
 test('one native Install commitment replaces extra Next screens without autonomous navigation', () => {
-  const setup = read('packaging/bloomstep.iss');
+  const setup = read('packaging/budlark.iss');
   assert.match(setup, /DisableWelcomePage=yes/);
   assert.match(setup, /DisableDirPage=yes/);
   assert.match(setup, /DisableReadyPage=no/);

@@ -53,7 +53,7 @@ across SQLite reopen using the same subject/frozen seed. One study/config/provid
 assignments. Missing/invalid/stale/future/expired config, clock regression, kill or missing provider result
 returns noncollecting control. Transport/provider exceptions surface and the widget restores control.
 Enabled production config requires a source-reviewed checksum, currently empty; test configuration requires
-`BLOOMSTEP_TEST_BUILD=true`.
+`BUDLARK_TEST_BUILD=true`.
 
 Resolve creates no event. Mounted visible post-frame render persists exposure before returning an outcome
 handle. Offstage/noncurrent route/nonresumed lifecycle/disabled ticker/outside-viewport do not qualify.

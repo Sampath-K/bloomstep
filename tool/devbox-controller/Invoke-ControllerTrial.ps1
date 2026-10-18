@@ -9,7 +9,7 @@ $root = $homeDirectory
 $state = Join-Path $root 'state'
 $receiptPath = Join-Path $state 'autonomous-trial.json'
 $ownerPath = Join-Path $state 'installation-owner.json'
-$output = Join-Path $env:RUNNER_TEMP 'bloomstep-controller-receipts'
+$output = Join-Path $env:RUNNER_TEMP 'budlark-controller-receipts'
 New-Item -ItemType Directory -Force -Path $state,$output | Out-Null
 $report = [ordered]@{
   kind='autonomous-supplemental-installer-trial'
@@ -25,7 +25,7 @@ $setup = $null
 $owned = [Collections.Generic.HashSet[int]]::new()
 try {
   $lock = [IO.File]::Open((Join-Path $state 'autonomous.lock'),[IO.FileMode]::OpenOrCreate,[IO.FileAccess]::ReadWrite,[IO.FileShare]::None)
-  if ($env:GITHUB_REPOSITORY -cne 'Sampath-K/bloomstep-vm-controller' -or
+  if ($env:GITHUB_REPOSITORY -cne 'Sampath-K/budlark-vm-controller' -or
       $env:PRIVATE_REPOSITORY -cne 'true' -or $env:GITHUB_REF -cne 'refs/heads/main' -or
       $env:GITHUB_EVENT_NAME -cne 'workflow_dispatch' -or $env:CONTROLLER_SOURCE -notmatch '^[a-f0-9]{40}$') {
     throw 'Only the owner-audited private controller main dispatch is authorized.'
@@ -39,19 +39,19 @@ try {
   $report.controllerSource = $env:CONTROLLER_SOURCE
   $report.runId = $env:GITHUB_RUN_ID
   if (-not $env:CONTROLLER_TOKEN) { throw 'Private controller read token unavailable.' }
-  $headers = @{Authorization="Bearer $env:CONTROLLER_TOKEN";Accept='application/vnd.github+json';'User-Agent'='bloomstep-controller'}
-  $repo = Invoke-RestMethod -Headers $headers -Uri 'https://api.github.com/repos/Sampath-K/bloomstep-vm-controller' -TimeoutSec 60 -MaximumRedirection 0
-  if (-not $repo.private -or $repo.full_name -cne 'Sampath-K/bloomstep-vm-controller') { throw 'Private-controller boundary changed.' }
-  $policyResponse = Invoke-RestMethod -Headers $headers -Uri "https://api.github.com/repos/Sampath-K/bloomstep-vm-controller/contents/controller/approved-candidates.json?ref=$env:CONTROLLER_SOURCE" -TimeoutSec 60 -MaximumRedirection 0
+  $headers = @{Authorization="Bearer $env:CONTROLLER_TOKEN";Accept='application/vnd.github+json';'User-Agent'='budlark-controller'}
+  $repo = Invoke-RestMethod -Headers $headers -Uri 'https://api.github.com/repos/Sampath-K/budlark-vm-controller' -TimeoutSec 60 -MaximumRedirection 0
+  if (-not $repo.private -or $repo.full_name -cne 'Sampath-K/budlark-vm-controller') { throw 'Private-controller boundary changed.' }
+  $policyResponse = Invoke-RestMethod -Headers $headers -Uri "https://api.github.com/repos/Sampath-K/budlark-vm-controller/contents/controller/approved-candidates.json?ref=$env:CONTROLLER_SOURCE" -TimeoutSec 60 -MaximumRedirection 0
   $policy = [Text.Encoding]::UTF8.GetString([Convert]::FromBase64String($policyResponse.content)) | ConvertFrom-Json
   $headers.Clear()
   $env:CONTROLLER_TOKEN = $null
   $matches = @($policy.candidates.PSObject.Properties | Where-Object Name -CEQ $env:APPROVED_CANDIDATE)
   if ($policy.schema -ne 1 -or $matches.Count -ne 1) { throw 'Candidate is not in the reviewed private policy.' }
   $candidate = $matches[0].Value
-  if ($candidate.repository -cne 'Sampath-K/bloomstep' -or $candidate.source -notmatch '^[a-f0-9]{40}$' -or
+  if ($candidate.repository -cne 'Sampath-K/budlark' -or $candidate.source -notmatch '^[a-f0-9]{40}$' -or
       $candidate.installerSha256 -notmatch '^[a-f0-9]{64}$' -or $candidate.packageSha256 -notmatch '^[a-f0-9]{64}$' -or
-      $candidate.installerFile -cne 'Bloomstep-0.1.0-preview-windows-universal-setup.exe') {
+      $candidate.installerFile -cne 'Budlark-0.1.0-preview-windows-universal-setup.exe') {
     throw 'Candidate policy shape is not supported by the pinned local harness.'
   }
   $report.candidate = $env:APPROVED_CANDIDATE
@@ -62,7 +62,7 @@ try {
     $previousTrial=Get-Content -LiteralPath $receiptPath -Raw|ConvertFrom-Json
     if(-not $previousTrial.cleanupVerified){throw 'Earlier autonomous run did not verify cleanup. Preserve state; no automatic retry/adoption.'}
   }
-  $inputDirectory = Join-Path $env:RUNNER_TEMP 'bloomstep-controller-input'
+  $inputDirectory = Join-Path $env:RUNNER_TEMP 'budlark-controller-input'
   $provenance = Get-Content -LiteralPath (Join-Path $inputDirectory 'candidate-provenance.json') -Raw | ConvertFrom-Json
   if ($provenance.source -cne $candidate.source -or $provenance.candidate -cne $env:APPROVED_CANDIDATE -or
       $provenance.runId -cne $candidate.runId -or $provenance.packageSha256 -cne $candidate.packageSha256 -or
@@ -79,7 +79,7 @@ try {
   $zip = [IO.Compression.ZipFile]::OpenRead($archive)
   try {
     foreach ($name in @($candidate.installerFile,'universal-manifest.json',"payload-manifest-$arch.json")) {
-      $entries = @($zip.Entries | Where-Object FullName -CEQ "bloomstep-devbox-installer-trial/$name")
+      $entries = @($zip.Entries | Where-Object FullName -CEQ "budlark-devbox-installer-trial/$name")
       if ($entries.Count -ne 1) { throw 'Candidate archive has duplicate/missing approved data file.' }
       $destination=Join-Path $candidateDirectory $name
       if(Test-Path -LiteralPath $destination){
@@ -95,8 +95,8 @@ try {
   if ((Get-FileSha256 $installer) -cne $candidate.installerSha256) { throw 'Exact installer digest mismatch.' }
   $universal = Get-Content -LiteralPath (Join-Path $candidateDirectory 'universal-manifest.json') -Raw | ConvertFrom-Json
   if ($universal.source -cne $candidate.source -or $universal.installerSha256 -cne $candidate.installerSha256 -or
-      $universal.kind -cne 'bloomstep-offline-universal-v1') { throw 'Installer manifest source authority mismatch.' }
-  $target = Join-Path $env:LOCALAPPDATA 'Programs\Bloomstep'
+      $universal.kind -cne 'budlark-offline-universal-v1') { throw 'Installer manifest source authority mismatch.' }
+  $target = Join-Path $env:LOCALAPPDATA 'Programs\Budlark'
   Assert-NoReparsePath $target
   Assert-NoOtherProductRegistration $false
   $footprint = Get-ProductFootprint $target
@@ -151,7 +151,7 @@ try {
       [void][OnboardingWizard]::GetWindowThreadProcessId($window,[ref]$pidOwner)
       if (-not $owned.Contains([int]$pidOwner)) { continue }
       $windowProcess=Get-Process -Id $pidOwner -ErrorAction Stop
-      if($windowProcess.Path -ceq (Join-Path $target 'bloomstep.exe')){
+      if($windowProcess.Path -ceq (Join-Path $target 'budlark.exe')){
         if($journey.finishClicks -ne 1){throw 'App started before explicit test-driver Finish.'}
         continue
       }
@@ -175,8 +175,8 @@ try {
     uninstallDataSha256=Get-FileSha256 (Join-Path $target 'unins000.dat')
   }
   Save-DevBoxTrialReceipt $ownerPath $owner
-  $apps = @(Get-Process -Name bloomstep -ErrorAction SilentlyContinue)
-  if ($apps.Count -ne 1 -or $apps[0].Path -cne (Join-Path $target 'bloomstep.exe') -or
+  $apps = @(Get-Process -Name budlark -ErrorAction SilentlyContinue)
+  if ($apps.Count -ne 1 -or $apps[0].Path -cne (Join-Path $target 'budlark.exe') -or
       [ProcessTokenProbe]::Sid($apps[0].Id) -cne $sid -or [ProcessTokenProbe]::Elevated($apps[0].Id)) {
     throw 'Expected one exact-target same-user non-elevated app.'
   }
@@ -191,7 +191,7 @@ try {
   if (-not $app.CloseMainWindow() -or -not $app.WaitForExit(15000)) {
     throw 'App did not exit via normal WM_CLOSE. No force kill or uninstall; preserve state for review.'
   }
-  if (Get-Process -Name bloomstep -ErrorAction SilentlyContinue) { throw 'App process remains. No force close or uninstall.' }
+  if (Get-Process -Name budlark -ErrorAction SilentlyContinue) { throw 'App process remains. No force close or uninstall.' }
   $uninstaller = Assert-OwnedUninstaller $owner $target $sid $candidate.installerSha256
   Assert-TrialRegistration $target
   $uninstall = Start-Process -FilePath $uninstaller -ArgumentList '/NORESTART' -PassThru
@@ -210,7 +210,7 @@ try {
       [void][OnboardingWizard]::GetWindowThreadProcessId($window,[ref]$pidOwner)
       if (-not $uninstallOwned.Contains([int]$pidOwner)) { continue }
       $text=[OnboardingWizard]::Describe($window)
-      if ($text -match 'Are you sure you want to completely remove Bloomstep') {
+      if ($text -match 'Are you sure you want to completely remove Budlark') {
         $yes=[OnboardingWizard]::Find($window,'Yes')
         if ($yes -eq [IntPtr]::Zero -or -not [OnboardingWizard]::PostMessage($yes,0x00F5,[IntPtr]::Zero,[IntPtr]::Zero)) { throw 'Owned uninstall confirmation could not be invoked.' }
       } elseif ($text -match 'successfully removed from your computer') {

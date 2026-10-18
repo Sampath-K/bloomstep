@@ -1,10 +1,10 @@
-import 'package:bloomstep/services/windows_toast_history.dart';
+import 'package:budlark/services/windows_toast_history.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
-  const channel = MethodChannel('bloomstep/toast_history');
+  const channel = MethodChannel('budlark/toast_history');
   final calls = <MethodCall>[];
   setUp(() {
     calls.clear();

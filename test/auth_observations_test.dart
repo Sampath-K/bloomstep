@@ -2,9 +2,9 @@ import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 
-import 'package:bloomstep/core/garden_store.dart';
-import 'package:bloomstep/services/auth_observations.dart';
-import 'package:bloomstep/services/identity.dart';
+import 'package:budlark/core/garden_store.dart';
+import 'package:budlark/services/auth_observations.dart';
+import 'package:budlark/services/identity.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 Future<List<Map>> observations(GardenStore store) async =>

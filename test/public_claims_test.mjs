@@ -8,7 +8,7 @@ const root = fileURLToPath(new URL('../', import.meta.url));
 const categorical = /\bno (?:hosted )?ai\b|\bno ads\b|\bad-free\b/i;
 
 test('customer surfaces and current product documents make bounded privacy claims, not categorical feature promises', () => {
-  const paths = ['site/index.html', 'site/releases/index.html', 'packaging/bloomstep.iss',
+  const paths = ['site/index.html', 'site/releases/index.html', 'packaging/budlark.iss',
     'lib/features/garden/garden_screen.dart', 'README.md', 'CHANGELOG.md',
     ...readdirSync(join(root, 'docs')).filter(name => name.endsWith('.md')).map(name => `docs/${name}`)];
   for (const path of paths) {

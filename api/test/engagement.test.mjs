@@ -26,7 +26,7 @@ const request = (method, data, query = {}, params = {}) => ({
   text: async () => JSON.stringify(data),
 });
 
-function harness({ roles = ['Bloomstep.Admin'], scopes = ['Garden.ReadWrite'], actorUserId, disabled = false, apiDisabled = false, aggregatesDisabled = false, invitationsDisabled = false, limits = {}, beforeBatch, failAudit = false, beforeQuery, beforeRead, clock = () => new Date(now) } = {}) {
+function harness({ roles = ['Budlark.Admin'], scopes = ['Garden.ReadWrite'], actorUserId, disabled = false, apiDisabled = false, aggregatesDisabled = false, invitationsDisabled = false, limits = {}, beforeBatch, failAudit = false, beforeQuery, beforeRead, clock = () => new Date(now) } = {}) {
   const documents = new Map();
   const writes = [];
   let revision = 0;
@@ -103,8 +103,8 @@ function harness({ roles = ['Bloomstep.Admin'], scopes = ['Garden.ReadWrite'], a
     container: () => store,
     authenticate: async () => ({ userId: actorUserId ?? (roles.length ? teamId : userId), roles, scopes }),
     clock, environment: () => ({
-      BLOOMSTEP_ENGAGEMENT_DISABLED: String(disabled), BLOOMSTEP_API_DISABLED: String(apiDisabled), BLOOMSTEP_AGGREGATES_DISABLED: String(aggregatesDisabled),
-      BLOOMSTEP_INVITATIONS_DISABLED: String(invitationsDisabled),
+      BUDLARK_ENGAGEMENT_DISABLED: String(disabled), BUDLARK_API_DISABLED: String(apiDisabled), BUDLARK_AGGREGATES_DISABLED: String(aggregatesDisabled),
+      BUDLARK_INVITATIONS_DISABLED: String(invitationsDisabled),
     }),
     limits: { ...previewLimits, ...limits },
   });
@@ -149,7 +149,7 @@ test('isolation proof rejects invalid inputs and never succeeds when evidence st
   assert.equal(h.documents.size, 0);
   const noScope = harness({ roles: [], scopes: [] });
   await assert.rejects(noScope.isolationCheck(request('GET')), error => error.status === 403);
-  const worker = harness({ roles: ['Bloomstep.AggregateWriter'] });
+  const worker = harness({ roles: ['Budlark.AggregateWriter'] });
   await assert.rejects(worker.isolationCheck(request('GET')), error => error.status === 403);
   const failed = harness({ roles: [], failAudit: true });
   await assert.rejects(failed.isolationCheck(request('POST', { peerUserId: friendId })), /Audit storage failed/);
@@ -196,7 +196,7 @@ test('first actual response uses server CAS time and survives subsequent and ide
   const h = harness({ roles: [], clock: () => new Date(instant) });
   const note = voice();
   await h.sync(request('POST', payload({ voice: [note] })));
-  const admin = friendHandlers(h, teamId, ['Bloomstep.Admin']);
+  const admin = friendHandlers(h, teamId, ['Budlark.Admin']);
   const first = { id: note.id, requestId: randomUUID(), status: 'under review', reply: 'Synthetic first actual response' };
   instant = '2026-09-01T14:00:00.000Z';
   await admin.admin(request('POST', first, {}, { userId }));
@@ -218,7 +218,7 @@ test('legacy receipt provenance is never synthesized from now, client time or re
   for (const replies of [[], [`${now}: Historical response without receipt provenance`]]) {
     const note = voice();
     h.put({ id: `voice:${note.id}`, userId, type: 'voice', record: { ...note, status: 'received', replies: JSON.stringify(replies) }, ttl: -1 });
-    await friendHandlers(h, teamId, ['Bloomstep.Admin']).admin(request('POST',
+    await friendHandlers(h, teamId, ['Budlark.Admin']).admin(request('POST',
       { id: note.id, status: 'received', reply: 'Synthetic new response' }, {}, { userId }));
     assert.equal(h.read(`voice:${note.id}`, userId).support, undefined);
     const exported = (await h.sync(request('GET'))).jsonBody.voiceReceipts.find(row => row.id === note.id);
@@ -231,7 +231,7 @@ test('compatible older reply writer cannot turn a missing first-response timesta
   await h.sync(request('POST', payload({ voice: [note] })));
   const created = h.read(`voice:${note.id}`, userId);
   h.put({ ...created, record: { ...created.record, replies: JSON.stringify([`${now}: Older writer response`]) } });
-  await friendHandlers(h, teamId, ['Bloomstep.Admin']).admin(request('POST',
+  await friendHandlers(h, teamId, ['Budlark.Admin']).admin(request('POST',
     { id: note.id, status: 'received', reply: 'Synthetic later response, not first' }, {}, { userId }));
   assert.equal(h.read(`voice:${note.id}`, userId).support.firstRespondedAt, null);
   assert.deepEqual((await h.sync(request('GET'))).jsonBody.voiceReceipts, [
@@ -244,7 +244,7 @@ test('malformed provenance and server clock regression fail without a reply or t
   const h = harness({ roles: [], clock: () => new Date(instant) });
   const note = voice();
   await h.sync(request('POST', payload({ voice: [note] })));
-  const admin = friendHandlers(h, teamId, ['Bloomstep.Admin']);
+  const admin = friendHandlers(h, teamId, ['Budlark.Admin']);
   const reply = { id: note.id, requestId: randomUUID(), status: 'received', reply: 'Synthetic clock check' };
   instant = '2026-09-01T11:59:59.000Z';
   await assert.rejects(admin.admin(request('POST', reply, {}, { userId })), error => error.status === 503);
@@ -264,7 +264,7 @@ test('known first response requires an actual stored reply on owner readback; ma
   await assert.rejects(h.sync(request('GET')), error => error.status === 409);
   h.put({ ...original, record: { ...original.record, replies: null } });
   await assert.rejects(h.sync(request('GET')), error => error.status === 409);
-  const metrics = (await friendHandlers(h, teamId, ['Bloomstep.Admin']).metrics(request('GET', null, { days: '1' }))).jsonBody;
+  const metrics = (await friendHandlers(h, teamId, ['Budlark.Admin']).metrics(request('GET', null, { days: '1' }))).jsonBody;
   assert.equal(metrics.supportMetrics.firstResponses.reason, 'invalid_receipts');
   assert.equal(metrics.supportMetrics.firstResponses.medianHours, null);
 });
@@ -423,7 +423,7 @@ test('private reminder cohorts read fresh-version fields through normal immutabl
     properties: { ...properties, disclosureVersion: 0 } }] }))), error => error.status === 400);
   await h.sync(request('POST', payload({ events: [{ ...start, properties: { ...properties, cohortId: randomUUID() } }] })));
   assert.equal(h.read(`events:${start.id}`, userId).record.properties.cohortId, properties.cohortId);
-  const result = (await friendHandlers(h, teamId, ['Bloomstep.Admin']).metrics(request('GET', null, { days: '1' }))).jsonBody;
+  const result = (await friendHandlers(h, teamId, ['Budlark.Admin']).metrics(request('GET', null, { days: '1' }))).jsonBody;
   assert.equal(result.reminderPreferenceCohorts.source, 'observed_app_reminder_preference');
   assert.equal(result.reminderPreferenceCohorts.originalGoalReason, 'not_observable');
   assert.equal(result.goalMetrics.goals.find(goal => goal.id === 'notification_disable_30').reason, 'not_observable');
@@ -470,7 +470,7 @@ test('receipt creation and first response cannot escape failed or concurrent acc
   assert.equal(h.read(`voice:${note.id}`, userId), undefined);
   await h.sync(request('POST', payload({ voice: [note] })));
   reject = true;
-  await assert.rejects(friendHandlers(h, teamId, ['Bloomstep.Admin']).admin(request('POST',
+  await assert.rejects(friendHandlers(h, teamId, ['Budlark.Admin']).admin(request('POST',
     { id: note.id, requestId: randomUUID(), status: 'received', reply: 'Synthetic race' }, {}, { userId })), error => error.status === 409);
   assert.equal(h.read(`voice:${note.id}`, userId).support.firstRespondedAt, null);
   assert.equal(h.read(`voice:${note.id}`, userId).record.replies, '[]');
@@ -510,7 +510,7 @@ test('delete racing a recipe edit, child insert or admin reply rejects stale CAS
     await h.sync(request('POST', payload({ habits: [habit], voice: [note] })));
     armed = true;
     const write = type === 'voice'
-      ? () => friendHandlers(h, teamId, ['Bloomstep.Admin']).admin(request('POST', { id: note.id, status: 'received', reply: 'Synthetic reply' }, {}, { userId }))
+      ? () => friendHandlers(h, teamId, ['Budlark.Admin']).admin(request('POST', { id: note.id, status: 'received', reply: 'Synthetic reply' }, {}, { userId }))
       : () => h.sync(request('POST', payload(type === 'habits'
         ? { habits: [{ ...habit, anchor: 'Edited', updated: '2026-09-01T12:00:01.000Z' }] }
         : { checkins: [practice(habit.id)] })));
@@ -561,7 +561,7 @@ test('owner record tombstones purge dependent content, survive stale devices and
   const event = { id: randomUUID(), name: 'automaticity_score', ts: now,
     properties: { habitId: habit.id, score: 4, localDay: '2026-09-01', platform: 'windows' } };
   await h.sync(request('POST', payload({ habits: [habit], checkins: [check], reflections: [reflection], voice: [note], events: [event] })));
-  await friendHandlers(h, teamId, ['Bloomstep.Admin']).admin(request('POST',
+  await friendHandlers(h, teamId, ['Budlark.Admin']).admin(request('POST',
     { id: note.id, status: 'received', reply: 'Synthetic private reply' }, {}, { userId }));
   const deletion = { id: randomUUID(), type: 'habits', recordId: habit.id, ts: now };
   const removal = { id: randomUUID(), type: 'voice', recordId: note.id, ts: now };
@@ -594,10 +594,10 @@ test('deleted feedback is absent from team pagination and cannot receive a reply
   const note = voice();
   await h.sync(request('POST', payload({ voice: [note] })));
   await h.sync(request('POST', payload({ deletions: [{ id: randomUUID(), type: 'voice', recordId: note.id, ts: now }] })));
-  const admin = friendHandlers(h, teamId, ['Bloomstep.Admin']);
+  const admin = friendHandlers(h, teamId, ['Budlark.Admin']);
   assert.deepEqual((await admin.admin(request('GET', null))).jsonBody.feedback, []);
   await assert.rejects(admin.admin(request('POST', { id: note.id, status: 'received', reply: 'not retained' }, {}, { userId })), e => e.status === 404 || e.status === 410);
-  const noScope = friendHandlers(h, userId, ['Bloomstep.Admin'], []);
+  const noScope = friendHandlers(h, userId, ['Budlark.Admin'], []);
   await assert.rejects(noScope.sync(request('POST', payload({ deletions: [{ id: randomUUID(), type: 'habits', recordId: randomUUID(), ts: now }] }))), e => e.status === 403);
 });
 
@@ -632,7 +632,7 @@ test('record deletion remains available under API/operational/engagement pause w
   const note = voice();
   await h.sync(request('POST', payload({ voice: [note] })));
   const paused = createHandlers({ container: () => h.store, authenticate: async () => ({ userId, roles: [], scopes: ['Garden.ReadWrite'] }),
-    environment: () => ({ BLOOMSTEP_API_DISABLED: 'true', BLOOMSTEP_ENGAGEMENT_DISABLED: 'true' }), clock: () => new Date(now) });
+    environment: () => ({ BUDLARK_API_DISABLED: 'true', BUDLARK_ENGAGEMENT_DISABLED: 'true' }), clock: () => new Date(now) });
   const deletion = { id: randomUUID(), type: 'voice', recordId: note.id, ts: now };
   assert.deepEqual((await paused.sync(request('POST', payload({ deletions: [deletion] })))).jsonBody.voice, []);
   await assert.rejects(paused.sync(request('POST', payload({ deletions: [deletion], habits: [recipe()] }))), e => e.status === 503);
@@ -672,7 +672,7 @@ test('signed customer requests create exact approved cards and refresh status fo
       .setSubject(`synthetic-${channel}`).setIssuedAt().setExpirationTime('2m').sign(privateKey);
     const authenticatedRequest = (method, data, query) => {
       const result = request(method, data, query);
-      result.headers.set('X-Bloomstep-Authorization', `Bearer ${token}`);
+      result.headers.set('X-Budlark-Authorization', `Bearer ${token}`);
       return result;
     };
     assert.deepEqual((await handlers.invitationStatus(authenticatedRequest('GET'))).jsonBody.invitations, []);
@@ -706,7 +706,7 @@ test('spend pause is isolated, bounded, one-way and idempotent; garden/team paus
   h.put({ id: 'account', userId, type: 'account', deleted: false });
   const guard = createHandlers({
     container: () => h.store, authenticate: async () => ({ userId, roles: [], scopes: ['Garden.ReadWrite'] }),
-    authenticateSpend: async () => ({ userId: teamId, roles: ['Bloomstep.SpendGuard'] }), clock: () => new Date(now),
+    authenticateSpend: async () => ({ userId: teamId, roles: ['Budlark.SpendGuard'] }), clock: () => new Date(now),
   });
   const data = { requestId: randomUUID(), reason: 'paid_sku' };
   const paused = (await guard.operationalPause(request('POST', data))).jsonBody;
@@ -718,12 +718,12 @@ test('spend pause is isolated, bounded, one-way and idempotent; garden/team paus
   await assert.rejects(h.metrics(request('GET')), e => e.status === 503);
   assert.deepEqual((await guard.sync(request('GET'))).jsonBody.habits, []);
   const worker = createHandlers({ container: () => h.store,
-    authenticate: async () => ({ userId: teamId, roles: ['Bloomstep.AggregateWriter'] }), clock: () => new Date(now) });
+    authenticate: async () => ({ userId: teamId, roles: ['Budlark.AggregateWriter'] }), clock: () => new Date(now) });
   await worker.aggregates(request('POST', {}));
   await assert.rejects(worker.operationalPause(request('POST', data)), e => e.status === 503);
   const wrong = createHandlers({ container: () => h.store,
-    authenticate: async () => ({ userId: teamId, roles: ['Bloomstep.Admin'] }),
-    authenticateSpend: async () => ({ userId: teamId, roles: ['Bloomstep.AggregateWriter'] }), clock: () => new Date(now) });
+    authenticate: async () => ({ userId: teamId, roles: ['Budlark.Admin'] }),
+    authenticateSpend: async () => ({ userId: teamId, roles: ['Budlark.AggregateWriter'] }), clock: () => new Date(now) });
   await assert.rejects(wrong.operationalPause(request('POST', data)), e => e.status === 403);
   const deletion = request('DELETE'); deletion.headers.set('x-confirm-delete', 'delete-my-garden');
   assert.equal((await guard.deleteAccount(deletion)).status, 204);
@@ -731,7 +731,7 @@ test('spend pause is isolated, bounded, one-way and idempotent; garden/team paus
   await assert.rejects(guard.operationalResume(request('POST', {})), e => e.status === 403);
   await assert.rejects(guard.operationalStatus(request('GET')), e => e.status === 403);
   const adminWithoutGarden = createHandlers({ container: () => h.store,
-    authenticate: async () => ({ userId: teamId, roles: ['Bloomstep.Admin'], scopes: [] }), clock: () => new Date(now) });
+    authenticate: async () => ({ userId: teamId, roles: ['Budlark.Admin'], scopes: [] }), clock: () => new Date(now) });
   await assert.rejects(adminWithoutGarden.operationalStatus(request('GET')), e => e.status === 403);
   const current = h.read('budget', '__preview_budget').operationalPause;
   assert.deepEqual((await h.operationalStatus(request('GET'))).jsonBody,
@@ -752,7 +752,7 @@ test('spend pause is isolated, bounded, one-way and idempotent; garden/team paus
 });
 
 test('SpendGuard never obtains primary garden/team privileges even if a malformed primary actor includes it', async () => {
-  const h = harness({ roles: ['Bloomstep.SpendGuard'] });
+  const h = harness({ roles: ['Budlark.SpendGuard'] });
   await assert.rejects(h.sync(request('GET')), e => e.status === 403);
   await assert.rejects(h.metrics(request('GET')), e => e.status === 403);
   await assert.rejects(h.createInvitation(request('POST', { requestId: randomUUID(), channel: 'link' })), e => e.status === 403);
@@ -761,8 +761,8 @@ test('SpendGuard never obtains primary garden/team privileges even if a malforme
 
 test('invitations require customer Garden scope, reject worker/admin-only and strict unknown/private defaults', async () => {
   const h = harness();
-  for (const actor of [friendHandlers(h, friendId, ['Bloomstep.Admin'], []),
-    friendHandlers(h, friendId, ['Bloomstep.AggregateWriter']), friendHandlers(h, friendId, [], [])]) {
+  for (const actor of [friendHandlers(h, friendId, ['Budlark.Admin'], []),
+    friendHandlers(h, friendId, ['Budlark.AggregateWriter']), friendHandlers(h, friendId, [], [])]) {
     await assert.rejects(actor.createInvitation(request('POST', { requestId: randomUUID(), channel: 'link' })), e => e.status === 403);
     await assert.rejects(actor.redeemInvitation(request('POST', { requestId: randomUUID(), token: 'ignored' })), e => e.status === 403);
     await assert.rejects(actor.invitationStatus(request('GET')), e => e.status === 403);
@@ -1423,7 +1423,7 @@ test('customer feedback sync → private team reply → customer sync preserves 
   const customer = harness({ roles: [] });
   const team = createHandlers({
     container: () => customer.store,
-    authenticate: async () => ({ userId: teamId, roles: ['Bloomstep.Admin'] }),
+    authenticate: async () => ({ userId: teamId, roles: ['Budlark.Admin'] }),
     clock: () => new Date(now),
   });
   const record = voice();
@@ -1588,14 +1588,14 @@ test('textless rating survives private feedback sync without becoming telemetry'
 });
 
 test('dedicated aggregate role cannot access garden, feedback or admin metrics', async () => {
-  const h = harness({ roles: ['Bloomstep.AggregateWriter'] });
+  const h = harness({ roles: ['Budlark.AggregateWriter'] });
   for (const handler of [h.sync, h.admin, h.metrics, h.deleteAccount]) {
     await assert.rejects(handler(request('GET')), error => error.status === 403);
   }
   assert.equal(h.documents.size, 0);
 });
 test('aggregate endpoint validates completed UTC-day backfills and stores bounded snapshots idempotently', async () => {
-  const h = harness({ roles: ['Bloomstep.AggregateWriter'] });
+  const h = harness({ roles: ['Budlark.AggregateWriter'] });
   const body = { endDay: '2026-08-31', days: 2 };
   const first = await h.aggregates(request('POST', body));
   assert.equal(first.jsonBody.snapshots.length, 2);
@@ -1611,7 +1611,7 @@ test('aggregate endpoint validates completed UTC-day backfills and stores bounde
 });
 test('deletion invalidates persisted snapshots and worker writes race through generation ETag', async () => {
   const h = harness({ roles: [] });
-  const worker = createHandlers({ container: () => h.store, authenticate: async () => ({ userId: teamId, roles: ['Bloomstep.AggregateWriter'] }), clock: () => new Date(now) });
+  const worker = createHandlers({ container: () => h.store, authenticate: async () => ({ userId: teamId, roles: ['Budlark.AggregateWriter'] }), clock: () => new Date(now) });
   h.put({ id: 'account', userId, type: 'account', deleted: false });
   await worker.aggregates(request('POST', {}));
   assert.equal([...h.documents.values()].filter(row => row.type === 'aggregate').length, 1);
@@ -1621,7 +1621,7 @@ test('deletion invalidates persisted snapshots and worker writes race through ge
   assert.equal([...h.documents.values()].filter(row => row.type === 'aggregate').length, 0);
 });
 test('snapshot writers fail closed if deletion changes generation after the scan begins', async () => {
-  const h = harness({ roles: ['Bloomstep.AggregateWriter'], beforeQuery: (spec, store) => {
+  const h = harness({ roles: ['Budlark.AggregateWriter'], beforeQuery: (spec, store) => {
     if (spec.query.includes('c.type = "events"')) {
       const gate = store.read('generation', '__daily_aggregates');
       store.put({ ...gate, revision: 'deletion won' });
@@ -1633,21 +1633,21 @@ test('snapshot writers fail closed if deletion changes generation after the scan
 });
 test('snapshot aggregate kill switch, audit failure and action budget deny before snapshots', async () => {
   for (const h of [
-    harness({ roles: ['Bloomstep.AggregateWriter'], aggregatesDisabled: true }),
-    harness({ roles: ['Bloomstep.AggregateWriter'], apiDisabled: true }),
+    harness({ roles: ['Budlark.AggregateWriter'], aggregatesDisabled: true }),
+    harness({ roles: ['Budlark.AggregateWriter'], apiDisabled: true }),
   ]) {
     await assert.rejects(h.aggregates(request('POST', {})), error => error.status === 503);
     assert.equal(h.documents.size, 0);
   }
-  const failed = harness({ roles: ['Bloomstep.AggregateWriter'], failAudit: true });
+  const failed = harness({ roles: ['Budlark.AggregateWriter'], failAudit: true });
   await assert.rejects(failed.aggregates(request('POST', {})), /Audit storage failed/);
   assert.equal([...failed.documents.values()].some(row => row.type === 'aggregate'), false);
-  const limited = harness({ roles: ['Bloomstep.AggregateWriter'], limits: { adminActions: { ...previewLimits.adminActions, aggregates_write: { daily: 1, lifetime: 1 } } } });
+  const limited = harness({ roles: ['Budlark.AggregateWriter'], limits: { adminActions: { ...previewLimits.adminActions, aggregates_write: { daily: 1, lifetime: 1 } } } });
   await limited.aggregates(request('POST', {}));
   await assert.rejects(limited.aggregates(request('POST', {})), error => error.status === 429);
 });
 test('snapshot store strips account/event IDs and unchanged retries consume no extra snapshot records', async () => {
-  const h = harness({ roles: ['Bloomstep.AggregateWriter'] });
+  const h = harness({ roles: ['Budlark.AggregateWriter'] });
   h.put({ id: 'account', userId, type: 'account', deleted: false });
   const clientId = randomUUID();
   h.put({ id: `events:${clientId}`, userId, type: 'events', record: { id: clientId, name: 'first_launch', ts: '2026-08-31T12:00:00Z' } });
@@ -1662,7 +1662,7 @@ test('snapshot store strips account/event IDs and unchanged retries consume no e
   assert.equal(serialized.includes(userId), false);
 });
 test('maximum 30-day backfill is bounded and prunes expired dates atomically', async () => {
-  const h = harness({ roles: ['Bloomstep.AggregateWriter'] });
+  const h = harness({ roles: ['Budlark.AggregateWriter'] });
   h.put({ id: 'daily:2026-07-01', userId: '__daily_aggregates', type: 'aggregate', day: '2026-07-01', digest: 'old', record: {}, ttl: 2592000 });
   const result = await h.aggregates(request('POST', { days: 30 }));
   assert.equal(result.jsonBody.snapshots.length, 30);
@@ -1675,7 +1675,7 @@ test('alternate authenticator is invoked only for the internal aggregate route',
   const handlers = createHandlers({
     container: () => h.store,
     authenticate: async () => { throw new ServiceError(401, 'Customer issuer only.'); },
-    authenticateAggregate: async () => { alternateCalls++; return { userId: teamId, roles: ['Bloomstep.AggregateWriter'] }; },
+    authenticateAggregate: async () => { alternateCalls++; return { userId: teamId, roles: ['Budlark.AggregateWriter'] }; },
     clock: () => new Date(now),
   });
   for (const handler of [handlers.sync, handlers.admin, handlers.metrics, handlers.deleteAccount]) {

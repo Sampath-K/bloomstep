@@ -18,7 +18,7 @@ access/protection, or update the public download pointer before separate
 authorization. PR51's website-doc change is separate and must remain untouched
 from this branch.
 
-Repository: `Sampath-K/bloomstep`.
+Repository: `Sampath-K/budlark`.
 Continue on `sampath-k-ship-owner-trial-installer-fixes`, PR #48.
 Last code-changing head: `8dc00de88c0b8414065026f7c1cc46f2db35ea3a`.
 This handoff/proposal/status commit is documentation-only; resolve its exact
@@ -36,13 +36,13 @@ by this handoff.
 | #50 | `sampath-k-live-preview-project-status` / `c584b23b9b29046730063489ab18dfe225ab26de` | Both unique commits composed in `8d3fb21729215bec33aff43796acd491a1310510`; 21 contracts pass. After #48 merges, close as composed with exact main evidence. |
 | #36 | `sampath-k-microsoft-profile-photos` / `6a2a975aceb81df70f2eff0962d8f1f33b76c963` | Both unique commits composed in `8dc00de88c0b8414065026f7c1cc46f2db35ea3a`. Production `microsoftPhotoIdentity` is still null; no browser, Graph call, permission, credential or photo activation. Preserve name/compact hierarchy. Close as composed only after #48 lands. |
 | #26 | `sampath-k-real-installer-warning-guide` / `91e678865d42b1d74e23ec5207c30df43d323604` | Do not merge wholesale: installer/profile fixes were composed by #46/#47, but this historical branch also contains #38's held coach changes. Close as superseded only with a comment distinguishing shipped installer/profile commits from the explicitly unshipped coach patch. |
-| #27 | `sampath-k-bloomstep-automatic-updates` / `3ec07ccc50aaed741cec642f521d30b53f80464f` | Leave open/unmerged, excluded from preview.15 pending exact visual/copy approval. No signing, feed, trust, installation or activation. |
-| #29 | `sampath-k-bloomstep-growth-layer` / `e88bfaa639fcf9d20232e3065b9252759e32bc93` | Leave open/unmerged, excluded from preview.15 pending exact weekly-summary visual/copy approval. |
+| #27 | `sampath-k-budlark-automatic-updates` / `3ec07ccc50aaed741cec642f521d30b53f80464f` | Leave open/unmerged, excluded from preview.15 pending exact visual/copy approval. No signing, feed, trust, installation or activation. |
+| #29 | `sampath-k-budlark-growth-layer` / `e88bfaa639fcf9d20232e3065b9252759e32bc93` | Leave open/unmerged, excluded from preview.15 pending exact weekly-summary visual/copy approval. |
 | #30 | `sampath-k-guided-success-recovery` / `c9b119c0e324f74c2f8e2f3e7b53845112700e08` | Leave open/unmerged, excluded from preview.15 pending exact recovery-card visual/copy approval. |
 | #38 | `sampath-k-surprise-badges-and-habit-coach` / `77d7e75d163fbfd95cf9f15fb296889773217c5e` | Leave open/unmerged, excluded from preview.15 pending badge/coach copy, layout and motion approval. |
 | #28 | `sampath-k-habit-first-profile-sign-in` / `adb51b30da43e0629efd5ee6db5b0d545f625150` | Already closed as superseded by `b2b85233ccb034eb4439df5e4ebd9ee9044ee91d` and `d0c3ad1dbaa8a2f42a6f9dcb8277d94b1d749603`; closure comment cites first-habit wiring/tests. |
 | #31 | `sampath-k-profile-refinement` / `7e7b7d1e52c8f0c4260584bd136b1499a52cafa3` | Already closed as superseded by `ef4f755991b4744dfb7c1866430793cf3030a8e2`, `2e1d3ecc4e3d50699f99245dff2ed8b6ef2f2ee6`, `d0c3ad1dbaa8a2f42a6f9dcb8277d94b1d749603`, and `7552b520e183d219f668fbdc02005d8acb20758f`. |
-| #33 | `sampath-k-bloomstep-aarrr-funnel-dashboard` / `8b5e317cc47a62208a749683bc5ab2c48d193401` | Already closed as superseded: its head is an ancestor of main, including composition `1701911be537e0c543267a0163574e5bb9c4a20b`. |
+| #33 | `sampath-k-budlark-aarrr-funnel-dashboard` / `8b5e317cc47a62208a749683bc5ab2c48d193401` | Already closed as superseded: its head is an ancestor of main, including composition `1701911be537e0c543267a0163574e5bb9c4a20b`. |
 
 The coordinator explicitly resolved on 17 October: no exact owner approval is
 available for #27/#29/#30/#38; "merge all PRs" does not override mockups-before-code.
@@ -109,7 +109,7 @@ rerun on the final cloud checkout, do not claim they attest a newer head.
 Working local test invocation:
 
 ```powershell
-flutter test --no-pub --no-test-assets --dart-define=BLOOMSTEP_TEST_BUILD=true --concurrency 1 --reporter compact
+flutter test --no-pub --no-test-assets --dart-define=BUDLARK_TEST_BUILD=true --concurrency 1 --reporter compact
 ```
 
 Local `build\unit_test_assets` is a locked/protected asset path: ordinary

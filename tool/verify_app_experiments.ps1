@@ -17,7 +17,7 @@ try {
     if ($LASTEXITCODE -ne 0) { throw 'API type check failed.' }
     node --test --test-reporter=dot api\test\experience-experiments.test.mjs
     if ($LASTEXITCODE -ne 0) { throw 'GrowthBook observation/purge contract failed.' }
-    flutter test --no-pub --dart-define=BLOOMSTEP_TEST_BUILD=true --reporter expanded test\growthbook_experience_provider_test.dart test\experience_experiments_test.dart test\experience_copy_test.dart test\experience_http_test.dart test\sync_outbox_test.dart test\record_deletion_test.dart
+    flutter test --no-pub --dart-define=BUDLARK_TEST_BUILD=true --reporter expanded test\growthbook_experience_provider_test.dart test\experience_experiments_test.dart test\experience_copy_test.dart test\experience_http_test.dart test\sync_outbox_test.dart test\record_deletion_test.dart
     if ($LASTEXITCODE -ne 0) { throw 'App implementation HTTP/SQLite/widget acceptance failed.' }
     $appPath = Join-Path $env:EXPERIENCE_EVIDENCE_DIR 'app-http-receipt.json'
     $app = Get-Content $appPath -Raw | ConvertFrom-Json

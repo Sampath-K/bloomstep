@@ -2,15 +2,15 @@ import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
 import 'package:path/path.dart' as p;
-import 'package:bloomstep/core/garden_store.dart';
-import 'package:bloomstep/services/identity.dart';
-import 'package:bloomstep/services/sync_service.dart';
-import 'package:bloomstep/app/bloomstep_app.dart';
+import 'package:budlark/core/garden_store.dart';
+import 'package:budlark/services/identity.dart';
+import 'package:budlark/services/sync_service.dart';
+import 'package:budlark/app/budlark_app.dart';
 import 'package:flutter/material.dart';
 
 import '../integration_test/support/test_only_app.dart';
 
-const _testBuild = bool.fromEnvironment('BLOOMSTEP_TEST_BUILD');
+const _testBuild = bool.fromEnvironment('BUDLARK_TEST_BUILD');
 
 void main() {
   if (_testBuild) {
@@ -37,7 +37,7 @@ void main() {
     );
 
     await tester.pumpWidget(
-      TestOnlyBloomstepApp(runRoot: Directory.systemTemp, expectedSecret: key),
+      TestOnlyBudlarkApp(runRoot: Directory.systemTemp, expectedSecret: key),
     );
     expect(
       find.text('Test build is locked. No garden was opened.'),
@@ -56,7 +56,7 @@ void main() {
   });
 
   test('normal builds reject injected clocks and test API origins', () async {
-    final root = await Directory.systemTemp.createTemp('bloomstep-it-');
+    final root = await Directory.systemTemp.createTemp('budlark-it-');
     addTearDown(() => root.delete(recursive: true));
     await expectLater(
       GardenStore.open(

@@ -50,7 +50,7 @@ try {
       $status.AMRunningMode -ne 'Normal') {
     throw 'Defender protection unavailable or inactive: active antivirus, behavior and real-time protection required.'
   }
-  $installerName = 'Bloomstep-0.1.0-preview-windows-universal-zeroclick-setup.exe'
+  $installerName = 'Budlark-0.1.0-preview-windows-universal-zeroclick-setup.exe'
   $installer = Join-Path $root "candidate\$installerName"
   $manifest = Get-Content (Join-Path $root 'candidate\universal-manifest.json') -Raw | ConvertFrom-Json
   if ($manifest.source -ne $report.sourceRevision -or $manifest.installFlow -ne 'zeroclick' -or
@@ -63,7 +63,7 @@ try {
   foreach ($arch in 'x64','arm64') {
     $payload = Join-Path $root "payload-$arch"
     $files = @(Get-ChildItem -LiteralPath $payload -Recurse -File)
-    if (-not ($files | Where-Object Name -eq 'bloomstep.exe')) { throw "Missing $arch app payload." }
+    if (-not ($files | Where-Object Name -eq 'budlark.exe')) { throw "Missing $arch app payload." }
     $report.payloadFiles += @($files | ForEach-Object {
       @{ architecture = $arch; file = [IO.Path]::GetRelativePath($payload, $_.FullName)
         bytes = $_.Length; sha256 = (Get-FileHash -Algorithm SHA256 -LiteralPath $_.FullName).Hash.ToLower() }

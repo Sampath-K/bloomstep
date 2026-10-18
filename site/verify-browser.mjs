@@ -91,7 +91,7 @@ try {
     assert.equal(await offline.$eval('[data-universal-download] a', link => link.dataset.download), 'unknown');
     assert.equal(await offline.$eval('[data-universal-download] a', link => link.textContent.trim()), 'Owner-test download (designated testers only)');
   }
-  assert.ok(links.every(link => link.startsWith('https://github.com/Sampath-K/bloomstep/releases/download/')));
+  assert.ok(links.every(link => link.startsWith('https://github.com/Sampath-K/budlark/releases/download/')));
   await offline.click('#primary-cta');
   assert.equal(await offline.evaluate(() => location.hash), '#download');
   assert.equal(await offline.evaluate(() => localStorage.length), 0);

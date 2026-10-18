@@ -1,18 +1,18 @@
 import 'dart:convert';
 import 'dart:io';
 
-import 'package:bloomstep/core/garden_store.dart';
-import 'package:bloomstep/features/garden/garden_screen.dart';
-import 'package:bloomstep/features/garden/invitation_dialog.dart';
-import 'package:bloomstep/services/invitation_intent.dart';
-import 'package:bloomstep/services/invitation_service.dart';
+import 'package:budlark/core/garden_store.dart';
+import 'package:budlark/features/garden/garden_screen.dart';
+import 'package:budlark/features/garden/invitation_dialog.dart';
+import 'package:budlark/services/invitation_intent.dart';
+import 'package:budlark/services/invitation_service.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:bloomstep/features/garden/plant_art.dart';
+import 'package:budlark/features/garden/plant_art.dart';
 import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
-import 'package:bloomstep/app/theme.dart';
+import 'package:budlark/app/theme.dart';
 
 import 'support/visual_capture.dart';
 
@@ -20,7 +20,7 @@ Widget syntheticInvitationFrame(GlobalKey key, Widget home) => RepaintBoundary(
   key: key,
   child: MaterialApp(
     debugShowCheckedModeBanner: false,
-    theme: BloomstepTheme.light(),
+    theme: BudlarkTheme.light(),
     builder: (context, child) => MediaQuery(
       data: MediaQuery.of(context).copyWith(disableAnimations: true),
       child: Column(
@@ -129,7 +129,7 @@ void main() {
           );
         }),
       );
-      const bridge = MethodChannel('bloomstep/native_share');
+      const bridge = MethodChannel('budlark/native_share');
       TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
           .setMockMethodCallHandler(bridge, (_) async {
             throw PlatformException(
@@ -319,7 +319,7 @@ void main() {
       addTearDown(() => tester.binding.setSurfaceSize(null));
       final requests = <Map>[];
       final nativeCalls = <MethodCall>[];
-      const channel = MethodChannel('bloomstep/native_share');
+      const channel = MethodChannel('budlark/native_share');
       TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
           .setMockMethodCallHandler(channel, (call) async {
             nativeCalls.add(call);
@@ -594,7 +594,8 @@ void main() {
       expect((await tester.runAsync(store.habits))!, isEmpty);
       await waitInvitationCondition(tester, () {
         final settings = tester.widget<IconButton>(
-          find.byTooltip('Settings and privacy'),
+          find.byWidgetPredicate((widget) =>
+              widget is IconButton && widget.tooltip == 'Settings and privacy'),
         );
         return settings.onPressed != null;
       });

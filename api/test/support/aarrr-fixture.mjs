@@ -15,24 +15,24 @@ const observedAt = '2026-09-15T00:00:00Z';
 
 // This disposable loopback harness is never registered in production Functions.
 export async function createAarrrFixture({ port = 0, configure = () => new Map() } = {}) {
-  const root = await mkdtemp(join(tmpdir(), 'bloomstep-it-'));
+  const root = await mkdtemp(join(tmpdir(), 'budlark-it-'));
   const databasePath = join(root, 'aarrr.json'), key = randomBytes(32);
   let container = await FileBackedCosmosContainer.openFresh(databasePath);
   const sign = sub => new SignJWT({ scp: 'Garden.ReadWrite' }).setProtectedHeader({ alg: 'HS256' })
     .setIssuer(issuer).setAudience(audience).setSubject(sub).setIssuedAt().setExpirationTime('15m').sign(key);
   const authenticate = async request => {
-    const match = /^Bearer (.+)$/.exec(request.headers.get('X-Bloomstep-Authorization') ?? '');
+    const match = /^Bearer (.+)$/.exec(request.headers.get('X-Budlark-Authorization') ?? '');
     if (!match) throw new ServiceError(401, 'Isolated fixture sign-in required.');
     let payload;
     try { ({ payload } = await jwtVerify(match[1], key, { issuer, audience, algorithms: ['HS256'] })); }
     catch { throw new ServiceError(401, 'Invalid isolated fixture signature.'); }
     if (typeof payload.sub !== 'string' || !/^synthetic-(?:admin|account-\d{3})$/.test(payload.sub) ||
         payload.scp !== 'Garden.ReadWrite') throw new ServiceError(401, 'Synthetic fixture subjects only.');
-    return { userId: accountKey(issuer, payload.sub), roles: payload.sub === 'synthetic-admin' ? ['Bloomstep.Admin'] : [],
+    return { userId: accountKey(issuer, payload.sub), roles: payload.sub === 'synthetic-admin' ? ['Budlark.Admin'] : [],
       scopes: ['Garden.ReadWrite'] };
   };
   const handlers = createHandlers({ container: () => container, authenticate,
-    clock: () => new Date(observedAt), environment: () => ({ BLOOMSTEP_INVITATIONS_DISABLED: 'true' }) });
+    clock: () => new Date(observedAt), environment: () => ({ BUDLARK_INVITATIONS_DISABLED: 'true' }) });
   let webNow = new Date(observedAt);
   const website = createWebsiteHandlers({ container: () => container, authenticate, clock: () => webNow });
   let extensions;
@@ -52,7 +52,7 @@ export async function createAarrrFixture({ port = 0, configure = () => new Map()
     ['/acquisition-panels.mjs', ['../../../site/acquisition-panels.mjs', 'text/javascript']],
     ['/api/src/website-attribution.mjs', ['../../src/website-attribution.mjs', 'text/javascript']],
     ['/operator-config.json', ['../../../site/operator-config.json', 'application/json']],
-    ['/assets/bloomstep-icon.png', ['../../../site/assets/bloomstep-icon.png', 'image/png']],
+    ['/assets/budlark-icon.png', ['../../../site/assets/budlark-icon.png', 'image/png']],
   ]);
   let unavailable = false, readOnly = false;
   const server = createServer(async (incoming, response) => {
@@ -116,7 +116,7 @@ export async function createAarrrFixture({ port = 0, configure = () => new Map()
   const adminToken = await sign('synthetic-admin');
   const subjects = [];
   const request = async (path, token = adminToken, method = 'GET', body) => fetch(url + path, {
-    method, headers: { 'X-Bloomstep-Authorization': `Bearer ${token}`, 'Content-Type': 'application/json',
+    method, headers: { 'X-Budlark-Authorization': `Bearer ${token}`, 'Content-Type': 'application/json',
       ...(method === 'DELETE' ? { 'X-Confirm-Delete': 'delete-my-garden' } : {}) },
     ...(body === undefined ? {} : { body: JSON.stringify(body) }),
   });

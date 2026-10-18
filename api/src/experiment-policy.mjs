@@ -1,7 +1,7 @@
 // Shared, dependency-free website experiment policy. Bundled into the customer page and used by the API,
 // so assignment, catalog content and definition hashes are computed identically on both sides.
 
-export const POLICY_VERSION = 'bloomstep-web-experiments/v1';
+export const POLICY_VERSION = 'budlark-web-experiments/v1';
 /** Unit = one consented page visit (page memory only). Reloads/new tabs are new units; not a person. */
 export const ATTRIBUTION_VERSION = 'web-consented-visit/v1';
 export const OUTCOMES = /** @type {const} */ (['primary_cta_click', 'download_click']);
@@ -153,7 +153,7 @@ export async function assignArm(instance, subjectId) {
 }
 
 /** @param {string} subjectId */
-export function subjectHash(subjectId) { return sha256Hex(`bloomstep-visit:${subjectId}`); }
+export function subjectHash(subjectId) { return sha256Hex(`budlark-visit:${subjectId}`); }
 
 /** Eligibility is explicit: consent on, no browser privacy signal, live experiment, not killed.
  * @param {{consent:boolean, dnt?:string|null, gpc?:boolean, killed?:boolean, enabled?:boolean}} input */
