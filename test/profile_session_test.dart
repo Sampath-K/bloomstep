@@ -381,6 +381,7 @@ void main() {
     await tester.pumpAndSettle();
     await _tapTextButton(tester, 'Cancel');
     await tester.pumpAndSettle();
+    await _ready(tester, find.text('ST'));
     expect(find.text('ST'), findsOneWidget);
     expect(identity.account, account);
     await _ready(tester, find.text('Sign out'));
