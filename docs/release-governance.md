@@ -69,3 +69,19 @@ every role verdict, findings and fixes, CI run, and residual risks.
 - Evidence README missing or not byte-identical to the regenerated output.
 
 Owner decisions remain: scope, risk acceptance, money, access, public launch. Defender and SmartScreen are never bypassed.
+## Hardening (review findings ARCH-1, ARCH-2, SEC-1, SEC-2, ENG-1, QA)
+
+- **Review files are evidence (ARCH-1).** Every sign-off must cite `release/reviews/<candidate>/<role>.md`; the file must exist and be non-empty. Every non-URL evidence path must exist in the repo.
+- **Artifact provenance (ARCH-2).** Before any bytes are downloaded, the release job fetches the signed run and its artifacts from the GitHub API and requires: run id equals the signed `runId`, `head_sha` equals the candidate, a successful `push` event of `.github/workflows/ci.yml` in this repository, and exactly one non-expired `bloomstep-universal-installer` artifact whose id equals the signed `artifactId`.
+- **No record data in shell templates (SEC-1).** The release job never interpolates `${{ }}` record values into scripts. The candidate and artifact ids are emitted only by the verifier after validation, regex-checked again in bash, and passed through `env:`.
+- **Timestamps (ENG-1).** `reviewedAt`, `ownerAcceptance.at` and `testedAt` must be real ISO-8601 UTC instants (e.g. `2026-02-30T25:61:00Z` is rejected).
+- **Owner trial record (QA).** Public launch requires `release/owner/<candidate>.json` (schema `budlark-owner-trial-v1`) with `result: PASS`, `installerSha256` equal to the signed bytes, `by`, `testedAt`, and an `https` `reference` to the owner's statement. Only the coordinator writes it, and only from the owner's own statement. It is shipped with the release and rendered in the evidence README.
+
+## Trust model (SEC-2)
+
+Role sign-off records are **agent attestations**: they provide accountability and traceability, not authentication. Authenticated human authority comes from GitHub itself:
+
+1. The release job runs in the `public-launch` environment, which requires the owner (Sampath-K) as reviewer before it can run.
+2. Only the owner can push `v*` tags (tag ruleset), and workflow-file changes require owner credentials.
+
+A forged sign-off record therefore cannot publish anything without the owner's authenticated approval of that exact run.

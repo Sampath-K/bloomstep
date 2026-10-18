@@ -4,7 +4,7 @@ import { mkdtempSync, mkdirSync, writeFileSync, readFileSync, rmSync, cpSync } f
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import {
-  verifySignoffs, renderEvidence, resolveCandidate, SIGNOFF_PATH_PREFIXES,
+  verifySignoffs, renderEvidence, resolveCandidate, SIGNOFF_PATH_PREFIXES, verifyArtifactProvenance,
 } from '../tool/verify_release_signoffs.mjs';
 
 const CANDIDATE = 'a'.repeat(40);
@@ -32,11 +32,18 @@ function record(role, overrides = {}) {
     installerSha256: SHA,
     artifact: { runId: '39100447327', artifactId: '12127077182' },
     scope: `Full ${role} review of the candidate tree and installer`,
-    evidence: [`release/reviews/baseline-${CANDIDATE}/${role}.md`],
+    evidence: [`release/reviews/${CANDIDATE}/${role}.md`],
     findings: [],
     reviewer: { session: 'role-agent', model: 'auto' },
     reviewedAt: '2026-10-20T06:00:00Z',
     ...overrides,
+  };
+}
+
+function ownerTrial(overrides = {}) {
+  return {
+    schema: 'budlark-owner-trial-v1', candidateCommit: CANDIDATE, installerSha256: SHA, result: 'PASS',
+    by: 'Sampath-K', testedAt: '2026-10-21T06:00:00Z', reference: 'https://github.com/Sampath-K/bloomstep/pull/52#issuecomment-1', ...overrides,
   };
 }
 
@@ -48,7 +55,11 @@ function setup(stage = 'public-launch', mutate = () => {}) {
     .filter((r) => stage === 'public-launch' || r.requiredAt === 'owner-test');
   const dir = join(root, 'release', 'signoffs', CANDIDATE);
   mkdirSync(dir, { recursive: true });
+  mkdirSync(join(root, 'release', 'reviews', CANDIDATE), { recursive: true });
+  mkdirSync(join(root, 'release', 'owner'), { recursive: true });
+  writeFileSync(join(root, 'release', 'owner', `${CANDIDATE}.json`), JSON.stringify(ownerTrial(), null, 2));
   for (const { id } of roles) {
+    writeFileSync(join(root, 'release', 'reviews', CANDIDATE, `${id}.md`), `# ${id} review\n\nVerdict: APPROVED\n`);
     const rec = record(id);
     mutate(id, rec);
     if (rec !== null) writeFileSync(join(dir, `${id}.json`), JSON.stringify(rec, null, 2));
@@ -217,10 +228,75 @@ test('release workflow promotes the signed candidate and enforces the public-lau
   const ci = readFileSync(join(repoRoot, '.github', 'workflows', 'ci.yml'), 'utf8').replace(/\r\n/g, '\n');
   const release = ci.slice(ci.indexOf('\n  release:'));
   assert.match(release, /verify_release_signoffs\.mjs --resolve-candidate --head "\$GITHUB_SHA"/);
-  assert.match(release, /gh run download "\$\{\{ steps\.candidate\.outputs\.run \}\}"/);
-  assert.match(release, /--stage public-launch --candidate "\$\{\{ steps\.candidate\.outputs\.sha \}\}" --head "\$GITHUB_SHA" --installer "\$installer" --check-evidence/);
-  assert.match(release, /release_bundle\.mjs \. "\$\{\{ steps\.candidate\.outputs\.sha \}\}"/);
+  assert.match(release, /gh run download "\$RUN_ID"/);
+  assert.match(release, /--stage public-launch --candidate "\$CANDIDATE" --head "\$GITHUB_SHA" --installer "\$installer" --check-evidence/);
+  assert.match(release, /release_bundle\.mjs \. "\$CANDIDATE"/);
   assert.doesNotMatch(release, /release_bundle\.mjs \. "\$GITHUB_SHA"/);
   assert.doesNotMatch(release, /actions\/download-artifact/, 'tag runs must not publish rebuilt bits');
   assert.ok(release.indexOf('--stage public-launch') < release.indexOf('gh release create'));
+});
+test('ARCH-1: referenced review file must exist and be listed as evidence', () => {
+  const root = setup();
+  try {
+    rmSync(join(root, 'release', 'reviews', CANDIDATE, 'security-privacy.md'));
+    assert.throws(() => run(root), /security-privacy review file .* is missing/);
+  } finally { rmSync(root, { recursive: true, force: true }); }
+  const root2 = setup('public-launch', (id, r) => { if (id === 'qa-release') r.evidence = ['https://example.com/x']; });
+  try { assert.throws(() => run(root2), /qa-release evidence must cite release\/reviews/); } finally { rmSync(root2, { recursive: true, force: true }); }
+  const root3 = setup('public-launch', (id, r) => { if (id === 'architect') r.evidence.push('docs/does-not-exist.md'); });
+  try { assert.throws(() => run(root3), /architect evidence path docs\/does-not-exist\.md does not exist/); } finally { rmSync(root3, { recursive: true, force: true }); }
+});
+
+test('ENG-1: impossible timestamps are rejected', () => {
+  const root = setup('public-launch', (id, r) => { if (id === 'engineering') r.reviewedAt = '2026-02-30T25:61:00Z'; });
+  try { assert.throws(() => run(root), /engineering reviewedAt must be an ISO-8601 UTC timestamp/); } finally { rmSync(root, { recursive: true, force: true }); }
+});
+
+test('SEC-1: run and artifact ids must be digits-only before any shell use', () => {
+  const root = setup('public-launch', (id, r) => { r.artifact.runId = '1"; curl evil #'; });
+  try { assert.throws(() => run(root), /artifact identity is missing/); } finally { rmSync(root, { recursive: true, force: true }); }
+});
+
+test('QA: public launch requires a passing owner trial bound to the same bytes; owner-test does not', () => {
+  const root = setup();
+  try {
+    rmSync(join(root, 'release', 'owner', `${CANDIDATE}.json`));
+    assert.throws(() => run(root), /owner trial record .* is missing/);
+    assert.equal(run(root, { stage: 'owner-test' }).ok, true);
+    writeFileSync(join(root, 'release', 'owner', `${CANDIDATE}.json`), JSON.stringify(ownerTrial({ result: 'FAIL' })));
+    assert.throws(() => run(root), /owner trial result is FAIL/);
+    writeFileSync(join(root, 'release', 'owner', `${CANDIDATE}.json`), JSON.stringify(ownerTrial({ installerSha256: 'f'.repeat(64) })));
+    assert.throws(() => run(root), /owner trial installer SHA-256 does not match/);
+    writeFileSync(join(root, 'release', 'owner', `${CANDIDATE}.json`), JSON.stringify(ownerTrial()));
+    const result = run(root);
+    assert.equal(result.ownerTrial.result, 'PASS');
+    assert.match(renderEvidence(result), /Owner trial \| PASS by Sampath-K/);
+  } finally { rmSync(root, { recursive: true, force: true }); }
+});
+
+test('ARCH-2: artifact provenance must match the signed run and artifact', () => {
+  const good = {
+    run: { id: 39100447327, head_sha: CANDIDATE, event: 'push', conclusion: 'success', path: '.github/workflows/ci.yml', repository: { full_name: 'Sampath-K/bloomstep' } },
+    artifacts: { artifacts: [{ id: 12127077182, name: 'bloomstep-universal-installer', expired: false }] },
+  };
+  const args = { candidate: CANDIDATE, artifact: { runId: '39100447327', artifactId: '12127077182' }, repository: 'Sampath-K/bloomstep' };
+  assert.equal(verifyArtifactProvenance({ ...args, ...good }).ok, true);
+  const bad = (patch) => assert.throws(() => verifyArtifactProvenance({ ...args, ...good, ...patch }), /provenance/);
+  bad({ run: { ...good.run, head_sha: HEAD } });
+  bad({ run: { ...good.run, event: 'pull_request' } });
+  bad({ run: { ...good.run, conclusion: 'failure' } });
+  bad({ run: { ...good.run, id: 1 } });
+  bad({ run: { ...good.run, path: '.github/workflows/other.yml' } });
+  bad({ artifacts: { artifacts: [{ id: 999, name: 'bloomstep-universal-installer', expired: false }] } });
+  bad({ artifacts: { artifacts: [{ id: 12127077182, name: 'bloomstep-universal-installer', expired: true }] } });
+});
+
+test('SEC-1/SEC-2: release job never interpolates record data into shell and requires the owner-approved environment', () => {
+  const ci = readFileSync(join(repoRoot, '.github', 'workflows', 'ci.yml'), 'utf8').replace(/\r\n/g, '\n');
+  const release = ci.slice(ci.indexOf('\n  release:'));
+  const unsafe = release.split('\n').filter((l) => /\$\{\{ steps\./.test(l) && !/^\s+[A-Z_]+: \$\{\{ steps\.candidate\.outputs\.[a-z]+ \}\}$/.test(l));
+  assert.deepEqual(unsafe, [], 'step outputs must flow through env, not template interpolation');
+  assert.match(release, /environment: public-launch/);
+  assert.match(release, /--provenance-run run\.json --provenance-artifacts artifacts\.json/);
+  assert.ok(release.indexOf('--provenance-run') < release.indexOf('gh run download'));
 });

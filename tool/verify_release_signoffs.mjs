@@ -7,13 +7,16 @@ import { existsSync, mkdirSync, readFileSync, readdirSync, writeFileSync } from 
 import { join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-export const SIGNOFF_PATH_PREFIXES = ['release/signoffs/', 'release/evidence/', 'release/reviews/'];
+export const SIGNOFF_PATH_PREFIXES = ['release/signoffs/', 'release/evidence/', 'release/reviews/', 'release/owner/'];
 const VERDICTS = new Set(['APPROVED', 'APPROVED_WITH_ACCEPTED_RISK', 'CHANGES_REQUIRED']);
 const SEVERITIES = new Set(['critical', 'high', 'medium', 'low']);
 const RESOLUTIONS = new Set(['FIXED', 'ACCEPTED_RISK', 'OPEN']);
 const SHA1 = /^[a-f0-9]{40}$/;
 const SHA256 = /^[a-f0-9]{64}$/;
-const ISO = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(\.\d+)?Z$/;
+const ISO_SHAPE = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(\.\d+)?Z$/;
+const DIGITS = /^[1-9]\d{0,19}$/;
+const ISO = { test: (s) => typeof s === 'string' && ISO_SHAPE.test(s) && !Number.isNaN(Date.parse(s))
+  && new Date(s).toISOString().slice(0, 19) === s.slice(0, 19) };
 
 function gate(condition, message) {
   if (!condition) throw new Error(`Release sign-off gate: ${message}`);
@@ -88,9 +91,16 @@ export function verifySignoffs({ root, stage, candidate, head, installerSha256, 
     gate(SHA256.test(r.installerSha256 ?? ''), `${id} installer SHA-256 is missing or malformed`);
     gate(installerSha256 === undefined || r.installerSha256 === installerSha256,
       `${id} installer SHA-256 ${r.installerSha256} does not match released bytes ${installerSha256}`);
-    gate(r.artifact && /^\d+$/.test(r.artifact.runId ?? '') && /^\d+$/.test(r.artifact.artifactId ?? ''), `${id} artifact identity is missing`);
+    gate(r.artifact && DIGITS.test(r.artifact.runId ?? '') && DIGITS.test(r.artifact.artifactId ?? ''), `${id} artifact identity is missing`);
     gate(nonEmpty(r.scope), `${id} scope is missing`);
     gate(Array.isArray(r.evidence) && r.evidence.length > 0 && r.evidence.every(nonEmpty), `${id} evidence list is empty`);
+    const review = `release/reviews/${candidate}/${id}.md`;
+    gate(r.evidence.includes(review), `${id} evidence must cite release/reviews/${candidate}/${id}.md`);
+    gate(existsSync(join(root, review)) && readFileSync(join(root, review), 'utf8').trim().length > 0,
+      `${id} review file ${review} is missing or empty`);
+    for (const e of r.evidence.filter((x) => !/^https:\/\//.test(x))) {
+      gate(!e.includes('..') && existsSync(join(root, e)), `${id} evidence path ${e} does not exist`);
+    }
     gate(r.reviewer && nonEmpty(r.reviewer.session) && nonEmpty(r.reviewer.model), `${id} reviewer identity is missing`);
     gate(ISO.test(r.reviewedAt ?? ''), `${id} reviewedAt must be an ISO-8601 UTC timestamp`);
     gate(Array.isArray(r.findings), `${id} findings must be an array`);
@@ -101,6 +111,18 @@ export function verifySignoffs({ root, stage, candidate, head, installerSha256, 
   }
   const missing = required.filter((id) => !records.some((r) => r.role === id));
   gate(missing.length === 0, `Missing required sign-off(s) for ${stage}: ${missing.join(', ')}`);
+
+  let ownerTrial;
+  if (stage === 'public-launch') {
+    const file = join(root, 'release', 'owner', `${candidate}.json`);
+    gate(existsSync(file), `owner trial record release/owner/${candidate}.json is missing`);
+    ownerTrial = readRecord(file);
+    gate(ownerTrial.schema === 'budlark-owner-trial-v1' && ownerTrial.candidateCommit === candidate, 'owner trial record does not bind the candidate');
+    gate(ownerTrial.result === 'PASS', `owner trial result is ${ownerTrial.result}`);
+    gate(ownerTrial.installerSha256 === records[0]?.installerSha256, 'owner trial installer SHA-256 does not match the signed bytes');
+    gate(nonEmpty(ownerTrial.by) && ISO.test(ownerTrial.testedAt) && /^https:\/\//.test(ownerTrial.reference ?? ''),
+      'owner trial record needs by, testedAt and an https reference to the owner statement');
+  }
 
   const shas = new Set(records.map((r) => r.installerSha256));
   gate(shas.size === 1, `installer SHA-256 differs across sign-offs: ${[...shas].join(', ')}`);
@@ -116,6 +138,7 @@ export function verifySignoffs({ root, stage, candidate, head, installerSha256, 
     sourceTree,
     installerSha256: records[0].installerSha256,
     artifact: records[0].artifact,
+    ownerTrial,
     required,
     records: records.sort((a, b) => registry.roles.findIndex((x) => x.id === a.role) - registry.roles.findIndex((x) => x.id === b.role)),
     roles: registry.roles,
@@ -150,6 +173,7 @@ export function renderEvidence(result) {
     `| CI run | [${result.artifact.runId}](https://github.com/Sampath-K/bloomstep/actions/runs/${result.artifact.runId}) |`,
     `| Artifact id | ${result.artifact.artifactId} |`,
     `| Gate stage verified | ${result.stage} |`,
+    `| Owner trial | ${result.ownerTrial ? `${result.ownerTrial.result} by ${result.ownerTrial.by} at ${result.ownerTrial.testedAt} (${result.ownerTrial.reference})` : 'Not required at this stage (owner-test sign-off precedes the owner trial)'} |`,
     '',
     '## Role sign-offs',
     '',
@@ -180,6 +204,19 @@ export function renderEvidence(result) {
   return lines.join('\n');
 }
 
+export function verifyArtifactProvenance({ candidate, artifact, repository, run, artifacts }) {
+  const p = (c, m) => gate(c, `artifact provenance: ${m}`);
+  p(SHA1.test(candidate ?? '') && DIGITS.test(artifact?.runId ?? '') && DIGITS.test(artifact?.artifactId ?? ''), 'malformed candidate or artifact identity');
+  p(String(run?.id) === artifact.runId, `run ${run?.id} is not the signed run ${artifact.runId}`);
+  p(run.head_sha === candidate, `run built ${run.head_sha}, not the candidate`);
+  p(run.event === 'push' && run.conclusion === 'success', 'signed run must be a successful push run');
+  p(run.path === '.github/workflows/ci.yml' && run.repository?.full_name === repository, "signed run is not this repository's ci workflow");
+  const match = (artifacts?.artifacts ?? []).filter((a) => a.name === 'bloomstep-universal-installer');
+  p(match.length === 1 && String(match[0].id) === artifact.artifactId, "signed artifact id is not the run's universal installer");
+  p(match[0].expired === false, 'signed artifact has expired');
+  return { ok: true };
+}
+
 export function resolveCandidate({ root, head, git = realGit(root) }) {
   const base = join(root, 'release', 'signoffs');
   const candidates = existsSync(base) ? readdirSync(base).filter((d) => SHA1.test(d)
@@ -195,7 +232,7 @@ function parseArgs(argv) {
   const args = {};
   for (let i = 0; i < argv.length; i += 1) {
     const key = argv[i];
-    if (['--write-evidence', '--check-evidence', '--resolve-candidate'].includes(key)) args[key.slice(2)] = true;
+    if (['--write-evidence', '--check-evidence', '--resolve-candidate', '--emit-artifact'].includes(key)) args[key.slice(2)] = true;
     else if (key.startsWith('--')) { args[key.slice(2)] = argv[i + 1]; i += 1; }
   }
   return args;
@@ -209,6 +246,21 @@ if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.ur
   try {
     if (args['resolve-candidate']) {
       process.stdout.write(`${resolveCandidate({ root, head: head ?? 'HEAD', git })}\n`);
+      process.exit(0);
+    }
+    if (args['provenance-run']) {
+      const r = verifySignoffs({ root, stage: args.stage, candidate: args.candidate, head, git });
+      verifyArtifactProvenance({
+        candidate: r.candidate, artifact: r.artifact, repository: args.repository,
+        run: JSON.parse(readFileSync(args['provenance-run'], 'utf8')),
+        artifacts: JSON.parse(readFileSync(args['provenance-artifacts'], 'utf8')),
+      });
+      process.stdout.write(`PASS provenance run ${r.artifact.runId} artifact ${r.artifact.artifactId} built ${r.candidate}\n`);
+      process.exit(0);
+    }
+    if (args['emit-artifact']) {
+      const r = verifySignoffs({ root, stage: args.stage, candidate: args.candidate, head, git });
+      process.stdout.write(`run=${r.artifact.runId}\nartifact=${r.artifact.artifactId}\n`);
       process.exit(0);
     }
     let installerSha256 = args['installer-sha256'];

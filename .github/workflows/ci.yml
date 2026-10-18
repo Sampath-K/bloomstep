@@ -545,6 +545,7 @@ jobs:
       needs.universal-installer.result == 'success'
     needs: [api, test-and-build-windows, universal-installer]
     runs-on: ubuntu-latest
+    environment: public-launch
     permissions:
       contents: write
       actions: read
@@ -555,32 +556,54 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 22
-      - name: Resolve the signed candidate (head may differ only by sign-off records)
+      - name: Resolve the signed candidate and validated artifact identity
         id: candidate
         run: |
+          set -euo pipefail
           candidate=$(node tool/verify_release_signoffs.mjs --resolve-candidate --head "$GITHUB_SHA")
-          run_id=$(node -e "const fs=require('fs');const d='release/signoffs/'+process.argv[1];const f=fs.readdirSync(d).find(x=>x.endsWith('.json'));console.log(JSON.parse(fs.readFileSync(d+'/'+f,'utf8')).artifact.runId)" "$candidate")
-          echo "sha=$candidate" >> "$GITHUB_OUTPUT"
-          echo "run=$run_id" >> "$GITHUB_OUTPUT"
+          [[ "$candidate" =~ ^[0-9a-f]{40}$ ]] || { echo "invalid candidate"; exit 1; }
+          node tool/verify_release_signoffs.mjs --emit-artifact --stage public-launch --candidate "$candidate" --head "$GITHUB_SHA" > identity.txt
+          run_id=$(sed -n 's/^run=//p' identity.txt)
+          artifact_id=$(sed -n 's/^artifact=//p' identity.txt)
+          [[ "$run_id" =~ ^[1-9][0-9]{0,19}$ && "$artifact_id" =~ ^[1-9][0-9]{0,19}$ ]] || { echo "invalid artifact identity"; exit 1; }
+          { echo "sha=$candidate"; echo "run=$run_id"; } >> "$GITHUB_OUTPUT"
+      - name: Verify artifact provenance before downloading any bytes
+        env:
+          GH_TOKEN: ${{ github.token }}
+          CANDIDATE: ${{ steps.candidate.outputs.sha }}
+          RUN_ID: ${{ steps.candidate.outputs.run }}
+        run: |
+          set -euo pipefail
+          [[ "$CANDIDATE" =~ ^[0-9a-f]{40}$ && "$RUN_ID" =~ ^[1-9][0-9]{0,19}$ ]]
+          gh api "repos/$GITHUB_REPOSITORY/actions/runs/$RUN_ID" > run.json
+          gh api --paginate "repos/$GITHUB_REPOSITORY/actions/runs/$RUN_ID/artifacts?per_page=100" | jq -s '{artifacts: (map(.artifacts) | add)}' > artifacts.json
+          node tool/verify_release_signoffs.mjs --stage public-launch --candidate "$CANDIDATE" --head "$GITHUB_SHA" --repository "$GITHUB_REPOSITORY" --provenance-run run.json --provenance-artifacts artifacts.json
       - name: Promote the exact reviewed artifacts (never rebuilt bits)
         env:
           GH_TOKEN: ${{ github.token }}
+          RUN_ID: ${{ steps.candidate.outputs.run }}
         run: |
-          gh run download "${{ steps.candidate.outputs.run }}" --repo "$GITHUB_REPOSITORY" --pattern 'bloomstep-windows-*' --dir artifacts
-          gh run download "${{ steps.candidate.outputs.run }}" --repo "$GITHUB_REPOSITORY" --name bloomstep-universal-installer --dir universal-output
-      - name: Require every role sign-off for public launch bound to these exact bytes
+          gh run download "$RUN_ID" --repo "$GITHUB_REPOSITORY" --pattern 'bloomstep-windows-*' --dir artifacts
+          gh run download "$RUN_ID" --repo "$GITHUB_REPOSITORY" --name bloomstep-universal-installer --dir universal-output
+      - name: Require every role sign-off and the owner trial bound to these exact bytes
+        env:
+          CANDIDATE: ${{ steps.candidate.outputs.sha }}
         run: |
           installer=$(ls universal-output/*.exe | head -n 1)
-          node tool/verify_release_signoffs.mjs --stage public-launch --candidate "${{ steps.candidate.outputs.sha }}" --head "$GITHUB_SHA" --installer "$installer" --check-evidence --out release-signoff-gate.json
+          node tool/verify_release_signoffs.mjs --stage public-launch --candidate "$CANDIDATE" --head "$GITHUB_SHA" --installer "$installer" --check-evidence --out release-signoff-gate.json
       - name: Bind publication to exact package bytes and pending manual trial
-        run: node tool/release_bundle.mjs . "${{ steps.candidate.outputs.sha }}" "$GITHUB_REF_NAME" "${{ steps.candidate.outputs.run }}"
+        env:
+          CANDIDATE: ${{ steps.candidate.outputs.sha }}
+          RUN_ID: ${{ steps.candidate.outputs.run }}
+        run: node tool/release_bundle.mjs . "$CANDIDATE" "$GITHUB_REF_NAME" "$RUN_ID"
       - name: Publish preview (not the authenticated MVP)
         env:
           GH_TOKEN: ${{ github.token }}
+          CANDIDATE: ${{ steps.candidate.outputs.sha }}
         run: |
           title="Budlark $GITHUB_REF_NAME - designated owner trial only"
           notes="Budlark unsigned Windows preview for designated owner verification only. This GitHub prerelease is publicly accessible, not private, and is not approved for broad use. The promoted artifacts come from the signed-off candidate run, which passed hosted API, x64/ARM64 build and installer-contract checks and universal packaging. Owner manual installer verification remains PENDING; CI did not install or launch the app. Record feedback against the exact source SHA and installer SHA-256 before any customer launch. Do not bypass SmartScreen, Defender or device policy. Verify the SHA-256 before installation; a matching hash establishes byte consistency, not safety or signing. This workflow does not update the public website download pointer. No external recruitment."
           notes="$notes
 
           $(cat release-proof/evidence-notes.md)"
-          gh release create "$GITHUB_REF_NAME" --repo "$GITHUB_REPOSITORY" --prerelease --title "$title" --notes "$notes" universal-output/*.exe universal-output/SHA256-universal.txt universal-output/universal-manifest.json universal-output/payload-manifest-*.json release-proof/*.json release-proof/owner-trial-checklist.md release-signoff-gate.json release/evidence/${{ steps.candidate.outputs.sha }}/README.md $(find artifacts -name '*.exe' -path '*/release-output/*') $(find artifacts -name 'SHA256-*.txt')
+          gh release create "$GITHUB_REF_NAME" --repo "$GITHUB_REPOSITORY" --prerelease --title "$title" --notes "$notes" universal-output/*.exe universal-output/SHA256-universal.txt universal-output/universal-manifest.json universal-output/payload-manifest-*.json release-proof/*.json release-proof/owner-trial-checklist.md release-signoff-gate.json release/evidence/$CANDIDATE/README.md release/owner/$CANDIDATE.json $(find artifacts -name '*.exe' -path '*/release-output/*') $(find artifacts -name 'SHA256-*.txt')
