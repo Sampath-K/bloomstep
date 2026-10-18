@@ -30,12 +30,16 @@ class FakeUpdates extends UpdateService {
 
 class FakeWidgetReminderGateway implements ReminderGateway {
   Future<void> Function(String)? action;
+  Object? initializeFailure;
+  int initializations = 0;
   final requests = <ReminderRequest>[];
   final cancellations = <int>[];
 
   @override
   Future<void> initialize(Future<void> Function(String) action) async {
+    initializations++;
     this.action = action;
+    if (initializeFailure != null) throw initializeFailure!;
   }
 
   @override
@@ -156,6 +160,131 @@ void main() {
       expect(tester.takeException(), isNull);
     },
   );
+
+  testWidgets(
+    'failed reminder enable reports an actionable error in Settings without changing the saved choice',
+    (tester) async {
+      final (store, _) = await fixture(tester);
+      await tester.runAsync(() => store.setSetting('reminders', 'false'));
+      final gateway = FakeWidgetReminderGateway()
+        ..initializeFailure = StateError('synthetic private platform detail');
+      await tester.pumpWidget(
+        MaterialApp(
+          home: GardenScreen(
+            store: store,
+            reminderGateway: gateway,
+            configLoader: (_) async =>
+                const RemoteConfigResult(RemoteConfig.defaults),
+          ),
+        ),
+      );
+      await settleDatabase(tester);
+      await tester.tap(find.byTooltip('Settings and privacy'));
+      await settleDatabase(tester);
+      final reminderSwitch = find.widgetWithText(
+        SwitchListTile,
+        'Gentle Windows reminders',
+      );
+      await tester.ensureVisible(reminderSwitch);
+      await tester.tap(reminderSwitch);
+      await settleDatabase(tester);
+
+      expect(
+        find.descendant(
+          of: find.byType(AlertDialog),
+          matching: find.textContaining(
+            'Windows reminders couldn’t be started. Check Windows Settings > System > Notifications, then try again.',
+          ),
+        ),
+        findsOneWidget,
+      );
+      expect(
+        find.textContaining('synthetic private platform detail'),
+        findsNothing,
+      );
+      expect(tester.widget<SwitchListTile>(reminderSwitch).value, isFalse);
+      expect(await tester.runAsync(() => store.setting('reminders')), 'false');
+    },
+  );
+
+  testWidgets(
+    'persisted default-on reminder choice stays visible after a startup capability failure',
+    (tester) async {
+      final (store, _) = await fixture(tester);
+      await tester.runAsync(() => store.setSetting('reminders', 'true'));
+      final gateway = FakeWidgetReminderGateway()
+        ..initializeFailure = StateError('synthetic private platform detail');
+      await tester.pumpWidget(
+        MaterialApp(
+          home: GardenScreen(
+            store: store,
+            reminderGateway: gateway,
+            configLoader: (_) async =>
+                const RemoteConfigResult(RemoteConfig.defaults),
+          ),
+        ),
+      );
+      await settleDatabase(tester);
+      await tester.tap(find.byTooltip('Settings and privacy'));
+      await settleDatabase(tester);
+      final reminderSwitch = find.widgetWithText(
+        SwitchListTile,
+        'Gentle Windows reminders',
+      );
+      await tester.ensureVisible(reminderSwitch);
+
+      expect(tester.widget<SwitchListTile>(reminderSwitch).value, isTrue);
+      expect(
+        find.descendant(
+          of: find.byType(AlertDialog),
+          matching: find.textContaining(
+            'Windows reminders couldn’t be started. Check Windows Settings > System > Notifications, then try again.',
+          ),
+        ),
+        findsOneWidget,
+      );
+      expect(
+        find.text(
+          'Your reminder preference is on, but Windows delivery is not active.',
+        ),
+        findsOneWidget,
+      );
+      expect(
+        find.textContaining('synthetic private platform detail'),
+        findsNothing,
+      );
+      expect(await tester.runAsync(() => store.setting('reminders')), 'true');
+      expect(gateway.initializations, 1);
+
+      await tester.tap(find.text('Retry Windows reminders'));
+      await settleDatabase(tester);
+      expect(gateway.initializations, 2);
+      expect(await tester.runAsync(() => store.setting('reminders')), 'true');
+    },
+  );
+
+  testWidgets('testDisableServices keeps reminder controls unavailable', (
+    tester,
+  ) async {
+    final (store, _) = await fixture(tester);
+    final gateway = FakeWidgetReminderGateway();
+    await tester.pumpWidget(
+      MaterialApp(
+        home: GardenScreen(
+          store: store,
+          reminderGateway: gateway,
+          testDisableServices: true,
+        ),
+      ),
+    );
+    await settleDatabase(tester);
+    await tester.tap(find.byTooltip('Settings and privacy'));
+    await settleDatabase(tester);
+
+    expect(find.text('Gentle Windows reminders'), findsNothing);
+    expect(gateway.action, isNull);
+    expect(await tester.runAsync(() => store.setting('reminders')), isNull);
+  });
 
   testWidgets('failed check-in neither celebrates nor withdraws its reminder', (
     tester,

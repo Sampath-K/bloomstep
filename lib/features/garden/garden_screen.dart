@@ -105,9 +105,11 @@ class _GardenScreenState extends State<GardenScreen> {
   Set<String> pausedReminders = {};
   String? error;
   String? configWarning;
+  String? reminderSetupError;
   String syncStatus = 'Local garden';
   bool syncing = false;
   bool closing = false;
+  bool reminderSetupInProgress = false;
   bool profileShown = false;
   bool firstHabitInvited = false;
   bool invitationScheduled = false;
@@ -156,11 +158,21 @@ class _GardenScreenState extends State<GardenScreen> {
         gateway: widget.reminderGateway,
         onPositiveCheckIn: _acknowledgeSavedPractice,
       );
-      reminders!.initialize().catchError((Object e) {
-        if (mounted) {
-          setState(() => error = 'Could not start reminders. Check Settings.');
-        }
-      });
+      reminderSetupInProgress = true;
+      reminders!
+          .initialize()
+          .catchError((Object e) {
+            if (mounted) {
+              final message = _reminderFailureMessage(e);
+              setState(() {
+                reminderSetupError = message;
+                error = message;
+              });
+            }
+          })
+          .whenComplete(() {
+            if (mounted) setState(() => reminderSetupInProgress = false);
+          });
       _refreshConfig();
     }
     if (widget.identity != null && !widget.testDisableServices) {
@@ -384,6 +396,61 @@ class _GardenScreenState extends State<GardenScreen> {
     }
   }
 
+  String _reminderFailureMessage(Object failure) {
+    if (failure is UnsupportedError) {
+      return 'Windows reminders are only available on Windows.';
+    }
+    if (failure is StateError) {
+      final message = failure.message;
+      if (message is String &&
+          (message.startsWith(
+                'Windows notifications are blocked by device policy',
+              ) ||
+              message.startsWith('Windows notifications are disabled'))) {
+        return message;
+      }
+    }
+    return 'Windows reminders couldn’t be started. Check Windows Settings > System > Notifications, then try again.';
+  }
+
+  Future<void> _changeReminderPreference(
+    bool value,
+    StateSetter update,
+    BuildContext settingsContext,
+  ) async {
+    if (working || reminderSetupInProgress || reminders == null) return;
+    final previousReminderError = reminderSetupError;
+    setState(() {
+      working = true;
+      reminderSetupInProgress = true;
+      if (error == previousReminderError) error = null;
+      reminderSetupError = null;
+    });
+    try {
+      if (value) {
+        await reminders!.enable();
+      } else {
+        await reminders!.disable();
+      }
+      if (mounted) {
+        await _load();
+        if (widget.identity?.account != null) unawaited(_sync());
+      }
+    } catch (failure) {
+      if (mounted) {
+        setState(() => reminderSetupError = _reminderFailureMessage(failure));
+      }
+    } finally {
+      if (mounted) {
+        setState(() {
+          working = false;
+          reminderSetupInProgress = false;
+        });
+      }
+      if (settingsContext.mounted) update(() {});
+    }
+  }
+
   Future<void> _acknowledgeSavedPractice(String habitId) async {
     if (!mounted || closing) return;
     final matches = habits.where((candidate) => candidate.id == habitId);
@@ -472,6 +539,7 @@ class _GardenScreenState extends State<GardenScreen> {
   }
 
   Future<void> _check(Habit habit, CheckInResult result) async {
+    final messenger = ScaffoldMessenger.of(context);
     String? reason;
     if (result == CheckInResult.notToday) {
       reason = await showDialog<String>(
@@ -503,7 +571,7 @@ class _GardenScreenState extends State<GardenScreen> {
     });
     if (saved) await reminders?.practiced(habit.id);
     if (!saved || result == CheckInResult.notToday) return;
-    final celebration = ScaffoldMessenger.of(context).showSnackBar(
+    final celebration = messenger.showSnackBar(
       SnackBar(
         content: Text(
           '${result == CheckInResult.didMore ? 'A little extra! ' : 'That tiny step counts! '}Now ${habit.celebration}.',
@@ -787,10 +855,13 @@ class _GardenScreenState extends State<GardenScreen> {
           invitationWarning = null;
         });
       }
-    } catch (_) {
+    } catch (error) {
       if (mounted) {
         setState(
-          () => invitationWarning = 'Invitation status could not be refreshed. Cached cosmetics are last-known server receipts, not a new grant.',
+          () {
+            invitationWarning =
+                '${invitationErrorMessage(error, phase: InvitationPhase.status)} Cached cosmetics are last-known server receipts, not a new grant.';
+          },
         );
       }
     }
@@ -967,7 +1038,8 @@ class _GardenScreenState extends State<GardenScreen> {
                       labelText: kind == 'Rating'
                           ? 'Optional feedback'
                           : 'Your feedback',
-                      hintText: 'Please do not include secrets or private account details.',
+                      hintText:
+                          'Leave out passwords, private account information and sensitive habit details.',
                     ),
                   ),
                   const Text(
@@ -1058,6 +1130,9 @@ class _GardenScreenState extends State<GardenScreen> {
     var personalized =
         await widget.store.setting('personalizedTiming') == 'true';
     if (!mounted) return;
+    if (reminderSetupError != null && error == reminderSetupError) {
+      setState(() => error = null);
+    }
     await showDialog<void>(
       context: context,
       builder: (context) => StatefulBuilder(
@@ -1171,15 +1246,48 @@ class _GardenScreenState extends State<GardenScreen> {
                     SwitchListTile(
                       title: const Text('Gentle Windows reminders'),
                       subtitle: const Text(
-                        'Opt in to toasts and tray. Closing the window keeps Budlark running. Delivery stops when you exit.',
+                        'On by default. Switch off any time. Closing the window keeps Budlark running. Delivery stops when you exit.',
                       ),
-                      value: reminders!.enabled,
-                      onChanged: (value) async {
-                        await _act(
-                          value ? reminders!.enable : reminders!.disable,
-                        );
-                        update(() {});
-                      },
+                      value: reminders!.requestedEnabled,
+                      onChanged: working || reminderSetupInProgress
+                          ? null
+                          : (value) => _changeReminderPreference(
+                              value,
+                              update,
+                              context,
+                            ),
+                    ),
+                  if (reminders != null &&
+                      reminders!.requestedEnabled &&
+                      !reminders!.enabled)
+                    Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 16),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            reminderSetupInProgress
+                                ? 'Windows reminders are starting.'
+                                : 'Your reminder preference is on, but Windows delivery is not active.',
+                          ),
+                          if (!reminderSetupInProgress)
+                            TextButton(
+                              onPressed: working
+                                  ? null
+                                  : () => _changeReminderPreference(
+                                      true,
+                                      update,
+                                      context,
+                                    ),
+                              child: const Text('Retry Windows reminders'),
+                            ),
+                        ],
+                      ),
+                    ),
+                  if (reminders != null && reminderSetupError != null)
+                    Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 16),
+                      child: Text(reminderSetupError!),
                     ),
                   if (reminders != null) ...[
                     SwitchListTile(

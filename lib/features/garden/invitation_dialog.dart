@@ -64,6 +64,7 @@ class _InvitationDialogState extends State<InvitationDialog> {
 
   Future<void> share(String channel) async {
     if (busy) return;
+    var phase = InvitationPhase.creation;
     setState(() {
       busy = true;
       failure = null;
@@ -74,6 +75,7 @@ class _InvitationDialogState extends State<InvitationDialog> {
       final created = await widget.service.create(channel, recipeCard: card);
       if (!mounted) return;
       final url = widget.service.webUri(created);
+      phase = InvitationPhase.handoff;
       if (channel == 'link') {
         await Clipboard.setData(ClipboardData(text: url.toString()));
       } else if (channel == 'email') {
@@ -111,12 +113,12 @@ class _InvitationDialogState extends State<InvitationDialog> {
         },
       );
       await observe(ExperienceOutcome.taskCompleted);
-    } catch (_) {
+    } catch (error) {
       if (mounted) {
         setState(() {
           receipt = null;
           outcome = null;
-          failure = "Couldn't complete the invite. Try again.";
+          failure = invitationErrorMessage(error, phase: phase);
         });
         await observe(ExperienceOutcome.error);
       }

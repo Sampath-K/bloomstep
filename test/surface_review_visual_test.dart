@@ -134,6 +134,12 @@ void main() {
     await tester.tap(find.byTooltip('Help us grow'));
     await tester.pumpAndSettle();
     expect(
+      find.text(
+        'Leave out passwords, private account information and sensitive habit details.',
+      ),
+      findsOneWidget,
+    );
+    expect(
       tester
           .widget<DropdownButtonFormField<String>>(
             find.byType(DropdownButtonFormField<String>),

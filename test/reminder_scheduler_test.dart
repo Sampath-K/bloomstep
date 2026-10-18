@@ -11,6 +11,7 @@ class FakeReminderGateway implements ReminderGateway {
   final requests = <ReminderRequest>[];
   final operations = <String>[];
   Future<void> Function(String)? action;
+  int initializations = 0;
   bool failShow = false;
   bool failInitialize = false;
   bool failCancelAll = false;
@@ -18,6 +19,7 @@ class FakeReminderGateway implements ReminderGateway {
   Future<void> Function(ReminderRequest)? beforeShow;
   @override
   Future<void> initialize(Future<void> Function(String) action) async {
+    initializations++;
     this.action = action;
     await beforeInitialize?.call();
     if (failInitialize) throw StateError('Synthetic initialization failed');
@@ -100,48 +102,120 @@ void main() {
     },
   );
 
-  test('saved positive reminder and tray check-ins acknowledge once in app', () async {
-    final h = await plantReminder(store);
-    await reminders.tick();
-    final request = gateway.requests.single;
-    final requestCount = gateway.requests.length;
-    await gateway.action!(request.payloadFor('did'));
-    expect(positiveCheckIns, [h.id]);
-    expect((await store.habits()).single.today, CheckInResult.did);
+  test(
+    'saved positive reminder and tray check-ins acknowledge once in app',
+    () async {
+      final h = await plantReminder(store);
+      await reminders.tick();
+      final request = gateway.requests.single;
+      final requestCount = gateway.requests.length;
+      await gateway.action!(request.payloadFor('did'));
+      expect(positiveCheckIns, [h.id]);
+      expect((await store.habits()).single.today, CheckInResult.did);
 
-    await gateway.action!(request.payloadFor('did'));
-    expect(positiveCheckIns, [h.id], reason: 'a repeated toast action is ignored');
+      await gateway.action!(request.payloadFor('did'));
+      expect(
+        positiveCheckIns,
+        [h.id],
+        reason: 'a repeated toast action is ignored',
+      );
 
-    now = now.add(const Duration(days: 1));
-    await reminders.handleTrayAction('did:${h.id}');
-    expect(positiveCheckIns, [h.id, h.id]);
-    expect((await store.habits()).single.today, CheckInResult.did);
-    expect(gateway.requests, hasLength(requestCount));
+      now = now.add(const Duration(days: 1));
+      await reminders.handleTrayAction('did:${h.id}');
+      expect(positiveCheckIns, [h.id, h.id]);
+      expect((await store.habits()).single.today, CheckInResult.did);
+      expect(gateway.requests, hasLength(requestCount));
+    },
+  );
+
+  test(
+    'rest, rejected, stale and duplicate reminder actions do not celebrate',
+    () async {
+      await plantReminder(store);
+      await reminders.tick();
+      final request = gateway.requests.single;
+
+      await gateway.action!(request.payloadFor('rest'));
+      expect(positiveCheckIns, isEmpty);
+      expect((await store.habits()).single.today, CheckInResult.notToday);
+      await gateway.action!(request.payloadFor('rest'));
+      expect(positiveCheckIns, isEmpty);
+
+      await expectLater(
+        gateway.action!(
+          request.payloadFor('did').replaceFirst('account-a', 'another-account'),
+        ),
+        throwsStateError,
+      );
+      expect(positiveCheckIns, isEmpty);
+
+      now = now.add(const Duration(days: 1));
+      await gateway.action!(request.payloadFor('did'));
+      expect(
+        positiveCheckIns,
+        isEmpty,
+        reason: 'old-day actions only reopen the app',
+      );
+    },
+  );
+
+  test('saved reminder opt-out remains off during startup restoration', () async {
+    await reminders.disable(explicitChoice: false);
+    gateway.operations.clear();
+    await reminders.initialize();
+
+    expect(reminders.enabled, isFalse);
+    expect(await store.setting('reminders'), 'false');
+    expect(gateway.operations, isEmpty);
   });
 
-  test('rest, rejected, stale and duplicate reminder actions do not celebrate', () async {
-    final h = await plantReminder(store);
-    await reminders.tick();
-    final request = gateway.requests.single;
+  test('a saved reminder opt-out can be explicitly enabled again', () async {
+    await reminders.disable();
+    expect(reminders.requestedEnabled, isFalse);
+    expect(await store.setting('reminders'), 'false');
 
-    await gateway.action!(request.payloadFor('rest'));
-    expect(positiveCheckIns, isEmpty);
-    expect((await store.habits()).single.today, CheckInResult.notToday);
-    await gateway.action!(request.payloadFor('rest'));
-    expect(positiveCheckIns, isEmpty);
+    await reminders.enable();
 
-    await expectLater(
-      gateway.action!(
-        request.payloadFor('did').replaceFirst('account-a', 'another-account'),
-      ),
-      throwsStateError,
-    );
-    expect(positiveCheckIns, isEmpty);
-
-    now = now.add(const Duration(days: 1));
-    await gateway.action!(request.payloadFor('did'));
-    expect(positiveCheckIns, isEmpty, reason: 'old-day actions only reopen the app');
+    expect(reminders.enabled, isTrue);
+    expect(reminders.requestedEnabled, isTrue);
+    expect(await store.setting('reminders'), 'true');
+    expect(gateway.initializations, 2);
   });
+
+  test(
+    'a fresh garden defaults reminders on and persists that preference',
+    () async {
+      await reminders.dispose();
+      await store.close();
+      store = await GardenStore.open(
+        ':memory:',
+        'fresh-reminder-choice',
+        clock: () => now,
+      );
+      await store.setSetting('analytics', 'true');
+      gateway = FakeReminderGateway();
+      reminders = DesktopReminders(
+        store,
+        () async {},
+        (_) {},
+        gateway: gateway,
+        clock: () => now,
+      );
+
+      await reminders.initialize();
+
+      expect(reminders.enabled, isTrue);
+      expect(await store.setting('reminders'), 'true');
+      expect(
+        ((await store.export())['events'] as List).where(
+          (row) =>
+              (row as Map)['name'].toString().startsWith('reminder_preference_'),
+        ),
+        isEmpty,
+        reason: 'default delivery does not grant reminder-observation consent',
+      );
+    },
+  );
 
   test('restoration never enrolls; genuine fresh-consent enable, followup and explicit disable use app preference provenance', () async {
     await reminders.disable(explicitChoice: false);

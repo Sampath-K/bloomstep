@@ -3,6 +3,7 @@ import 'dart:io';
 
 import 'package:bloomstep/core/garden_store.dart';
 import 'package:bloomstep/features/garden/garden_screen.dart';
+import 'package:bloomstep/features/garden/invitation_dialog.dart';
 import 'package:bloomstep/services/invitation_intent.dart';
 import 'package:bloomstep/services/invitation_service.dart';
 import 'package:flutter/material.dart';
@@ -47,10 +48,94 @@ Future<void> waitInvitation(WidgetTester tester, Finder finder) async {
   fail('Invitation readiness timed out: $finder');
 }
 
+Future<void> waitInvitationCondition(
+  WidgetTester tester,
+  bool Function() ready,
+) async {
+  final watch = Stopwatch()..start();
+  while (watch.elapsed < const Duration(seconds: 10)) {
+    if (ready()) return;
+    await tester.runAsync(
+      () => Future<void>.delayed(const Duration(milliseconds: 50)),
+    );
+    await tester.pump(const Duration(milliseconds: 50));
+  }
+  fail('Invitation operation timed out.');
+}
+
 void main() {
   final token = base64Url
       .encode(List<int>.generate(32, (i) => i))
       .replaceAll('=', '');
+  testWidgets('service rejection and native handoff failure show distinct safe retry errors', (tester) async {
+    final store = (await tester.runAsync(
+      () => GardenStore.open(':memory:', 'synthetic-failure-ui'),
+    ))!;
+    addTearDown(() => tester.runAsync(store.close));
+    var status = 503;
+    var requests = 0;
+    final service = InvitationService(
+      store,
+      tokenProvider: () async => 'synthetic',
+      origin: 'https://approved.example',
+      client: MockClient((request) async {
+        requests++;
+        final body = jsonDecode(request.body) as Map;
+        return http.Response(status == 200 ? jsonEncode({
+          'invitationId': body['requestId'],
+          'token': token,
+          'channel': body['channel'],
+          'recipeCard': body['recipeCard'],
+          'expiresAt': DateTime.now().toUtc()
+              .add(const Duration(days: 7)).toIso8601String(),
+        }) : 'private server details', status);
+      }),
+    );
+    const bridge = MethodChannel('bloomstep/native_share');
+    TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+        .setMockMethodCallHandler(bridge, (_) async {
+          throw PlatformException(code: 'private', message: 'private platform details');
+        });
+    addTearDown(() => TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+        .setMockMethodCallHandler(bridge, null));
+    await tester.pumpWidget(MaterialApp(home: Builder(builder: (context) =>
+      TextButton(onPressed: () => showDialog<void>(
+        context: context,
+        builder: (_) => InvitationDialog(
+          store: store, service: service, hasRecipes: false,
+          chooseCard: () async => null,
+        ),
+      ), child: const Text('Open invitation')),
+    )));
+    await tester.tap(find.text('Open invitation'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Copy link'));
+    final backendError = invitationErrorMessage(const InvitationFailure(
+      InvitationFailureKind.backend, InvitationPhase.creation, httpStatus: 503,
+    ));
+    await waitInvitation(tester, find.text(backendError));
+    expect(requests, 1);
+    expect(find.textContaining('private'), findsNothing);
+    status = 200;
+    await tester.ensureVisible(find.text('More ways to invite'));
+    await tester.tap(find.text('More ways to invite'));
+    await tester.pumpAndSettle();
+    await tester.ensureVisible(find.text('Windows share'));
+    await tester.tap(find.text('Windows share'));
+    final handoffError = invitationErrorMessage(
+      StateError('ignored'), phase: InvitationPhase.handoff,
+    );
+    await waitInvitation(tester, find.text(handoffError));
+    expect(find.text('Windows share panel requested'), findsNothing);
+    expect(requests, 2);
+    await tester.ensureVisible(find.text('Windows share'));
+    await tester.tap(find.text('Windows share'));
+    await waitInvitation(tester, find.text(handoffError));
+    expect(requests, 2, reason: 'Retry reuses the server receipt after handoff failure.');
+    expect(find.textContaining('private platform'), findsNothing);
+    await tester.pumpWidget(const SizedBox.shrink());
+  });
+
   testWidgets('visual invitation contract: quiet, private and dismissible', (
     tester,
   ) async {
@@ -410,7 +495,7 @@ void main() {
       expect(find.text('Private invitation receipts'), findsNothing);
       expect(statusRequests, 1);
       await tester.tap(find.text('Refresh invitation status'));
-      await settleDatabase(tester);
+      await waitInvitationCondition(tester, () => statusRequests == 2);
       expect(statusRequests, 2);
       await tester.pumpAndSettle();
       await captureVisual(tester, boundary, 'incoming-accepted-cosmetic');

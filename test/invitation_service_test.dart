@@ -9,6 +9,7 @@ import 'package:http/testing.dart';
 import 'package:sqflite_common_ffi/sqflite_ffi.dart';
 
 void main() {
+  final throwsInvitationFailure = throwsA(isA<InvitationFailure>());
   late GardenStore store;
   final now = DateTime.utc(2026, 10, 4);
   final token = base64Url
@@ -51,7 +52,7 @@ void main() {
         );
       }),
     );
-    await expectLater(api.create('link'), throwsStateError);
+    await expectLater(api.create('link'), throwsInvitationFailure);
     fail = false;
     final created = await api.create('link');
     expect(requests[0], requests[1]);
@@ -64,7 +65,7 @@ void main() {
       'invite': token,
       'channel': 'link',
     });
-    await expectLater(api.create('email'), throwsStateError);
+    await expectLater(api.create('email'), throwsInvitationFailure);
     expect((await store.syncPayload())['settings'], isEmpty);
     final exported = await store.export();
     expect(jsonEncode(exported), isNot(contains(token)));
@@ -163,7 +164,7 @@ void main() {
       origin: 'https://approved.example',
     );
     try {
-      await expectLater(api().redeem(token), throwsStateError);
+      await expectLater(api().redeem(token), throwsInvitationFailure);
       expect(
         ((await disk.syncPayload())['events'] as List).where(
           (r) => r['name'] == 'invite_accepted',
@@ -272,13 +273,13 @@ void main() {
     );
     await api.create('link');
     date = now.add(const Duration(days: 7));
-    await expectLater(api.create('link'), throwsStateError);
+    await expectLater(api.create('link'), throwsInvitationFailure);
     expect(requests, 2);
     final exported = await api.refreshStatus(export: true);
     expect(exported.json['sharedRecipes'], isEmpty);
     expect(await store.setting('rare_flower'), isNull);
     await store.setSetting('invitationState', '{}');
-    await expectLater(api.cachedStatus(), throwsFormatException);
+    await expectLater(api.cachedStatus(), throwsInvitationFailure);
   });
 
   test(
@@ -303,7 +304,7 @@ void main() {
         ),
       ]) {
         final api = service(MockClient((_) async => response));
-        await expectLater(api.refreshStatus(), throwsFormatException);
+        await expectLater(api.refreshStatus(), throwsInvitationFailure);
         expect(await api.cachedStatus(), isNull);
       }
     },
@@ -319,21 +320,122 @@ void main() {
           return http.Response('{}', 200);
         }),
       );
-      await expectLater(api.redeem('A' * 42 + 'B'), throwsFormatException);
+      await expectLater(api.redeem('A' * 42 + 'B'), throwsInvitationFailure);
       await expectLater(
         api.create('link', recipeCard: {'explicitChoice': false}),
-        throwsFormatException,
+        throwsInvitationFailure,
       );
       expect(called, isFalse);
-      await expectLater(api.create('link'), throwsFormatException);
+      await expectLater(api.create('link'), throwsInvitationFailure);
       final switched = service(
         MockClient((_) async {
           await store.switchAccount('invite-b');
           return http.Response('{}', 200);
         }),
       );
-      await expectLater(switched.refreshStatus(), throwsStateError);
+      await expectLater(switched.refreshStatus(), throwsInvitationFailure);
       expect(await store.setting('invitationState'), isNull);
     },
   );
+
+  test('HTTP failures expose only typed phase/status and retain retry history', () async {
+    final cases = {
+      400: InvitationFailureKind.invalidRequest,
+      401: InvitationFailureKind.authentication,
+      403: InvitationFailureKind.permission,
+      409: InvitationFailureKind.conflict,
+      410: InvitationFailureKind.expired,
+      429: InvitationFailureKind.limit,
+      500: InvitationFailureKind.backend,
+      503: InvitationFailureKind.backend,
+    };
+    final payloads = <Map>[];
+    final card = {
+      'explicitChoice': true,
+      'templateCategory': 'calm',
+      'aspiration': 'Calm',
+      'anchor': 'After tea',
+      'behavior': 'One breath',
+      'celebration': 'Smile',
+      'species': 'Fern',
+    };
+    var status = 503;
+    final api = service(MockClient((request) async {
+      if (request.method == 'POST') payloads.add(jsonDecode(request.body) as Map);
+      return http.Response('private-server-body-token-account-id', status);
+    }));
+    for (final entry in cases.entries) {
+      status = entry.key;
+      for (final phase in [InvitationPhase.creation, InvitationPhase.status]) {
+        await expectLater(
+          phase == InvitationPhase.creation
+              ? api.create('link', recipeCard: card)
+              : api.refreshStatus(),
+          throwsA(isA<InvitationFailure>()
+              .having((e) => e.kind, 'kind', entry.value)
+              .having((e) => e.phase, 'phase', phase)
+              .having((e) => e.httpStatus, 'httpStatus', status)
+              .having((e) => e.toString(), 'safe copy',
+                  isNot(contains('private-server-body')))),
+        );
+      }
+    }
+    expect(payloads.every((body) => body['requestId'] == payloads.first['requestId']), isTrue);
+    expect(payloads.every((body) => jsonEncode(body['recipeCard']) == jsonEncode(card)), isTrue);
+    final history = jsonDecode((await store.setting('invitationState'))!) as Map;
+    expect(history['creations'], hasLength(1));
+    expect(history['creations'][0]['receipt'], isNull);
+    expect(await api.cachedStatus(), isNull);
+  });
+
+  test('invalid configuration and unverifiable response are not backend or handoff failures', () async {
+    final unconfigured = InvitationService(
+      store,
+      origin: '',
+      tokenProvider: () async => 'synthetic',
+    );
+    await expectLater(unconfigured.refreshStatus(),
+        throwsA(isA<InvitationFailure>().having(
+            (e) => e.kind, 'kind', InvitationFailureKind.configuration)));
+    final invalid = service(MockClient((_) async =>
+        http.Response('{"private":"not an invitation status"}', 200)));
+    await expectLater(invalid.refreshStatus(),
+        throwsA(isA<InvitationFailure>().having(
+            (e) => e.kind, 'kind', InvitationFailureKind.invalidResponse)));
+    expect(await invalid.cachedStatus(), isNull);
+  });
+
+  test('token, network, session and damaged cache have distinct sanitized failures', () async {
+    final authentication = InvitationService(
+      store,
+      tokenProvider: () async => throw StateError('private-token'),
+      origin: 'https://approved.example',
+    );
+    await expectLater(authentication.refreshStatus(),
+        throwsA(isA<InvitationFailure>().having(
+            (e) => e.kind, 'kind', InvitationFailureKind.authentication)));
+    final offline = service(MockClient((_) async =>
+        throw http.ClientException('private-url-and-token')));
+    await expectLater(offline.refreshStatus(),
+        throwsA(isA<InvitationFailure>().having(
+            (e) => e.kind, 'kind', InvitationFailureKind.network)));
+    final switched = InvitationService(
+      store,
+      tokenProvider: () async {
+        await store.switchAccount('invite-b');
+        return 'token';
+      },
+      origin: 'https://approved.example',
+    );
+    await expectLater(switched.refreshStatus(),
+        throwsA(isA<InvitationFailure>().having(
+            (e) => e.kind, 'kind', InvitationFailureKind.session)));
+    await store.setSetting('invitationState', '{private damaged history');
+    await expectLater(offline.create('qr'),
+        throwsA(isA<InvitationFailure>().having(
+            (e) => e.kind, 'kind', InvitationFailureKind.cache)));
+    expect(await store.setting('invitationState'), '{private damaged history');
+    expect(invitationErrorMessage(StateError('secret')),
+        isNot(contains('secret')));
+  });
 }

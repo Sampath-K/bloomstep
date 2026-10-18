@@ -258,11 +258,19 @@ void main() {
       await tester.tap(find.text('Copy link'));
       await waitInvitation(
         tester,
-        find.text("Couldn't complete the invite. Try again."),
+        find.text(invitationErrorMessage(const InvitationFailure(
+          InvitationFailureKind.backend,
+          InvitationPhase.creation,
+          httpStatus: 503,
+        ))),
       );
       await tester.pumpAndSettle();
       await tester.ensureVisible(
-        find.text("Couldn't complete the invite. Try again."),
+        find.text(invitationErrorMessage(const InvitationFailure(
+          InvitationFailureKind.backend,
+          InvitationPhase.creation,
+          httpStatus: 503,
+        ))),
       );
       await captureVisual(tester, key, 'invite-${variant.name}-failure');
       expect(find.text('Link copied'), findsNothing);
@@ -347,7 +355,10 @@ void main() {
       await tester.tap(find.text('Copy link'));
       await waitInvitation(
         tester,
-        find.text("Couldn't complete the invite. Try again."),
+        find.text(invitationErrorMessage(
+          StateError('synthetic clipboard'),
+          phase: InvitationPhase.handoff,
+        )),
       );
       await tester.pumpAndSettle();
       expect(find.text('Link copied'), findsNothing);
