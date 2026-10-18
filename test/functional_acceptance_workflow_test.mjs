@@ -6,7 +6,8 @@ const wf = readFileSync(new URL('../.github/workflows/functional-acceptance.yml'
 const runBlocks = [...wf.matchAll(/run: \|\n((?:          .*\n|\n)+)/g)].map((m) => m[1]).join('\n');
 
 test('functional acceptance runs only on demand against an exact artifact on a fresh hosted Windows VM', () => {
-  assert.match(wf, /^on:\n  workflow_dispatch:/m);
+  assert.match(wf, /^on:\n(?:  #.*\n)*  workflow_call:/m);
+  assert.match(wf, /^  workflow_dispatch:/m);
   assert.doesNotMatch(wf, /^\s+(push|pull_request|schedule):/m);
   for (const input of ['candidate', 'run_id', 'artifact_id', 'installer_sha256', 'mode']) assert.match(wf, new RegExp(`\\n      ${input}:`));
   assert.match(wf, /runs-on: windows-latest/);
@@ -40,4 +41,18 @@ test('harness owns install and results; cleanup touches only the owned install d
   assert.doesNotMatch(wf, /result\s*=\s*'PASS'|"result":\s*"PASS"/);
   assert.match(wf, /if: always\(\)/);
   assert.match(wf, /upload-artifact@v4/);
+});
+
+test('ci.yml (registered on the default branch) dispatches functional acceptance exclusively', () => {
+  const ci = readFileSync(new URL('../.github/workflows/ci.yml', import.meta.url), 'utf8').replace(/\r\n/g, '\n');
+  assert.match(ci, /functional_mode:\n        description: .*\n        type: choice\n        options: \[none, candidate, baseline\]\n        default: none/);
+  const job = ci.match(/\n  functional-acceptance:\n((?:    .*\n)+)/)?.[1] ?? '';
+  assert.match(job, /if: github\.event_name == 'workflow_dispatch' && inputs\.functional_mode != 'none'/);
+  assert.match(job, /uses: \.\/\.github\/workflows\/functional-acceptance\.yml/);
+  assert.match(job, /mode: \$\{\{ inputs\.functional_mode \}\}/);
+  assert.doesNotMatch(job, /secrets: inherit|contents: write/);
+  for (const name of ['api', 'funnel-composed-acceptance', 'test-and-build-windows', 'edge-download-observation']) {
+    const ifLine = ci.match(new RegExp('\\n  ' + name + ':\\n(?:    (?!if:).*\\n)*    if: (.*)\\n'))?.[1] ?? '';
+    assert.match(ifLine, /inputs\.functional_mode == 'none'/, name);
+  }
 });

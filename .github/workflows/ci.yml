@@ -23,10 +23,39 @@ on:
         description: 'Run only the one bounded preview.8 Edge warning observation'
         type: boolean
         default: false
+      functional_mode:
+        description: 'Run only installed-app functional acceptance on an existing CI installer artifact (none, candidate, baseline)'
+        type: choice
+        options: [none, candidate, baseline]
+        default: none
+      functional_candidate:
+        description: 'Functional acceptance: commit SHA the installer was built from'
+        default: ''
+      functional_run_id:
+        description: 'Functional acceptance: CI run id that produced the installer'
+        default: ''
+      functional_artifact_id:
+        description: 'Functional acceptance: installer artifact id'
+        default: ''
+      functional_installer_sha256:
+        description: 'Functional acceptance: expected installer SHA-256'
+        default: ''
 
 jobs:
+  functional-acceptance:
+    if: github.event_name == 'workflow_dispatch' && inputs.functional_mode != 'none'
+    permissions:
+      contents: read
+      actions: read
+    uses: ./.github/workflows/functional-acceptance.yml
+    with:
+      candidate: ${{ inputs.functional_candidate }}
+      run_id: ${{ inputs.functional_run_id }}
+      artifact_id: ${{ inputs.functional_artifact_id }}
+      installer_sha256: ${{ inputs.functional_installer_sha256 }}
+      mode: ${{ inputs.functional_mode }}
   edge-download-observation:
-    if: github.event_name == 'workflow_dispatch' && inputs.verify_edge_warning && !inputs.verify_aggregates && !inputs.verify_spend_guard
+    if: github.event_name == 'workflow_dispatch' && inputs.verify_edge_warning && !inputs.verify_aggregates && !inputs.verify_spend_guard && inputs.functional_mode == 'none'
     runs-on: windows-latest
     steps:
       - uses: actions/checkout@v4
@@ -60,7 +89,7 @@ jobs:
       id-token: write
     uses: ./.github/workflows/aggregates.yml
   api:
-    if: github.event_name != 'workflow_dispatch' || (!inputs.verify_aggregates && !inputs.verify_spend_guard && !inputs.verify_edge_warning)
+    if: github.event_name != 'workflow_dispatch' || (!inputs.verify_aggregates && !inputs.verify_spend_guard && !inputs.verify_edge_warning && inputs.functional_mode == 'none')
     runs-on: ubuntu-latest
     defaults:
       run:
@@ -103,7 +132,7 @@ jobs:
           if-no-files-found: warn
   funnel-composed-acceptance:
     name: 'funnel composed acceptance: telemetry + AARRR + experiment loop (isolated synthetic; installer excluded)'
-    if: github.event_name != 'workflow_dispatch' || (!inputs.verify_aggregates && !inputs.verify_spend_guard && !inputs.verify_edge_warning)
+    if: github.event_name != 'workflow_dispatch' || (!inputs.verify_aggregates && !inputs.verify_spend_guard && !inputs.verify_edge_warning && inputs.functional_mode == 'none')
     runs-on: windows-latest
     timeout-minutes: 60
     steps:
@@ -143,7 +172,7 @@ jobs:
           path: ${{ runner.temp }}/console-preview/
           if-no-files-found: warn
   test-and-build-windows:
-    if: github.event_name != 'workflow_dispatch' || (!inputs.verify_aggregates && !inputs.verify_spend_guard && !inputs.verify_edge_warning)
+    if: github.event_name != 'workflow_dispatch' || (!inputs.verify_aggregates && !inputs.verify_spend_guard && !inputs.verify_edge_warning && inputs.functional_mode == 'none')
     strategy:
       fail-fast: false
       matrix:

@@ -5,6 +5,15 @@ name: functional-acceptance
 # tests, PASS/FAIL and cleanup; this workflow only proves artifact identity and
 # preserves output. See docs/release-governance.md.
 on:
+  # Dispatched through ci.yml (functional_mode input) because GitHub only dispatches
+  # workflows registered on the default branch; ci.yml is, this file is not yet.
+  workflow_call:
+    inputs:
+      candidate: { type: string, required: true }
+      run_id: { type: string, required: true }
+      artifact_id: { type: string, required: true }
+      installer_sha256: { type: string, required: true }
+      mode: { type: string, required: true }
   workflow_dispatch:
     inputs:
       candidate:
@@ -29,14 +38,13 @@ permissions:
   contents: read
   actions: read
 
-concurrency:
-  group: functional-acceptance-${{ inputs.mode }}-${{ inputs.candidate }}
-  cancel-in-progress: false
-
 jobs:
   acceptance:
     runs-on: windows-latest
     timeout-minutes: 90
+    concurrency:
+      group: functional-acceptance-${{ inputs.mode }}-${{ inputs.candidate }}
+      cancel-in-progress: false
     env:
       GH_TOKEN: ${{ github.token }}
       REPO: ${{ github.repository }}
