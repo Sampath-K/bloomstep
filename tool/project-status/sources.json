@@ -287,7 +287,7 @@
       "One consistent Budlark identity, from installer artwork to the app.",
       "Clearer separation between the garden on this device and the garden in your account.",
       "Plain disclosures before copying a garden or signing out.",
-      "Profile and settings actions that work with assistive technology."
+      "Profile and settings accessibility improvements prepared."
     ],
     "system": [
       "Expired sessions now close outdated profile dialogs instead of leaving them open.",
@@ -296,6 +296,7 @@
     "milestones": [
       {
         "label": "Hosted quality checks",
+        "attentionLabel": "hosted quality checks",
         "source": "release",
         "done": [
           "review-ready",
@@ -304,6 +305,7 @@
       },
       {
         "label": "Installer candidate built",
+        "attentionLabel": "installer candidate",
         "source": "installer",
         "done": [
           "verified"
@@ -311,6 +313,7 @@
       },
       {
         "label": "Owner accepted installation",
+        "attentionLabel": "owner installation",
         "source": "owner-check",
         "done": [
           "verified"
@@ -318,13 +321,15 @@
       },
       {
         "label": "Release approved",
+        "attentionLabel": "release approval",
         "source": "integration",
         "done": [
           "verified"
         ]
       },
       {
-        "label": "Website experience prepared",
+        "label": "Download hosting prepared",
+        "attentionLabel": "download hosting",
         "source": "website",
         "done": [
           "review-ready",
@@ -333,11 +338,13 @@
       },
       {
         "label": "Live download verified",
+        "attentionLabel": "live download",
         "source": "download",
         "done": [
           "verified"
         ]
       }
-    ]
+    ],
+    "pendingNote": "owner installation pending"
   }
 }

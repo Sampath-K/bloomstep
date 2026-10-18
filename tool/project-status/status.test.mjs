@@ -480,7 +480,7 @@ test('contract: live config reads PR52 and PR54 as gating sources; executive cou
 
 const narrative = {
   release: 'Next release', headline: 'Simpler product, validation in progress.',
-  candidateReadiness: 'Candidate preparation; owner validation pending', readyReadiness: 'Ready for owner decision',
+  candidateReadiness: 'Candidate preparation; owner validation pending', readyReadiness: 'Ready for owner decision', pendingNote: 'owner validation pending',
   product: ['Clearer product identity.'], system: ['Checks cover both architectures.'],
   milestones: [
     { label: 'Quality checks', source: 'code', done: ['review-ready', 'merged'] },
@@ -505,6 +505,13 @@ test('contract: next-release narrative config is exec-level, anchored to the gat
   for (const m of n.milestones) assert.ok(closure.has(m.source), m.source);
   assert.ok(n.milestones.some(m => /owner/i.test(m.label) && /accept/i.test(m.label)));
   assert.ok(n.milestones.some(m => /live download/i.test(m.label)));
+  assert.equal(n.milestones.find(m => m.source === 'website').label, 'Download hosting prepared');
+  assert.equal(n.pendingNote, 'owner installation pending');
+  assert.equal(n.milestones.find(m => m.source === 'website').attentionLabel, 'download hosting');
+  const attention = { ...narrative, milestones: [{ ...narrative.milestones[0], attentionLabel: 'checks' }, narrative.milestones[1]] };
+  assert.doesNotThrow(() => validateConfig({ ...narrConfig, narrative: attention }));
+  assert.throws(() => validateConfig({ ...narrConfig, narrative: { ...attention, milestones: [{ ...attention.milestones[0], attentionLabel: '' }] } }));
+  assert.doesNotMatch(JSON.stringify(n.product), /work with assistive technology/i);
   assert.throws(() => validateConfig({ ...narrConfig, narrative: { ...narrative, milestones: [{ label: 'X', source: 'missing', done: ['merged'] }] } }));
   assert.throws(() => validateConfig({ ...narrConfig, narrative: { ...narrative, product: [] } }));
 });
@@ -514,7 +521,7 @@ test('contract: narrative maps observed states to plain milestones and never exp
   const result = await collect(narrConfig, { now, auth: async () => {}, read: async path => failing(path) });
   const n = result.narrative;
   assert.equal(n.readiness.tone, 'not-ready');
-  assert.equal(n.readiness.label, narrative.candidateReadiness);
+  assert.equal(n.readiness.label, 'Not ready: quality checks needs attention; owner validation pending');
   assert.deepEqual(n.milestones.map(m => m.status), ['attention', 'waiting']);
   assert.equal(n.lastSourceSuccessAt, now);
   assert.doesNotMatch(JSON.stringify(n), lowLevel);

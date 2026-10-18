@@ -43,15 +43,15 @@ engineering board. It shows only:
 - **Release headline and readiness**: `narrative.headline` and the readiness
   label from `sources.json`. Readiness stays the configured candidate label
   (currently "Candidate preparation; owner installation validation pending")
-  until every milestone has observed done evidence; `Not ready` when any
-  milestone needs attention; `Unknown` when collection failed, evidence is
+  until every milestone has observed done evidence; `Not ready: <milestones>
+  needs attention; <pendingNote>` naming every milestone that needs attention; `Unknown` when collection failed, evidence is
   stale (older than five minutes), the latest polling attempt failed or the
   snapshot cannot be read. It never shows shipped, launched or accepted claims.
 - **Product taking shape**: reviewed customer-value statements in the release
   candidate, labelled not yet owner-validated or customer-proven.
 - **Verified progress**: plain-language milestones mapped from the gating
   launch sequence (hosted checks -> installer candidate -> owner accepted
-  installation -> release approved, plus website prepared -> live download
+  installation -> release approved, plus download hosting prepared -> live download
   verified). A milestone is *Done* only for its configured observed states;
   steps without a live source show *Waiting* or *Not yet evidenced*; read errors
   and stale data show *Unknown*. The latest observed milestone state change is
