@@ -60,7 +60,7 @@ test('customer release page makes the owner-test restriction clear and excludes 
   assert.ok(site.includes('7ad56cc3c71a40d78dd7cb043b43aa42ea884cb0484da982cffa386c9384b094'));
   assert.match(site, /Early preview — not yet verified for general use/);
   assert.match(site, /The files are publicly reachable, but download them only if you are the designated tester/);
-  assert.match(site, /Launch after installation and the complete sign-in and app journey have not been verified/);
+  assert.match(site, /Launch after installation and the complete app journey have not been verified/);
   assert.match(site, /Recent preview changes/);
   assert.doesNotMatch(site, /owner-trial-checklist|docs\/status\.md|\bCI\b|elevated worker|launch gates|support receipts|stale-device|API audit/i);
 });

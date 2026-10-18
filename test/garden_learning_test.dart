@@ -8,6 +8,7 @@ import 'package:bloomstep/services/desktop_reminders.dart';
 import 'package:bloomstep/services/remote_config.dart';
 import 'package:bloomstep/services/update_service.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:sqflite_common_ffi/sqflite_ffi.dart';
 
@@ -82,6 +83,47 @@ Future<(GardenStore, Habit)> fixture(WidgetTester tester) async {
 }
 
 void main() {
+  testWidgets('feedback supports Ctrl+V into the focused text field on Windows', (
+    tester,
+  ) async {
+    debugDefaultTargetPlatformOverride = TargetPlatform.windows;
+    addTearDown(() => debugDefaultTargetPlatformOverride = null);
+    tester.binding.defaultBinaryMessenger.setMockMethodCallHandler(
+      SystemChannels.platform,
+      (call) async {
+        if (call.method == 'Clipboard.getData') {
+          return {'text': 'Pasted feedback'};
+        }
+        if (call.method == 'Clipboard.hasStrings') return {'value': true};
+        return null;
+      },
+    );
+    addTearDown(
+      () => tester.binding.defaultBinaryMessenger.setMockMethodCallHandler(
+        SystemChannels.platform,
+        null,
+      ),
+    );
+    final (store, _) = await fixture(tester);
+    await tester.pumpWidget(
+      MaterialApp(home: GardenScreen(store: store, testDisableServices: true)),
+    );
+    await settleDatabase(tester);
+    await tester.tap(find.byTooltip('Help us grow'));
+    await tester.pumpAndSettle();
+    final field = find.widgetWithText(TextField, 'Your feedback');
+    await tester.tap(field);
+    await tester.pump();
+    await tester.sendKeyDownEvent(LogicalKeyboardKey.controlLeft);
+    await tester.sendKeyEvent(LogicalKeyboardKey.keyV);
+    await tester.sendKeyUpEvent(LogicalKeyboardKey.controlLeft);
+    await tester.pumpAndSettle();
+    expect(tester.widget<TextField>(field).controller!.text, 'Pasted feedback');
+    await tester.tap(find.text('Save feedback'));
+    await settleDatabase(tester);
+    expect((await tester.runAsync(store.voice))!.single['body'], 'Pasted feedback');
+  });
+
   testWidgets(
     'Settings mounts a fresh reminder observation choice and revokes it with product-event consent',
     (tester) async {
