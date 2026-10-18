@@ -79,7 +79,7 @@ jobs:
       - run: node ../tool/generate_experience_policy.mjs --check
       - run: node --test ../tool/project-status/status.test.mjs
       - run: node --test ../infra/test-automation-provisioning.mjs
-      - run: node --test ../test/universal_installer_test.mjs ../test/release_bundle_test.mjs
+      - run: node --test ../test/universal_installer_test.mjs ../test/release_bundle_test.mjs ../test/release_signoffs_test.mjs
       - run: node --test ../test/installer_standard_flow_test.mjs ../test/installer_security_gate_test.mjs ../test/installer_one_click_test.mjs
       - run: node --test ../test/site_console_test.mjs ../test/measurement_packaging_test.mjs ../test/installer_onboarding_test.mjs ../test/installer_journey_test.mjs ../test/installer_direct_install_test.mjs ../test/public_claims_test.mjs ../test/identity_callbacks_test.mjs ../test/branding_contract_test.mjs ../test/synthetic_native_contract_test.mjs
       - name: Verify bundled operator authentication
@@ -547,28 +547,40 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: write
+      actions: read
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
       - uses: actions/setup-node@v4
         with:
           node-version: 22
-      - uses: actions/download-artifact@v4
-        with:
-          pattern: bloomstep-windows-*
-          path: artifacts
-      - uses: actions/download-artifact@v4
-        with:
-          name: bloomstep-universal-installer
-          path: universal-output
+      - name: Resolve the signed candidate (head may differ only by sign-off records)
+        id: candidate
+        run: |
+          candidate=$(node tool/verify_release_signoffs.mjs --resolve-candidate --head "$GITHUB_SHA")
+          run_id=$(node -e "const fs=require('fs');const d='release/signoffs/'+process.argv[1];const f=fs.readdirSync(d).find(x=>x.endsWith('.json'));console.log(JSON.parse(fs.readFileSync(d+'/'+f,'utf8')).artifact.runId)" "$candidate")
+          echo "sha=$candidate" >> "$GITHUB_OUTPUT"
+          echo "run=$run_id" >> "$GITHUB_OUTPUT"
+      - name: Promote the exact reviewed artifacts (never rebuilt bits)
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh run download "${{ steps.candidate.outputs.run }}" --repo "$GITHUB_REPOSITORY" --pattern 'bloomstep-windows-*' --dir artifacts
+          gh run download "${{ steps.candidate.outputs.run }}" --repo "$GITHUB_REPOSITORY" --name bloomstep-universal-installer --dir universal-output
+      - name: Require every role sign-off for public launch bound to these exact bytes
+        run: |
+          installer=$(ls universal-output/*.exe | head -n 1)
+          node tool/verify_release_signoffs.mjs --stage public-launch --candidate "${{ steps.candidate.outputs.sha }}" --head "$GITHUB_SHA" --installer "$installer" --check-evidence --out release-signoff-gate.json
       - name: Bind publication to exact package bytes and pending manual trial
-        run: node tool/release_bundle.mjs . "$GITHUB_SHA" "$GITHUB_REF_NAME" "$GITHUB_RUN_ID"
+        run: node tool/release_bundle.mjs . "${{ steps.candidate.outputs.sha }}" "$GITHUB_REF_NAME" "${{ steps.candidate.outputs.run }}"
       - name: Publish preview (not the authenticated MVP)
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
           title="Budlark $GITHUB_REF_NAME - designated owner trial only"
-          notes="Budlark unsigned Windows preview for designated owner verification only. This GitHub prerelease is publicly accessible, not private, and is not approved for broad use. The exact run passed hosted API, x64/ARM64 build and installer-contract checks and universal packaging. Owner manual installer verification remains PENDING; CI did not install or launch the app. Record feedback against the exact source SHA and installer SHA-256 before any customer launch. Do not bypass SmartScreen, Defender or device policy. Verify the SHA-256 before installation; a matching hash establishes byte consistency, not safety or signing. This workflow does not update the public website download pointer. No external recruitment."
+          notes="Budlark unsigned Windows preview for designated owner verification only. This GitHub prerelease is publicly accessible, not private, and is not approved for broad use. The promoted artifacts come from the signed-off candidate run, which passed hosted API, x64/ARM64 build and installer-contract checks and universal packaging. Owner manual installer verification remains PENDING; CI did not install or launch the app. Record feedback against the exact source SHA and installer SHA-256 before any customer launch. Do not bypass SmartScreen, Defender or device policy. Verify the SHA-256 before installation; a matching hash establishes byte consistency, not safety or signing. This workflow does not update the public website download pointer. No external recruitment."
           notes="$notes
 
           $(cat release-proof/evidence-notes.md)"
-          gh release create "$GITHUB_REF_NAME" --repo "$GITHUB_REPOSITORY" --prerelease --title "$title" --notes "$notes" universal-output/*.exe universal-output/SHA256-universal.txt universal-output/universal-manifest.json universal-output/payload-manifest-*.json release-proof/*.json release-proof/owner-trial-checklist.md $(find artifacts -name '*.exe' -path '*/release-output/*') $(find artifacts -name 'SHA256-*.txt')
+          gh release create "$GITHUB_REF_NAME" --repo "$GITHUB_REPOSITORY" --prerelease --title "$title" --notes "$notes" universal-output/*.exe universal-output/SHA256-universal.txt universal-output/universal-manifest.json universal-output/payload-manifest-*.json release-proof/*.json release-proof/owner-trial-checklist.md release-signoff-gate.json release/evidence/${{ steps.candidate.outputs.sha }}/README.md $(find artifacts -name '*.exe' -path '*/release-output/*') $(find artifacts -name 'SHA256-*.txt')
