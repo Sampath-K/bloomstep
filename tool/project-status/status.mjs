@@ -356,16 +356,24 @@ export function executiveSummary(config, snapshot) {
   const readiness = snapshot.collectionState === 'failed' ? 'unknown' : list.length === 0 ? 'ready-for-decision' :
     list.some(row => row.root && row.known) ? 'not-ready' : 'unknown';
   const agent = list.find(row => row.agentNext), owner = list.find(row => row.ownerNext);
+  // Only the target and its transitive prerequisites gate the decision; everything else is context.
+  const gating = new Set([config.target]);
+  (function closure(id) { for (const dep of definitions.get(id).dependencies) { gating.add(dep.id); closure(dep.id); } })(config.target);
+  const tally = include => {
+    const subset = snapshot.workstreams.filter(include);
+    return {
+      error: subset.filter(row => row.error && !['manual', 'gate'].includes(definitions.get(row.id).kind)).length,
+      unknown: subset.filter(row => row.state === 'unknown').length,
+      blocked: subset.filter(row => row.state === 'blocked').length,
+    };
+  };
   return {
     target: config.target, targetTitle: definitions.get(config.target).title, readiness,
     blockers: list.map(({ known, level, ...row }) => row),
     nextAgent: agent ? { id: agent.id, title: agent.title, action: agent.agentNext } : null,
     nextOwner: owner ? { id: owner.id, title: owner.title, action: owner.ownerNext } : null,
-    counts: {
-      error: snapshot.workstreams.filter(row => row.error && !['manual', 'gate'].includes(definitions.get(row.id).kind)).length,
-      unknown: snapshot.workstreams.filter(row => row.state === 'unknown').length,
-      blocked: snapshot.workstreams.filter(row => row.state === 'blocked').length,
-    },
+    counts: tally(row => gating.has(row.id)),
+    nonGating: tally(row => !gating.has(row.id)),
     lastSourceSuccessAt: snapshot.lastSourceSuccessAt, lastCompleteAt: snapshot.lastCompleteAt, collectionState: snapshot.collectionState,
   };
 }

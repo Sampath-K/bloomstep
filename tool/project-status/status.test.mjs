@@ -22,23 +22,29 @@ const config = {
   ],
 };
 
-test('contract: owner-trial decision permits default-OFF hosted experiments without implying public MVP readiness', () => {
+test('contract: owner-trial launch follows the current hosted-installer sequence; VM/native and candidate are non-gating history', () => {
   validateConfig(sourceConfig);
-  const target = sourceConfig.workstreams.find(row => row.id === sourceConfig.target);
+  const ids = Object.fromEntries(sourceConfig.workstreams.map(row => [row.id, row]));
+  const target = ids[sourceConfig.target];
   assert.match(target.title, /owner-trial/i);
-  assert.ok(!target.dependencies.some(dep => dep.id === 'hosted'));
-  const rows = sourceConfig.workstreams.map(row => ({
-    id: row.id, state: row.id === 'preview' ? 'released' :
-      ['continuity', 'growthbook', 'visual'].includes(row.id) ? 'merged' :
-      ['candidate', 'native'].includes(row.id) ? 'verified' : 'unknown',
-    observedAt: ['hosted', 'launch'].includes(row.id) ? null : now,
-  }));
-  const graph = dependencyView(sourceConfig, rows, now);
-  assert.deepEqual(graph.blockers.launch, []);
-  assert.equal(rows.find(row => row.id === 'hosted').state, 'unknown');
-  assert.equal(rows.find(row => row.id === 'launch').state, 'unknown');
-  assert.ok(sourceConfig.workstreams.find(row => row.id === 'hosted').dependencies.some(dep => dep.id === 'growthbook'));
   assert.match(target.note, /public.*MVP/i);
+  const closure = new Set();
+  (function walk(id) { for (const dep of ids[id].dependencies) { closure.add(dep.id); walk(dep.id); } })(sourceConfig.target);
+  for (const id of ['release', 'installer', 'owner-check', 'integration', 'website', 'download']) assert.ok(closure.has(id), id);
+  for (const id of ['native', 'hosted', 'candidate', 'continuity', 'growthbook', 'visual', 'preview']) assert.ok(!closure.has(id), id);
+  assert.deepEqual(ids.installer.dependencies.map(dep => dep.id), ['release']);
+  assert.deepEqual(ids['owner-check'].dependencies.map(dep => dep.id), ['installer']);
+  assert.deepEqual(ids.integration.dependencies.map(dep => dep.id).sort(), ['owner-check', 'release']);
+  assert.deepEqual(ids.download.dependencies.map(dep => dep.id).sort(), ['integration', 'website']);
+  assert.deepEqual(target.dependencies.map(dep => dep.id), ['download']);
+  assert.match(ids.native.note, /historical/i);
+  assert.match(ids['owner-check'].ownerNext, /manual/i);
+  const verified = ['installer', 'owner-check', 'integration', 'download'];
+  const rows = sourceConfig.workstreams.map(row => ({
+    id: row.id, observedAt: now,
+    state: row.id === 'release' || row.id === 'website' ? 'merged' : verified.includes(row.id) ? 'verified' : 'blocked',
+  }));
+  assert.deepEqual(dependencyView(sourceConfig, rows, now).blockers.launch, []);
 });
 
 test('contract: configured CI next actions do not assert failures absent observed failures', () => {
@@ -455,15 +461,19 @@ test('contract: executive readiness is never green by default and orders AGENT b
   assert.equal(ready.executive.lastCompleteAt, now);
 });
 
-test('contract: live config observes Budlark release and website PRs read-only without changing owner-trial gates', () => {
+test('contract: live config reads PR52 and PR54 as gating sources; executive counts exclude non-gating history', async () => {
   const ids = Object.fromEntries(sourceConfig.workstreams.map(row => [row.id, row]));
   assert.equal(ids.release.kind, 'pull');
   assert.equal(ids.release.number, 52);
+  assert.equal(ids.website.kind, 'pull');
   assert.equal(ids.website.number, 54);
-  for (const row of sourceConfig.workstreams) {
-    assert.ok(!row.dependencies.some(dep => ['release', 'website'].includes(dep.id)));
-  }
-  assert.deepEqual(ids.launch.dependencies.map(dep => dep.id), ['candidate', 'native']);
-  assert.ok(ids.native.ownerNext && /manual/i.test(ids.native.ownerNext));
   assert.ok(sourceConfig.workstreams.every(row => !/Bloomstep/.test(row.title)));
+  const legacy = { ...config.workstreams[0], id: 'legacy', number: 26, nonGating: true };
+  const c = { ...execConfig, workstreams: [...execConfig.workstreams, legacy] };
+  const result = await collect(c, { now, auth: async () => {}, read: async path =>
+    path.endsWith('/pulls/26') ? { ...pull, number: 26, state: 'closed', html_url: 'https://github.com/Sampath-K/bloomstep/pull/26' } : reader(path) });
+  assert.equal(result.workstreams.find(row => row.id === 'legacy').state, 'blocked');
+  assert.equal(result.executive.readiness, 'ready-for-decision');
+  assert.equal(result.executive.counts.blocked, 0);
+  assert.equal(result.executive.nonGating.blocked, 1);
 });

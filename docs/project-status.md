@@ -41,7 +41,7 @@ inferred from branches, workflow time or agent busy duration.
 The top of the page is an executive summary for Budlark, computed by the
 collector (`executive` in the snapshot) and shown with the local evidence age:
 
-- **Owner-trial candidate readiness**: `Ready for owner decision` only when
+- **Owner-trial launch readiness**: `Ready for owner decision` only when
   every configured prerequisite of the target has fresh accepted evidence;
   `NOT READY` when a root prerequisite is observed in a non-accepted state;
   otherwise `UNKNOWN`. A stale snapshot or failed polling attempt always shows
@@ -58,8 +58,13 @@ collector (`executive` in the snapshot) and shown with the local evidence age:
 - **Last successful source refresh** (any source read succeeded) and **last
   complete refresh**, plus error / unknown / blocked counts.
 
-PR52 (release) and PR54 (website) are observed read-only for visibility; they
-are not owner-trial dependencies and this tool does not change their gates.
+The owner-trial launch sequence in `sources.json` is: PR52 hosted checks ->
+installer artifact -> owner manual installer check -> approved integration/release,
+plus PR54 hosting -> live budlark.com download verification -> owner-trial
+launch decision. PR52/PR54 are read live; the other steps have no live source and
+stay UNKNOWN until evidence exists. Abandoned VM native acceptance, the combined
+candidate, PR48/49, visual, preview and hosted GrowthBook rows are non-gating
+context only and are counted separately. This tool changes no CI, protections or PRs.
 
 ## Source of truth and integration
 
@@ -123,11 +128,11 @@ Dependency edges specify their accepted states: `merged` and `released` cannot
 satisfy `verified`. Cards retain their own observed state even if prerequisites
 are unmet, and show those unmet prerequisites separately. Dependency layers
 show order, not dates. The **active gating path** shows all longest unresolved
-paths to the **owner-trial candidate decision** by dependency depth, not a duration-based
+paths to the **owner-trial launch decision** by dependency depth, not a duration-based
 critical-path schedule or invented progress percentage.
 
 Hosted GrowthBook activation is an independent optional workstream with its
-own blockers, not an owner-trial prerequisite: the default-OFF adapter may ship
+own blockers, not an owner-trial prerequisite (context only): the default-OFF adapter may ship
 without hosted activation. This target is not public-MVP readiness; the wider
 MVP exit matrix and public-launch acceptance remain separate.
 

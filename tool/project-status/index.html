@@ -139,7 +139,7 @@ footer { font-size: 0.85rem; color: var(--cp-text-muted); }
     <div class="exec-grid">
       <div><span class="muted">Owner-trial candidate</span><strong id="readiness" class="readiness">Unknown</strong><small id="readiness-detail">No snapshot yet.</small></div>
       <div><span class="muted">Last successful source refresh</span><strong id="last-success">Never observed</strong><small id="last-complete">Last complete refresh: never observed.</small></div>
-      <div><span class="muted">Evidence warnings</span><strong id="warn-counts">Unknown</strong><small>Read errors / unknown states / blocked workstreams.</small></div>
+      <div><span class="muted">Evidence warnings</span><strong id="warn-counts">Unknown</strong><small id="warn-detail">Launch-gating read errors / unknown states / blocked workstreams.</small></div>
     </div>
     <div class="exec-grid two">
       <div><h3>Next: AGENT</h3><p id="next-agent">Unknown.</p></div>
@@ -168,11 +168,11 @@ footer { font-size: 0.85rem; color: var(--cp-text-muted); }
   <section class="stats" aria-label="Evidence summary">
     <div class="panel"><span class="muted">Collection</span><strong id="collection">Unknown</strong><small id="collected">No observation yet</small></div>
     <div class="panel"><span class="muted">Agent sessions</span><strong>Unavailable</strong><small>No supported session API connected; busy time is not completion.</small></div>
-    <div class="panel"><span class="muted">Owner-trial candidate decision</span><strong id="launch">Unknown</strong><small>Not public-MVP readiness. Hosted experiments may remain default OFF.</small></div>
+    <div class="panel"><span class="muted">Owner-trial launch decision</span><strong id="launch">Unknown</strong><small>Not public-MVP readiness. Abandoned VM acceptance and optional hosted experiments are context only.</small></div>
   </section>
   <section class="panel" aria-labelledby="path-title">
     <h2 id="path-title">Active gating path</h2>
-    <p class="muted">Longest unresolved dependency chain to the owner-trial candidate decision, by dependency depth only. Optional hosted activation is separate. No invented dates, durations, percentages or velocity. Ties are shown together.</p>
+    <p class="muted">Longest unresolved dependency chain to the owner-trial launch decision, by dependency depth only. Non-gating context rows are excluded. No invented dates, durations, percentages or velocity. Ties are shown together.</p>
     <div id="paths">Unknown until a snapshot is available.</div>
   </section>
   <section aria-labelledby="workstreams" id="board">
@@ -298,7 +298,7 @@ footer { font-size: 0.85rem; color: var(--cp-text-muted); }
     const warning = loadError || (pollingFailed() ? 'Latest local source polling attempt failed before replacing the snapshot. Previous observations are stale, not current.' :
       stale ? 'Snapshot expired or has a future timestamp. Run collect or check local polling; last-known data below is not current.' :
       snapshot.collectionState !== 'complete' ? 'GitHub collection incomplete. Failed sources are unknown; last-known observations are retained separately.' :
-      'Saved GitHub observation loaded. Manual gates and agent activity remain unknown; this is not a live source connection.');
+      (polling?.mode === 'polling' ? `GitHub sources are polled locally every ${polling.intervalSeconds}s. Manual gates without a source and agent activity remain unknown.` : 'Saved GitHub observation loaded. Source polling is off; run collect or serve --poll-seconds 60. Manual gates and agent activity remain unknown.'));
     $('message').textContent = warning;
     $('message').classList.toggle('error', Boolean(stale || snapshot.collectionState !== 'complete'));
     const exec = snapshot.executive;
@@ -321,11 +321,14 @@ footer { font-size: 0.85rem; color: var(--cp-text-muted); }
     $('last-success').textContent = lastSuccess ? age(lastSuccess) : 'Never observed';
     $('last-complete').textContent = `${lastSuccess ? time(lastSuccess) : ''} Last complete refresh: ${time(exec?.lastCompleteAt ?? snapshot.lastCompleteAt)}. ${stale ? 'STALE.' : ''}`.trim();
     $('warn-counts').textContent = exec ? `${exec.counts.error} errors / ${exec.counts.unknown} unknown / ${exec.counts.blocked} blocked` : 'Unknown';
+    $('warn-detail').textContent = exec?.nonGating ? `Launch-gating only. Non-gating context: ${exec.nonGating.error} errors / ${exec.nonGating.unknown} unknown / ${exec.nonGating.blocked} blocked (historical, not launch blockers).` : 'Launch-gating read errors / unknown states / blocked workstreams.';
     // Do not rebuild interactive cards on every timer tick; preserve keyboard focus and disclosure state.
     const key = JSON.stringify([snapshot, loadError, $('filter').value, snapshot.workstreams.map(row => ageState(row))]);
     if (key === lastViewKey) return;
     lastViewKey = key;
     const title = id => defs.find(def => def.id === id)?.title ?? id;
+    const gatingIds = new Set([snapshot.config.target]);
+    (function walk(id) { for (const dep of defs.find(def => def.id === id).dependencies) { gatingIds.add(dep.id); walk(dep.id); } })(snapshot.config.target);
     const describe = change => {
       const short = value => typeof value === 'string' && /^[a-f0-9]{40}$/.test(value) ? value.slice(0, 7) : value ?? 'none';
       const what = { state: 'state', sha: 'head commit', release: 'published release', check: `job "${change.name}"`,
@@ -371,6 +374,7 @@ footer { font-size: 0.85rem; color: var(--cp-text-muted); }
       const card = el('article', undefined, critical.has(def.id) ? 'critical' : '');
       card.dataset.id = def.id;
       card.append(badge(status), el('h3', def.title));
+      if (!gatingIds.has(def.id)) card.append(el('p', 'Context only: does not gate the owner-trial launch decision.', 'muted'));
       card.append(el('p', `${ageState(row)} | observed ${time(row.observedAt)}`, 'muted'));
       if (row.error) card.append(el('p', row.error, 'error'));
       const dl = el('dl');
