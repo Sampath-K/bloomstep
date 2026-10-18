@@ -14,6 +14,7 @@ on:
       artifact_id: { type: string, required: true }
       installer_sha256: { type: string, required: true }
       mode: { type: string, required: true }
+      runner: { type: string, required: false, default: hosted }
   workflow_dispatch:
     inputs:
       candidate:
@@ -33,6 +34,11 @@ on:
         type: choice
         options: [candidate, baseline]
         default: candidate
+      runner:
+        description: 'hosted (GitHub windows-latest; Defender real-time protection is off there, so the harness preflight stops) or self-hosted-defender (owner-registered runner with live Defender)'
+        type: choice
+        options: [hosted, self-hosted-defender]
+        default: hosted
 
 permissions:
   contents: read
@@ -40,7 +46,9 @@ permissions:
 
 jobs:
   acceptance:
-    runs-on: windows-latest
+    # Self-hosted runs only on explicit dispatch (never pull_request) and only on a runner
+    # carrying the dedicated budlark-defender label; the Defender preflight is never relaxed.
+    runs-on: ${{ inputs.runner == 'self-hosted-defender' && fromJSON('["self-hosted","windows","x64","budlark-defender"]') || 'windows-latest' }}
     timeout-minutes: 90
     concurrency:
       group: functional-acceptance-${{ inputs.mode }}-${{ inputs.candidate }}

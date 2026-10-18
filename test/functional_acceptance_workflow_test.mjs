@@ -10,7 +10,7 @@ test('functional acceptance runs only on demand against an exact artifact on a f
   assert.match(wf, /^  workflow_dispatch:/m);
   assert.doesNotMatch(wf, /^\s+(push|pull_request|schedule):/m);
   for (const input of ['candidate', 'run_id', 'artifact_id', 'installer_sha256', 'mode']) assert.match(wf, new RegExp(`\\n      ${input}:`));
-  assert.match(wf, /runs-on: windows-latest/);
+  assert.match(wf, /runs-on: .*'windows-latest'/);
   assert.match(wf, /permissions:\n  contents: read\n  actions: read/);
   assert.doesNotMatch(wf, /contents: write|environment: public-launch/);
 });
@@ -66,4 +66,13 @@ test('ci.yml exposes an exclusive opt-in real PlantArt export that uploads unmod
   assert.match(job, /node tool\/generate_installer_art\.mjs --check/);
   for (const f of ['welcome-steps.bmp', 'welcome-garden.bmp', 'education-art-provenance.json']) assert.ok(job.includes('packaging/assets/' + f), f);
   assert.doesNotMatch(job, /contents: write|git (commit|push)|secrets\./);
+});
+test('functional acceptance can target an owner-registered live-Defender runner only by explicit choice', () => {
+  const ci = readFileSync(new URL('../.github/workflows/ci.yml', import.meta.url), 'utf8').replace(/\r\n/g, '\n');
+  assert.match(wf, /runner: \{ type: string, required: false, default: hosted \}/);
+  assert.match(wf, /options: \[hosted, self-hosted-defender\]/);
+  assert.match(wf, /inputs\.runner == 'self-hosted-defender' && fromJSON\('\["self-hosted","windows","x64","budlark-defender"\]'\) \|\| 'windows-latest'/);
+  assert.doesNotMatch(wf, /^\s*(pull_request|pull_request_target|push):/m);
+  assert.match(ci, /functional_runner:[\s\S]*?default: hosted/);
+  assert.match(ci, /runner: \$\{\{ inputs\.functional_runner \}\}/);
 });

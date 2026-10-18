@@ -40,6 +40,11 @@ on:
       functional_installer_sha256:
         description: 'Functional acceptance: expected installer SHA-256'
         default: ''
+      functional_runner:
+        description: 'Functional acceptance runner: hosted or self-hosted-defender (owner-registered, live Defender)'
+        type: choice
+        options: [hosted, self-hosted-defender]
+        default: hosted
       export_installer_art:
         description: 'Run only the opt-in real PlantArt installer-art export (uploads regenerated welcome BMPs + provenance; commits nothing)'
         type: boolean
@@ -58,6 +63,7 @@ jobs:
       artifact_id: ${{ inputs.functional_artifact_id }}
       installer_sha256: ${{ inputs.functional_installer_sha256 }}
       mode: ${{ inputs.functional_mode }}
+      runner: ${{ inputs.functional_runner }}
   installer-art-export:
     if: github.event_name == 'workflow_dispatch' && inputs.export_installer_art && inputs.functional_mode == 'none'
     runs-on: windows-latest
