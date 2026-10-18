@@ -6,6 +6,29 @@ This ledger is updated with verified outcomes, not inferred from source code.
 
 ## Current installer launch contract
 
+**Current owner-test candidate (18 October 2026):** source
+`083f2def66c1e084c56653238b85802ff260c3c3`,
+[push CI run 39100447327](https://github.com/Sampath-K/bloomstep/actions/runs/39100447327),
+[artifact 12127077182](https://github.com/Sampath-K/bloomstep/actions/runs/39100447327/artifacts/12127077182).
+The original `Bloomstep-0.1.0-preview-windows-universal-setup.exe` is
+22,313,341 bytes, SHA-256
+`8bac5279fc24db9a0e00ef423d650b02b4298f02ade0200b60110e5506abe6f6`.
+The coordinator delivered those bytes to the owner as
+`Downloads\Budlark-0.1.0-preview-setup.exe`. Independent artifact download
+verified the checksum, universal manifest and both source-bound payload
+manifest hashes. API, hosted Windows x64/ARM64 tests/builds, funnel and
+universal packaging passed on that exact source.
+
+The artifact's `defender-static-scan.json` reports
+`STATIC_SCAN_COMPLETED_NO_THREATS_REPORTED`, exit 0, signature version
+`1.461.84.0`, bound to the SHA-256 above. The coordinator also reports a local
+static Defender scan with no threats; its raw local receipt was not inspected
+by this agent. Neither static result establishes runtime safety or the cause
+of the earlier detection. The installer remains unsigned. Owner manual
+installation/launch feedback is **PENDING**; no merge, release, deployment or
+public-pointer change is authorized. This documentation receipt does not
+replace or rebuild the candidate.
+
 **Owner-reported security hold:** candidate source `9085df1`, installer SHA-256
 `e1cfd59719ee5e9a14703159c6d9c4bea4532a5555936304094b62290250bce3`,
 was stopped by Defender with `Behavior:Win32/DefenseEvasion.A!ml` in the Inno
