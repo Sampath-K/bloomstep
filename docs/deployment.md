@@ -172,7 +172,10 @@ and social card; `--font` and `--regular-font` accept available font files.
 The public brand PNGs are tracked under `site/assets`; bundled auth/config
 outputs remain ignored.
 
-The Budlark rename is a source-only change, not a hosted-tenant update.
+Hosted Budlark updates applied by the operator: the customer tenant organization
+displayName and the Microsoft-account federation app are now `Budlark`; Entra
+customer branding was applied. The hosted page's `sCompanyDisplayName` still
+reported "Bloomstep Customers" at last check (propagation pending).
 See [the branding inventory](branding.md) for preserved paths, historical evidence,
 the registered `budlark.com` domain and deferred external changes.
 After separate explicit customer-branding authorization, run
@@ -208,8 +211,10 @@ OAuth client's internal name. Google requires authorized-domain ownership
 verification; shared Microsoft broker domains can need provider-specific review,
 so no approval or displayed-name guarantee is inferred. Do not submit external
 review, invent contacts, switch production audience or change credentials without
-operator approval. No authorized Google management session is available to the
-implementation agent; this surface remains a genuine branding gate.
+operator approval. The Google App name was saved as **Budlark** and confirmed after
+reload (project `bloomstep-510615`); no logo, verification submission, contact,
+domain or audience change was made, so production display still awaits Google
+brand verification.
 
 Microsoft-hosted email OTP templates/sender are a separate provider surface,
 not changed by invitation email copy or a sign-in heading. A custom OTP sender
