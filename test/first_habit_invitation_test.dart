@@ -87,30 +87,14 @@ Future<void> ready(
         of: find.byType(RecipeBuilder),
         matching: find.widgetWithText(TextButton, 'Cancel'),
       );
-      await tester.ensureVisible(cancel);
-      await settleUi();
-      await tester.tap(cancel);
-      await settleUi();
+      if (cancel.evaluate().isNotEmpty) {
+        await tester.ensureVisible(cancel);
+        await settleUi();
+        await tester.tap(cancel);
+        await settleUi();
+      }
     }
     final profile = find.byType(ProfileSection);
-    if (needsProfile && profile.evaluate().isNotEmpty) {
-      final section = tester.widget<ProfileSection>(profile);
-      final home = find.byType(HabitHome);
-      final identity = home.evaluate().isEmpty
-          ? null
-          : tester.widget<HabitHome>(home).testIdentity;
-      if (identity != null && section.signedIn != identity.hasValidSession) {
-        await tester.tap(find.widgetWithText(TextButton, 'Done'));
-        await settleUi();
-        continue;
-      }
-      if (section.busy &&
-          !finder.toString().contains('Complete sign-in in your browser')) {
-        await tester.tap(find.widgetWithText(TextButton, 'Done'));
-        await settleUi();
-        continue;
-      }
-    }
     if (finder.evaluate().isNotEmpty) {
       if (needsProfile) {
         await tester.ensureVisible(finder);
