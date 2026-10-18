@@ -15,7 +15,7 @@
     },
     {
       "path": "lib/app/theme.dart",
-      "sha256": "50b63e8a956fff4f2f2e31230334d8cb99381e320b546e0bb1167f5cfa5c1aa3"
+      "sha256": "cda1fe127a3630f3b6ec18860e9d9edb222e1a0fb6b9ce00f24031310f28d745"
     }
   ],
   "assets": [
@@ -23,13 +23,13 @@
       "file": "welcome-steps.bmp",
       "width": 1000,
       "height": 200,
-      "sha256": "a2bf78a4f8358795198a6ca0809b4891919f6c09902a549c2c5bd9565410ddbb"
+      "sha256": "bf41c2da2cc2714c072402e27e3345d464180949fe043f91af639fdf577ae98e"
     },
     {
       "file": "welcome-garden.bmp",
       "width": 1000,
       "height": 300,
-      "sha256": "1beef1aba02f80b21c755515e97b49293486fd6dbe153f64f93f7728578734d1"
+      "sha256": "84e5ce13b9fa118aadad91ffc361a152fbe57c8729e1a5ec0b72e98b00688a37"
     }
   ]
 }
