@@ -207,7 +207,9 @@ Default sharing includes **no habit text**. Optional `recipeCard` must be exactl
 }
 ```
 
-All fields are required for a card. Taxonomy is
+`templateCategory` is optional for an existing custom recipe; it is never inferred
+from private recipe text. Legacy cards that include it remain valid. All other
+fields are required. When supplied, taxonomy is
 `calm|focus|health|learning|connection`; species `Cosmos|Sunflower|Fern`.
 The four recipe strings are trimmed, nonempty and max200 characters each.
 No habit IDs, progress, names, email, visibility, account fields or unknown
@@ -215,6 +217,11 @@ fields are accepted. This card is deliberately shared private recipe content,
 not anonymous analytics: the UI must present the entire card for explicit
 approval, and must not infer approval from a general sharing/analytics setting.
 It does not create a friend's habit automatically.
+
+The service must support optional card categories and the `General` feedback
+kind before a client using those contracts is distributed. Source-contract tests
+do not establish deployed compatibility; a successful response from the intended
+service is required for installed-app acceptance.
 
 `POST /api/invitations/redeem`:
 
@@ -511,7 +518,9 @@ Voice text is intentionally private feedback, not telemetry; client-supplied
 account identity/status/replies remain invalid. JSON requests are capped at
 512 KiB.
 Rating voice records require an integer score 1–5 but permit an empty/whitespace
-body after trimming; optional text is at most 2000 characters. All other feedback
+body after trimming; optional text is at most 2000 characters. `General` feedback
+supports the one-step feedback form: text, a 1–5 integer score, or both are required.
+Existing feedback kinds remain valid. All other feedback
 kinds still require nonempty trimmed text. A private rating submission never
 automatically creates a telemetry event or publishes its score in metrics.
 
