@@ -1,6 +1,10 @@
 # Guarded website experiment loop
 
-Status: **implemented, isolated acceptance passing, production OFF.** No live efficacy claim is made: no real
+Status: **implemented, production OFF.** The owner-approved 17 October website update uses policy v2:
+**A/B then A/C paired headline/CTA trials**, with A retained publicly, unchanged 14-day/400-per-arm gates and
+alpha .025 per comparison. See [the current implementation and activation contract](website-one-viewport.md).
+Earlier acceptance references below are historical; fresh exact-deployed-source, v2-policy evidence is required
+before activation. No live efficacy claim is made: no real
 customer cohort exists, and every result below comes from synthetic or labeled fixture inputs in an isolated store.
 
 ## What the loop does
@@ -11,12 +15,13 @@ step in `.github/workflows/aggregates.yml`) runs one bounded step:
 1. **Observe** – reads the foundation `website_daily` counts (`/api/team/website` source) for the last 28 completed UTC days.
 2. **Block** – `no_data`, `insufficient_data` (any step rate unpublished below 50 events), unobservable or error states
    launch nothing.
-3. **Prioritize** – picks the weakest published step (`landing_view→primary_cta_click` or
-   `primary_cta_click→download_click`) and the first never-run catalog entry targeting it.
+3. **Prioritize** – requires both published steps (`landing_view→primary_cta_click` and
+   `primary_cta_click→download_click`), then selects the first never-run approved pair: B, then C. Legacy surfaces
+   are retained for audit only, not enrollment. The weakest step remains diagnostic.
 4. **Launch** – writes an immutable, hashed experiment instance (hypothesis, primary metric, control/candidate IDs,
    start/end, minimum sample per arm, harm-look schedule, allocation, attribution version, policy hash).
 5. **Evaluate** – only at pre-registered looks: up to 3 interim **harm-only** looks (Bonferroni-bounded, one-sided
-   α=0.001 each, can only stop for harm, never promote) and one fixed-horizon two-sided α=0.05 final analysis after
+   α=0.001 each, can only stop for harm, never promote) and one fixed-horizon two-sided α=0.025 final analysis after
    `endAt` (efficacy is never tested before then).
 6. **Conclude** – `promote` (candidate artifact), `retain_control`, `rollback_harm`, or `insufficient` (cells below
    the minimum count are reported, never tested); then the next eligible experiment may launch.
@@ -35,7 +40,8 @@ step in `.github/workflows/aggregates.yml`) runs one bounded step:
 
 ## Catalog (finite, curated, low-risk)
 
-Truthful copy/layout variants only: `download-heading-v1`, `hero-cta-label-v1`, `hero-note-position-v1`. No
+Approved whole-copy pairs only: `hero-pair-b-v1`, `hero-pair-c-v1`, each against A. Legacy
+`download-heading-v1`, `hero-cta-label-v1`, `hero-note-position-v1` cannot be newly selected. No
 auth, installer, security, consent, payment, pricing, urgency, streak or scientific-claim changes; a banned-claims
 lint enforces this in tests. Growth utility is measured by downstream download intent, not clicks alone; the
 account AARRR report (`docs/aarrr-dashboard.md`) remains the activation oracle and is never joined to visits.
@@ -122,7 +128,10 @@ loop or another candidate. See the artifact-specific status in [website-launch.m
 
 ## Promotion boundary
 
-Winners never change the live site directly. Production promotion status is `pending_build_via_draft_pr`: a
+Winners never change the live site directly. For the approved paired-copy trials, production status is
+`evidence_only_baseline_a_retained`; pair build-time promotion is rejected. A remains fallback, and the second
+trial still compares with A. A separate owner-reviewed change is necessary to promote a pair. Legacy
+production promotion status is `pending_build_via_draft_pr`: a
 reviewed draft PR edits `site/experiment-promotions.json`, which `site/build.mjs` validates and applies to
 `index.html` at build time (idempotent). Isolated runs only write `candidate-promotions.isolated.json`.
 

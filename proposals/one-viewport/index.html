@@ -1,0 +1,361 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="robots" content="noindex,nofollow">
+  <title>PROPOSAL only — Bloomstep, one small habit</title>
+  <script>
+    (() => {
+      const param = new URLSearchParams(window.location.search).get("scoutTheme");
+      const theme =
+        param || (window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light");
+      document.documentElement.setAttribute("data-theme", theme);
+    })();
+  </script>
+  <style>
+    :root {
+      color-scheme: light;
+      --cp-bg: #f7f4ef;
+      --cp-bg-elevated: #fcfbf8;
+      --cp-surface: #ffffff;
+      --cp-surface-soft: #f5f5f5;
+      --cp-border: #dedede;
+      --cp-border-strong: #919191;
+      --cp-text: #242424;
+      --cp-text-muted: #5c5c5c;
+      --cp-text-soft: #6f6f6f;
+      --cp-accent: #b11f4b;
+      --cp-accent-hover: #9a1a41;
+      --cp-accent-soft: rgba(177, 31, 75, 0.08);
+      --cp-accent-fg: #ffffff;
+      --cp-success: #16a34a;
+      --cp-danger: #dc2626;
+      --cp-warning: #f59e0b;
+      --cp-link: #0078d4;
+      --cp-shadow: 0 18px 48px rgba(0, 0, 0, 0.12);
+      --cp-overlay: rgba(255, 255, 255, 0.8);
+      --cp-panel: rgba(255, 255, 255, 0.86);
+      --cp-panel-strong: rgba(255, 255, 255, 0.96);
+      --cp-sheen: rgba(255, 255, 255, 0.55);
+      --cp-highlight: rgba(177, 31, 75, 0.12);
+    }
+    html[data-theme="dark"] {
+      color-scheme: dark;
+      --cp-bg: #3d3b3a;
+      --cp-bg-elevated: #343231;
+      --cp-surface: #292929;
+      --cp-surface-soft: #2e2e2e;
+      --cp-border: #474747;
+      --cp-border-strong: #5f5f5f;
+      --cp-text: #dedede;
+      --cp-text-muted: #919191;
+      --cp-text-soft: #b0b0b0;
+      --cp-accent: #fd8ea1;
+      --cp-accent-hover: #fb7b91;
+      --cp-accent-soft: rgba(253, 142, 161, 0.14);
+      --cp-accent-fg: #1a1a1a;
+      --cp-success: #4ade80;
+      --cp-danger: #f87171;
+      --cp-warning: #fbbf24;
+      --cp-link: #4da6ff;
+      --cp-shadow: 0 18px 48px rgba(0, 0, 0, 0.32);
+      --cp-overlay: rgba(41, 41, 41, 0.88);
+      --cp-panel: rgba(41, 41, 41, 0.72);
+      --cp-panel-strong: rgba(41, 41, 41, 0.96);
+      --cp-sheen: rgba(255, 255, 255, 0.04);
+      --cp-highlight: rgba(253, 142, 161, 0.12);
+    }
+    /* The base dark muted token is too faint on the warm background for small text. */
+    html[data-theme="dark"] { --cp-text-muted: var(--cp-text-soft); --cp-border-strong: var(--cp-text-soft); }
+    * { box-sizing: border-box; }
+    body { margin: 0; background: var(--cp-bg); color: var(--cp-text); font: 18px/1.55 "Segoe UI", Aptos, Calibri, -apple-system, BlinkMacSystemFont, sans-serif; }
+    a { color: var(--cp-accent); text-underline-offset: 4px; }
+    button, select { font: inherit; }
+    a, button, select, summary { touch-action: manipulation; }
+    :focus-visible { outline: 3px solid var(--cp-accent); outline-offset: 5px; }
+    .skip { position: absolute; z-index: 3; top: -100px; left: 16px; padding: 12px; background: var(--cp-surface); }
+    .skip:focus { top: 12px; }
+    .frame { width: min(1280px, calc(100% - 96px)); margin-inline: auto; }
+    .first-screen { min-height: 100svh; display: flex; flex-direction: column; }
+    .proposal-bar { background: var(--cp-surface); border-bottom: 1px solid var(--cp-border); font-size: 13px; }
+    .proposal-bar .frame { display: flex; align-items: center; justify-content: space-between; gap: 16px; min-height: 44px; }
+    .proposal-bar strong { letter-spacing: .04em; }
+    .variant-label { display: flex; align-items: center; gap: 8px; }
+    select { background: var(--cp-surface); color: var(--cp-text); border: 1px solid var(--cp-border-strong); border-radius: .625rem; font-size: 13px; min-height: 32px; padding: 4px 8px; }
+    .site-header { display: flex; justify-content: space-between; align-items: center; min-height: 88px; }
+    .brand { display: inline-flex; align-items: center; gap: 12px; color: var(--cp-text); font-size: 25px; font-weight: 700; text-decoration: none; letter-spacing: -.8px; }
+    .brand svg { width: 28px; height: 32px; color: var(--cp-accent); }
+    .header-note { font-size: 14px; color: var(--cp-text-muted); }
+    .hero { display: grid; grid-template-columns: 1.05fr 1fr; gap: clamp(40px, 5vw, 80px); align-items: center; flex: 1; padding-block: 24px 32px; }
+    .eyebrow { margin: 0 0 20px; color: var(--cp-accent); font-size: 13px; text-transform: uppercase; letter-spacing: .14em; font-weight: 700; }
+    h1 { max-width: 650px; margin: 0 0 24px; font-size: clamp(44px, 4.5vw, 68px); line-height: 1.06; letter-spacing: -.055em; font-weight: 650; text-wrap: balance; }
+    .intro { max-width: 500px; font-size: 21px; line-height: 1.5; color: var(--cp-text-muted); margin: 0 0 24px; }
+    .benefits { display: flex; flex-wrap: wrap; gap: 8px 20px; padding: 0; margin: 0 0 28px; list-style: none; font-size: 14px; font-weight: 600; }
+    .benefits li::before { content: "+"; margin-right: 8px; color: var(--cp-accent); }
+    .primary { display: inline-flex; align-items: center; justify-content: center; gap: 24px; background: var(--cp-accent); color: var(--cp-accent-fg); border: 2px solid var(--cp-accent); border-radius: .625rem; padding: 16px 24px; min-height: 56px; font-size: 17px; font-weight: 650; text-decoration: none; cursor: pointer; }
+    .primary:hover { background: var(--cp-accent-hover); border-color: var(--cp-accent-hover); }
+    .preview-note { margin: 12px 0 0; font-size: 13px; line-height: 1.6; color: var(--cp-text-muted); max-width: 480px; }
+    .preview-note strong { color: var(--cp-text); }
+    .product { margin: 0; }
+    .window { border: 1px solid var(--cp-border-strong); border-radius: 16px; overflow: hidden; background: var(--cp-surface); }
+    .window-top { display: flex; justify-content: space-between; align-items: center; background: var(--cp-bg-elevated); border-bottom: 1px solid var(--cp-border); padding: 12px 20px; font-size: 13px; }
+    .window-top span:last-child { color: var(--cp-text-muted); }
+    .garden { position: relative; display: grid; grid-template-columns: 1fr 1fr; align-items: center; gap: 8px; padding: 20px 28px 8px; background: var(--cp-bg-elevated); }
+    .garden .quiet { margin: 0 0 8px; font-size: 13px; color: var(--cp-text-muted); }
+    .garden h2 { margin: 0; font-size: 27px; line-height: 1.2; letter-spacing: -.7px; font-weight: 600; }
+    .garden p:last-child { margin: 12px 0 0; font-size: 14px; }
+    .plant { width: 100%; height: 170px; color: var(--cp-accent); }
+    .recipe { padding: 20px 28px 24px; border-top: 1px solid var(--cp-border); }
+    .recipe-label { font-size: 11px; font-weight: 700; letter-spacing: .12em; color: var(--cp-text-muted); margin: 0 0 12px; }
+    .recipe-line { margin: 4px 0; font-size: 16px; }
+    .recipe-line span { color: var(--cp-text-muted); }
+    .recipe-line strong { font-weight: 600; }
+    .example-action { display: flex; align-items: center; gap: 12px; margin-top: 20px; padding: 12px 16px; border-radius: .625rem; background: var(--cp-accent-soft); color: var(--cp-accent); font-size: 15px; font-weight: 650; }
+    .example-action span:last-child { margin-left: auto; font-weight: 400; font-size: 12px; }
+    figcaption { margin: 12px 0 0; font-size: 12px; color: var(--cp-text-muted); text-align: center; }
+    .how-strip { display: flex; justify-content: space-between; gap: 12px; margin: 24px 0 0; padding: 0; list-style: none; font-size: 13px; color: var(--cp-text-muted); }
+    .how-strip b { display: inline-grid; place-items: center; width: 24px; height: 24px; margin-right: 6px; border: 1px solid var(--cp-border-strong); border-radius: 50%; color: var(--cp-accent); }
+    .fold-footer { border-top: 1px solid var(--cp-border-strong); padding-block: 20px 24px; display: flex; justify-content: space-between; align-items: center; gap: 24px; font-size: 14px; }
+    .fold-footer p { margin: 0; color: var(--cp-text-muted); }
+    .learn-link { white-space: nowrap; font-weight: 600; }
+    .method { padding-block: 96px; scroll-margin-top: 24px; }
+    .method h2 { max-width: 720px; margin: 0 0 20px; font-size: clamp(32px, 4vw, 48px); line-height: 1.15; letter-spacing: -.035em; font-weight: 600; }
+    .section-intro { max-width: 760px; color: var(--cp-text-muted); }
+    .model { margin-block: 40px; display: grid; grid-template-columns: 1fr 1.25fr; gap: 48px; padding: 32px; background: var(--cp-surface); border: 1px solid var(--cp-border-strong); border-radius: 16px; align-items: center; }
+    .equation { display: flex; justify-content: center; align-items: center; flex-wrap: wrap; gap: 12px; font-size: 44px; font-weight: 600; color: var(--cp-accent); }
+    .equation span { display: grid; text-align: center; }
+    .equation small { color: var(--cp-text-muted); font-size: 12px; font-weight: 400; margin-top: 8px; }
+    h3 { margin: 0 0 12px; font-size: 23px; line-height: 1.3; letter-spacing: -.02em; font-weight: 600; }
+    .model p { font-size: 16px; color: var(--cp-text-muted); margin-bottom: 0; }
+    .recipe-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; margin-block: 40px; }
+    .method-card { border: 1px solid var(--cp-border-strong); border-radius: 16px; padding: 28px; background: var(--cp-bg-elevated); }
+    .step-number { display: inline-grid; place-items: center; width: 40px; height: 40px; border-radius: .625rem; background: var(--cp-accent-soft); color: var(--cp-text); font-weight: 700; margin-bottom: 24px; }
+    .method-card p { font-size: 16px; color: var(--cp-text-muted); }
+    .method-card blockquote { margin: 24px 0 0; border-top: 1px solid var(--cp-border); padding-top: 20px; font-size: 20px; font-weight: 600; }
+    .research { border-left: 3px solid var(--cp-accent); padding-left: 28px; margin-block: 48px; max-width: 880px; }
+    .research p { color: var(--cp-text-muted); font-size: 16px; }
+    .disclaimer { max-width: 900px; font-size: 14px; color: var(--cp-text-muted); }
+    .page-footer { padding-block: 24px; border-top: 1px solid var(--cp-border-strong); font-size: 14px; color: var(--cp-text-muted); }
+    .fallback { margin-block: 24px; border: 1px solid var(--cp-border-strong); border-radius: 16px; padding: 24px; }
+    summary { cursor: pointer; min-height: 32px; font-weight: 600; }
+    dialog { width: min(580px, calc(100% - 40px)); max-height: calc(100svh - 48px); overflow: auto; background: var(--cp-surface); color: var(--cp-text); border: 1px solid var(--cp-border-strong); border-radius: 16px; padding: 32px; }
+    dialog::backdrop { background: var(--cp-overlay); }
+    dialog h2 { font-size: 28px; line-height: 1.2; margin: 0 0 20px; }
+    dialog p { font-size: 16px; }
+    .dialog-label { color: var(--cp-accent); font-size: 12px; font-weight: 700; letter-spacing: .1em; }
+    .close { display: block; margin: 24px 0 0; background: var(--cp-surface-soft); color: var(--cp-text); border: 1px solid var(--cp-border-strong); border-radius: .625rem; padding: 12px 20px; min-height: 48px; cursor: pointer; }
+    [hidden] { display: none !important; }
+    @media (min-width: 1600px) {
+      .hero { gap: 96px; }
+      .window-top { padding-block: 16px; }
+      .garden { padding-block: 32px 20px; }
+      .plant { height: 210px; }
+      .recipe { padding-block: 28px 32px; }
+      .recipe-line { font-size: 18px; }
+    }
+    @media (max-height: 820px) and (min-width: 901px) {
+      .site-header { min-height: 72px; }
+      .hero { padding-block: 16px 24px; }
+      h1 { font-size: 56px; }
+      .intro { font-size: 19px; }
+      .fold-footer { padding-block: 16px 20px; }
+    }
+    @media (max-width: 900px) {
+      .frame { width: calc(100% - 40px); }
+      .proposal-bar .frame { padding-block: 8px; flex-wrap: wrap; gap: 8px; }
+      .header-note { max-width: 140px; text-align: right; font-size: 12px; }
+      .hero { grid-template-columns: 1fr; gap: 40px; padding-block: 24px 40px; }
+      h1 { font-size: clamp(40px, 8vw, 60px); }
+      .intro { font-size: 19px; }
+      .fold-footer { align-items: start; flex-direction: column; gap: 12px; }
+      .learn-link { white-space: normal; }
+      .model, .recipe-grid { grid-template-columns: 1fr; }
+      .model { padding: 24px; gap: 32px; }
+      .method { padding-block: 64px; }
+      .how-strip { flex-wrap: wrap; }
+      .equation { font-size: 32px; gap: 8px; }
+    }
+    @media (prefers-reduced-motion: reduce) {
+      html { scroll-behavior: auto; }
+      *, *::before, *::after { animation: none !important; transition: none !important; }
+    }
+    @media (forced-colors: active) {
+      .primary, .example-action, .step-number { border: 2px solid ButtonText; }
+      :focus-visible { outline-color: Highlight; }
+    }
+  </style>
+</head>
+<body>
+  <a class="skip" href="#main">Skip to content</a>
+  <main id="main">
+    <div class="first-screen">
+      <aside class="proposal-bar" aria-label="Proposal review controls">
+        <div class="frame">
+          <span><strong>PROPOSAL ONLY</strong> · Not for merge or deployment</span>
+          <label class="variant-label" for="variant">Copy concept
+            <select id="variant">
+              <option value="a">A · Small enough</option>
+              <option value="b">B · A little more you</option>
+              <option value="c">C · Make room</option>
+            </select>
+          </label>
+        </div>
+      </aside>
+      <header class="site-header frame">
+        <a class="brand" href="#main" aria-label="Bloomstep, back to start">
+          <svg viewBox="0 0 32 36" aria-hidden="true" fill="none"><path d="M16 33V16M16 24C5 25 2 17 3 12c9-1 14 4 13 12ZM16 17C15 7 22 2 29 3c1 8-4 14-13 14Z" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          Bloomstep
+        </a>
+        <span class="header-note">A gentler kind of habit app.</span>
+      </header>
+      <section class="hero frame" aria-labelledby="hero-title">
+        <div class="hero-copy">
+          <p class="eyebrow">Tiny habits. A growing garden. Windows.</p>
+          <h1 id="hero-title">Build a habit small enough to start today.</h1>
+          <p class="intro">Pair an everyday routine with one tiny action. Celebrate doing it. Bloomstep helps you keep track, with a garden that grows along the way.</p>
+          <ul class="benefits" aria-label="App benefits">
+            <li>No broken streaks</li>
+            <li>No lost plant growth</li>
+          </ul>
+          <a class="primary" id="download-cta" href="#preview-details"><span id="cta-copy">Download Windows preview</span><span aria-hidden="true">↓</span></a>
+          <p class="preview-note"><strong>Owner-test preview only · Not a general release</strong><br>Free · Windows x64 / ARM64 · Sign-in required · Ages 16+<br>Unsigned installer; full app journey not yet verified.</p>
+        </div>
+        <figure class="product">
+          <div class="window">
+            <div class="window-top"><strong>My little garden</strong><span>One habit at a time</span></div>
+            <div class="garden">
+              <div>
+                <p class="quiet">YOUR MOMENT, NOT A SCORE</p>
+                <h2>A little is enough.</h2>
+                <p>Miss a day?<br>Your growth stays.</p>
+              </div>
+              <svg class="plant" viewBox="0 0 220 180" role="img" aria-labelledby="plant-title">
+                <title id="plant-title">An illustrated plant with new leaves, symbolizing small steps of growth.</title>
+                <ellipse cx="111" cy="160" rx="78" ry="11" fill="var(--cp-accent-soft)"/>
+                <path d="M111 150V65" stroke="currentColor" stroke-width="4" stroke-linecap="round"/>
+                <path d="M110 119C66 123 49 98 52 76c37-3 64 16 58 43Z" fill="var(--cp-highlight)" stroke="currentColor" stroke-width="2"/>
+                <path d="M112 96c-6-34 18-57 51-55 4 31-14 58-51 55Z" fill="var(--cp-highlight)" stroke="currentColor" stroke-width="2"/>
+                <path d="M110 70C84 68 73 47 82 27c26 3 38 20 28 43Z" fill="var(--cp-accent-soft)" stroke="currentColor" stroke-width="2"/>
+                <path d="m110 119-35-26m37 3 30-31" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+                <path d="M95 146h33l-5 19H99Z" fill="var(--cp-accent)" stroke="currentColor" stroke-width="2"/>
+                <path d="M174 105v10m-5-5h10M47 45v8m-4-4h8" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+              </svg>
+            </div>
+            <div class="recipe">
+              <p class="recipe-label">MY TINY HABIT RECIPE</p>
+              <p class="recipe-line"><span>After I</span> <strong>set down my morning mug,</strong></p>
+              <p class="recipe-line"><span>I will</span> <strong>write one sentence.</strong></p>
+              <p class="recipe-line"><span>Then I celebrate:</span> <strong>“There we go.”</strong></p>
+              <div class="example-action"><span aria-hidden="true">✓</span> Did it <span>One small moment</span></div>
+            </div>
+          </div>
+          <figcaption>Interface concept · Illustrative habit, not customer data</figcaption>
+          <ol class="how-strip" aria-label="Your three small steps">
+            <li><b>1</b> Pick a routine</li>
+            <li><b>2</b> Do a tiny action</li>
+            <li><b>3</b> Celebrate</li>
+          </ol>
+        </figure>
+      </section>
+      <div class="fold-footer frame">
+        <p>Inspired by <a href="https://tinyhabits.com/">BJ Fogg’s Tiny Habits method</a>.<br>Research on habits is not evidence of this app’s effectiveness.</p>
+        <a class="learn-link" href="#method">Learn the Tiny Habits method <span aria-hidden="true">↓</span></a>
+      </div>
+    </div>
+    <section class="method frame" id="method" aria-labelledby="method-title">
+      <p class="eyebrow">For the curious · The thinking behind tiny</p>
+      <h2 id="method-title">Don’t ask for more willpower.<br>Make the next step smaller.</h2>
+      <p class="section-intro">BJ Fogg’s Behavior Model says a behavior happens when motivation, ability and a prompt come together at the same moment. Making an action easier addresses ability; an existing routine can be your prompt. <a href="https://behaviormodel.org/">Explore Fogg’s original model →</a></p>
+      <div class="model">
+        <div class="equation" role="img" aria-label="B equals M A P. Behavior, motivation, ability, prompt.">
+          <span>B<small>Behavior</small></span><span aria-hidden="true">=</span><span>M<small>Motivation</small></span><span>A<small>Ability</small></span><span>P<small>Prompt</small></span>
+        </div>
+        <div><h3>Design the moment, not a new personality.</h3><p>For our example, the mug is the prompt, one sentence makes the action easier, and writing something you care about supplies a reason to begin. This is an illustration of <a href="https://behaviormodel.org/">B=MAP</a>, not a prediction or a numerical equation.</p></div>
+      </div>
+      <h3>One original example. Three parts to try.</h3>
+      <p class="section-intro">Fogg’s Tiny Habits recipe combines an anchor, a tiny behavior and an immediate celebration. <a href="https://tinyhabits.com/tell-me-more4/">Learn the method from its creator →</a></p>
+      <div class="recipe-grid">
+        <article class="method-card">
+          <span class="step-number" aria-hidden="true">01</span>
+          <h3>Anchor</h3>
+          <p>Choose a specific moment in a routine you already have, rather than a vague time of day. <a href="https://tinyhabits.com/tell-me-more4/">Tiny Habits method ↗</a></p>
+          <blockquote>After I set down my morning mug…</blockquote>
+        </article>
+        <article class="method-card">
+          <span class="step-number" aria-hidden="true">02</span>
+          <h3>Tiny behavior</h3>
+          <p>Make the action easy to do, even on an ordinary busy day. Start smaller when it feels difficult. <a href="https://behaviormodel.org/ability/">Fogg on ability ↗</a></p>
+          <blockquote>…I will write one sentence.</blockquote>
+        </article>
+        <article class="method-card">
+          <span class="step-number" aria-hidden="true">03</span>
+          <h3>Celebration</h3>
+          <p>Fogg’s method includes celebrating immediately after the action. Choose something that feels natural to you. <a href="https://tinyhabits.com/tell-me-more2/">Tiny Habits method ↗</a></p>
+          <blockquote>Then a smile: “There we go.”</blockquote>
+        </article>
+      </div>
+      <div class="research">
+        <h3>Why tiny? Make repetition easier.</h3>
+        <p>Fogg’s model identifies simplicity as a way to make behavior easier to do. A separate real-world habit-formation study by Lally and colleagues found that repeating a behavior in a consistent context was associated with increasing automaticity. <a href="https://behaviormodel.org/ability/">Fogg’s ability model</a> · <a href="https://doi.org/10.1002/ejsp.674">Lally et al., 2010, European Journal of Social Psychology</a>.</p>
+        <p>In that 12-week study, modeled time to reach 95% of the automaticity plateau varied from 18 to 254 days among participants whose data fit the model; longer times were modeled, not observed throughout. There is no fixed “21-day” promise here, and the study did not test Bloomstep or establish that tiny actions or celebration caused those outcomes. <a href="https://doi.org/10.1002/ejsp.674">Read the research</a>.</p>
+      </div>
+      <p class="disclaimer">Bloomstep is an independent app inspired by Tiny Habits, not affiliated with or endorsed by BJ Fogg or Tiny Habits. Examples and illustrations here are original proposal content. The app has not been clinically evaluated; no habit outcome, installation safety or time-to-result is promised.</p>
+      <details class="fallback" id="preview-details">
+        <summary>Current preview download boundaries</summary>
+        <p><strong>Designated owner testers only.</strong> Preview.14 is not verified for general use. It is unsigned; launch after installation and the complete sign-in/app journey remain unverified. Requires 64-bit Windows, internet for sign-in, and age 16+. No payment step.</p>
+        <p>Stop for malware or device-policy blocks. Do not disable protections. Checksums confirm file consistency, not safety.</p>
+        <p><a href="https://brave-plant-02c10e800.5.azurestaticapps.net/releases/">Designated testers: review preview.14 files and installation help</a></p>
+      </details>
+    </section>
+  </main>
+  <footer class="page-footer frame">Proposal only · No analytics, assignment, cookies or downloads run automatically. Live site and release configuration are unchanged.</footer>
+  <dialog id="preview-dialog" aria-labelledby="dialog-title">
+    <p class="dialog-label">OWNER-TEST PREVIEW · NOT A GENERAL RELEASE</p>
+    <h2 id="dialog-title">Before you download</h2>
+    <p>This is a design proposal, not a new release. The existing <strong>preview.14</strong> is for designated owner testers only.</p>
+    <p>The installer is unsigned. Launch after installation and the full sign-in/app journey have not been verified. Requires Windows x64 or ARM64, sign-in and age 16+. Free; no payment step.</p>
+    <p>Stop for malware or device-policy blocks. Do not disable protections. Review the existing release details and installation help before deciding.</p>
+    <p><a href="https://brave-plant-02c10e800.5.azurestaticapps.net/releases/">Designated testers: preview.14 files and help →</a></p>
+    <form method="dialog"><button class="close" autofocus>Back to the proposal</button></form>
+  </dialog>
+  <script>
+    const variants = Object.freeze({
+      a: { title: 'Build a habit small enough to start today.', cta: 'Download Windows preview' },
+      b: { title: 'A tiny habit. A little more you.', cta: 'Get the Windows preview' },
+      c: { title: 'Make room for one small habit.', cta: 'Try the Windows preview' },
+    });
+    const selector = document.getElementById('variant');
+    function applyCopy(key) {
+      const copy = variants[key] || variants.a;
+      document.getElementById('hero-title').textContent = copy.title;
+      document.getElementById('cta-copy').textContent = copy.cta;
+      selector.value = Object.hasOwn(variants, key) ? key : 'a';
+    }
+    applyCopy(new URLSearchParams(location.search).get('variant') || 'a');
+    selector.addEventListener('change', () => applyCopy(selector.value));
+    const dialog = document.getElementById('preview-dialog');
+    dialog.addEventListener('keydown', event => {
+      if (event.key !== 'Tab') return;
+      const targets = [...dialog.querySelectorAll('a[href], button')];
+      const first = targets[0], last = targets[targets.length - 1];
+      if (event.shiftKey && document.activeElement === first) {
+        event.preventDefault();
+        last.focus();
+      } else if (!event.shiftKey && document.activeElement === last) {
+        event.preventDefault();
+        first.focus();
+      }
+    });
+    document.getElementById('download-cta').addEventListener('click', event => {
+      if (typeof dialog.showModal !== 'function') {
+        document.getElementById('preview-details').open = true;
+        return;
+      }
+      event.preventDefault();
+      dialog.showModal();
+    });
+    if (location.hash === '#preview-details') document.getElementById('preview-details').open = true;
+  </script>
+</body>
+</html>

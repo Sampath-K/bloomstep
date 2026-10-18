@@ -11,10 +11,10 @@ const launchVerifier = readFileSync(new URL('../verify-launch.mjs', import.meta.
 test('launch path discloses prerequisites and support/privacy limits without collecting contact details', () => {
   const download = /<section id="download"[\s\S]*?<\/section>/.exec(home)[0];
   assert.match(download, /id="download-prerequisites"[\s\S]*64-bit Windows[\s\S]*sign-in[\s\S]*ages 16[\s\S]*unsigned/);
-  assert.match(download, /id="website-measurement"/);
+  assert.match(home.split('class="below-fold"')[0], /id="website-measurement"/);
   assert.equal((home.match(/id="website-consent"/g) ?? []).length, 1);
   assert.doesNotMatch(home, /id="website-consent"[^>]*checked/);
-  assert.match(home, /href="#website-measurement">Optional website measurement/);
+  assert.match(home, /href="#privacy">Privacy and measurement details/);
   assert.match(home, /data-primary-cta="footer" href="#download"/);
   assert.match(home, /id="feedback-help"/);
   assert.doesNotMatch(home, /type="email"|<form/);

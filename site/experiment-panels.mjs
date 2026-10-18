@@ -1,7 +1,7 @@
 const text = value => typeof value === 'string' ? value : '';
 const pct = value => typeof value === 'number' && Number.isFinite(value) ? `${(value * 100).toFixed(1)}%` : 'Unavailable';
 const decisions = {
-  promote: 'Candidate promoted (build-time artifact only)', retain_control: 'Control retained', candidate_worse: 'Control retained (candidate worse)',
+  promote: 'Candidate higher (evidence only; public fallback unchanged)', retain_control: 'Control retained', candidate_worse: 'Control retained (candidate worse)',
   rollback_harm: 'Rolled back: pre-registered harm look', insufficient: 'Insufficient evidence; control retained', killed: 'Stopped by kill switch',
 };
 
@@ -20,7 +20,7 @@ export function experimentPanels(data) {
       { label: 'Kill switch', value: data.killed ? 'Engaged' : 'Not engaged' },
       { label: 'Active experiment', value: data.active ? `${data.active.experimentId} until ${data.active.endAt}` : 'None' },
       { label: 'Active arm counts', value: data.active ? 'Withheld until the pre-registered final analysis' : 'Not applicable' },
-      { label: 'Guardrails', value: 'Consented visits only; harm-only interim looks; fixed-horizon final α=0.05; low cells insufficient; no live efficacy claim' },
+      { label: 'Guardrails', value: 'Consented visits only; A/B then A/C, baseline A retained; harm-only interim looks; fixed-horizon final α=0.025 per comparison; low cells insufficient; no live efficacy claim' },
       { label: 'Policy hash', value: data.policyHash },
       { label: 'Curated catalog', value: data.catalog.join(', ') },
     ] },
@@ -28,9 +28,9 @@ export function experimentPanels(data) {
   panels.push({ title: 'Concluded experiments', definition: 'Visit-level download intent; not people, installs or activation.',
     rows: data.concluded.length ? data.concluded.map(row => ({ label: `${row.key} (${row.experimentId})`,
       value: `${decisions[row.decision] ?? 'Unknown decision'}; control ${pct(row.stats?.p0)} vs candidate ${pct(row.stats?.p1)}` +
-        (row.stats?.ci95 ? `; 95% CI of difference ${pct(row.stats.ci95[0])} to ${pct(row.stats.ci95[1])}` : '') })) :
+        (row.stats?.ci95 ? `; unadjusted 95% CI of difference ${pct(row.stats.ci95[0])} to ${pct(row.stats.ci95[1])}` : '') })) :
       [{ label: 'History', value: 'No concluded experiments' }] });
-  panels.push({ title: 'Promotion artifacts', definition: 'Production winners ship only through a reviewed draft PR editing site/experiment-promotions.json.',
+  panels.push({ title: 'Promotion artifacts', definition: 'Copy-pair results are evidence only: public baseline A is retained. A separate owner-reviewed change is required to promote any pair.',
     rows: data.promotions.length ? data.promotions.map(row => ({ label: row.key, value: `${row.status} at ${row.at}` })) :
       [{ label: 'Promotions', value: 'None' }] });
   panels.push({ title: 'Audit history', definition: 'Bounded audit trail without visit identifiers.', collapsed: true,

@@ -18,9 +18,9 @@ const arm = (exposed, download, errors = 0, cta = 0) => ({ exposed, converted: {
 const summary = (a, b) => ({ steps: [{ from: 'landing_view', to: 'primary_cta_click', rate: a }, { from: 'primary_cta_click', to: 'download_click', rate: b }] });
 
 test('catalog is finite, truthful-lint clean, and limited to allowed copy/layout surfaces', () => {
-  assert.equal(CATALOG.length, 3);
+  assert.equal(CATALOG.length, 5);
   for (const entry of CATALOG) assert.deepEqual(lintEntry(entry), [], entry.key);
-  const bad = { ...CATALOG[0], candidate: { id: 'x', value: 'Scientifically proven to build habits!' } };
+  const bad = { ...CATALOG[2], candidate: { id: 'x', value: 'Scientifically proven to build habits!' } };
   assert.ok(lintEntry(/** @type {any} */ (bad)).some(problem => problem.includes('claim')));
   assert.ok(lintEntry(/** @type {any} */ ({ ...CATALOG[0], surface: 'consent_label' }))[0].includes('surface not allowed'));
   for (const claim of ['Sign in to win', 'No SmartScreen warning', 'Safe and signed download', '50% more habits', 'Hurry, last chance'])
@@ -89,12 +89,12 @@ test('evaluation matrix: no peeking, harm-only interim looks, fixed-horizon prom
   assert.equal((await evaluate({ ...instance, endAt: at(1).toISOString() }, strong, at(15))).status, 'error_invalid_definition');
 });
 
-test('prioritization uses only publishable step rates and never repeats or overrides promoted surfaces', () => {
+test('prioritization requires published steps and stages B then C with A retained, never legacy experiments', () => {
   assert.equal(selectNext(null, [], []).status, 'no_data');
   assert.equal(selectNext(summary(0.4, null), [], []).status, 'insufficient_data');
-  assert.equal(selectNext(summary(0.4, 0.3), [], []).entry?.key, 'download-heading-v1');
-  assert.equal(selectNext(summary(0.4, 0.3), ['download-heading-v1'], []).entry?.key, 'hero-cta-label-v1');
-  assert.equal(selectNext(summary(0.2, 0.3), [], ['hero_cta_label']).entry?.key, 'hero-note-position-v1');
+  assert.equal(selectNext(summary(0.4, 0.3), [], []).entry?.key, 'hero-pair-b-v1');
+  assert.equal(selectNext(summary(0.4, 0.3), ['hero-pair-b-v1'], []).entry?.key, 'hero-pair-c-v1');
+  assert.equal(selectNext(summary(0.2, 0.3), ['hero-pair-b-v1'], ['hero_copy_pair']).entry?.key, 'hero-pair-c-v1');
   assert.equal(selectNext(summary(0.2, 0.3), CATALOG.map(entry => entry.key), []).status, 'catalog_exhausted');
 });
 
@@ -165,7 +165,7 @@ test('isolated loop: launch, exposure-before-outcome, idempotence, forget tombst
   try {
     assert.equal((await h.call(h.handlers.tick(h.request({})))).status, 401);
     const launched = await h.worker();
-    assert.equal(launched.body.active?.startsWith('download-heading-v1.'), true);
+    assert.equal(launched.body.active?.startsWith('hero-pair-b-v1.'), true);
     const { active } = (await h.call(h.handlers.config())).body;
     assert.equal(await verifyInstance(active), true);
     const subjectId = randomUUID(), assigned = await assignArm(active, subjectId);
@@ -198,7 +198,7 @@ test('isolated loop: launch, exposure-before-outcome, idempotence, forget tombst
       arm: await assignArm(active, late), applied: true })))).status, 409, 'outside horizon');
     const concluded = await h.worker();
     assert.equal(concluded.body.actions[0].decision.status, 'no_data');
-    assert.equal(concluded.body.active?.startsWith('hero-cta-label-v1.'), true, 'next experiment launched');
+    assert.equal(concluded.body.active?.startsWith('hero-pair-c-v1.'), true, 'next experiment launched');
     const kill = await h.call(h.handlers.kill(/** @type {any} */ ({ headers: new Headers({ 'x-role': 'Bloomstep.Admin', 'content-type': 'application/json' }),
       text: async () => JSON.stringify({ killed: true, reason: 'test kill' }) })));
     assert.equal(kill.body.killed, true);
@@ -216,6 +216,24 @@ test('admission cap fails visibly', async () => {
     let last;
     for (let index = 0; index < 121; index++) last = await h.call(h.handlers.config());
     assert.equal(last?.status, 429);
+  } finally { await h.close(); }
+});
+
+test('persisted application failures are safety evidence, not eligible outcome exposures', async () => {
+  const h = await harness();
+  try {
+    await h.worker();
+    const { active } = (await h.call(h.handlers.config())).body;
+    const subjectId = randomUUID(), assigned = await assignArm(active, subjectId);
+    const base = { experimentId: active.experimentId, subjectId };
+    assert.equal((await h.call(h.handlers.exposure(h.request({ ...base, definitionHash: active.definitionHash, arm: assigned, applied: false })))).status, 201);
+    const result = await h.call(h.handlers.outcome(h.request({ ...base, event: 'download_click' })));
+    assert.equal(result.status, 409);
+    assert.match(result.body.error, /applied|visible|exposure/i);
+    const counts = (await h.store.item(`counts:${active.experimentId}`, PARTITIONS.isolated).read()).resource.arms[assigned];
+    assert.deepEqual(counts, arm(1, 0, 1));
+    await h.call(h.handlers.forget(h.request({ subjectId })));
+    assert.deepEqual((await h.store.item(`counts:${active.experimentId}`, PARTITIONS.isolated).read()).resource.arms[assigned], arm(0, 0));
   } finally { await h.close(); }
 });
 

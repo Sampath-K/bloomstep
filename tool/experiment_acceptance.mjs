@@ -223,7 +223,9 @@ async function captureArm(/** @type {string} */ name, /** @type {any} */ instanc
     if (!result.shot) continue;
     assert.equal(result.shot.arm, arm);
     const value = instance.arms[arm].value;
-    if (value === 'before_cta' || value === 'after_cta') assert.equal(result.shot.noteBeforeCta, value === 'before_cta', `${name}: note position`);
+    if (typeof value === 'object') {
+      assert.deepEqual({ headline: result.headline, cta: result.cta }, value, `${name}: visible reviewed copy pair`);
+    } else if (value === 'before_cta' || value === 'after_cta') assert.equal(result.shot.noteBeforeCta, value === 'before_cta', `${name}: note position`);
     else assert.equal(result.shot.text, value, `${name}: visible copy is the ${arm} arm`);
     return result;
   }
@@ -249,14 +251,17 @@ async function visit(/** @type {string} */ name, { consent = true, clickDownload
   await page.goto(origin, { waitUntil: 'networkidle0' });
   assert.equal(await page.evaluate(() => document.documentElement.dataset.experimentArm ?? null), null, 'no experiment before consent');
   const before = await page.$eval('#download-title', (/** @type {any} */ node) => node.textContent);
-  let result = { arm: null, subjectId: null, heading: before, cta: await page.$eval('#primary-cta', (/** @type {any} */ node) => node.textContent) };
+  let result = { arm: null, subjectId: null, heading: before, headline: await page.$eval('#intro', node => node.textContent),
+    cta: await page.$eval('#primary-cta-copy', (/** @type {any} */ node) => node.textContent) };
   if (consent) {
     await page.click('#website-consent');
+    await page.$eval('#intro', node => node.scrollIntoView({ block: 'center' }));
     await page.waitForFunction(() => document.documentElement.dataset.experimentArm !== undefined, { timeout: 10000 });
     const arm = await page.evaluate(() => document.documentElement.dataset.experimentArm);
     await new Promise(done => setTimeout(done, 300));
     result = { arm, subjectId: exposures[0]?.subjectId ?? null, heading: await page.$eval('#download-title', (/** @type {any} */ node) => node.textContent),
-      cta: await page.$eval('#primary-cta', (/** @type {any} */ node) => node.textContent) };
+      headline: await page.$eval('#intro', node => node.textContent),
+      cta: await page.$eval('#primary-cta-copy', (/** @type {any} */ node) => node.textContent) };
     result.noteBeforeCta = await page.evaluate(() => { const note = document.querySelector('.hero .small'), cta = document.getElementById('primary-cta')?.parentElement;
       return !!(note && cta && (note.compareDocumentPosition(cta) & Node.DOCUMENT_POSITION_FOLLOWING)); });
     assert.equal(await page.evaluate(() => localStorage.length + sessionStorage.length), 0, 'no browser storage');
@@ -271,7 +276,8 @@ async function visit(/** @type {string} */ name, { consent = true, clickDownload
     await page.click('#website-consent');
     await page.waitForFunction(() => document.getElementById('website-status')?.textContent?.includes('page-test record was deleted'), { timeout: 10000 });
     result.afterWithdraw = { heading: await page.$eval('#download-title', (/** @type {any} */ node) => node.textContent),
-      cta: await page.$eval('#primary-cta', (/** @type {any} */ node) => node.textContent) };
+      headline: await page.$eval('#intro', node => node.textContent),
+      cta: await page.$eval('#primary-cta-copy', (/** @type {any} */ node) => node.textContent) };
   }
   await page.close();
   return result;
@@ -291,7 +297,7 @@ try {
     return { ingested, steps: summary.steps.map(step => ({ from: step.from, to: step.to, rate: step.rate })), tick: blocked.actions.at(-1).status, realPartitionDocuments: 0 };
   });
 
-  await scenario('prioritize+launch: weakest measured stage (labeled fixture volume) selects download-heading-v1 via worker tick', async () => {
+  await scenario('prioritize+launch: publishable labeled fixture volume selects staged A/B pair via worker tick', async () => {
     await seedFixtureDays(T0);
     stageSource = fixtureStages;
     const summary = await fixtureStages();
@@ -299,8 +305,8 @@ try {
     assert.ok(steps.every(step => typeof step.rate === 'number'), JSON.stringify(steps));
     const result = await tick();
     assert.equal(result.actions.at(-1).action, 'prioritize'); assert.equal(result.actions.at(-1).status, 'selected');
-    assert.equal(result.actions.at(-1).key, 'download-heading-v1');
-    assert.match(result.active, /^download-heading-v1\./);
+    assert.equal(result.actions.at(-1).key, 'hero-pair-b-v1');
+    assert.match(result.active, /^hero-pair-b-v1\./);
     const live = await config();
     assert.equal(await verifyInstance(live.active), true);
     return { steps, selected: result.active, definitionHash: live.active.definitionHash, input: '__website_acceptance_fixture (labeled, isolated)' };
@@ -314,7 +320,7 @@ try {
       const result = await visit(`v${index}`, { clickDownload: true });
       assert.ok(['control', 'candidate'].includes(String(result.arm)), String(result.arm));
       assert.equal(await assignArm(first, String(result.subjectId)), result.arm, 'independent Node recomputation of assignment');
-      assert.equal(result.heading, first.arms[result.arm].value);
+      assert.deepEqual({ headline: result.headline, cta: result.cta }, first.arms[result.arm].value);
       const doc = await read(`visit:${await sha256Hex(`bloomstep-visit:${result.subjectId}`)}`);
       assert.equal(doc.arm, result.arm); assert.equal(doc.applied, true);
       assert.ok(doc.outcomes.download_click && Date.parse(doc.outcomes.download_click) >= Date.parse(doc.exposedAt), 'outcome after persisted exposure');
@@ -322,14 +328,14 @@ try {
       arms.add(result.arm);
     }
     assert.equal(arms.size, 2, 'both arms observed in real browser');
-    for (const arm of ['control', 'candidate']) await captureArm(`download-heading-${arm}`, first, arm, '#download-title');
-    assertArmsDiffer('download-heading-control', 'download-heading-candidate');
-    return { screenshots: { control: shotEvidence['download-heading-control'], candidate: shotEvidence['download-heading-candidate'] }, arms: [...arms], headings: Object.fromEntries([...arms].map(arm => [arm, browserVisits[arm].heading])), externalRequestsBlocked: counters.blockedExternal };
+    for (const arm of ['control', 'candidate']) await captureArm(`hero-pair-b-${arm}`, first, arm, '.hero');
+    assertArmsDiffer('hero-pair-b-control', 'hero-pair-b-candidate');
+    return { screenshots: { control: shotEvidence['hero-pair-b-control'], candidate: shotEvidence['hero-pair-b-candidate'] }, arms: [...arms], copy: Object.fromEntries([...arms].map(arm => [arm, { headline: browserVisits[arm].headline, cta: browserVisits[arm].cta }])), externalRequestsBlocked: counters.blockedExternal };
   });
 
   await scenario('consent withdrawal: browser forget restores standard page, tombstones visit, late outcome rejected 410', async () => {
     const result = await visit('withdraw', { withdraw: true });
-    assert.equal(result.afterWithdraw.heading, first.arms.control.value);
+    assert.deepEqual({ headline: result.afterWithdraw.headline, cta: result.afterWithdraw.cta }, first.arms.control.value);
     const doc = await read(`visit:${await sha256Hex(`bloomstep-visit:${result.subjectId}`)}`);
     assert.deepEqual([doc.forgotten, doc.arm, doc.outcomes], [true, undefined, undefined]);
     const late = await api('POST', '/api/web/experiments/outcome', { experimentId: first.experimentId, subjectId: result.subjectId, event: 'download_click' });
@@ -367,7 +373,7 @@ try {
   });
 
   let promotion;
-  await scenario('evaluate+promote: fixed-horizon final analysis promotes candidate and writes build-time promotion artifact', async () => {
+  await scenario('evaluate: fixed-horizon candidate evidence never replaces public baseline A', async () => {
     now = Date.parse(first.endAt) + 3600000;
     await seedFixtureDays(now);
     const result = await tick();
@@ -378,43 +384,42 @@ try {
     assert.equal(promotion.status, 'isolated_acceptance_only');
     const artifact = { schemaVersion: 1, promotions: [{ key: promotion.key, experimentId: promotion.experimentId, definitionHash: promotion.definitionHash, decision: 'promote' }] };
     await writeFile(join(out, 'candidate-promotions.isolated.json'), JSON.stringify(artifact, null, 2) + '\n');
-    servedIndex = applyPromotionsToHtml(sourceIndex, artifact.promotions);
-    assert.ok(servedIndex.includes(first.arms.candidate.value));
+    assert.throws(() => applyPromotionsToHtml(sourceIndex, artifact.promotions), /baseline A/);
+    servedIndex = sourceIndex;
     return { decision: { status: decision.status, stats: decision.stats }, next: result.active, artifact: 'candidate-promotions.isolated.json' };
   });
 
-  await scenario('promoted page: unconsented visitor sees build-time winner with no experiment traffic', async () => {
+  await scenario('public fallback: unconsented visitor still sees baseline A after B evidence, no experiment traffic', async () => {
     const before = counters.http['GET /api/web/experiments'] ?? 0;
     const result = await visit('promoted', { consent: false, screenshot: 'promoted-unconsented' });
-    assert.equal(result.heading, first.arms.candidate.value);
+    assert.deepEqual({ headline: result.headline, cta: result.cta }, first.arms.control.value);
     assert.equal(counters.http['GET /api/web/experiments'] ?? 0, before, 'no experiment request without consent');
-    return { heading: result.heading };
+    return { headline: result.headline, cta: result.cta };
   });
 
   const second = (await config()).active;
-  await scenario('next experiment + harm rollback: pre-registered interim harm look rolls back hero-cta-label-v1', async () => {
-    assert.match(second.experimentId, /^hero-cta-label-v1\./);
+  await scenario('next staged A/C experiment + harm rollback: baseline remains A and harm-only look stops C', async () => {
+    assert.match(second.experimentId, /^hero-pair-c-v1\./);
     const shown = await visit('second');
-    assert.equal(shown.cta, second.arms[shown.arm].value);
-    for (const arm of ['control', 'candidate']) assert.equal((await captureArm(`hero-cta-label-${arm}`, second, arm, '#primary-cta')).heading, first.arms.candidate.value);
-    assertArmsDiffer('hero-cta-label-control', 'hero-cta-label-candidate');
-    assert.equal(shown.heading, first.arms.candidate.value, 'promoted copy kept while testing a different surface');
+    assert.deepEqual({ headline: shown.headline, cta: shown.cta }, second.arms[shown.arm].value);
+    for (const arm of ['control', 'candidate']) await captureArm(`hero-pair-c-${arm}`, second, arm, '.hero');
+    assertArmsDiffer('hero-pair-c-control', 'hero-pair-c-candidate');
+    assert.deepEqual(second.arms.control.value, first.arms.control.value, 'A, never B, is the second control');
     const simulated = await simulate(second, 900, { control: 0.30, candidate: 0.10 }, 3 * 86400000);
     now = Date.parse(second.harmLookAt[0]) + 3600000;
     await seedFixtureDays(now);
     const result = await tick();
     const decision = result.actions[0].decision;
     assert.equal(decision.status, 'rollback_harm', JSON.stringify(decision)); assert.equal(decision.rollback, true);
-    assert.match(String(result.active), /^hero-note-position-v1\./);
+    assert.equal(result.active, null, 'legacy catalog is not enrolled after both approved trials');
     return { simulated, decision: { status: decision.status, look: decision.look, stats: decision.stats }, next: result.active };
   });
 
-  const third = (await config()).active;
+  const third = second;
   await scenario('kill switch: admin kill stops config, exposures and ticks; browser falls back to standard page', async () => {
     const shown = await visit('third');
-    assert.equal(shown.noteBeforeCta, shown.arm === 'candidate');
-    for (const arm of ['control', 'candidate']) await captureArm(`hero-note-position-${arm}`, third, arm, '.hero');
-    assertArmsDiffer('hero-note-position-control', 'hero-note-position-candidate');
+    assert.equal(shown.arm, 'none');
+    assert.deepEqual({ headline: shown.headline, cta: shown.cta }, first.arms.control.value);
     const kill = await api('POST', '/api/team/experiments/kill', { killed: true, reason: 'acceptance kill switch drill' }, 'admin');
     assert.equal(kill.status, 200);
     const live = await config();
@@ -424,7 +429,7 @@ try {
     assert.equal(exposure.status, 503);
     assert.equal((await tick()).status, 'disabled');
     const after = await visit('killed', { screenshot: 'killed-standard', shotTarget: '.hero' });
-    assert.equal(after.arm, 'none'); assert.equal(after.cta, third.arms.control.value === 'after_cta' ? second.arms.control.value : after.cta);
+    assert.equal(after.arm, 'none'); assert.equal(after.cta, first.arms.control.value.cta);
     return { config: live, exposureStatus: exposure.status, browserArm: after.arm };
   });
 
@@ -445,7 +450,7 @@ try {
   await scenario('audit/export: history records launch, looks, promote, rollback, kill without visit identifiers', async () => {
     const actions = report.audit.map((/** @type {any} */ row) => row.action);
     for (const action of ['launch', 'harm_look', 'promote', 'rollback', 'kill']) assert.ok(actions.includes(action), `${action} in ${actions}`);
-    assert.deepEqual(report.concluded.map((/** @type {any} */ row) => row.decision), ['promote', 'rollback_harm', 'killed']);
+    assert.deepEqual(report.concluded.map((/** @type {any} */ row) => row.decision), ['promote', 'rollback_harm']);
     for (const result of Object.values(browserVisits)) assert.ok(!JSON.stringify(report).includes(result.subjectId));
     await writeFile(join(out, 'acceptance-report-export.json'), JSON.stringify(report, null, 2) + '\n');
     return { auditActions: actions, concluded: report.concluded.map((/** @type {any} */ row) => ({ key: row.key, decision: row.decision })) };
@@ -482,8 +487,8 @@ try {
         text: document.getElementById('experiment-report')?.textContent ?? '', status: document.getElementById('experiment-admin-status')?.textContent ?? '' };
     }, tokens.admin);
     const shown = await load();
-    assert.equal(shown.concluded, 3); assert.ok(shown.cards >= 4, `cards ${shown.cards}`);
-    for (const expected of ['Isolated acceptance store (synthetic, not customers)', 'Kill switch', 'Engaged', 'Candidate promoted (build-time artifact only)',
+    assert.equal(shown.concluded, 2); assert.ok(shown.cards >= 4, `cards ${shown.cards}`);
+    for (const expected of ['Isolated acceptance store (synthetic, not customers)', 'Kill switch', 'Engaged', 'Candidate higher (evidence only; public fallback unchanged)',
       'Rolled back: pre-registered harm look', 'isolated_acceptance_only', 'harm-only interim looks']) assert.ok(shown.text.includes(expected), expected);
     assert.match(shown.status, /No live efficacy claim/);
     const cardStyle = await page.$eval('#experiment-report > .experiment-card', node => {
@@ -507,7 +512,7 @@ try {
     await page.setViewport({ width: 1280, height: 1000, deviceScaleFactor: 1 });
     await page.goto(origin + '/console.html?scoutTheme=light', { waitUntil: 'networkidle0' });
     assert.equal(await page.evaluate(() => document.documentElement.dataset.theme), 'light');
-    assert.equal((await load()).concluded, 3);
+    assert.equal((await load()).concluded, 2);
     await shot('console-experiment-light');
     failReport = true;
     const failed = await load();

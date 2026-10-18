@@ -1,6 +1,6 @@
 import { parseInvitation, nativeInvitationUrl } from './invitation-landing.mjs';
 import { validateReceipt } from './measurement.mjs';
-import { createExperimentClient } from './experiment-client.mjs';
+import { createExperimentClient, waitForVisibleCopy } from './experiment-client.mjs';
 import { attributionFields } from '../api/src/website-attribution.mjs';
 
 const campaignFields = ['utm_source', 'utm_medium', 'utm_campaign'];
@@ -102,6 +102,8 @@ function initializeCustomer() {
   const stopForPrivacy = () => {
     consentGeneration++; controller.abort(); observer.reset(); consent.checked = false;
     status.textContent = 'Your browser privacy setting is on, so this page will not send measurement data.';
+    void experiments.stop().catch(() => { status.textContent += ' Page-test deletion could not be confirmed.'; });
+    delete document.documentElement.dataset.experimentArm;
   };
   const record = (event, arch) => {
     if (blocked()) { stopForPrivacy(); return; }
@@ -113,7 +115,7 @@ function initializeCustomer() {
     });
   };
   if (blocked()) { consent.disabled = true; status.textContent = 'Your browser privacy setting is on, so this page will not send measurement data.'; }
-  const experiments = createExperimentClient({ document, fetchJson: async (path, body) => {
+  const experiments = createExperimentClient({ document, waitForExposure: signal => waitForVisibleCopy(document, window, signal), fetchJson: async (path, body) => {
     if (blocked()) throw Error('Browser privacy setting is on.');
     const response = await fetch(path, { method: body ? 'POST' : 'GET', headers: body ? { 'Content-Type': 'application/json' } : {},
       body: body ? JSON.stringify(body) : undefined, credentials: 'omit', referrerPolicy: 'no-referrer', cache: 'no-store',
@@ -123,16 +125,22 @@ function initializeCustomer() {
   } });
   const experimentOutcome = event => {
     if (!consent.checked || blocked()) return;
-    void experiments.outcome(event).catch(() => {});
+    void experiments.outcome(event).catch(() => { status.textContent = 'Page comparison outcome could not be recorded. The preview link still works.'; });
   };
   consent.addEventListener('change', () => {
     consentGeneration++; controller.abort(); controller = new AbortController(); observer.reset();
-    if (blocked()) { consent.checked = false; status.textContent = 'Your browser privacy setting is on, so this page will not send measurement data.'; return; }
+    if (blocked()) { stopForPrivacy(); return; }
     status.textContent = consent.checked ? 'Optional website counts are on for this visit only.' : 'Website counts are off. Earlier anonymous counts cannot be linked back to you.';
     if (consent.checked) {
       record('landing_view');
-      void experiments.start().then(state => { document.documentElement.dataset.experimentArm = state.arm ?? 'none'; })
-        .catch(() => { document.documentElement.dataset.experimentArm = 'error'; });
+      const epoch = consentGeneration;
+      void experiments.start().then(state => {
+        if (epoch === consentGeneration && consent.checked) document.documentElement.dataset.experimentArm = state.arm ?? 'none';
+      }).catch(error => {
+        if (epoch !== consentGeneration || !consent.checked) return;
+        document.documentElement.dataset.experimentArm = 'error';
+        status.textContent = `Optional website counts are on for this visit; delivery may be unavailable. Page comparison unavailable: ${error.message} Standard page copy is shown; the preview link still works.`;
+      });
     } else {
       void experiments.stop().then(deleted => { if (deleted) status.textContent += ' This visit\'s page-test record was deleted.'; }).catch(() => {
         status.textContent += ' Page-test deletion could not be confirmed; it expires automatically.';
@@ -142,6 +150,7 @@ function initializeCustomer() {
   });
   window.addEventListener('pagehide', () => {
     consentGeneration++; controller.abort(); observer.reset(); consent.checked = false;
+    experiments.end();
   });
   for (const link of document.querySelectorAll('#primary-cta, [data-primary-cta]')) {
     link.addEventListener('click', () => {

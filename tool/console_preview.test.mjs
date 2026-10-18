@@ -85,7 +85,7 @@ test('loopback-only synthetic preview: actual console buttons, production auth i
       await summary.focus(); await page.keyboard.press('Space');
     }
     const history = await page.$eval('#experiment-report', node => node.textContent);
-    for (const expected of ['Candidate promoted', 'Rolled back', 'Engaged', 'isolated_acceptance_only']) assert.ok(history.includes(expected), expected);
+    for (const expected of ['Candidate higher', 'Rolled back', 'Engaged', 'isolated_acceptance_only']) assert.ok(history.includes(expected), expected);
     const audit = await page.$('#experiment-report details summary');
     await audit.focus(); await page.keyboard.press('Space');
     assert.equal(await page.$eval('#experiment-report details', node => node.open), true);
