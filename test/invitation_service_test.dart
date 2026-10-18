@@ -421,8 +421,9 @@ void main() {
       var status = 503;
       final api = service(
         MockClient((request) async {
-          if (request.method == 'POST')
+          if (request.method == 'POST') {
             payloads.add(jsonDecode(request.body) as Map);
+          }
           return http.Response('private-server-body-token-account-id', status);
         }),
       );
