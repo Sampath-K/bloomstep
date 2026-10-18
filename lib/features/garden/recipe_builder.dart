@@ -46,12 +46,12 @@ class PlantedRecipeDialog extends StatelessWidget {
           children: [
             Center(
               child: SizedBox(
-                width: 192,
-                height: 192,
+                width: 144,
+                height: 144,
                 child: Align(
                   alignment: Alignment.bottomCenter,
                   child: Transform.scale(
-                    scale: 2,
+                    scale: 1.5,
                     alignment: Alignment.bottomCenter,
                     child: SizedBox(
                       width: 96,
@@ -65,20 +65,15 @@ class PlantedRecipeDialog extends StatelessWidget {
                 ),
               ),
             ),
-            const Text(
-              'One small beginning. Tiny actions help your seed grow.',
-            ),
-            const Text(
-              'A glimpse of growth to come. Your new habit starts as a seed; practice grows it.',
-            ),
             const SizedBox(height: 16),
             Text(
-              'Your next step:\nAfter I ${habit.anchor}, I will ${habit.behavior}. '
+              'After I ${habit.anchor}, I will ${habit.behavior}. '
               'Then I celebrate: ${habit.celebration}.',
+              style: Theme.of(context).textTheme.titleMedium,
             ),
             const SizedBox(height: 12),
             const Text(
-              'Try it the next time your anchor happens. No need to practice right now.',
+              'Try it when your moment comes. Practicing now is optional.',
             ),
           ],
         ),
@@ -87,7 +82,7 @@ class PlantedRecipeDialog extends StatelessWidget {
     actions: [
       FilledButton(
         onPressed: () => Navigator.pop(context),
-        child: const Text('See my seed'),
+        child: const Text('See my garden'),
       ),
     ],
   );
@@ -276,6 +271,12 @@ class _RecipeBuilderState extends State<RecipeBuilder> {
       for (final recipe in starterRecipes)
         [recipe.anchor, recipe.behavior, recipe.celebration][step],
     ];
+    final recommendedCelebration = starterRecipes
+        .firstWhere(
+          (recipe) => recipe.aspiration == aspiration.text.trim(),
+          orElse: () => starterRecipes.first,
+        )
+        .celebration;
     final icons = [
       Icons.wb_sunny_outlined,
       Icons.laptop_outlined,
@@ -285,35 +286,29 @@ class _RecipeBuilderState extends State<RecipeBuilder> {
     ];
     final canContinue =
         current.text.trim().isNotEmpty && current.text.trim().length <= 200;
-    final reason = [
-      'Choose an anchor to continue.',
-      'Choose a tiny action to continue.',
-      'Choose a celebration to plant your seed.',
-    ][step];
-    final nextStep = !canContinue || (step == 2 && !complete)
-        ? (current.text.trim().length > 200
-              ? 'Keep this choice to 200 characters or fewer.'
-              : !complete && step == 2 && canContinue
-              ? 'Add every part of your recipe before planting.'
-              : reason)
-        : [
-            'Next: choose one tiny action.',
-            'Next: choose a celebration.',
-            'Next: plant your seed and see your first next step.',
-          ][step];
     final preview =
-        'After I ${anchor.text.isEmpty ? '[anchor]' : anchor.text}, '
+        'After I ${anchor.text.isEmpty ? '[moment]' : anchor.text}, '
         'I will ${behavior.text.isEmpty ? '[tiny action]' : behavior.text}. '
         'Then I celebrate: ${celebration.text.isEmpty ? '[celebration]' : celebration.text}.';
     return AlertDialog(
       title: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text('Plant one tiny step'),
-          const SizedBox(height: 8),
+          Text(
+            'Step ${step + 1} of 3',
+            style: Theme.of(context).textTheme.labelLarge,
+          ),
+          const SizedBox(height: 4),
           Semantics(
+            header: true,
             liveRegion: true,
-            child: Text(nextStep, style: Theme.of(context).textTheme.bodySmall),
+            child: Text(
+              [
+                'Choose a moment',
+                'Choose a tiny action',
+                'Choose a celebration',
+              ][step],
+            ),
           ),
         ],
       ),
@@ -325,60 +320,21 @@ class _RecipeBuilderState extends State<RecipeBuilder> {
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text(
-                [
-                  'Step 1 of 3 · Start with something familiar',
-                  'Step 2 of 3 · Make it wonderfully small',
-                  'Step 3 of 3 · Almost there',
-                ][step],
-                style: Theme.of(context).textTheme.labelLarge,
-              ),
-              const SizedBox(height: 8),
               LinearProgressIndicator(value: (step + 1) / 3),
-              const SizedBox(height: 16),
-              Card(
-                color: colors.secondaryContainer,
-                child: Padding(
-                  padding: const EdgeInsets.all(12),
-                  child: Row(
-                    children: [
-                      SizedBox(
-                        width: 64,
-                        height: 86,
-                        child: PlantArt(
-                          stage: GrowthStage.seed,
-                          species: species,
-                        ),
-                      ),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        child: Semantics(
-                          liveRegion: true,
-                          child: Text(preview),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-              const SizedBox(height: 16),
+              const SizedBox(height: 12),
               Text(
                 [
-                  'Pick your anchor',
-                  'Pick one tiny action',
-                  'Pick your celebration',
-                ][step],
-                style: Theme.of(context).textTheme.titleLarge,
-              ),
-              const SizedBox(height: 4),
-              Text(
-                [
-                  'A routine you already do is a gentle reminder.',
-                  'One small action is enough to begin.',
-                  'Choose something that feels good to you. Practice is optional.',
+                  'Pick a daily routine, or write your own.',
+                  'Pick one small action, or write your own.',
+                  'Pick a gesture or phrase. Practicing is optional.',
                 ][step],
               ),
               const SizedBox(height: 12),
+              Text(
+                'Write my own',
+                style: Theme.of(context).textTheme.titleSmall,
+              ),
+              const SizedBox(height: 8),
               TextFormField(
                 key: ValueKey(
                   [
@@ -396,7 +352,11 @@ class _RecipeBuilderState extends State<RecipeBuilder> {
                 decoration: InputDecoration(
                   labelText: labels[step],
                   floatingLabelBehavior: FloatingLabelBehavior.always,
-                  hintText: 'Type your own or choose a suggestion below',
+                  hintText: [
+                    'put my cup away',
+                    'stretch one finger',
+                    'whisper well done',
+                  ][step],
                 ),
                 onFieldSubmitted: (_) => _next(),
                 onChanged: (_) => setState(() {
@@ -404,6 +364,16 @@ class _RecipeBuilderState extends State<RecipeBuilder> {
                   celebrationObserved = false;
                 }),
               ),
+              if (current.text.trim().length > 200 ||
+                  (step == 2 && canContinue && !complete))
+                Semantics(
+                  liveRegion: true,
+                  child: Text(
+                    current.text.trim().length > 200
+                        ? 'Keep this choice to 200 characters or fewer.'
+                        : 'Add every part of your recipe before planting.',
+                  ),
+                ),
               const SizedBox(height: 12),
               LayoutBuilder(
                 builder: (context, constraints) {
@@ -447,7 +417,24 @@ class _RecipeBuilderState extends State<RecipeBuilder> {
                                 children: [
                                   Icon(icons[i], size: 24),
                                   const SizedBox(width: 10),
-                                  Expanded(child: Text(choices[i])),
+                                  Expanded(
+                                    child: Column(
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.start,
+                                      children: [
+                                        Text(choices[i]),
+                                        if (step == 2 &&
+                                            choices[i] ==
+                                                recommendedCelebration)
+                                          Text(
+                                            'Suggested · a short way to mark your step.',
+                                            style: Theme.of(context)
+                                                .textTheme
+                                                .bodySmall,
+                                          ),
+                                      ],
+                                    ),
+                                  ),
                                 ],
                               ),
                             ),
@@ -457,12 +444,38 @@ class _RecipeBuilderState extends State<RecipeBuilder> {
                   );
                 },
               ),
+              const SizedBox(height: 12),
+              Card(
+                color: colors.secondaryContainer,
+                child: Padding(
+                  padding: const EdgeInsets.all(12),
+                  child: Row(
+                    children: [
+                      SizedBox(
+                        width: 48,
+                        height: 64,
+                        child: PlantArt(
+                          stage: GrowthStage.seed,
+                          species: species,
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Semantics(
+                          liveRegion: true,
+                          child: Text(preview),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
               const SizedBox(height: 8),
               if (step == 2)
                 ExpansionTile(
                   key: ValueKey('custom-$step'),
                   tilePadding: EdgeInsets.zero,
-                  title: const Text('Make it my own (optional)'),
+                  title: const Text('Plant details (optional)'),
                   children: [
                     if (step == 2) ...[
                       TextFormField(

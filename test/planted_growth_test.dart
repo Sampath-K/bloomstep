@@ -46,7 +46,7 @@ void main() {
       expect(
         tester
             .widget<FilledButton>(
-              find.widgetWithText(FilledButton, 'See my seed'),
+              find.widgetWithText(FilledButton, 'See my garden'),
             )
             .enabled,
         isTrue,

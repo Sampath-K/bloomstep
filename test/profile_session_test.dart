@@ -245,8 +245,8 @@ void main() {
     await tester.tap(find.text('I practiced my celebration'));
     await tester.pumpAndSettle();
     await tester.tap(find.text('Plant this seed'));
-    await _ready(tester, find.text('See my seed'));
-    await tester.tap(find.text('See my seed'));
+    await _ready(tester, find.text('See my garden'));
+    await tester.tap(find.text('See my garden'));
     await _ready(tester, find.text('Did it'));
     await tester.pumpWidget(const SizedBox());
     await tester.runAsync(

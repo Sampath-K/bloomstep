@@ -725,11 +725,11 @@ Future<void> _plant(
     );
   }
   await tester.tap(find.text('Plant this seed'));
-  await _waitFor(tester, find.text('See my seed'));
+  await _waitFor(tester, find.text('See my garden'));
   if (captureBoundary != null) {
     await _captureBuilderFrame(tester, captureBoundary, 'planted-next-step');
   }
-  await tester.tap(find.text('See my seed'));
+  await tester.tap(find.text('See my garden'));
   await tester.pumpAndSettle();
 }
 

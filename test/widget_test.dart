@@ -69,8 +69,8 @@ void main() {
     await tester.tap(find.text('I practiced my celebration'));
     await tester.pumpAndSettle();
     await tester.tap(find.text('Plant this seed'));
-    await waitForReady(find.text('See my seed'));
-    await tester.tap(find.text('See my seed'));
+    await waitForReady(find.text('See my garden'));
+    await tester.tap(find.text('See my garden'));
     await tester.pumpAndSettle();
     await waitForReady(
       find.text('Did it'),
