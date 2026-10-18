@@ -135,13 +135,10 @@ Future<void> ready(
         await settleUi();
       }
     }
-    final profileGroup = find.ancestor(
-      of: find.text('Profile & account'),
-      matching: find.byType(ListTile),
-    );
+    final profileGroup = find.text('Profile & account').hitTestable();
     if (needsProfile &&
         profile.evaluate().isEmpty &&
-        profileGroup.evaluate().isNotEmpty) {
+        profileGroup.evaluate().length == 1) {
       await tester.ensureVisible(profileGroup);
       await settleUi();
       await tester.tap(profileGroup);

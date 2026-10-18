@@ -53,7 +53,7 @@ void main() {
     await tester.sendKeyUpEvent(LogicalKeyboardKey.controlLeft);
     await tester.pumpAndSettle();
     expect(tester.widget<TextField>(field).controller!.text, 'Synthetic paste check');
-    await tester.tap(find.text('Cancel'));
+    await tester.tap(find.widgetWithText(TextButton, 'Close'));
     await tester.pumpAndSettle();
     await tester.pumpWidget(const SizedBox.shrink());
   });
@@ -283,8 +283,7 @@ void main() {
 
       // Undo makes timestamps monotonic even when the synthetic clock is frozen.
       testNow = testNow.add(const Duration(seconds: 1));
-      await tester.ensureVisible(find.byTooltip('Edit recipe'));
-      await tester.tap(find.byTooltip('Edit recipe'));
+      await _recipeAction(tester, 'Edit recipe');
       await tester.pumpAndSettle();
       expect(find.text('Adjust your recipe'), findsOneWidget);
       await tester.enterText(
@@ -337,10 +336,12 @@ void main() {
         );
         await _dismissCelebration(tester);
       }
-      await tester.ensureVisible(find.text('Check naturalness'));
       await _naturalnessReflection(tester, activeStore!);
       expect((await activeStore!.habits()).single.status, 'active');
+      await _openRecipeMenu(tester);
       expect(find.textContaining('Naturalness available '), findsOneWidget);
+      await tester.sendKeyEvent(LogicalKeyboardKey.escape);
+      await tester.pumpAndSettle();
 
       for (var day = 18; day <= 31; day++) {
         await _advanceClock(tester);
@@ -354,49 +355,51 @@ void main() {
         );
         await _dismissCelebration(tester);
       }
-      await tester.ensureVisible(find.text('Check naturalness'));
       await _naturalnessReflection(tester, activeStore!);
       await _waitFor(
         tester,
-        find.text('Weekly reflection / Recipe Doctor'),
+        find.byType(PopupMenuButton<String>),
         ready: () async =>
             (await activeStore!.habits()).single.status == 'graduated',
       );
 
-      await tester.ensureVisible(
-        find.text('Weekly reflection / Recipe Doctor'),
-      );
-      await tester.tap(find.text('Weekly reflection / Recipe Doctor'));
+      await _recipeAction(tester, 'Weekly reflection / Recipe Doctor');
       await _waitFor(tester, find.text('A minute for your recipe'));
       expect(find.text('A minute for your recipe'), findsOneWidget);
       await tester.tap(find.text('Keep my recipe'));
       await _waitFor(
         tester,
-        find.text('Weekly reflection / Recipe Doctor'),
+        find.byType(PopupMenuButton<String>),
         ready: () async => await activeStore!.setting('weeklyLast') != null,
       );
       await syncService().sync();
 
       await tester.tap(find.byTooltip('Help us grow'));
       await tester.pumpAndSettle();
+      await tester.tap(find.widgetWithText(FilledButton, 'Send feedback'));
+      await _waitFor(tester, find.text('Add a rating or a message first.'));
+      await tester.tap(find.byTooltip('4 of 5 stars'));
       await tester.enterText(
         find.byType(TextField).last,
         'Synthetic API acceptance feedback',
       );
-      await tester.tap(find.text('Save feedback'));
+      await tester.tap(find.widgetWithText(FilledButton, 'Send feedback'));
       await _waitFor(
         tester,
-        find.text('My feedback'),
+        find.text('Not sent — retry when you are connected.'),
         ready: () async => (await activeStore!.voice()).any(
           (row) => row['body'] == 'Synthetic API acceptance feedback',
         ),
       );
-      expect(find.text('My feedback'), findsOneWidget);
+      expect(find.text('Received by the team.'), findsNothing);
+      expect(find.text('Retry sending'), findsOneWidget);
+      expect(find.text('My feedback'), findsNothing);
       expect(
         (await activeStore!.voice()).single['body'],
         'Synthetic API acceptance feedback',
       );
-      await tester.tap(find.text('Done').last);
+      expect((await activeStore!.voice()).single['rating'], 4);
+      await tester.tap(find.widgetWithText(TextButton, 'Close'));
       await tester.pumpAndSettle();
       await syncService().sync();
       final feedbackReadback = await readRemoteGarden(
@@ -413,6 +416,9 @@ void main() {
       expect((await activeStore!.syncPayload())['voice'], isEmpty);
 
       await tester.tap(find.byTooltip('Settings and privacy'));
+      await _waitFor(tester, find.text('Garden & data'));
+      await tester.tap(find.text('Garden & data'));
+      await tester.pumpAndSettle();
       await _waitFor(tester, find.text('Export my data (JSON)'));
       await tester.ensureVisible(find.text('Export my data (JSON)'));
       await tester.tap(find.text('Export my data (JSON)'));
@@ -435,25 +441,22 @@ void main() {
       final firstVoice = (await activeStore!.voice()).single;
       await tester.tap(find.byTooltip('Help us grow'));
       await tester.pumpAndSettle();
-      await tester.tap(find.text('Cancel'));
-      await _waitFor(tester, find.text('My feedback'));
-      expect(find.text('My feedback'), findsOneWidget);
-      await tester.tap(find.byTooltip('Delete this feedback'));
-      await tester.pumpAndSettle();
-      expect(find.text('Delete this feedback?'), findsOneWidget);
-      await tester.tap(find.text('Delete feedback'));
-      await _waitFor(
-        tester,
-        find.text('Plant a habit'),
-        ready: () async =>
-            (await activeStore!.voice()).isEmpty &&
-            find.text('My feedback').evaluate().isEmpty,
+      expect(
+        tester.widget<TextField>(
+          find.widgetWithText(TextField, 'Your feedback'),
+        ).controller!.text,
+        isEmpty,
       );
+      expect(find.text('My feedback'), findsNothing);
+      expect(find.byTooltip('Delete this feedback'), findsNothing);
+      await tester.tap(find.widgetWithText(TextButton, 'Close'));
+      await tester.pumpAndSettle();
+      // Privacy deletion remains a store/API contract, not a feedback UI action.
+      await activeStore!.deleteRecord('voice', firstVoice['id'] as String);
       expect(await activeStore!.voice(), isEmpty);
       await syncService().sync();
 
-      await tester.ensureVisible(find.byTooltip('Delete this recipe'));
-      await tester.tap(find.byTooltip('Delete this recipe'));
+      await _recipeAction(tester, 'Delete this recipe');
       await tester.pumpAndSettle();
       expect(find.text('Delete recipe?'), findsOneWidget);
       await tester.tap(find.text('Delete'));
@@ -552,8 +555,7 @@ void main() {
       expect((await activeStore!.voice()).isEmpty, isTrue);
 
       final secondHabitId = (await activeStore!.habits()).single.id;
-      await tester.ensureVisible(find.byTooltip('Delete this recipe'));
-      await tester.tap(find.byTooltip('Delete this recipe'));
+      await _recipeAction(tester, 'Delete this recipe');
       await tester.pumpAndSettle();
       await tester.tap(find.text('Delete'));
       await _waitFor(
@@ -640,7 +642,8 @@ void main() {
           'did-more, rest, did-it and undo',
           'weekly reflection and deterministic Recipe Doctor',
           'two naturalness reflections and graduation',
-          'feedback create, export and delete',
+          'simplified feedback send, rating, validation and unsent state',
+          'feedback export and store/API privacy deletion (no history UI)',
           'recipe delete and remote tombstone readback',
           'app-profile close/reopen and second-owner isolation',
         ],
@@ -773,7 +776,7 @@ Future<void> _naturalnessReflection(
   GardenStore store,
 ) async {
   final previous = ((await store.export())['reflections'] as List).length;
-  await tester.tap(find.text('Check naturalness'));
+  await _recipeAction(tester, 'Check naturalness');
   await tester.pumpAndSettle();
   expect(find.text('How natural does this feel?'), findsOneWidget);
   final sliders = find.byType(Slider);
@@ -790,10 +793,23 @@ Future<void> _naturalnessReflection(
   await tester.tap(find.text('Save reflection'));
   await _waitFor(
     tester,
-    find.text('Weekly reflection / Recipe Doctor'),
+    find.byType(PopupMenuButton<String>),
     ready: () async =>
         ((await store.export())['reflections'] as List).length == previous + 1,
   );
+}
+
+Future<void> _openRecipeMenu(WidgetTester tester) async {
+  final menu = find.byType(PopupMenuButton<String>);
+  await tester.ensureVisible(menu);
+  await tester.tap(menu);
+  await tester.pumpAndSettle();
+}
+
+Future<void> _recipeAction(WidgetTester tester, String label) async {
+  await _openRecipeMenu(tester);
+  await tester.tap(find.text(label));
+  await tester.pumpAndSettle();
 }
 
 Future<void> _advanceClock(WidgetTester tester) async {

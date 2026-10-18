@@ -1,5 +1,16 @@
 # One consolidated candidate acceptance
 
+## Current simplified feedback acceptance
+
+The owner's direction removes "My feedback" history and its delete
+option to keep feedback simple. Windows synthetic E2E acceptance follows the
+Send feedback dialog: optional stars, message validation, clipboard paste,
+honest unsent/retry status, and export/server readback. Feedback deletion remains
+a store/API privacy contract exercised on disposable synthetic records, not a
+claimed customer-facing history or deletion control. Existing widget contracts
+cover acknowledged receipt separately. This aligns acceptance with the approved
+surface; it does not establish owner-installed or real-provider acceptance.
+
 **Historical preview.5/preview.6 record; superseded 2026-10-06.** Current
 state is the [MVP exit matrix](mvp-exit-matrix.md): unsigned preview.8 is
 published and installed as ARM64, the pre-upgrade support-file bytes were
