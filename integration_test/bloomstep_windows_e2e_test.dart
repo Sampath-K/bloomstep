@@ -4,6 +4,7 @@ import 'dart:ui' as ui;
 
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:crypto/crypto.dart';
 import 'package:integration_test/integration_test.dart';
@@ -27,6 +28,35 @@ DateTime syntheticJourneyStart(DateTime runStartedAt) {
 
 void main() {
   IntegrationTestWidgetsFlutterBinding.ensureInitialized();
+
+  testWidgets('Windows clipboard paste reaches the feedback field', (tester) async {
+    final store = await GardenStore.open(':memory:', 'clipboard-test');
+    addTearDown(store.close);
+    addTearDown(() => Clipboard.setData(const ClipboardData(text: '')));
+    await tester.pumpWidget(
+      MaterialApp(home: GardenScreen(store: store, testDisableServices: true)),
+    );
+    for (var i = 0; i < 3; i++) {
+      await tester.runAsync(
+        () => Future<void>.delayed(const Duration(milliseconds: 150)),
+      );
+      await tester.pumpAndSettle();
+    }
+    await Clipboard.setData(const ClipboardData(text: 'Synthetic paste check'));
+    await tester.tap(find.byTooltip('Help us grow'));
+    await tester.pumpAndSettle();
+    final field = find.widgetWithText(TextField, 'Your feedback');
+    await tester.tap(field);
+    await tester.pump();
+    await tester.sendKeyDownEvent(LogicalKeyboardKey.controlLeft);
+    await tester.sendKeyEvent(LogicalKeyboardKey.keyV);
+    await tester.sendKeyUpEvent(LogicalKeyboardKey.controlLeft);
+    await tester.pumpAndSettle();
+    expect(tester.widget<TextField>(field).controller!.text, 'Synthetic paste check');
+    await tester.tap(find.text('Cancel'));
+    await tester.pumpAndSettle();
+    await tester.pumpWidget(const SizedBox.shrink());
+  });
 
   testWidgets(
     'synthetic sign-in, real desktop UI, production sync handlers, isolation, export, restart and cleanup',

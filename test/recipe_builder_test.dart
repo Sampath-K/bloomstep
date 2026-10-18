@@ -2,11 +2,51 @@ import 'package:bloomstep/core/models.dart';
 import 'package:bloomstep/core/garden_store.dart';
 import 'package:bloomstep/features/garden/recipe_builder.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import '../integration_test/bloomstep_windows_e2e_test.dart' as journey;
 
 void main() {
+  testWidgets('Windows Ctrl+V works in each custom recipe step', (tester) async {
+    debugDefaultTargetPlatformOverride = TargetPlatform.windows;
+    addTearDown(() => debugDefaultTargetPlatformOverride = null);
+    var clipboard = '';
+    tester.binding.defaultBinaryMessenger.setMockMethodCallHandler(
+      SystemChannels.platform,
+      (call) async {
+        if (call.method == 'Clipboard.getData') return {'text': clipboard};
+        if (call.method == 'Clipboard.hasStrings') return {'value': true};
+        return null;
+      },
+    );
+    addTearDown(
+      () => tester.binding.defaultBinaryMessenger.setMockMethodCallHandler(
+        SystemChannels.platform,
+        null,
+      ),
+    );
+    await tester.pumpWidget(
+      const MaterialApp(home: Scaffold(body: RecipeBuilder())),
+    );
+    for (final key in ['custom-anchor', 'custom-action', 'custom-celebration']) {
+      final field = find.byKey(ValueKey(key));
+      clipboard = 'Pasted $key';
+      await tester.ensureVisible(field);
+      await tester.tap(field);
+      await tester.pump();
+      await tester.sendKeyDownEvent(LogicalKeyboardKey.controlLeft);
+      await tester.sendKeyEvent(LogicalKeyboardKey.keyV);
+      await tester.sendKeyUpEvent(LogicalKeyboardKey.controlLeft);
+      await tester.pumpAndSettle();
+      expect(tester.widget<TextFormField>(field).controller!.text, clipboard);
+      if (key != 'custom-celebration') {
+        await tester.testTextInput.receiveAction(TextInputAction.next);
+        await tester.pumpAndSettle();
+      }
+    }
+  });
+
   Future<void> openBuilder(
     WidgetTester tester, {
     void Function(RecipeDraft?)? onSaved,

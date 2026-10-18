@@ -6,6 +6,8 @@ import { readFileSync } from 'node:fs';
 import { createHandlers, ServiceError } from '../src/backend.mjs';
 import { aggregateEvents, previewLimits } from '../src/engagement.mjs';
 import { newerSetting } from '../src/contracts.mjs';
+import { generateKeyPair, SignJWT } from 'jose';
+import { createPrimaryAuthenticator } from '../src/primary-auth.mjs';
 
 const now = '2026-09-01T12:00:00.000Z';
 const userId = 'a'.repeat(64);
@@ -649,6 +651,47 @@ test('native invitation channels qr/native preserve the canonical 32-byte opaque
     const accepted = (await friend.redeemInvitation(request('POST', { requestId: randomUUID(), token: created.token }))).jsonBody;
     assert.equal(accepted.channel, channel);
     assert.equal(accepted.recipeCard, null);
+  }
+});
+
+test('signed customer requests create exact approved cards and refresh status for all four invitation channels', async () => {
+  const { privateKey, publicKey } = await generateKeyPair('RS256');
+  const issuer = 'https://invitation-fixture.invalid/v2.0';
+  const audience = 'invitation-fixture-api';
+  const authenticate = createPrimaryAuthenticator({
+    issuer, audience, keys: publicKey, databaseConfigured: () => true,
+  });
+  const card = { explicitChoice: true, templateCategory: 'calm', aspiration: 'Calm',
+    anchor: 'After tea', behavior: 'One breath', celebration: 'Smile', species: 'Fern' };
+  for (const channel of ['link', 'email', 'qr', 'native']) {
+    const h = harness({ roles: [] });
+    const handlers = createHandlers({ container: () => h.store, authenticate,
+      clock: () => new Date(now), environment: () => ({}) });
+    const token = await new SignJWT({ scp: 'Garden.ReadWrite' })
+      .setProtectedHeader({ alg: 'RS256' }).setIssuer(issuer).setAudience(audience)
+      .setSubject(`synthetic-${channel}`).setIssuedAt().setExpirationTime('2m').sign(privateKey);
+    const authenticatedRequest = (method, data, query) => {
+      const result = request(method, data, query);
+      result.headers.set('X-Bloomstep-Authorization', `Bearer ${token}`);
+      return result;
+    };
+    assert.deepEqual((await handlers.invitationStatus(authenticatedRequest('GET'))).jsonBody.invitations, []);
+    const data = { requestId: randomUUID(), channel, recipeCard: card };
+    const created = (await handlers.createInvitation(authenticatedRequest('POST', data))).jsonBody;
+    assert.equal(created.invitationId, data.requestId);
+    assert.equal(created.channel, channel);
+    assert.deepEqual(created.recipeCard, card);
+    assert.match(created.token, /^[A-Za-z0-9_-]{43}$/);
+    assert.equal(created.expiresAt, '2026-09-08T12:00:00.000Z');
+    assert.deepEqual((await handlers.createInvitation(authenticatedRequest('POST', data))).jsonBody, created);
+    const status = (await handlers.invitationStatus(authenticatedRequest('GET', undefined, { export: 'true' }))).jsonBody;
+    assert.deepEqual(status.invitations, [{ invitationId: data.requestId, direction: 'outgoing',
+      channel, acceptedAt: null, expiresAt: created.expiresAt, status: 'created' }]);
+    assert.deepEqual(status.sharedRecipes, [{ invitationId: data.requestId,
+      expiresAt: created.expiresAt, recipeCard: card }]);
+    assert.deepEqual(status.rewards, []);
+    assert.equal([...h.documents.values()].filter(row => row.type === 'invitation_secret').length, 1);
+    assert.equal([...h.documents.values()].filter(row => row.type === 'invitation_code').length, 1);
   }
 });
 

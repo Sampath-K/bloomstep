@@ -27,6 +27,8 @@ void main() {
   testWidgets(
     'failed session clock checkpoint hides data and reports the failure',
     (tester) async {
+      final semantics = tester.ensureSemantics();
+      addTearDown(semantics.dispose);
       var expirations = 0;
       await tester.pumpWidget(
         MaterialApp(
@@ -52,13 +54,10 @@ void main() {
         findsOneWidget,
       );
       expect(
-        find.ancestor(
-          of: find.byType(SelectableText),
-          matching: find.byWidgetPredicate(
-            (widget) => widget is Semantics && widget.properties.liveRegion,
-          ),
-        ),
-        findsOneWidget,
+        tester
+            .getSemantics(find.byType(SelectableText))
+            .hasFlag(SemanticsFlag.liveRegion),
+        isTrue,
       );
       expect(expirations, 1);
       await tester.pumpWidget(const SizedBox.shrink());

@@ -114,6 +114,8 @@ void main() {
   testWidgets('consent removed during confirmation surfaces a failure', (
     tester,
   ) async {
+    final semantics = tester.ensureSemantics();
+    addTearDown(semantics.dispose);
     final store = await mount(tester, consent: true);
     await tester.tap(find.text('Link my exported website receipt'));
     await tester.pump();
@@ -126,13 +128,8 @@ void main() {
     expect(find.text(failure), findsOneWidget);
     expect(find.textContaining('Receipt action failed:'), findsNothing);
     expect(
-      find.ancestor(
-        of: find.text(failure),
-        matching: find.byWidgetPredicate(
-          (widget) => widget is Semantics && widget.properties.liveRegion,
-        ),
-      ),
-      findsOneWidget,
+      tester.getSemantics(find.text(failure)).hasFlag(SemanticsFlag.liveRegion),
+      isTrue,
     );
     expect((await tester.runAsync(store.export))!['events'], isEmpty);
   });
