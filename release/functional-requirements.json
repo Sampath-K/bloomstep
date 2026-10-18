@@ -1,6 +1,6 @@
 {
   "schema": "budlark-functional-requirements-v1",
-  "policy": "Before any installer reaches the owner, every requirement must pass on a clean Windows VM against the exact signed installer, with light and dark screenshots for UI requirements and, for owner-reported regressions, proof the same test failed on the baseline build.",
+  "policy": "Before any installer reaches the owner, every requirement must pass on a clean Windows VM against the exact installer bytes identified by SHA-256 (unsigned is accepted and recorded; Defender/SmartScreen are never bypassed), with light and dark screenshots for UI requirements and, for owner-reported regressions, proof the same test failed on the baseline build.",
   "baselineCommit": "083f2def66c1e084c56653238b85802ff260c3c3",
   "ownerItemCount": 29,
   "processOwnerItems": {
@@ -12,7 +12,7 @@
     {
       "id": "FR-INSTALL",
       "flow": "Install",
-      "description": "Clean install of the signed installer on a fresh Windows VM; Budlark name and icon in installer, Start menu and tray; app launches",
+      "description": "Clean install of the exact SHA-256-identified installer on a fresh Windows VM; Budlark name and icon in installer, Start menu and tray; app launches",
       "ownerItems": [
         24,
         25,
