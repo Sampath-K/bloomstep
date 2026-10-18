@@ -1,0 +1,91 @@
+name: functional-acceptance
+
+# Owner-trial precondition: run the exact CI-built installer on a fresh GitHub-hosted
+# Windows VM and collect evidence. The harness owns every PASS/FAIL; this workflow
+# only proves identity, installs, and preserves output. See docs/release-governance.md.
+on:
+  workflow_dispatch:
+    inputs:
+      candidate:
+        description: 'Commit SHA the installer was built from (candidate, or 083f2de... for baseline)'
+        required: true
+      run_id:
+        description: 'CI run id that produced the installer artifact'
+        required: true
+      artifact_id:
+        description: 'Artifact id holding the installer'
+        required: true
+      installer_sha256:
+        description: 'Expected installer SHA-256 (64 lowercase hex)'
+        required: true
+      mode:
+        description: 'candidate or baseline'
+        type: choice
+        options: [candidate, baseline]
+        default: candidate
+
+permissions:
+  contents: read
+  actions: read
+
+concurrency:
+  group: functional-acceptance-${{ inputs.mode }}-${{ inputs.candidate }}
+  cancel-in-progress: false
+
+jobs:
+  acceptance:
+    runs-on: windows-latest
+    timeout-minutes: 90
+    env:
+      GH_TOKEN: ${{ github.token }}
+      OUT: ${{ github.workspace }}\functional-output
+    steps:
+      - uses: actions/checkout@v4
+      - name: Prove artifact identity and download the exact installer
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          if ('${{ inputs.candidate }}' -notmatch '^[0-9a-f]{40}$' -or '${{ inputs.installer_sha256 }}' -notmatch '^[0-9a-f]{64}$' -or '${{ inputs.run_id }}' -notmatch '^[1-9][0-9]*$' -or '${{ inputs.artifact_id }}' -notmatch '^[1-9][0-9]*$') { throw 'malformed inputs' }
+          New-Item -ItemType Directory -Force $env:OUT, installer | Out-Null
+          $meta = gh api "repos/${{ github.repository }}/actions/artifacts/${{ inputs.artifact_id }}" | ConvertFrom-Json
+          if ("$($meta.workflow_run.id)" -ne '${{ inputs.run_id }}') { throw "artifact belongs to run $($meta.workflow_run.id), not ${{ inputs.run_id }}" }
+          if ($meta.workflow_run.head_sha -ne '${{ inputs.candidate }}') { throw "artifact built from $($meta.workflow_run.head_sha), not ${{ inputs.candidate }}" }
+          if ($meta.expired) { throw 'artifact expired; rebuild the exact commit' }
+          gh api "repos/${{ github.repository }}/actions/artifacts/${{ inputs.artifact_id }}/zip" > artifact.zip
+          Expand-Archive artifact.zip installer -Force
+          $exe = @(Get-ChildItem installer -Recurse -Filter '*-setup.exe')
+          if ($exe.Count -ne 1) { throw "expected exactly one installer, found $($exe.Count)" }
+          $hash = (Get-FileHash $exe[0].FullName -Algorithm SHA256).Hash.ToLower()
+          if ($hash -ne '${{ inputs.installer_sha256 }}') { throw "installer SHA-256 mismatch: $hash" }
+          "INSTALLER=$($exe[0].FullName)" >> $env:GITHUB_ENV
+          @{ candidate='${{ inputs.candidate }}'; runId='${{ inputs.run_id }}'; artifactId='${{ inputs.artifact_id }}'; installerSha256=$hash; mode='${{ inputs.mode }}'; os=(Get-CimInstance Win32_OperatingSystem).Caption + ' ' + [Environment]::OSVersion.Version; runner=$env:RUNNER_NAME; run="${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}" } | ConvertTo-Json | Set-Content "$env:OUT\identity.json"
+      - name: Silent install of the exact bytes
+        shell: pwsh
+        run: |
+          $p = Start-Process $env:INSTALLER -ArgumentList '/VERYSILENT /SUPPRESSMSGBOXES /NORESTART', "/LOG=`"$env:OUT\install.log`"" -Wait -PassThru
+          "install exit $($p.ExitCode)" | Tee-Object "$env:OUT\install-exit.txt"
+          if ($p.ExitCode -ne 0) { exit 1 }
+      - name: Run installed-app acceptance harness
+        shell: pwsh
+        run: |
+          $harness = 'tool/functional/run_installed_acceptance.ps1'
+          if (-not (Test-Path $harness)) {
+            @{ status='FAIL'; reason='harness-missing'; detail="$harness not present at this commit" } | ConvertTo-Json | Set-Content "$env:OUT\harness-status.json"
+            Write-Error 'harness-missing: no acceptance tests were executed'; exit 1
+          }
+          & $harness -Mode '${{ inputs.mode }}' -Requirements release/functional-requirements.json -Identity "$env:OUT\identity.json" -Output $env:OUT
+          exit $LASTEXITCODE
+      - name: Uninstall (lifecycle evidence)
+        if: always()
+        shell: pwsh
+        run: |
+          $u = Get-ChildItem "$env:LOCALAPPDATA\Programs","$env:ProgramFiles" -Recurse -Filter 'unins*.exe' -ErrorAction SilentlyContinue | Where-Object FullName -match 'Bloomstep|Budlark' | Select-Object -First 1
+          if ($u) { Start-Process $u.FullName -ArgumentList '/VERYSILENT /SUPPRESSMSGBOXES /NORESTART' -Wait; "uninstalled via $($u.FullName)" } else { 'no uninstaller found' } | Tee-Object "$env:OUT\uninstall.txt"
+      - name: Preserve evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: budlark-functional-${{ inputs.mode }}-${{ inputs.candidate }}
+          path: functional-output
+          if-no-files-found: error
+          retention-days: 90
