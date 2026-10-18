@@ -359,7 +359,7 @@ test('QA-1: owner trial reference must resolve to an owner-authored comment in t
 });
 
 test('QA-1: release job authenticates the owner statement via the API before promotion', () => {
-  const wf = readFileSync('.github/workflows/ci.yml', 'utf8');
+  const wf = readFileSync(new URL('../.github/workflows/ci.yml', import.meta.url), 'utf8');
   const job = wf.slice(wf.indexOf('environment: public-launch'));
   const verifyAt = job.indexOf('--owner-comment');
   assert.ok(verifyAt > 0, 'owner comment verification missing');
