@@ -77,7 +77,7 @@ and abuse protection. Existing aggregate telemetry cannot substitute for that ag
 | Acquisition / intent | Real browser -> HTTP -> disk confirms allowlisted campaign, footer/hero dedup, consent-off zero writes, withdrawal and small-cell suppression. Synthetic proof only. |
 | Privacy | Default-off preserved; owner-approved public contact `store-developer@outlook.com` is linked without sign-in (mailbox delivery untested; no response deadline). **Owner decisions:** product owner to confirm applicable jurisdiction-specific obligations. **Evidence gaps:** service/project owner to confirm provider log/identity retention; coordinating project session `b3eaa24c-99fa-4b3f-b6e8-d0601e0b6ea8` owns future isolated restore-marker verification coordination. Synthetic file-backed app/API restart tests do not establish cloud-restore behavior. Public issues accept non-sensitive bugs only. |
 | Production collection / console | Local synthetic preview is usable. **Unverified:** approved live deployment, Functions/OIDC/Admin roles, deployed collector/readback, retention/erasure operations and hosting logs/billing facts. No new paid resources provisioned. |
-| Download / install / first launch | Existing preview.12 pointer unchanged. **Blocked:** protected acceptance of the intended composed artifact and unresolved launch CI. The withdrawn PR26 `b58ba7fc` candidate was Defender-quarantined (`Behavior:Win32/DefenseEvasion.A!ml`) and remains excluded; this does not characterize every artifact on PR26. See the artifact-specific evidence below. |
+| Download / install / first launch | Existing preview.12 pointer unchanged. **Blocked:** owner manual verification of the exact new installer is pending; hosted build/package checks do not establish installation or first launch. The withdrawn PR26 `b58ba7fc` candidate was Defender-quarantined (`Behavior:Win32/DefenseEvasion.A!ml`) and remains excluded; this does not characterize every artifact on PR26. See the artifact-specific evidence below. |
 | App activation / retention | Existing separate account reports, not website or campaign conversion. Revenue and referral-delivery/attributed activation remain unsupported. |
 | Experiments | Public OFF; no sufficient customer evidence or deployment authorization. Existing isolated loop proof is not live efficacy. |
 | Public demand / deployment | Owner conditionally approved production promotion after exact-head functional, security and privacy gates. This does not waive contact disclosure, installer acceptance or authorize outreach. No merge, deploy, release or outreach was performed. |
@@ -90,9 +90,10 @@ fixture is a prerequisite, not customer acceptance. Keep third-party analytics s
 experiments disabled; monetization is outside this launch.
 
 1. Freeze the composed source revision and the intended installer filename/full SHA-256. Preserve exact-head
-   API, customer-site, telemetry, console-preview and composed-loop receipts and hosted artifacts. Obtain
-   protected install/launch acceptance for that exact installer on each advertised architecture; a prior
-   owner's ARM64 trial does not cover another build or x64. Failed or missing runtime evidence blocks promotion.
+   API, customer-site, telemetry, console-preview and composed-loop receipts and hosted artifacts. The owner
+   manually verifies the exact installer and records the tested machine/architecture and observed outcomes.
+   Hosted CI does not install or launch it; a result applies only to the tested artifact and machine.
+   Missing feedback blocks customer promotion.
 2. Verify the owner-approved public contact is rendered as `mailto:store-developer@outlook.com` on both
    customer entry pages before merging. Publication approval does not establish mailbox delivery or a
    response deadline; no mailbox was created. Verify applicable provider retention/recovery boundaries and actual customer
@@ -153,12 +154,12 @@ Per the coordinating owner's evidence update:
 - Candidate `f7552cf` (SHA-256 prefix `8a438`): owner verified it on their own ARM64 machine only. This is not
   x64 acceptance or evidence for another revision.
 - Latest composed profile-fix candidate `ce47ccb` (SHA-256 prefix `03ccac`): locally downloaded and hash-verified,
-  **not executed**, and no protected install/launch acceptance. Hash consistency is not a safety guarantee.
+  **not executed**, and no owner installation/launch feedback. Hash consistency is not a safety guarantee.
 
 The prefixes above identify the owner's update, not complete checksum values to use for file verification.
 No acceptance transfers between revisions; no candidate was promoted by this website work. Do not bypass
-Defender, browser warnings or device policy. Require exact-artifact protected acceptance before changing the
-public download pointer or describing a candidate as independently safety-accepted.
+Defender, browser warnings or device policy. Require exact-artifact owner manual verification before changing
+the public download pointer or describing a candidate as owner-verified.
 
 ### Privacy evidence (read-only, 10 October 2026)
 

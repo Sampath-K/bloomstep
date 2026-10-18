@@ -3,6 +3,21 @@
 **17 October 2026. Cloud session `833fae00` owns continuation after this note
 is pushed. Local session `964ad09d-7fce-4b66-a8fc-670c4493a195` stops.**
 
+## Superseding owner direction
+
+The owner aborted the VM/local-runner work. Protected self-hosted installer
+acceptance is removed from the launch workflow; no runner setup, VM provisioning,
+or queue retry is in scope. Hosted API, x64/ARM64 build/test, installer
+correctness/package checks remain. The owner will manually verify the exact
+downloaded Budlark installer; acceptance stays **PENDING** until feedback is
+recorded against that artifact's source SHA and checksum.
+
+This handoff's later VM-gate and release sequence is historical and superseded
+by the owner's instruction. Do not merge, tag, release, deploy, change account
+access/protection, or update the public download pointer before separate
+authorization. PR51's website-doc change is separate and must remain untouched
+from this branch.
+
 Repository: `Sampath-K/bloomstep`.
 Continue on `sampath-k-ship-owner-trial-installer-fixes`, PR #48.
 Last code-changing head: `8dc00de88c0b8414065026f7c1cc46f2db35ea3a`.
@@ -104,7 +119,7 @@ native/plugin/asset compilation must be established by hosted Windows CI.
 Watchdog uses explicit `cmd.exe /d /c C:\src\flutter\bin\flutter.bat ...`;
 bare `flutter` produced `FileNotFoundError` in Python subprocess resolution.
 
-## CI and VM gates at handoff
+## Historical CI and VM gates at handoff (superseded)
 
 Refresh all states; queued workflow status can coexist with completed hosted
 jobs because protected jobs lack a runner.
@@ -132,55 +147,19 @@ high contrast, mixed DPI and real-provider/owner-installed acceptance are
 **UNVERIFIED**, never pass-by-inference. Preserve all guards and runner checks.
 Do not provision resources, change credentials or protections to clear them.
 
-## Remaining release sequence
+## Remaining work under the current owner direction
 
-1. Fetch this branch and main. Confirm a clean cloud checkout and re-read live
-   PR states. Take ownership; local session is paused after this commit.
-2. Rerun analyzer, full Flutter suite, API TypeScript/API tests, event and
-   experience-policy registry checks, installer/release contracts and the
-   project-status contracts on the final source. Use the existing CI runners
-   and selectors; no test weakening, new skip or default-off activation.
-3. Require exact-head hosted x64 and ARM64 tests/build/E2E success plus the
-   other required engineering checks. Diagnose logs and fix/retest if red.
-   Do not merge red or pending required engineering checks.
-4. Merge #48 only after those gates pass, without force-push or protection
-   bypass. Then close #49/#50/#36 as superseded/composed with the actual
-   main commit. Resolve #26 with the explicit installer-versus-held-coach
-   distinction above. Leave #27/#29/#30/#38 open for approval.
-5. Require the final main source to pass its full engineering checks.
-   Record the exact main SHA. Protected native evidence stays separately
-   UNVERIFIED under the owner-authorized limited-trial deferral; never label
-   the entire protected workflow green.
-6. Inspect the existing release path before tagging: current `ci.yml`
-   release job and `tool/release_bundle.mjs` have narrow historical
-   preview.10/.12 exceptions, not a general preview.15 waiver. A tag alone
-   will not make unavailable protected jobs or the validator pass.
-   Do not silently broaden them, fake receipts or assert queued VM gates
-   succeeded. The earlier preview.13/.14 owner-trial route used verified
-   exact-source compiled artifacts and a plainly UNVERIFIED manifest under
-   explicit owner authorization. Use only an authorized path that preserves
-   all existing tests/protections; escalate a genuine unresolved publication
-   gate to the coordinator with the exact error rather than bypassing it.
-7. Once final-main engineering gates and the authorized publication path are
-   established, create NEW immutable `v0.1.0-preview.15`; never move
-   preview.13 or preview.14. Version/package the exact final source, not
-   older artifacts renamed to preview.15. Keep source/run/hash provenance
-   and each payload architecture bound to the actual published bytes.
-8. Match preview.14's ten-asset set:
-   `Bloomstep-0.1.0-preview.15-windows-{universal,x64,arm64}-setup.exe`,
-   `SHA256-{universal,x64,arm64}.txt`, `owner-trial-manifest.json`,
-   `payload-manifest-{x64,arm64}.json`, `universal-manifest.json`.
-   Release is a GitHub prerelease for designated owner testers only.
-   Notes must say protected-VM installation and genuine launch-after-install
-   remain UNVERIFIED/pending owner manual trial. Do not claim public readiness.
-9. Download the published universal installer without executing it. Hash its
-   bytes with SHA-256 and compare checksum file, manifest and GitHub asset
-   metadata (URL/digest/size). Write the actual release receipt to
-   `docs/status.md` and commit/push it. No preview.15 URL/hash exists yet.
-10. Report exact release URL, direct universal installer URL and SHA-256,
-    final main SHA, all per-PR dispositions, relevant CI run IDs, actual
-    render/test evidence, and remaining UNVERIFIED gates to coordinator
-    session `b82cac61-8e83-4ab4-8766-2ebf1476e19c`.
+1. Finish the CI/launch contract edits on this feature branch without touching
+   PR51. Keep hosted tests/builds and installer correctness contracts; remove
+   all self-hosted installer execution dependencies.
+2. Resolve merge conflicts and run the smallest relevant Node contracts,
+   workflow validation and the existing hosted CI on the pushed exact head.
+   Report missing/failed checks as blockers; do not weaken required protections.
+3. Provide the downloadable installer from the hosted Actions artifact with its
+   exact source commit, run/check evidence and SHA-256. Do not create a tag or
+   GitHub release, deploy, merge, or update the public download pointer.
+4. Wait for the owner's manual verification feedback. Record only observed
+   result; until then installer acceptance is **PENDING**, not passed.
 
 ## Non-negotiable scope
 

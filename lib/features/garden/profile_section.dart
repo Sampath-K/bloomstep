@@ -147,7 +147,7 @@ class ProfileSection extends StatelessWidget {
       const Text('Account sign-in is not configured in this build.'),
     if (configured && !returningToAccount)
       const Text(
-        'Choose Microsoft personal account, Google or another enabled option in the system browser. Bloomstep never collects your password.',
+        'Choose Microsoft personal account, Google or another enabled option in the system browser. Budlark never collects your password.',
       ),
     TextButton.icon(
       onPressed: busy || (!configured && !returningToAccount) ? null : onSignIn,
@@ -305,7 +305,7 @@ class ProfileSection extends StatelessWidget {
         const Text('Account sign-in is not configured in this build.'),
       if (configured && !returningToAccount)
         const Text(
-          'Choose Microsoft personal account, Google or another enabled option in the system browser. Bloomstep never collects your password.',
+          'Choose Microsoft personal account, Google or another enabled option in the system browser. Budlark never collects your password.',
         ),
       if (notice != null) Text(notice!),
       if (error != null)

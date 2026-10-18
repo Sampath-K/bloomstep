@@ -1,5 +1,8 @@
 # Installer and customer onboarding contract
 
+Current product text uses **Budlark**; historical sections below retain the names
+observed at their recorded revisions. See [the branding inventory](branding.md).
+
 ## Current shipping boundary
 
 The owner-trial composition takes PR26 through `f7552cf`, all seven PR28
@@ -10,13 +13,13 @@ Empty device and account gardens now invite the builder once per app launch,
 not only on a fresh device's first run. The signed-in profile shows an avatar
 and Sign out; device/account gardens remain separate.
 
-The downloadable preview12 does not contain this composition. A new preview
-requires the existing protected native x64/ARM64 lifecycle and checked/unchecked
-genuine app-launch gates. No registered self-hosted runner was available at
-shipping investigation; those runtime gates remain **UNVERIFIED**.
-This is not a new publication exception, safety claim or permission to execute
-the installer on the owner host. No release or site-pointer change is made
-until the required exact-source/package evidence exists.
+The downloadable preview12 does not contain this composition. Hosted API,
+x64/ARM64 build/test, installer compilation/correctness, and package integrity
+checks remain required. Automated self-hosted VM installation/lifecycle/launch
+jobs are no longer part of this launch contract. The owner must manually verify
+the exact installer; that result remains **PENDING** until feedback is recorded.
+CI does not install or launch the product. No release or site-pointer change is
+made before owner feedback and separate authorization.
 
 ## WITHDRAWN: Defender-blocked private candidate
 
@@ -54,7 +57,7 @@ submission or third-party binary upload is authorized.
 The owner rejected extra Next screens in the conventional baseline. The corrected
 source shows one visible native **Ready** page with the same branded value-prop
 art and **Install**, uses the default per-user location (existing installs retain
-their folder), then progress and Finish. **Launch Bloomstep** is **checked by
+their folder), then progress and Finish. **Launch Budlark** is **checked by
 default** on Finish and the user can freely untick it before selecting Finish.
 No destination choice is required; standard settings disable Welcome, directory
 and program-group pages and the Ready memo. Cancel remains native.
@@ -70,12 +73,13 @@ The possible link between zero-click behavior and detection remains an untested
 hypothesis. The new build is CI-only and unpublished. Old candidate withdrawal
 remains in force; no owner-machine execution, merge, release/tag or site promotion.
 
-Launch-after-install and genuine-app evidence require the protected disposable
-standard-user interactive VM runner labelled `defender-interactive`. Until the
-owner supplies it, those jobs remain queued, not passing. See
-[owner VM preparation, runner registration and teardown](defender-test-vm.md).
-Hosted workers compile only; installer execution, native screenshots, lifecycle
-and privacy proofs are explicitly withheld there and routed to the protected VM.
+The owner manually verifies launch-after-install and the full app journey on
+the exact downloaded artifact. Record the tested Windows version/architecture,
+checksum, install outcome, checked/unchecked Finish behavior, sign-in and any
+security warnings. Stop on Defender, browser or policy warnings; do not bypass
+them. A result applies only to the tested artifact and machine. The historical
+[protected VM runbook](defender-test-vm.md) is not part of the current launch
+path and does not authorize runner setup.
 
 ### Owner-reported clean baseline, not replacement acceptance
 

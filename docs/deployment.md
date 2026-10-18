@@ -137,19 +137,19 @@ Microsoft work/school federation is a different configuration and can need
 organizational approval; `common` is not a substitute for personal-account setup.
 Never merge gardens by email or treat resource-tenant ownership as an API role.
 
-### Customer-visible Bloomstep branding
+### Customer-visible Budlark branding
 
-Product-owned names are **Bloomstep**: Windows window/file/product metadata and
+Product-owned names are **Budlark**: Windows window/file/product metadata and
 original flower icon, native sign-in/callback/error text, invitation email
 subject/body, website title/favicon/download controls and operator popup.
 The executable, protocol, storage keys and package identifiers remain lowercase
 machine identifiers; never rename authentication hosts or rewrite security errors
-to hide their origin. Installer publisher remains the existing "Bloomstep
+to hide their origin. Installer publisher uses the product-name-only "Budlark
 contributors" label. Scaffold copyright/company claims are removed; legal
 controller/contact/copyright approval is still required, not invented.
 `path_provider_windows` and secure-storage v4 derive their default data path from
 executable company/product metadata. Before either storage or the instance lock
-opens, Bloomstep pins their support/cache directory to the existing machine
+opens, Budlark pins their support/cache directory to the existing machine
 namespace `com.bloomstep\bloomstep` under the corresponding Windows known folder.
 Changing customer-visible branding therefore neither relocates gardens/DPAPI
 credentials nor creates a second instance lock. No private file is copied,
@@ -166,11 +166,16 @@ record/file survives unchanged. It never reads a customer credential store.
 `tool/generate_brand_assets.py` generates the original flower ICO/PNG and
 245-by-36 sign-in wordmark from the source drawing. Its optional `--font` selects
 an available font; checked-in outputs need no image library during normal CI.
-The generator uses Pillow, and default Windows Segoe UI Bold. Only the three
-explicit public brand PNGs are tracked under `site/assets`; bundled auth/config
+The generator uses Pillow, and defaults to Windows Segoe UI Bold/Regular.
+`--text-only` preserves the existing flower icons while regenerating the wordmark
+and social card; `--font` and `--regular-font` accept available font files.
+The public brand PNGs are tracked under `site/assets`; bundled auth/config
 outputs remain ignored.
 
-After explicit customer-branding authorization, run
+The Budlark rename is a source-only change, not a hosted-tenant update.
+See [the branding inventory](branding.md) for preserved paths, historical evidence,
+the registered `budlark.com` domain and deferred external changes.
+After separate explicit customer-branding authorization, run
 `infra/configure-customer-branding.ps1 -TenantId <customer-id> -LogoPath
 site\assets\bloomstep-wordmark.png -ConfirmCustomerBranding` with existing
 customer-tenant Graph access. It verifies the tenant before mutations, creates
@@ -181,19 +186,20 @@ is `/branding/localizations/0`, distinct from `/localizations/en-US`.
 The observed tenant returned500 for parent-alias PATCH, while both documented
 localization writes succeeded. Do not waive service errors or claim English-only
 branding covers other browser languages. Actual isolated English and French
-fallback pages now show the Bloomstep wordmark and "Sign in to Bloomstep".
+fallback pages showed the Bloomstep wordmark and "Sign in to Bloomstep" at the
+time of that observation. This is historical evidence, not Budlark readback.
 The fallback text is English, not a claim of fully localized product copy.
 
 Company branding does **not** rename the address-bar `ciamlogin.com` hostname,
 Google's destination-domain label, Microsoft's own account page, or the hosted
 service's generic localized browser-tab title. Keep those trusted-service labels
-truthful. The native login and website explain that Microsoft hosts Bloomstep's
+truthful. The native login and website explain that Microsoft hosts Budlark's
 secure sign-in at `ciamlogin.com`; passwords stay with the chosen provider.
 
 Google's actual unauthenticated page currently says **"to continue to
 ciamlogin.com"**. Existing-project operator action is at
 [Google Auth Platform > Branding](https://console.cloud.google.com/auth/branding):
-review/set App name **Bloomstep**, accurate approved home/privacy/support/contact
+review/set App name **Budlark**, accurate approved home/privacy/support/contact
 information, then review the actual draft/verification/published state.
 For production app name/logo display, Google's current
 [brand-verification requirements](https://developers.google.com/identity/verification/authentication-verification)

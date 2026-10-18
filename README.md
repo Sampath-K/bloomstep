@@ -1,8 +1,12 @@
-# Bloomstep
+# Budlark
 
 Grow tiny habits into a flourishing garden. Inspired by the behavior design research of Dr. BJ Fogg.
 
-Bloomstep is a Flutter app: Windows first (direct download, then Microsoft Store), then iOS/iPadOS, Android and macOS from the same code.
+Budlark is a Flutter app: Windows first (direct download, then Microsoft Store), then iOS/iPadOS, Android and macOS from the same code.
+
+The product name is **Budlark**; `bloomstep` remains the repository and compatibility
+namespace. See the [branding inventory](docs/branding.md) for retained identifiers,
+historical evidence and external changes that have not been applied.
 
 ## Develop
 

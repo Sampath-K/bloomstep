@@ -100,7 +100,7 @@ export async function startConsolePreview({ port = 8787 } = {}) {
         .replace('<option value="7" selected>7 days</option>', '<option value="7">7 days</option>')
         .replace('<option value="30">30 days</option>', '<option value="30" selected>30 days</option>')
         .replace('This deployed HTTPS API origin', 'Read-only loopback preview API origin')
-        .replace('Sign in to Bloomstep operator console', 'Local preview connected (no sign-in needed)')
+        .replace('Sign in to Budlark operator console', 'Local preview connected (no sign-in needed)')
         .replace('Sign out and clear private data', 'Clear loaded preview panels');
       return new Map([
         ['GET /', async () => ({ contentType: 'text/html', body: html })],

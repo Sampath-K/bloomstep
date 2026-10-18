@@ -31,7 +31,7 @@ class BloomstepApp extends StatelessWidget {
   final String? measurementWarning;
   @override
   Widget build(BuildContext context) => MaterialApp(
-    title: 'Bloomstep',
+    title: 'Budlark',
     debugShowCheckedModeBanner: false,
     theme: BloomstepTheme.light(),
     darkTheme: BloomstepTheme.dark(),

@@ -1,5 +1,11 @@
 # Disposable protected Windows installer validation
 
+**Out of scope for the current launch.** Owner direction is to use hosted CI
+for build/test/package contracts and manual owner verification for the exact
+installer. Do not provision a VM or register a runner for this launch. This
+runbook is retained as historical operator reference only; it is not a CI or
+launch prerequisite.
+
 For the confirmation-gated readiness script, exact workflow labels, public-runner
 trust blocker and separate registration/execution steps, follow
 [the protected runner operator runbook](protected-runner-operator.md).
@@ -98,7 +104,7 @@ $env:BLOOMSTEP_DISPOSABLE_VM = 'true'
 
 The script scans with already-enabled protection, rechecks the hash, then starts
 the visible installer. The **owner** selects Install on the single branded Ready
-page, then Finish; **Launch Bloomstep** defaults checked and can be freely unticked.
+page, then Finish; **Launch Budlark** defaults checked and can be freely unticked.
 No automatic page clicks, dwell or forced launch. Stop on any malware, managed
 policy or protection warning; do not bypass it. A launcher exit alone is not an
 app/token/security/full-journey verdict. Capture the visible application, process

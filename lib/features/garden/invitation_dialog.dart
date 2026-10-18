@@ -81,7 +81,7 @@ class _InvitationDialogState extends State<InvitationDialog> {
           Uri(
             scheme: 'mailto',
             query:
-                'subject=${Uri.encodeComponent('A tiny step together with Bloomstep')}&body=${Uri.encodeComponent('Grow a tiny habit with Bloomstep. $url')}',
+                'subject=${Uri.encodeComponent('A tiny step together with Budlark')}&body=${Uri.encodeComponent('Grow a tiny habit with Budlark. $url')}',
           ),
         )) {
           throw StateError('No email application is available.');
@@ -340,7 +340,7 @@ class _InvitationDialogState extends State<InvitationDialog> {
               title: const Text('Privacy and link details'),
               children: [
                 const Text(
-                  'Optional analytics is off by default; when enabled, Bloomstep '
+                  'Optional analytics is off by default; when enabled, Budlark '
                   'records invitation creation and the sharing method. Recipe '
                   'cards show only the fields you approve—not your name, email, '
                   'or practice history.',

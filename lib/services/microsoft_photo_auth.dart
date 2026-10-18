@@ -104,7 +104,7 @@ class MicrosoftPhotoAuthenticator {
         request.response.statusCode = valid
             ? HttpStatus.ok
             : HttpStatus.badRequest;
-        request.response.write('Return to Bloomstep. You may close this tab.');
+        request.response.write('Return to Budlark. You may close this tab.');
         if (valid && !response.isCompleted) {
           response.complete(request.uri.queryParameters);
         }

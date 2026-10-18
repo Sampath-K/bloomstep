@@ -4,6 +4,21 @@
 cloud deployment and native background behavior require integration evidence.
 This ledger is updated with verified outcomes, not inferred from source code.
 
+## Current installer launch contract
+
+Hosted CI remains responsible for API tests, Windows x64/ARM64 build and test,
+installer compilation and correctness contracts, universal-package byte/hash
+verification, and the existing hosted website/security checks. The self-hosted
+VM installation/lifecycle/launch jobs are removed from the launch workflow;
+no runner registration or local VM is part of this launch path.
+
+The owner must manually verify the exact downloadable installer and report
+feedback against its source commit and SHA-256. That result is **PENDING** until
+the owner supplies it; hosted build/package checks are not installation or
+launch acceptance. The public download pointer and customer launch remain held.
+The withdrawn Defender-quarantined candidate remains excluded. No release,
+deployment, merge or protection bypass is authorized by this contract change.
+
 ## 17 October approved preview.15 candidate (not yet released)
 
 Approved accessibility/copy implementation is committed in `ad80c23`, with the
@@ -43,8 +58,8 @@ PR28/31/33 are closed with superseding main-commit evidence. PR49/50/36 closure
 waits for the combined candidate to land.
 
 Hosted x64/ARM64 and other required engineering checks on the latest candidate
-must pass before merge. Protected-VM lifecycle and genuine launch remain
-UNVERIFIED, not passed or waived. No preview.15 tag/release has been published
+must pass before merge. Owner manual installer verification remains pending and
+is not inferred from hosted checks. No preview.15 tag/release has been published
 at this checkpoint. Production downloads and customer configuration stay on
 preview.14; no site deployment or promotion is authorized.
 
@@ -168,7 +183,7 @@ the 640x480 short view and 420x820/200% view. At 200%, the profile occupies the
 initial viewport and the practice action is below the fold; that hierarchy gap
 remains scored below target rather than being hidden by the after-scroll render.
 
-**Still open:** protected VM security/install/lifecycle/launch acceptance;
+**Still open:** owner manual installer verification for the exact candidate;
 local native plugin setup and owner-installed-candidate validation; Windows
 Narrator/high contrast/keyboard/mixed-DPI review; real provider claims and
 installed-owner data readback. The continuity score is 4/3/4/3/4, with hierarchy

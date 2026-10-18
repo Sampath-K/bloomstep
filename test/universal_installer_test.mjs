@@ -1,7 +1,9 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import { createHash } from 'node:crypto';
 import { readFileSync, mkdtempSync, mkdirSync, writeFileSync, rmSync, symlinkSync } from 'node:fs';
 import { join } from 'node:path';
+import { tmpdir } from 'node:os';
 import { execFileSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 
@@ -18,19 +20,21 @@ test('universal installer bundles exclusive native OS payloads without bootstrap
   assert.doesNotMatch(source, /ExecAsOriginalUser/);
   assert.doesNotMatch(source, /DownloadTemporaryFile|dontverifychecksum|skipifsourcedoesntexist|PrivilegesRequired=admin/);
 });
-test('universal packaging remains required and source-pinned, recovery exception is exact preview12 only', () => {
+test('hosted packaging remains required and owner installer verification stays pending', () => {
   const workflow = read('.github/workflows/ci.yml');
   assert.match(workflow, /universal-installer:/);
-  assert.match(workflow, /universal-native-proof:/);
   assert.match(workflow, /release_payload\.mjs verify/);
   assert.match(workflow, /payload-manifest-/);
-  assert.match(workflow, /needs: \[api, test-and-build-windows, protected-installer-lifecycle, installer-launch-evidence, universal-native-proof, universal-app-launch-evidence\]/);
-  assert.match(workflow, /needs\.protected-installer-lifecycle\.result == 'success'/);
-  assert.match(workflow, /github\.ref_name == 'v0\.1\.0-preview\.10'/);
-  assert.match(workflow, /needs\.universal-app-launch-evidence\.result == 'success' \|\| github\.ref_name == 'v0\.1\.0-preview\.12'/);
-  assert.doesNotMatch(workflow, /github\.ref_name == 'v0\.1\.0-preview\.13'/);
+  assert.match(workflow, /needs: \[api, test-and-build-windows, universal-installer\]/);
+  for (const job of ['installer-launch-evidence', 'protected-installer-lifecycle',
+    'universal-native-proof', 'universal-app-launch-evidence']) {
+    assert.doesNotMatch(workflow, new RegExp(`^  ${job}:`, 'm'));
+  }
+  assert.doesNotMatch(workflow, /runs-on:\s*\[self-hosted/);
+  assert.doesNotMatch(workflow, /needs\.[\w-]*(?:launch|lifecycle|native-proof)/);
+  assert.doesNotMatch(workflow, /protected disposable standard-user VM jobs/);
   assert.match(workflow, /release_bundle\.mjs/);
-  assert.match(workflow, /universal-native-\$\{\{ matrix\.arch/);
+  assert.match(workflow, /owner manual installer verification (?:remains )?pending/i);
 });
 test('release inputs require exact source, version, architecture, inventory and byte hashes', async () => {
   const { createPayloadManifest, verifyPayloadManifest } = await import('../tool/release_payload.mjs');
@@ -164,10 +168,46 @@ test('actual PowerShell corruption oracle ignores command paths and verifies Wel
   assert.match(proof, /checksumErrorLines/);
   assert.doesNotMatch(proof, /-notmatch '\(\?i\)corrupt\|checksum\|CRC'/);
 });
-test('next universal release requires genuine app launch evidence independently of the inert fixture', () => {
-  const workflow = read('.github/workflows/ci.yml');
-  assert.match(workflow, /universal-app-launch-evidence:/);
-  assert.match(workflow, /needs\.universal-app-launch-evidence\.result == 'success'/);
+test('release records manual installer verification as pending and binds it to package bytes', async () => {
+  const { verifyReleaseEvidence } = await import('../tool/release_bundle.mjs');
+  const root = mkdtempSync(join(tmpdir(), 'budlark-release-evidence-'));
+  const sha = bytes => createHash('sha256').update(bytes).digest('hex');
+  const source = 'a'.repeat(40), tag = 'v0.1.0-preview.15', version = tag.slice(1);
+  const bytes = Buffer.from('fixture installer bytes');
+  const writeJson = (path, value) => writeFileSync(join(root, path), JSON.stringify(value));
+  try {
+    mkdirSync(join(root, 'universal-output'));
+    const installerFile = `Bloomstep-${version}-windows-universal-setup.exe`;
+    writeFileSync(join(root, 'universal-output', installerFile), bytes);
+    const payloadManifests = {};
+    for (const arch of ['x64', 'arm64']) {
+      const payload = JSON.stringify({ kind: 'bloomstep-release-payload-v1', source, version, arch });
+      writeFileSync(join(root, 'universal-output', `payload-manifest-${arch}.json`), payload);
+      payloadManifests[arch] = sha(payload);
+    }
+    writeJson('universal-output/universal-manifest.json', {
+      kind: 'bloomstep-offline-universal-v1', source, version, installerFile,
+      installerSha256: sha(bytes), bytes: bytes.length, payloadManifests,
+    });
+    writeFileSync(join(root, 'universal-output', 'SHA256-universal.txt'),
+      `${sha(bytes)}  ${installerFile}\n`);
+
+    const evidence = verifyReleaseEvidence({ root, source, tag, runId: '123' });
+    assert.equal(evidence.ownerManualVerification.status, 'PENDING');
+    assert.equal(evidence.ownerManualVerification.installerSha256, sha(bytes));
+    assert.equal(evidence.ownerManualVerification.requiredBeforeCustomerLaunch, true);
+    assert.equal(evidence.ownerManualVerification.recordedResult, null);
+    assert.match(evidence.installerAcceptance, /UNVERIFIED/);
+    assert.doesNotMatch(JSON.stringify(evidence.ownerManualVerification), /PASS|SUCCESS/i);
+    assert.throws(() => verifyReleaseEvidence({ root, source: 'b'.repeat(40), tag, runId: '123' }), /identity/);
+    writeFileSync(join(root, 'universal-output', installerFile), 'tampered');
+    assert.throws(() => verifyReleaseEvidence({ root, source, tag, runId: '123' }), /bytes|hash/);
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
+});
+
+test('genuine app-launch harness stays fail-closed for future separately authorized manual use', () => {
   const proof = read('tool/verify_universal_app_launch.ps1');
   assert.match(proof, /GITHUB_ACTIONS/);
   assert.match(proof, /installerSha256/);
@@ -322,12 +362,12 @@ test('Defender proof refuses new detections or changed protection and preserves 
 test('genuine Inno product authority permits only trailing ASCII resource padding', () => {
   const helper = fileURLToPath(new URL('../tool/universal_integrity_contract.ps1', import.meta.url)).replaceAll("'", "''");
   const script = `$ErrorActionPreference='Stop'; . '${helper}';
-    foreach ($valid in @('Bloomstep',('Bloomstep'+(' '*51)))) {
+    foreach ($valid in @('Budlark',('Budlark'+(' '*51)))) {
       if (-not (Test-BloomstepInnoProductName $valid)) { throw 'Genuine padded resource rejected' }
     }
     if (-not (Test-BloomstepInnoProductName ('Bloomstep isolated journey proof'.PadRight(60,' ')) 'Bloomstep isolated journey proof')) { throw 'Known padded fixture rejected' }
     if (Test-BloomstepInnoProductName ('Bloomstep isolated journey proof'.PadRight(60,' '))) { throw 'Fixture accepted as product' }
-    foreach ($invalid in @('',' Bloomstep','Bloomstep other','bloomstep',('Bloomstep'+[char]9),('Bloomstep'+[char]10),('Bloomstep'+[char]13),('Bloomstep'+[char]160))) {
+    foreach ($invalid in @('',' Budlark','Budlark other','budlark',('Budlark'+[char]9),('Budlark'+[char]10),('Budlark'+[char]13),('Budlark'+[char]160))) {
       if (Test-BloomstepInnoProductName $invalid) { throw 'Non-product identity accepted' }
     }
     'PASS'`;

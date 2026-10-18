@@ -1154,7 +1154,7 @@ class _GardenScreenState extends State<GardenScreen> {
                     SwitchListTile(
                       title: const Text('Gentle Windows reminders'),
                       subtitle: const Text(
-                        'Opt in to toasts and tray. Closing the window keeps Bloomstep running. Delivery stops when you exit.',
+                        'Opt in to toasts and tray. Closing the window keeps Budlark running. Delivery stops when you exit.',
                       ),
                       value: reminders!.enabled,
                       onChanged: (value) async {
@@ -1489,7 +1489,7 @@ class _GardenScreenState extends State<GardenScreen> {
                             'Unsigned preview: experimental and not a signed update. Windows may show an unknown-publisher warning.',
                           ),
                         const Text(
-                          'You choose whether to open the release page and download anything. Bloomstep will not download or run an installer automatically.',
+                          'You choose whether to open the release page and download anything. Budlark will not download or run an installer automatically.',
                         ),
                       ],
                       if (launchError != null) Text(launchError!),
@@ -1602,7 +1602,7 @@ class _GardenScreenState extends State<GardenScreen> {
     return Scaffold(
       appBar: AppBar(
         automaticallyImplyLeading: false,
-        title: const Text('Bloomstep'),
+        title: const Text('Budlark'),
         actions: [
           IconButton(
             tooltip: 'Invite a friend',
@@ -1798,7 +1798,7 @@ class _GardenScreenState extends State<GardenScreen> {
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
                                 const Text(
-                                  'A positive moment in your garden. Want to share how Bloomstep feels? Ratings are optional and never affect your garden.',
+                                  'A positive moment in your garden. Want to share how Budlark feels? Ratings are optional and never affect your garden.',
                                 ),
                                 Wrap(
                                   spacing: 8,
@@ -1812,7 +1812,7 @@ class _GardenScreenState extends State<GardenScreen> {
                                               );
                                               _voice(initialKind: 'Rating');
                                             },
-                                      child: const Text('Rate Bloomstep'),
+                                      child: const Text('Rate Budlark'),
                                     ),
                                     TextButton(
                                       onPressed: () => setState(

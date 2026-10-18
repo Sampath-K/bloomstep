@@ -64,7 +64,7 @@ class UpdateService {
             uri.hasFragment ||
             uri.path != '/Sampath-K/bloomstep/releases/tag/$tag') {
           throw const FormatException(
-            'Release link is not the approved Bloomstep repository.',
+            'Release link is not the approved Budlark repository.',
           );
         }
         final preview = raw['prerelease'] == true || version.isPreRelease;
