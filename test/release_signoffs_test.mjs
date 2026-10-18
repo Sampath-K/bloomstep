@@ -71,10 +71,11 @@ const run = (root, opts = {}) => verifySignoffs({
   root, stage: 'public-launch', candidate: CANDIDATE, head: HEAD, installerSha256: SHA, git: fakeGit(), ...opts,
 });
 
-test('roles registry declares 12 accountable roles with valid stages', () => {
+test('roles registry declares 13 accountable roles (incl. brand-marketing) with valid stages', () => {
   const roles = JSON.parse(readFileSync(join(repoRoot, 'release', 'roles.json'), 'utf8'));
-  assert.equal(roles.roles.length, 12);
-  assert.equal(new Set(roles.roles.map((r) => r.id)).size, 12);
+  assert.equal(roles.roles.length, 13);
+  assert.equal(roles.roles.find((r) => r.id === 'brand-marketing')?.requiredAt, 'owner-test');
+  assert.equal(new Set(roles.roles.map((r) => r.id)).size, 13);
   for (const r of roles.roles) assert.ok(roles.stages.includes(r.requiredAt), r.id);
 });
 
@@ -83,7 +84,7 @@ test('complete approved set passes and binds candidate, tree and installer', () 
   try {
     const result = run(root);
     assert.equal(result.ok, true);
-    assert.equal(result.records.length, 12);
+    assert.equal(result.records.length, 13);
     assert.equal(result.sourceTree, TREE);
     assert.equal(result.installerSha256, SHA);
     assert.equal(result.artifact.runId, '39100447327');

@@ -43,6 +43,12 @@
       "title": "QA and release owner"
     },
     {
+      "id": "brand-marketing",
+      "requiredAt": "owner-test",
+      "accountableFor": "Vets and recommends every customer-facing name, icon, image, theme and visual identity (incl. sign-in, installer, store, website) so each lands what Budlark is",
+      "title": "Marketing and visual brand"
+    },
+    {
       "id": "security-privacy",
       "requiredAt": "owner-test",
       "accountableFor": "Threat model, permissions, data handling, Defender/SmartScreen posture without bypass",

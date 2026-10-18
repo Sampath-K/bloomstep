@@ -96,3 +96,7 @@ SHA-256, and states PASS with no FAIL. The coordinator writes the record only af
 that comment. Verified live (2026-10-18): Sampath-K is the sole collaborator and admin of this
 user-owned repo, so the ruleset's admin-role bypass and the `public-launch` required reviewer both
 resolve to the owner.
+
+## Marketing and visual brand role (owner request, 2026-10-18)
+
+The owner asked that all customer-facing brands, names and images be vetted and recommended by marketing and branding experts. `brand-marketing` is required at `owner-test`: it owns the Budlark visual identity (theme, app icon, songbird/lark motif, imagery), and signs off on every customer-facing surface: app, installer, Start menu, tray, sign-in pages (Microsoft Entra and Google consent screens), website, store listing and launch assets. `editorial-brand` keeps voice and naming consistency. Owner-test now requires 8 roles and public launch requires all 13.
