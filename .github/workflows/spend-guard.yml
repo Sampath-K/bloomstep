@@ -7,13 +7,13 @@ on:
 permissions:
   contents: read
 concurrency:
-  group: bloomstep-spend-guard
+  group: budlark-spend-guard
   cancel-in-progress: false
 jobs:
   guard:
-    if: github.repository == 'Sampath-K/bloomstep' && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/sampath-k-bloomstep-mvp-implementation')
+    if: github.repository == 'Sampath-K/budlark' && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/sampath-k-budlark-mvp-implementation')
     runs-on: ubuntu-latest
-    environment: bloomstep-operations
+    environment: budlark-operations
     timeout-minutes: 5
     permissions:
       contents: read

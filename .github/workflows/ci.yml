@@ -85,7 +85,7 @@ jobs:
       - name: Render real PlantArt installer illustrations (explicit opt-in)
         shell: pwsh
         env:
-          BLOOMSTEP_EXPORT_INSTALLER_ART: 'true'
+          BUDLARK_EXPORT_INSTALLER_ART: 'true'
         run: |
           flutter test tool/installer_art_export_test.dart
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
@@ -118,15 +118,15 @@ jobs:
       - name: Observe the exact public preview installer with Edge protections unchanged
         shell: pwsh
         run: |
-          $env:BLOOMSTEP_EDGE_EVIDENCE_DIR = Join-Path $env:RUNNER_TEMP 'bloomstep-edge-warning'
-          $env:BLOOMSTEP_EDGE_PROFILE_DIR = Join-Path $env:RUNNER_TEMP 'bloomstep-edge-warning-profile'
+          $env:BUDLARK_EDGE_EVIDENCE_DIR = Join-Path $env:RUNNER_TEMP 'budlark-edge-warning'
+          $env:BUDLARK_EDGE_PROFILE_DIR = Join-Path $env:RUNNER_TEMP 'budlark-edge-warning-profile'
           node tool/capture_edge_warning.mjs
       - name: Preserve sanitized Edge observation
         if: always()
         uses: actions/upload-artifact@v4
         with:
           name: edge-download-warning-observation
-          path: ${{ runner.temp }}/bloomstep-edge-warning/
+          path: ${{ runner.temp }}/budlark-edge-warning/
           if-no-files-found: warn
   spend-proof:
     if: github.event_name == 'workflow_dispatch' && inputs.verify_spend_guard
@@ -247,11 +247,11 @@ jobs:
       - name: Compile installer contract before native build
         shell: pwsh
         run: |
-          $fixture = Join-Path $env:RUNNER_TEMP 'bloomstep-installer-compile-fixture'
-          $output = Join-Path $env:RUNNER_TEMP 'bloomstep-installer-compile-output'
+          $fixture = Join-Path $env:RUNNER_TEMP 'budlark-installer-compile-fixture'
+          $output = Join-Path $env:RUNNER_TEMP 'budlark-installer-compile-output'
           New-Item -ItemType Directory -Path $fixture, $output -Force | Out-Null
           [IO.File]::WriteAllText((Join-Path $fixture 'syntax-probe.txt'), 'Compile-only fixture; never installed or distributed.')
-          & "${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe" /Qp /DAppArch=${{ matrix.arch }} /DAppVersion=0.0.0-contract "/DSourceDir=$fixture" "/DOnboardingPreprocessOutput=$output\production-preprocessed.iss" "/O$output" packaging\bloomstep.iss
+          & "${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe" /Qp /DAppArch=${{ matrix.arch }} /DAppVersion=0.0.0-contract "/DSourceDir=$fixture" "/DOnboardingPreprocessOutput=$output\production-preprocessed.iss" "/O$output" packaging\budlark.iss
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           $compiledSource = Get-Content "$output\production-preprocessed.iss" -Raw
           if ($compiledSource -match 'Installation is prohibited|8E9B101B-CB3D-4C0F-B733-FC1DFFB75129|A6690692-4D92-475A-9EAC-1AD867AB0635|function PrepareToInstall|isolated journey proof') {
@@ -260,11 +260,11 @@ jobs:
       - name: Compile isolated standard-wizard contract fixture (never executed)
         shell: pwsh
         run: |
-          $env:BLOOMSTEP_SOURCE_REVISION = git rev-parse HEAD
-          $fixture = Join-Path $env:RUNNER_TEMP 'bloomstep-installer-compile-fixture'
-          $output = Join-Path $env:RUNNER_TEMP 'bloomstep-onboarding-fixture'
+          $env:BUDLARK_SOURCE_REVISION = git rev-parse HEAD
+          $fixture = Join-Path $env:RUNNER_TEMP 'budlark-installer-compile-fixture'
+          $output = Join-Path $env:RUNNER_TEMP 'budlark-onboarding-fixture'
           New-Item -ItemType Directory -Path $output -Force | Out-Null
-          & "${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe" /Qp /DOnboardingFixture /DAppArch=${{ matrix.arch }} /DAppVersion=0.0.0-contract "/DSourceDir=$fixture" "/DOnboardingPreprocessOutput=$output\fixture-preprocessed.iss" "/O$output" packaging\bloomstep.iss
+          & "${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe" /Qp /DOnboardingFixture /DAppArch=${{ matrix.arch }} /DAppVersion=0.0.0-contract "/DSourceDir=$fixture" "/DOnboardingPreprocessOutput=$output\fixture-preprocessed.iss" "/O$output" packaging\budlark.iss
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           $installer = (Get-ChildItem "$output\*.exe").FullName
           $preprocessed = Get-Content "$output\fixture-preprocessed.iss" -Raw
@@ -277,7 +277,7 @@ jobs:
             kind = 'compile-only-onboarding-fixture-v1'
             fixtureAppId = '8E9B101B-CB3D-4C0F-B733-FC1DFFB75129'
             installationProhibited = $true
-            sourceRevision = $env:BLOOMSTEP_SOURCE_REVISION
+            sourceRevision = $env:BUDLARK_SOURCE_REVISION
             installerFile = [IO.Path]::GetFileName($installer)
             installerSha256 = (Get-FileHash $installer).Hash.ToLower()
             preprocessedSha256 = (Get-FileHash "$output\fixture-preprocessed.iss").Hash.ToLower()
@@ -287,8 +287,8 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: bloomstep-onboarding-capture-fixture-${{ matrix.arch }}-NOT-FOR-RELEASE
-          path: ${{ runner.temp }}/bloomstep-onboarding-fixture/
+          name: budlark-onboarding-capture-fixture-${{ matrix.arch }}-NOT-FOR-RELEASE
+          path: ${{ runner.temp }}/budlark-onboarding-fixture/
           if-no-files-found: error
       - uses: subosito/flutter-action@v2
         if: matrix.arch == 'x64'
@@ -330,17 +330,17 @@ jobs:
       - run: flutter analyze
       - name: Run app contracts and labeled synthetic profile screenshots
         env:
-          BLOOMSTEP_SCREENSHOTS: ${{ runner.temp }}/bloomstep-profile-evidence
-        run: flutter test --reporter expanded --concurrency 1 --timeout 60s --dart-define=BLOOMSTEP_TEST_BUILD=true
+          BUDLARK_SCREENSHOTS: ${{ runner.temp }}/budlark-profile-evidence
+        run: flutter test --reporter expanded --concurrency 1 --timeout 60s --dart-define=BUDLARK_TEST_BUILD=true
       - name: Preserve profile UI evidence (synthetic identity, not provider acceptance)
         if: always()
         uses: actions/upload-artifact@v4
         with:
           name: profile-ui-synthetic-evidence-${{ matrix.arch }}
           path: |
-            ${{ runner.temp }}/bloomstep-profile-evidence/profile-*.png
-            ${{ runner.temp }}/bloomstep-profile-evidence/picker-*.png
-            ${{ runner.temp }}/bloomstep-profile-evidence/first-habit-*.png
+            ${{ runner.temp }}/budlark-profile-evidence/profile-*.png
+            ${{ runner.temp }}/budlark-profile-evidence/picker-*.png
+            ${{ runner.temp }}/budlark-profile-evidence/first-habit-*.png
           if-no-files-found: error
       - name: Verify production-mode test-auth and adapter gates
         run: flutter test test/test_auth_release_contract_test.dart --reporter expanded --concurrency 1 --timeout 60s
@@ -351,22 +351,22 @@ jobs:
         timeout-minutes: 20
         shell: pwsh
         env:
-          BLOOMSTEP_TEST_EVIDENCE_PATH: ${{ runner.temp }}\bloomstep-synthetic-acceptance-details.json
-          BLOOMSTEP_TEST_SCREENSHOTS_DIR: ${{ runner.temp }}\bloomstep-v1-compiled-flutter-ui
+          BUDLARK_TEST_EVIDENCE_PATH: ${{ runner.temp }}\budlark-synthetic-acceptance-details.json
+          BUDLARK_TEST_SCREENSHOTS_DIR: ${{ runner.temp }}\budlark-v1-compiled-flutter-ui
         run: |
-          $env:BLOOMSTEP_SOURCE_REVISION = git rev-parse HEAD
+          $env:BUDLARK_SOURCE_REVISION = git rev-parse HEAD
           $bytes = New-Object byte[] 32
           $rng = [Security.Cryptography.RandomNumberGenerator]::Create()
           try { $rng.GetBytes($bytes) } finally { $rng.Dispose() }
           $key = [BitConverter]::ToString($bytes).Replace('-', '').ToLowerInvariant()
           Write-Output "::add-mask::$key"
-          $env:BLOOMSTEP_TEST_AUTH_SECRET = $key
+          $env:BUDLARK_TEST_AUTH_SECRET = $key
           $exitCode = 1
           try {
-            & flutter test integration_test/bloomstep_windows_e2e_test.dart -d windows --dart-define=BLOOMSTEP_TEST_BUILD=true --reporter expanded
+            & flutter test integration_test/budlark_windows_e2e_test.dart -d windows --dart-define=BUDLARK_TEST_BUILD=true --reporter expanded
             $exitCode = $LASTEXITCODE
           } finally {
-            Remove-Item Env:\BLOOMSTEP_TEST_AUTH_SECRET -ErrorAction SilentlyContinue
+            Remove-Item Env:\BUDLARK_TEST_AUTH_SECRET -ErrorAction SilentlyContinue
             [Array]::Clear($bytes, 0, $bytes.Length)
             $key = $null
           }
@@ -390,27 +390,27 @@ jobs:
             excluded = @('Provider federation and MFA', 'Azure Cosmos deployment', 'customer accounts or records', 'Windows notification delivery', 'accessibility evaluation', 'population or cohort outcomes')
             secretIncluded = $false
           }
-          $detailsPath = Join-Path $env:RUNNER_TEMP 'bloomstep-synthetic-acceptance-details.json'
+          $detailsPath = Join-Path $env:RUNNER_TEMP 'budlark-synthetic-acceptance-details.json'
           $report.fixtureEvidence = if (Test-Path -LiteralPath $detailsPath) {
             Get-Content -LiteralPath $detailsPath -Raw | ConvertFrom-Json
           } else {
             $null
           }
-          $path = Join-Path $env:RUNNER_TEMP 'bloomstep-synthetic-acceptance.json'
+          $path = Join-Path $env:RUNNER_TEMP 'budlark-synthetic-acceptance.json'
           $report | ConvertTo-Json -Depth 5 | Set-Content -LiteralPath $path -Encoding utf8
       - name: Preserve sanitized synthetic acceptance receipt
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: bloomstep-synthetic-acceptance-${{ matrix.arch }}-NOT-PRODUCTION
-          path: ${{ runner.temp }}/bloomstep-synthetic-acceptance*.json
+          name: budlark-synthetic-acceptance-${{ matrix.arch }}-NOT-PRODUCTION
+          path: ${{ runner.temp }}/budlark-synthetic-acceptance*.json
           if-no-files-found: error
       - name: Preserve compiled synthetic Flutter builder frames
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: bloomstep-v1-compiled-flutter-ui-${{ matrix.arch }}-SYNTHETIC
-          path: ${{ runner.temp }}/bloomstep-v1-compiled-flutter-ui/
+          name: budlark-v1-compiled-flutter-ui-${{ matrix.arch }}-SYNTHETIC
+          path: ${{ runner.temp }}/budlark-v1-compiled-flutter-ui/
           if-no-files-found: error
       - name: Build real provider-backed release
         env:
@@ -421,11 +421,11 @@ jobs:
           RELEASE_TAG: ${{ startsWith(github.ref, 'refs/tags/v') && github.ref_name || 'v0.1.0-preview' }}
         run: |
           $version = $env:RELEASE_TAG.TrimStart('v')
-          flutter build windows --release --dart-define="OIDC_ISSUER=$env:OIDC_ISSUER" --dart-define="OIDC_CLIENT_ID=$env:OIDC_CLIENT_ID" --dart-define="OIDC_API_SCOPE=$env:OIDC_API_SCOPE" --dart-define="API_ORIGIN=$env:API_ORIGIN" --dart-define="BLOOMSTEP_RELEASE_VERSION=$version"
+          flutter build windows --release --dart-define="OIDC_ISSUER=$env:OIDC_ISSUER" --dart-define="OIDC_CLIENT_ID=$env:OIDC_CLIENT_ID" --dart-define="OIDC_API_SCOPE=$env:OIDC_API_SCOPE" --dart-define="API_ORIGIN=$env:API_ORIGIN" --dart-define="BUDLARK_RELEASE_VERSION=$version"
       - name: Verify executable architecture before labeling installer
         shell: pwsh
         run: |
-          $binary = [IO.File]::ReadAllBytes("build\windows\${{ matrix.arch }}\runner\Release\bloomstep.exe")
+          $binary = [IO.File]::ReadAllBytes("build\windows\${{ matrix.arch }}\runner\Release\budlark.exe")
           $machine = [BitConverter]::ToUInt16($binary, [BitConverter]::ToInt32($binary, 60) + 4)
           $expected = if ('${{ matrix.arch }}' -eq 'arm64') { 0xaa64 } else { 0x8664 }
           if ($machine -ne $expected) { throw 'Executable architecture does not match the installer.' }
@@ -435,14 +435,14 @@ jobs:
           RELEASE_TAG: ${{ startsWith(github.ref, 'refs/tags/v') && github.ref_name || 'v0.1.0-preview' }}
         run: |
           $version = $env:RELEASE_TAG.TrimStart('v')
-          & "${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe" /Qp /DAppArch=${{ matrix.arch }} "/DAppVersion=$version" packaging\bloomstep.iss
+          & "${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe" /Qp /DAppArch=${{ matrix.arch }} "/DAppVersion=$version" packaging\budlark.iss
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           Get-FileHash release-output\*.exe -Algorithm SHA256 | ForEach-Object { "$($_.Hash.ToLower())  $([IO.Path]::GetFileName($_.Path))" } | Set-Content release-output\SHA256-${{ matrix.arch }}.txt
           node tool/release_payload.mjs create "build/windows/${{ matrix.arch }}/runner/Release" "release-output/payload-manifest-${{ matrix.arch }}.json" "${{ matrix.arch }}" (git rev-parse HEAD) $version
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
       - uses: actions/upload-artifact@v4
         with:
-          name: bloomstep-windows-${{ matrix.arch }}
+          name: budlark-windows-${{ matrix.arch }}
           path: |
             build/windows/${{ matrix.arch }}/runner/Release/
             release-output/
@@ -456,7 +456,7 @@ jobs:
       - uses: actions/upload-artifact@v4
         if: matrix.arch == 'arm64'
         with:
-          name: bloomstep-synthetic-runtime-arm64-NOT-FOR-RELEASE
+          name: budlark-synthetic-runtime-arm64-NOT-FOR-RELEASE
           path: build/windows/arm64/runner/Profile/
       - name: Build isolated synthetic profile preview
         if: matrix.arch == 'arm64'
@@ -464,19 +464,19 @@ jobs:
       - uses: actions/upload-artifact@v4
         if: matrix.arch == 'arm64'
         with:
-          name: bloomstep-synthetic-preview-arm64-NOT-FOR-RELEASE
+          name: budlark-synthetic-preview-arm64-NOT-FOR-RELEASE
           path: build/windows/arm64/runner/Profile/
       - name: Verify synthetic native input
         timeout-minutes: 3
         if: matrix.arch == 'arm64' && github.event_name == 'workflow_dispatch' && inputs.verify_native_input
         shell: pwsh
         run: |
-          & .\tool\verify_synthetic_input.ps1 -Executable (Join-Path $env:GITHUB_WORKSPACE 'build\windows\arm64\runner\Profile\bloomstep.exe') -Output (Join-Path $env:RUNNER_TEMP 'synthetic-native-input.json')
+          & .\tool\verify_synthetic_input.ps1 -Executable (Join-Path $env:GITHUB_WORKSPACE 'build\windows\arm64\runner\Profile\budlark.exe') -Output (Join-Path $env:RUNNER_TEMP 'synthetic-native-input.json')
       - name: Preserve synthetic input outcome, including host failures
         if: always() && matrix.arch == 'arm64' && github.event_name == 'workflow_dispatch' && inputs.verify_native_input
         uses: actions/upload-artifact@v4
         with:
-          name: bloomstep-synthetic-input-arm64-NOT-CUSTOMER-ACCEPTANCE
+          name: budlark-synthetic-input-arm64-NOT-CUSTOMER-ACCEPTANCE
           path: ${{ runner.temp }}/synthetic-native-input.json
           if-no-files-found: warn
   universal-installer:
@@ -491,7 +491,7 @@ jobs:
           node-version: 22
       - uses: actions/download-artifact@v4
         with:
-          pattern: bloomstep-windows-*
+          pattern: budlark-windows-*
           path: artifacts
       - name: Install and record supported Inno compiler
         shell: pwsh
@@ -516,7 +516,7 @@ jobs:
           }
           $engineVersion = Get-InnoEngineVersion @($engineOutput)
           Write-Output "Verified Inno compiler engine: $engineVersion"
-          "BLOOMSTEP_INNO_ENGINE_VERSION=$engineVersion" | Out-File $env:GITHUB_ENV -Encoding utf8 -Append
+          "BUDLARK_INNO_ENGINE_VERSION=$engineVersion" | Out-File $env:GITHUB_ENV -Encoding utf8 -Append
       - name: Verify genuine same-source Release inputs and compile offline universal setup
         shell: pwsh
         env:
@@ -526,32 +526,32 @@ jobs:
           $source = git rev-parse HEAD
           $roots = @{}
           foreach ($arch in @('x64','arm64')) {
-            $roots[$arch] = Join-Path $PWD "artifacts\bloomstep-windows-$arch\build\windows\$arch\runner\Release"
-            $manifest = Join-Path $PWD "artifacts\bloomstep-windows-$arch\release-output\payload-manifest-$arch.json"
+            $roots[$arch] = Join-Path $PWD "artifacts\budlark-windows-$arch\build\windows\$arch\runner\Release"
+            $manifest = Join-Path $PWD "artifacts\budlark-windows-$arch\release-output\payload-manifest-$arch.json"
             node tool/release_payload.mjs verify $roots[$arch] $manifest $arch $source $version
             if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           }
           $output = Join-Path $PWD 'universal-output'
           New-Item -ItemType Directory -Path $output -Force | Out-Null
-          & "${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe" /Qp /DAppArch=universal "/DAppVersion=$version" "/DSourceDirX64=$($roots.x64)" "/DSourceDirArm64=$($roots.arm64)" "/O$output" packaging\bloomstep.iss
+          & "${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe" /Qp /DAppArch=universal "/DAppVersion=$version" "/DSourceDirX64=$($roots.x64)" "/DSourceDirArm64=$($roots.arm64)" "/O$output" packaging\budlark.iss
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-          $installer = Get-Item "$output\Bloomstep-$version-windows-universal-setup.exe"
+          $installer = Get-Item "$output\Budlark-$version-windows-universal-setup.exe"
           $hash = (Get-FileHash $installer.FullName).Hash.ToLower()
           "$hash  $($installer.Name)" | Set-Content "$output\SHA256-universal.txt" -Encoding utf8
           $payloadHashes = @{}
           foreach ($arch in @('x64','arm64')) {
-            $payloadHashes[$arch] = (Get-FileHash "artifacts\bloomstep-windows-$arch\release-output\payload-manifest-$arch.json").Hash.ToLower()
+            $payloadHashes[$arch] = (Get-FileHash "artifacts\budlark-windows-$arch\release-output\payload-manifest-$arch.json").Hash.ToLower()
           }
           @{
-            kind = 'bloomstep-offline-universal-v1'; source = $source; version = $version
+            kind = 'budlark-offline-universal-v1'; source = $source; version = $version
             installerFile = $installer.Name; installerSha256 = $hash; bytes = $installer.Length
             installFlow = 'oneclick-native'; distribution = 'UNPUBLISHED; owner manual verification pending'
-            compiler = $env:BLOOMSTEP_INNO_ENGINE_VERSION
+            compiler = $env:BUDLARK_INNO_ENGINE_VERSION
             signatureStatus = (Get-AuthenticodeSignature $installer.FullName).Status.ToString()
             payloadManifests = $payloadHashes
           } | ConvertTo-Json -Depth 4 | Set-Content "$output\universal-manifest.json" -Encoding utf8
           foreach ($arch in @('x64','arm64')) {
-            Copy-Item "artifacts\bloomstep-windows-$arch\release-output\payload-manifest-$arch.json" $output
+            Copy-Item "artifacts\budlark-windows-$arch\release-output\payload-manifest-$arch.json" $output
           }
           Write-Output "Offline universal installer compressed bytes: $($installer.Length)"
           Write-Output "UNPUBLISHED standard candidate: $($installer.Name); source $source; SHA-256 $hash"
@@ -583,12 +583,12 @@ jobs:
           $output = Join-Path $PWD 'universal-integrity-output'
           New-Item -ItemType Directory -Path $output -Force | Out-Null
           $marker = Join-Path $env:RUNNER_TEMP 'universal-integrity-marker.txt'
-          [IO.File]::WriteAllText($marker, ('BLOOMSTEP-INERT-INTEGRITY-MARKER-' + [guid]::NewGuid().ToString()) * 64)
-          $x64 = Join-Path $PWD 'artifacts\bloomstep-windows-x64\build\windows\x64\runner\Release'
-          $arm64 = Join-Path $PWD 'artifacts\bloomstep-windows-arm64\build\windows\arm64\runner\Release'
-          & "${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe" /Qp /DOnboardingJourneyFixture /DUniversalIntegrityFixture /DAppArch=universal /DAppVersion=0.0.0-contract "/DIntegrityMarker=$marker" "/DSourceDirX64=$x64" "/DSourceDirArm64=$arm64" "/DOnboardingPreprocessOutput=$output\fixture-preprocessed.iss" "/O$output" packaging\bloomstep.iss
+          [IO.File]::WriteAllText($marker, ('BUDLARK-INERT-INTEGRITY-MARKER-' + [guid]::NewGuid().ToString()) * 64)
+          $x64 = Join-Path $PWD 'artifacts\budlark-windows-x64\build\windows\x64\runner\Release'
+          $arm64 = Join-Path $PWD 'artifacts\budlark-windows-arm64\build\windows\arm64\runner\Release'
+          & "${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe" /Qp /DOnboardingJourneyFixture /DUniversalIntegrityFixture /DAppArch=universal /DAppVersion=0.0.0-contract "/DIntegrityMarker=$marker" "/DSourceDirX64=$x64" "/DSourceDirArm64=$arm64" "/DOnboardingPreprocessOutput=$output\fixture-preprocessed.iss" "/O$output" packaging\budlark.iss
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-          $compiled = Join-Path $output 'Bloomstep-0.0.0-contract-windows-universal-setup.exe'
+          $compiled = Join-Path $output 'Budlark-0.0.0-contract-windows-universal-setup.exe'
           if ((Get-Content "$output\fixture-preprocessed.iss" -Raw) -notmatch 'AppId=\{\{A6690692-4D92-475A-9EAC-1AD867AB0635\}') {
             throw 'Checksum fault fixture must retain its distinct isolated AppId.'
           }
@@ -607,7 +607,7 @@ jobs:
       - uses: actions/upload-artifact@v4
         if: always()
         with:
-          name: bloomstep-universal-installer
+          name: budlark-universal-installer
           path: universal-output/
       - uses: actions/upload-artifact@v4
         with:
@@ -676,8 +676,8 @@ jobs:
           GH_TOKEN: ${{ github.token }}
           RUN_ID: ${{ steps.candidate.outputs.run }}
         run: |
-          gh run download "$RUN_ID" --repo "$GITHUB_REPOSITORY" --pattern 'bloomstep-windows-*' --dir artifacts
-          gh run download "$RUN_ID" --repo "$GITHUB_REPOSITORY" --name bloomstep-universal-installer --dir universal-output
+          gh run download "$RUN_ID" --repo "$GITHUB_REPOSITORY" --pattern 'budlark-windows-*' --dir artifacts
+          gh run download "$RUN_ID" --repo "$GITHUB_REPOSITORY" --name budlark-universal-installer --dir universal-output
       - name: Require every role sign-off and the owner trial bound to these exact bytes
         env:
           CANDIDATE: ${{ steps.candidate.outputs.sha }}

@@ -7,7 +7,7 @@ on:
 permissions:
   contents: read
 concurrency:
-  group: bloomstep-production-deployment
+  group: budlark-production-deployment
   cancel-in-progress: false
 jobs:
   deploy:

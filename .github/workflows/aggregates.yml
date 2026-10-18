@@ -7,13 +7,13 @@ on:
 permissions:
   contents: read
 concurrency:
-  group: bloomstep-daily-aggregates
+  group: budlark-daily-aggregates
   cancel-in-progress: false
 jobs:
   aggregate:
-    if: github.repository == 'Sampath-K/bloomstep' && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/sampath-k-bloomstep-mvp-implementation')
+    if: github.repository == 'Sampath-K/budlark' && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/sampath-k-budlark-mvp-implementation')
     runs-on: ubuntu-latest
-    environment: bloomstep-operations
+    environment: budlark-operations
     timeout-minutes: 5
     permissions:
       contents: read
@@ -103,7 +103,7 @@ jobs:
           ), "Resource-directory token exchange")["access_token"])
           for route in ("/api/sync", "/api/team/feedback", "/api/team/metrics"):
               request = Request(origin + route, headers={
-                  "X-Bloomstep-Authorization": "Bearer " + access_token
+                  "X-Budlark-Authorization": "Bearer " + access_token
               })
               try:
                   with opener.open(request, timeout=45):
@@ -115,14 +115,14 @@ jobs:
                   fail("Worker isolation probe transport failed.")
           result = call(Request(origin + "/api/internal/aggregates", data=b"{}", method="POST", headers={
               "Content-Type": "application/json",
-              "X-Bloomstep-Authorization": "Bearer " + access_token
+              "X-Budlark-Authorization": "Bearer " + access_token
           }), "Authenticated aggregate write")
           if not isinstance(result, dict) or not isinstance(result.get("snapshots"), list):
               fail("Unexpected aggregate response; body omitted.")
           print("Completed prior-UTC-day aggregate request; snapshots: " + str(len(result["snapshots"])))
           tick = call(Request(origin + "/api/internal/experiments/tick", data=b"{}", method="POST", headers={
               "Content-Type": "application/json",
-              "X-Bloomstep-Authorization": "Bearer " + access_token
+              "X-Budlark-Authorization": "Bearer " + access_token
           }), "Bounded experiment tick")
           if not isinstance(tick, dict) or tick.get("status") not in ("disabled", "ok"):
               fail("Unexpected experiment tick response; body omitted.")
