@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Budlark | Private executive progress</title>
+<title>Budlark next release</title>
 <script>
   (() => {
     const param = new URLSearchParams(window.location.search).get("scoutTheme");
@@ -66,386 +66,160 @@ html[data-theme="dark"] {
   --cp-highlight: rgba(253, 142, 161, 0.12);
 }
 * { box-sizing: border-box; }
-body { margin: 0; background: var(--cp-bg); color: var(--cp-text); font: 16px/1.5 "Segoe UI", Aptos, Calibri, -apple-system, BlinkMacSystemFont, sans-serif; }
-main { max-width: 1440px; margin: auto; padding: 32px; }
-h1 { font-size: clamp(1.8rem, 4vw, 2.6rem); margin: 4px 0 8px; line-height: 1.2; }
-h2 { font-size: 1.2rem; margin: 0 0 12px; }
-h3 { font-size: 1.1rem; margin: 8px 0; }
-p { margin: 8px 0; }
-a { color: var(--cp-link); overflow-wrap: anywhere; }
-code { font: 0.85rem/1.5 Consolas, "Courier New", Courier, monospace; overflow-wrap: anywhere; }
-button, select { font: inherit; padding: 8px 12px; border: 1px solid var(--cp-border-strong); border-radius: 0.625rem; background: var(--cp-surface); color: var(--cp-text); }
-button { cursor: pointer; }
-input { accent-color: var(--cp-accent); }
+html, body { margin: 0; }
+body {
+  background: var(--cp-bg); color: var(--cp-text);
+  font-family: "Segoe UI", Aptos, Calibri, -apple-system, BlinkMacSystemFont, sans-serif;
+  line-height: 1.4;
+}
+main { max-width: 1280px; margin: 0 auto; padding: 24px 28px; min-height: 100vh; display: flex; flex-direction: column; gap: 20px; }
+header { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: start; gap: 24px; }
+.eyebrow { margin: 0; color: var(--cp-accent); font-weight: 600; letter-spacing: 0.04em; text-transform: uppercase; font-size: 0.8rem; }
+h1 { margin: 4px 0 0; font-size: clamp(1.4rem, 2.6vw, 2.1rem); line-height: 1.2; max-width: 40ch; }
+.status { text-align: right; min-width: 260px; }
+.pill { display: inline-block; padding: 6px 14px; border-radius: 0.625rem; font-weight: 600; border: 1px solid var(--cp-border-strong); background: var(--cp-surface); }
+.pill[data-tone="not-ready"] { border-color: var(--cp-danger); color: var(--cp-danger); }
+.pill[data-tone="in-progress"] { border-color: var(--cp-warning); }
+.pill[data-tone="ready"] { border-color: var(--cp-success); color: var(--cp-success); }
+.pill[data-tone="unknown"] { border-style: dashed; color: var(--cp-text-muted); }
+.readiness { margin: 8px 0 0; font-size: 1.05rem; font-weight: 600; }
+.fresh { margin: 6px 0 0; color: var(--cp-text-muted); font-size: 0.85rem; }
+.fresh[data-stale="true"] { color: var(--cp-danger); font-weight: 600; }
+.grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; align-items: start; }
+section { background: var(--cp-surface); border: 1px solid var(--cp-border); border-radius: 16px; padding: 18px 20px;
+  box-shadow: 0 0 2px rgba(0,0,0,0.12), 0 1px 2px rgba(0,0,0,0.14); }
+h2 { margin: 0 0 4px; font-size: 1.1rem; }
+.basis { margin: 0 0 12px; color: var(--cp-text-soft); font-size: 0.8rem; }
+ul { margin: 0; padding-left: 18px; }
+li { margin: 0 0 8px; }
+ol.steps { list-style: none; padding: 0; margin: 0; }
+ol.steps li { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 7px 0; border-bottom: 1px solid var(--cp-border); margin: 0; }
+ol.steps li:last-child { border-bottom: 0; }
+.chip { white-space: nowrap; font-size: 0.8rem; font-weight: 600; padding: 2px 10px; border-radius: 0.625rem; background: var(--cp-surface-soft); color: var(--cp-text-muted); }
+.chip[data-status="done"] { color: var(--cp-success); }
+.chip[data-status="attention"] { color: var(--cp-danger); background: var(--cp-accent-soft); }
+.chip[data-status="in-progress"] { color: var(--cp-text); }
+.recent { margin: 12px 0 0; font-size: 0.85rem; color: var(--cp-text-muted); }
+footer { display: flex; justify-content: space-between; align-items: center; gap: 12px; color: var(--cp-text-soft); font-size: 0.78rem; flex-wrap: wrap; }
+button { font: inherit; font-size: 0.8rem; color: var(--cp-text); background: var(--cp-surface); border: 1px solid var(--cp-border-strong); border-radius: 0.625rem; padding: 4px 12px; cursor: pointer; }
 button:hover { border-color: var(--cp-accent); }
-:focus-visible { outline: 3px solid var(--cp-accent); outline-offset: 4px; }
-.skip { position: absolute; top: -80px; padding: 8px; background: var(--cp-surface); }
-.skip:focus { top: 4px; }
-.eyebrow { font-size: 0.8rem; color: var(--cp-accent); font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; }
-.muted, small { color: var(--cp-text-muted); }
-.toolbar { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; margin: 24px 0; }
-.toolbar label { display: flex; gap: 8px; align-items: center; }
-.panel, article { background: var(--cp-surface); border: 1px solid var(--cp-border); border-radius: 16px; padding: 20px; margin-bottom: 16px; }
-.notice { border-left: 4px solid var(--cp-accent); }
-.error { color: var(--cp-danger); font-weight: 600; }
-.stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; }
-.stats strong { display: block; font-size: 1.4rem; }
-.badge { display: inline-block; font-size: 0.8rem; font-weight: 700; padding: 4px 8px; border: 1px solid var(--cp-border-strong); border-radius: 0.625rem; background: var(--cp-surface-soft); }
-.badge[data-state="blocked"], .badge[data-state="unknown"] { color: var(--cp-danger); }
-.badge[data-state="verified"] { color: var(--cp-success); }
-.badge[data-state="review-ready"], .badge[data-state="merged"], .badge[data-state="released"] { color: var(--cp-accent); }
-.legend { display: flex; flex-wrap: wrap; gap: 8px; margin: 12px 0; }
-#timeline { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; align-items: start; }
-.lane h2 { font-size: 1rem; color: var(--cp-text-muted); border-bottom: 2px solid var(--cp-border); padding-bottom: 8px; }
-article { padding: 16px; overflow-wrap: anywhere; }
-article.critical { border-top: 4px solid var(--cp-accent); }
-dl { margin: 12px 0; }
-dt { font-weight: 600; font-size: 0.85rem; margin-top: 12px; }
-dd { margin: 4px 0 0; font-size: 0.9rem; }
-ul { padding-left: 20px; margin: 8px 0; }
-li { margin: 4px 0; }
-summary { cursor: pointer; color: var(--cp-link); padding: 8px 0; }
-.check { font-size: 0.85rem; }
-#empty { padding: 16px; }
-footer { font-size: 0.85rem; color: var(--cp-text-muted); }
-.exec { border-top: 4px solid var(--cp-accent); }
-.exec-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; margin-bottom: 12px; }
-.exec-grid.two { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-.exec-grid > div { background: var(--cp-surface-soft); border: 1px solid var(--cp-border); border-radius: 0.625rem; padding: 12px; overflow-wrap: anywhere; }
-.exec-grid strong { display: block; font-size: 1.3rem; }
-.exec-grid h3 { margin-top: 0; }
-.readiness[data-readiness="not-ready"], .readiness[data-readiness="unknown"] { color: var(--cp-danger); }
-.readiness[data-readiness="ready-for-decision"] { color: var(--cp-success); }
-#changes-latest li, #changes-history li, #exec-blockers li { overflow-wrap: anywhere; }
-@media (max-width: 1100px) { #timeline { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
-@media (max-width: 600px) {
-  main { padding: 16px; }
-  #timeline, .stats, .exec-grid, .exec-grid.two { grid-template-columns: minmax(0, 1fr); }
-  .toolbar { align-items: stretch; }
-  .toolbar button { width: 100%; }
+button:focus-visible { outline: 2px solid var(--cp-accent); outline-offset: 2px; }
+@media (max-width: 860px) {
+  main { padding: 16px; min-height: 0; }
+  .grid, header { grid-template-columns: 1fr; }
+  .status { text-align: left; min-width: 0; }
 }
 </style>
 </head>
 <body>
-<a class="skip" href="#workstreams">Skip to workstreams</a>
 <main>
   <header>
-    <div class="eyebrow">Internal / loopback only / read-only GitHub evidence</div>
-    <h1>Budlark executive progress</h1>
-    <p class="muted">A dependency map, not a date-based Gantt or a claim of live agent progress.</p>
+    <div>
+      <p class="eyebrow" id="release">Next release</p>
+      <h1 id="headline">Loading release narrative…</h1>
+    </div>
+    <div class="status" role="status" aria-live="polite">
+      <span class="pill" id="pill" data-tone="unknown">Unknown</span>
+      <p class="readiness" id="readiness">Readiness unknown</p>
+      <p class="fresh" id="fresh" data-stale="true">No evidence loaded yet.</p>
+    </div>
   </header>
-  <section class="panel exec" aria-labelledby="exec-title" id="executive">
-    <h2 id="exec-title">Executive summary</h2>
-    <div class="exec-grid">
-      <div><span class="muted">Owner-trial candidate</span><strong id="readiness" class="readiness">Unknown</strong><small id="readiness-detail">No snapshot yet.</small></div>
-      <div><span class="muted">Last successful source refresh</span><strong id="last-success">Never observed</strong><small id="last-complete">Last complete refresh: never observed.</small></div>
-      <div><span class="muted">Evidence warnings</span><strong id="warn-counts">Unknown</strong><small id="warn-detail">Launch-gating read errors / unknown states / blocked workstreams.</small></div>
-    </div>
-    <div class="exec-grid two">
-      <div><h3>Next: AGENT</h3><p id="next-agent">Unknown.</p></div>
-      <div><h3>Next: OWNER</h3><p id="next-owner">Unknown.</p></div>
-    </div>
-    <h3>Changes since previous collection</h3>
-    <ul id="changes-latest"><li>Unknown until a snapshot is available.</li></ul>
-    <h3>Current blockers</h3>
-    <ul id="exec-blockers"><li>Unknown until a snapshot is available.</li></ul>
-    <details><summary>Recent change history (last 50 evidence changes)</summary><ul id="changes-history"></ul></details>
-  </section>
-  <section class="panel notice" aria-label="Source collection instructions">
-    <strong>Inspect without prompting an agent. Choose manual collection or local source polling.</strong>
-    <p><code>node tool\project-status\status.mjs serve --poll-seconds 60</code></p>
-    <p class="muted">The optional local process polls GitHub through your existing gh login with backoff on errors. Manual alternative: <code>node tool\project-status\status.mjs collect</code>. Browser rereads never start collection or authenticate to GitHub. Agent sessions remain unavailable.</p>
-    <p id="polling" class="muted">Source polling status not yet observed.</p>
-  </section>
-  <div class="toolbar">
-    <button id="reload" type="button">Reload saved snapshot</button>
-    <label><input id="auto" type="checkbox" checked> Reread snapshot every 15 seconds (not live sources)</label>
-    <label for="filter">Show
-      <select id="filter"><option value="all">All workstreams</option><option value="attention">Blocked / unknown</option><option value="path">Active gating path</option></select>
-    </label>
+  <div class="grid">
+    <section aria-labelledby="h-product">
+      <h2 id="h-product">Product taking shape</h2>
+      <p class="basis">What customers get in this release candidate. Not yet owner-validated or customer-proven.</p>
+      <ul id="product"></ul>
+    </section>
+    <section aria-labelledby="h-progress">
+      <h2 id="h-progress">Verified progress</h2>
+      <p class="basis">Steps to the owner-trial launch decision. A step shows done only with observed evidence.</p>
+      <ol class="steps" id="steps"></ol>
+      <p class="recent" id="recent"></p>
+    </section>
+    <section aria-labelledby="h-system">
+      <h2 id="h-system">System improving</h2>
+      <p class="basis">Quality and delivery improvements in the current release candidate.</p>
+      <ul id="system"></ul>
+    </section>
   </div>
-  <div id="message" class="panel notice" role="status" aria-live="polite">Reading local snapshot...</div>
-  <section class="stats" aria-label="Evidence summary">
-    <div class="panel"><span class="muted">Collection</span><strong id="collection">Unknown</strong><small id="collected">No observation yet</small></div>
-    <div class="panel"><span class="muted">Agent sessions</span><strong>Unavailable</strong><small>No supported session API connected; busy time is not completion.</small></div>
-    <div class="panel"><span class="muted">Owner-trial launch decision</span><strong id="launch">Unknown</strong><small>Not public-MVP readiness. Abandoned VM acceptance and optional hosted experiments are context only.</small></div>
-  </section>
-  <section class="panel" aria-labelledby="path-title">
-    <h2 id="path-title">Active gating path</h2>
-    <p class="muted">Longest unresolved dependency chain to the owner-trial launch decision, by dependency depth only. Non-gating context rows are excluded. No invented dates, durations, percentages or velocity. Ties are shown together.</p>
-    <div id="paths">Unknown until a snapshot is available.</div>
-  </section>
-  <section aria-labelledby="workstreams" id="board">
-    <h2 id="workstreams" tabindex="-1">Workstreams / dependency layers</h2>
-    <p class="muted">Read left to right by prerequisite depth. Each edge states the evidence required; a merged prerequisite cannot satisfy a verified gate.</p>
-    <div id="timeline"></div>
-    <p id="empty" hidden>No workstreams match this filter.</p>
-  </section>
-  <details class="panel">
-    <summary>State definitions and source boundaries</summary>
-    <div class="legend" id="legend"></div>
-    <p>Planned is an explicitly configured integration gate, not an agent report. Implementing means a draft PR or remote branch exists, not that an agent is currently working. Validating means configured exact-head workflow jobs are pending. Review-ready means those engineering jobs passed, not a human approval or every product gate. Blocked means a failed/cancelled/skipped required check, a closed unmerged PR or unmet prerequisite.</p>
-    <p>Merged comes only from the PR API. Released comes only from a published release plus resolved immutable tag. Verified is reserved for the explicitly named exact-release protected workflow gate. A manual gate without a live source remains unknown. Stale evidence cannot satisfy a prerequisite.</p>
-    <p>Definitions: <code>tool\project-status\sources.json</code>. Product evidence boundaries: <code>docs\status.md</code>, <code>docs\mvp-exit-matrix.md</code>, <code>docs\experiments.md</code>. Configured notes are historical context, not new observations.</p>
-  </details>
-  <footer>Private developer tooling, separate from the customer app, operator console and marketing site. No tokens, mailbox data or customer records are collected.</footer>
+  <footer>
+    <span id="note">Private local view. Refreshes automatically.</span>
+    <button type="button" id="reload">Refresh view</button>
+  </footer>
 </main>
 <script>
 (() => {
-  const states = ['planned', 'implementing', 'validating', 'blocked', 'review-ready', 'merged', 'released', 'verified', 'unknown'];
   const $ = id => document.getElementById(id);
-  let snapshot = null;
-  let loadError = '';
-  let loading = false;
-  let polling = null;
-  let lastViewKey = '';
-  const el = (tag, text, className) => {
-    const node = document.createElement(tag);
-    if (text !== undefined) node.textContent = text;
-    if (className) node.className = className;
-    return node;
+  const chipText = { done: 'Done', 'in-progress': 'In progress', attention: 'Needs attention', waiting: 'Waiting',
+    next: 'Next', 'not-evidenced': 'Not yet evidenced', unknown: 'Unknown' };
+  const toneText = { 'not-ready': 'Not ready', 'in-progress': 'In progress', ready: 'Ready for decision', unknown: 'Unknown' };
+  let snapshot = null, polling = null, loadError = '', loading = false;
+  const item = (tag, text) => { const node = document.createElement(tag); node.textContent = text; return node; };
+  const ago = value => {
+    const ms = Date.now() - Date.parse(value);
+    if (!Number.isFinite(ms) || ms < 0) return null;
+    const min = Math.floor(ms / 60000);
+    return min < 1 ? 'under a minute ago' : min < 120 ? `${min} min ago` : `${Math.round(min / 60)} h ago`;
   };
-  const time = value => Number.isFinite(Date.parse(value)) ? new Date(value).toLocaleString() : 'never observed';
-  const pollingFailed = () => polling?.mode === 'polling' && polling.status === 'failed' &&
-    Date.parse(polling.lastAttemptAt) > Date.parse(snapshot?.collectedAt);
-  function ageState(row) {
-    const age = Date.now() - Date.parse(row.observedAt);
-    if (!Number.isFinite(age) || age < 0) return 'unknown';
-    return age <= snapshot.config.maxAgeSeconds * 1000 && !loadError && !pollingFailed() ? 'fresh' : 'stale';
-  }
-  function badge(state) {
-    const node = el('span', state, 'badge');
-    node.dataset.state = state;
-    return node;
-  }
-  $('legend').append(...states.map(badge));
-  function links(items, parent) {
-    for (const item of items ?? []) {
-      if (typeof item.url !== 'string' || !item.url.startsWith('https://github.com/Sampath-K/bloomstep/')) continue;
-      const url = new URL(item.url);
-      if (url.protocol !== 'https:' || url.hostname !== 'github.com' || !url.pathname.startsWith('/Sampath-K/bloomstep/')) continue;
-      const p = el('p');
-      const a = el('a', item.title);
-      a.href = url.href;
-      a.target = '_blank';
-      a.rel = 'noopener noreferrer';
-      p.append(a);
-      parent.append(p);
-    }
-  }
-  function validate(data) {
-    if (data.schemaVersion !== 1 || !['complete', 'partial', 'failed'].includes(data.collectionState) ||
-        !Number.isFinite(Date.parse(data.collectedAt)) || data.config?.repo !== 'Sampath-K/bloomstep' ||
-        !Number.isInteger(data.config.maxAgeSeconds) || data.config.maxAgeSeconds <= 0 ||
-        !Array.isArray(data.config.workstreams) || !data.config.workstreams.length ||
-        !Array.isArray(data.workstreams) || data.config.workstreams.length !== data.workstreams.length) throw Error('Unsupported or incomplete local snapshot.');
-    const ids = new Set();
-    for (const def of data.config.workstreams) {
-      if (ids.has(def.id) || !/^[a-z][a-z0-9-]*$/.test(def.id) || !Array.isArray(def.dependencies)) throw Error('Invalid dependency definitions.');
-      ids.add(def.id);
-      const matches = data.workstreams.filter(row => row.id === def.id);
-      if (matches.length !== 1 || !states.includes(matches[0].state) || !Array.isArray(matches[0].evidence)) throw Error('Missing or invalid workstream evidence.');
-    }
-    if (!ids.has(data.config.target)) throw Error('Missing dependency target.');
-    const seen = new Set(), active = new Set();
-    function visit(id) {
-      if (active.has(id)) throw Error('Cyclic dependency definitions.');
-      if (seen.has(id)) return;
-      active.add(id);
-      const def = data.config.workstreams.find(row => row.id === id);
-      for (const dep of def.dependencies) {
-        if (!ids.has(dep.id) || !Array.isArray(dep.accept) || !dep.accept.length || dep.accept.some(state => !states.includes(state) || state === 'unknown')) throw Error('Invalid dependency reference.');
-        visit(dep.id);
-      }
-      active.delete(id); seen.add(id);
-    }
-    ids.forEach(visit);
-    return data;
-  }
   function render() {
-    if (!snapshot) {
-      $('message').textContent = loadError || 'No local snapshot. Run the collect command above.';
-      $('message').classList.toggle('error', Boolean(loadError));
+    const n = snapshot?.narrative;
+    if (!n) {
+      $('headline').textContent = 'Release narrative unavailable';
+      $('fresh').textContent = loadError || 'No release evidence has been collected yet.';
       return;
     }
-    const defs = snapshot.config.workstreams;
-    const byId = new Map(snapshot.workstreams.map(row => [row.id, row]));
-    const effective = row => ageState(row) === 'fresh' ? row.state : 'unknown';
-    const blockers = def => def.dependencies.filter(dep =>
-      !dep.accept.includes(effective(byId.get(dep.id))) || blockers(defs.find(item => item.id === dep.id)).length > 0);
-    const levels = new Map();
-    function level(id) {
-      if (levels.has(id)) return levels.get(id);
-      const deps = defs.find(def => def.id === id).dependencies;
-      const value = deps.length ? 1 + Math.max(...deps.map(dep => level(dep.id))) : 0;
-      levels.set(id, value);
-      return value;
-    }
-    function pathsTo(id) {
-      const unmet = blockers(defs.find(def => def.id === id));
-      return unmet.length ? unmet.flatMap(dep => pathsTo(dep.id).map(path => [...path, id])) : [[id]];
-    }
-    const paths = pathsTo(snapshot.config.target);
-    const longest = Math.max(...paths.map(path => path.length));
-    const activePaths = paths.filter(path => path.length === longest);
-    const critical = new Set(activePaths.flat());
-    const sourceFreshness = Date.now() - Date.parse(snapshot.collectedAt);
-    const stale = loadError || pollingFailed() || sourceFreshness < 0 || sourceFreshness > snapshot.config.maxAgeSeconds * 1000;
-    $('collection').textContent = stale ? 'Stale / unknown' : snapshot.collectionState;
-    $('collected').textContent = `Attempt: ${time(snapshot.collectedAt)}. Last complete GitHub read: ${time(snapshot.lastCompleteAt)}.`;
-    const target = byId.get(snapshot.config.target);
-    $('launch').textContent = blockers(defs.find(def => def.id === snapshot.config.target)).length ? 'Blocked / unverified' : effective(target);
-    const warning = loadError || (pollingFailed() ? 'Latest local source polling attempt failed before replacing the snapshot. Previous observations are stale, not current.' :
-      stale ? 'Snapshot expired or has a future timestamp. Run collect or check local polling; last-known data below is not current.' :
-      snapshot.collectionState !== 'complete' ? 'GitHub collection incomplete. Failed sources are unknown; last-known observations are retained separately.' :
-      (polling?.mode === 'polling' ? `GitHub sources are polled locally every ${polling.intervalSeconds}s. Manual gates without a source and agent activity remain unknown.` : 'Saved GitHub observation loaded. Source polling is off; run collect or serve --poll-seconds 60. Manual gates and agent activity remain unknown.'));
-    $('message').textContent = warning;
-    $('message').classList.toggle('error', Boolean(stale || snapshot.collectionState !== 'complete'));
-    const exec = snapshot.executive;
-    const age = value => {
-      const ms = Date.now() - Date.parse(value);
-      if (!Number.isFinite(ms)) return 'never observed';
-      if (ms < 0) return `${time(value)} (future timestamp)`;
-      const minutes = Math.round(ms / 60000);
-      return `${minutes < 1 ? 'under 1 minute' : minutes < 120 ? `${minutes} min` : `${Math.round(minutes / 60)} h`} ago`;
-    };
-    const readiness = !exec ? 'unknown' : stale ? 'unknown' : exec.readiness;
-    $('readiness').dataset.readiness = readiness;
-    $('readiness').textContent = { 'ready-for-decision': 'Ready for owner decision', 'not-ready': 'NOT READY', unknown: 'UNKNOWN' }[readiness] ?? 'UNKNOWN';
-    $('readiness-detail').textContent = !exec ? 'Executive summary unavailable until the next source collection.' :
-      stale ? 'Snapshot is stale or polling failed; readiness cannot be asserted.' :
-      readiness === 'not-ready' ? `${exec.blockers.length} unresolved prerequisite(s). Owner-trial only, not public MVP.` :
-      readiness === 'unknown' ? 'Prerequisite evidence is missing, failed or unknown. Not a pass.' :
-      'All configured prerequisites have fresh accepted evidence. Decision still requires the owner.';
-    const lastSuccess = exec?.lastSourceSuccessAt ?? polling?.lastSourceSuccessAt;
-    $('last-success').textContent = lastSuccess ? age(lastSuccess) : 'Never observed';
-    $('last-complete').textContent = `${lastSuccess ? time(lastSuccess) : ''} Last complete refresh: ${time(exec?.lastCompleteAt ?? snapshot.lastCompleteAt)}. ${stale ? 'STALE.' : ''}`.trim();
-    $('warn-counts').textContent = exec ? `${exec.counts.error} errors / ${exec.counts.unknown} unknown / ${exec.counts.blocked} blocked` : 'Unknown';
-    $('warn-detail').textContent = exec?.nonGating ? `Launch-gating only. Non-gating context: ${exec.nonGating.error} errors / ${exec.nonGating.unknown} unknown / ${exec.nonGating.blocked} blocked (historical, not launch blockers).` : 'Launch-gating read errors / unknown states / blocked workstreams.';
-    // Do not rebuild interactive cards on every timer tick; preserve keyboard focus and disclosure state.
-    const key = JSON.stringify([snapshot, loadError, $('filter').value, snapshot.workstreams.map(row => ageState(row))]);
-    if (key === lastViewKey) return;
-    lastViewKey = key;
-    const title = id => defs.find(def => def.id === id)?.title ?? id;
-    const gatingIds = new Set([snapshot.config.target]);
-    (function walk(id) { for (const dep of defs.find(def => def.id === id).dependencies) { gatingIds.add(dep.id); walk(dep.id); } })(snapshot.config.target);
-    const describe = change => {
-      const short = value => typeof value === 'string' && /^[a-f0-9]{40}$/.test(value) ? value.slice(0, 7) : value ?? 'none';
-      const what = { state: 'state', sha: 'head commit', release: 'published release', check: `job "${change.name}"`,
-        'read-error': 'source read FAILED (not progress)', 'read-recovered': 'source read recovered (not progress)', added: 'now observed (not progress)' }[change.kind] ?? change.kind;
-      const li = el('li', `${time(change.observedAt)}: ${title(change.id)} ${what}: ${short(change.from)} -> ${short(change.to)}. `);
-      if (typeof change.evidence === 'string' && change.evidence.startsWith('https://github.com/Sampath-K/bloomstep/')) {
-        const a = el('a', 'evidence'); a.href = change.evidence; a.target = '_blank'; a.rel = 'noopener noreferrer'; li.append(a);
-      }
+    const age = Date.now() - Date.parse(snapshot.collectedAt);
+    const pollFailed = polling?.mode === 'polling' && polling.status === 'failed' && Date.parse(polling.lastAttemptAt) > Date.parse(snapshot.collectedAt);
+    const stale = Boolean(loadError) || pollFailed || !Number.isFinite(age) || age < 0 || age > snapshot.config.maxAgeSeconds * 1000;
+    $('release').textContent = n.release;
+    $('headline').textContent = n.headline;
+    const tone = stale ? 'unknown' : n.readiness.tone;
+    $('pill').dataset.tone = tone;
+    $('pill').textContent = toneText[tone] ?? 'Unknown';
+    $('readiness').textContent = stale ? 'Readiness unknown: evidence is out of date' : n.readiness.label;
+    const success = ago(n.lastSourceSuccessAt);
+    $('fresh').dataset.stale = String(stale || snapshot.collectionState !== 'complete');
+    $('fresh').textContent = loadError ? `${loadError} Last successful refresh ${success ?? 'unknown'}; showing nothing as current.` :
+      pollFailed ? `Latest evidence refresh failed. Last successful refresh ${success ?? 'unknown'}; showing nothing as current.` :
+      stale ? `Evidence is stale${success ? `; last successful refresh ${success}` : ''}. Showing nothing as current.` :
+      snapshot.collectionState !== 'complete' ? `Some evidence could not be read; those steps show Unknown. Last refreshed ${success ?? 'unknown'}.` :
+      `Evidence refreshed ${success}${polling?.mode === 'polling' ? `, every ${polling.intervalSeconds}s` : ''}.`;
+    $('product').replaceChildren(...n.product.map(text => item('li', text)));
+    $('system').replaceChildren(...n.system.map(text => item('li', text)));
+    $('steps').replaceChildren(...n.milestones.map(m => {
+      const li = item('li', m.label), status = stale ? 'unknown' : m.status;
+      const chip = item('span', chipText[status] ?? 'Unknown');
+      chip.className = 'chip'; chip.dataset.status = status;
+      li.append(chip);
       return li;
-    };
-    const latest = exec ? (snapshot.changeBaseline ? [el('li', 'Baseline collection: no previous snapshot to compare yet.')] :
-      snapshot.changesSincePrevious?.length ? snapshot.changesSincePrevious.map(describe) :
-      [el('li', `No source evidence changes observed at ${time(snapshot.collectedAt)} (polling alone is not progress).`)]) :
-      [el('li', 'Unknown: snapshot predates change tracking. Wait for the next collection.')];
-    $('changes-latest').replaceChildren(...latest);
-    $('changes-history').replaceChildren(...(snapshot.changes?.length ? snapshot.changes.map(describe) : [el('li', 'No evidence changes recorded yet.')]));
-    $('exec-blockers').replaceChildren(...(!exec ? [el('li', 'Unknown.')] : exec.blockers.length ? exec.blockers.map(row => {
-      const li = el('li', `${row.title} [${row.state}${row.root ? '' : ', waiting on prerequisites'}]: ${row.reason} Owner: ${row.owner}.`);
-      if (typeof row.evidence === 'string' && row.evidence.startsWith('https://github.com/Sampath-K/bloomstep/')) {
-        const a = el('a', ' evidence'); a.href = row.evidence; a.target = '_blank'; a.rel = 'noopener noreferrer'; li.append(' ', a);
-      }
-      return li;
-    }) : [el('li', stale ? 'Unknown: snapshot is stale.' : 'No unresolved configured prerequisites.')]));
-    $('next-agent').textContent = exec?.nextAgent ? `${exec.nextAgent.title}: ${exec.nextAgent.action}` : 'None configured or unknown.';
-    $('next-owner').textContent = exec?.nextOwner ? `${exec.nextOwner.title}: ${exec.nextOwner.action}` : 'None configured or unknown.';
-    $('paths').replaceChildren(...activePaths.map(path => el('p', path.map(id => defs.find(def => def.id === id).title).join(' -> '))));
-    const lanes = new Map();
-    let count = 0;
-    for (const def of defs) {
-      const row = byId.get(def.id);
-      const unmet = blockers(def);
-      const status = def.kind === 'gate' && unmet.length && ageState(row) === 'fresh' ? 'blocked' : effective(row);
-      if ($('filter').value === 'attention' && !['blocked', 'unknown'].includes(status)) continue;
-      if ($('filter').value === 'path' && !critical.has(def.id)) continue;
-      count++;
-      const depth = level(def.id);
-      if (!lanes.has(depth)) {
-        const lane = el('section', undefined, 'lane');
-        lane.setAttribute('aria-label', `Dependency layer ${depth + 1}`);
-        lane.append(el('h2', `Layer ${depth + 1}`));
-        lanes.set(depth, lane);
-      }
-      const card = el('article', undefined, critical.has(def.id) ? 'critical' : '');
-      card.dataset.id = def.id;
-      card.append(badge(status), el('h3', def.title));
-      if (!gatingIds.has(def.id)) card.append(el('p', 'Context only: does not gate the owner-trial launch decision.', 'muted'));
-      card.append(el('p', `${ageState(row)} | observed ${time(row.observedAt)}`, 'muted'));
-      if (row.error) card.append(el('p', row.error, 'error'));
-      const dl = el('dl');
-      for (const [label, value] of [['Owner', def.owner], ['Next action', def.nextAction]]) {
-        dl.append(el('dt', label), el('dd', value));
-      }
-      dl.append(el('dt', 'Dependencies'));
-      const dependencies = el('dd');
-      if (!def.dependencies.length) dependencies.textContent = 'None configured.';
-      else for (const dep of def.dependencies) {
-        const prerequisite = defs.find(item => item.id === dep.id);
-        dependencies.append(el('p', `${prerequisite.title}: requires ${dep.accept.join(' or ')}; ${unmet.some(item => item.id === dep.id) ? 'UNMET' : 'satisfied'}.`));
-      }
-      dl.append(dependencies);
-      card.append(dl);
-      if (row.sha) card.append(el('p', `Observed source: ${row.sha}`, 'check'));
-      if (row.tag) card.append(el('p', `${row.tag} | published ${time(row.publishedAt)}`, 'check'));
-      if (row.observedAt && ageState(row) !== 'fresh') card.append(el('p', `Last-known state: ${row.state} (not current).`, 'error'));
-      links(row.evidence, card);
-      if (row.lastKnown) {
-        const history = el('details');
-        history.append(el('summary', `Last known: ${row.lastKnown.state} at ${time(row.lastKnown.observedAt)} (not current)`));
-        if (row.lastKnown.sha) history.append(el('p', row.lastKnown.sha, 'check'));
-        links(row.lastKnown.evidence, history);
-        card.append(history);
-      }
-      if (row.checks?.length) {
-        const details = el('details');
-        details.append(el('summary', `${row.checks.length} workflow job observations`));
-        const list = el('ul');
-        for (const job of row.checks) list.append(el('li', `${job.name}: ${job.status} / ${job.conclusion ?? 'pending'}`, 'check'));
-        details.append(list);
-        card.append(details);
-      }
-      if (row.detail) card.append(el('p', row.detail, 'muted'));
-      if (def.note) card.append(el('p', `Configured context: ${def.note}`, 'muted'));
-      lanes.get(depth).append(card);
-    }
-    $('timeline').replaceChildren(...[...lanes].sort((a, b) => a[0] - b[0]).map(([, node]) => node));
-    $('empty').hidden = count > 0;
+    }));
+    const latest = n.recent[0];
+    $('recent').textContent = stale ? '' : latest ? `Latest change (${ago(latest.observedAt) ?? 'time unknown'}): ${latest.text}.` : 'No step has changed in the recent tracking window.';
+    $('note').textContent = polling?.mode === 'polling' ? 'Private local view. Evidence is re-read automatically; agent activity is not shown.' :
+      'Private local view. Automatic evidence refresh is off; this page only rereads the saved snapshot.';
   }
   async function load() {
     if (loading) return;
     loading = true;
-    $('reload').setAttribute('aria-busy', 'true');
     try {
       const response = await fetch('/polling.json', { cache: 'no-store', signal: AbortSignal.timeout(5000) });
-      if (!response.ok) throw Error(`HTTP ${response.status}`);
-      polling = await response.json();
-      if (!['manual', 'polling'].includes(polling.mode)) throw Error('Invalid polling status');
-      $('polling').textContent = polling.mode === 'manual' ? 'Source polling disabled. Run collect explicitly to refresh GitHub.' :
-        `Local source polling: ${polling.status}; base interval ${polling.intervalSeconds}s (errors back off). Last attempt: ${time(polling.lastAttemptAt)}; finished: ${time(polling.lastFinishedAt)}; last source success (may be partial): ${time(polling.lastSourceSuccessAt)}; last complete: ${time(polling.lastCompleteAt)}; next: ${time(polling.nextAttemptAt)}. ${polling.errors?.join(' ') ?? ''}`;
-    } catch {
-      $('polling').textContent = 'Source polling status unavailable. No active polling claim; snapshot freshness still applies.';
-    }
+      polling = response.ok ? await response.json() : null;
+    } catch { polling = null; }
     try {
       const response = await fetch('/snapshot.json', { cache: 'no-store', signal: AbortSignal.timeout(5000) });
-      if (!response.ok) throw Error(`Snapshot unavailable (HTTP ${response.status}). Run collect or check the local server.`);
-      snapshot = validate(await response.json());
-      loadError = '';
+      if (!response.ok) throw Error(`evidence unavailable (HTTP ${response.status})`);
+      const data = await response.json();
+      if (!data?.narrative || !Array.isArray(data.narrative.milestones) || !data.config?.maxAgeSeconds) throw Error('evidence is incomplete');
+      snapshot = data; loadError = '';
     } catch (error) {
-      loadError = `Snapshot read failed: ${error.message}. ${snapshot ? 'Retaining the previous observation as stale, not current.' : 'No current evidence is available.'}`;
+      loadError = `Could not read evidence: ${error.message}.`;
     } finally {
       loading = false;
-      $('reload').setAttribute('aria-busy', 'false');
       render();
     }
   }
   $('reload').addEventListener('click', load);
-  $('filter').addEventListener('change', render);
-  setInterval(() => { if ($('auto').checked) load(); }, 15000);
+  setInterval(load, 15000);
   setInterval(render, 1000);
   load();
 })();

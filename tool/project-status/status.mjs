@@ -38,6 +38,13 @@ export function validateConfig(config) {
     }
   }
   need(ids.has(config.target));
+  if (config.narrative !== undefined) {
+    const n = config.narrative, text = value => typeof value === 'string' && value.length > 0 && value.length <= 160;
+    need(['release', 'headline', 'candidateReadiness', 'readyReadiness'].every(key => text(n[key])));
+    need(['product', 'system'].every(key => Array.isArray(n[key]) && n[key].length > 0 && n[key].length <= 4 && n[key].every(text)));
+    need(Array.isArray(n.milestones) && n.milestones.length > 0 && n.milestones.length <= 8);
+    for (const m of n.milestones) need(text(m.label) && ids.has(m.source) && Array.isArray(m.done) && m.done.length > 0 && m.done.every(state => states.includes(state)));
+  }
   const visiting = new Set();
   const visited = new Set();
   const byId = new Map(config.workstreams.map(row => [row.id, row]));
@@ -293,6 +300,7 @@ export async function collect(config, { now = new Date().toISOString(), previous
     config, workstreams, graph: dependencyView(config, workstreams, now),
   };
   snapshot.executive = executiveSummary(config, snapshot);
+  if (config.narrative) snapshot.narrative = releaseNarrative(config, snapshot);
   return snapshot;
 }
 
@@ -376,6 +384,33 @@ export function executiveSummary(config, snapshot) {
     nonGating: tally(row => !gating.has(row.id)),
     lastSourceSuccessAt: snapshot.lastSourceSuccessAt, lastCompleteAt: snapshot.lastCompleteAt, collectionState: snapshot.collectionState,
   };
+}
+
+const plainState = { planned: 'next', implementing: 'in progress', validating: 'checks running', blocked: 'needs attention',
+  'review-ready': 'passing', merged: 'approved', released: 'released', verified: 'verified', unknown: 'not yet evidenced' };
+
+// Executive one-slide view: plain-language milestones only; no links, commits, jobs or workstream internals.
+export function releaseNarrative(config, snapshot) {
+  const n = config.narrative;
+  const definitions = new Map(config.workstreams.map(row => [row.id, row]));
+  const rows = new Map(snapshot.workstreams.map(row => [row.id, row]));
+  const failed = snapshot.collectionState === 'failed';
+  const milestones = n.milestones.map(m => {
+    const row = rows.get(m.source), manual = ['manual', 'gate'].includes(definitions.get(m.source).kind);
+    const fresh = row?.observedAt && freshness(row.observedAt, snapshot.collectedAt, config.maxAgeSeconds) === 'fresh';
+    const status = failed || !row || (row.error && !manual) || (!manual && !fresh) ? 'unknown' :
+      m.done.includes(row.state) ? 'done' : (snapshot.graph.blockers[m.source] ?? []).length ? 'waiting' :
+      row.state === 'unknown' ? 'not-evidenced' : row.state === 'blocked' ? 'attention' : row.state === 'planned' ? 'next' : 'in-progress';
+    return { label: m.label, status };
+  });
+  const labels = new Map(n.milestones.map(m => [m.source, m.label]));
+  const recent = (snapshot.changes ?? []).filter(change => change.kind === 'state' && change.progress && labels.has(change.id))
+    .slice(0, 3).map(change => ({ text: `${labels.get(change.id)}: ${plainState[change.from] ?? 'unknown'} → ${plainState[change.to] ?? 'unknown'}`, observedAt: change.observedAt }));
+  const readiness = failed ? { tone: 'unknown', label: 'Readiness unknown: sources could not be read' } :
+    milestones.every(m => m.status === 'done') ? { tone: 'ready', label: n.readyReadiness } :
+    { tone: milestones.some(m => m.status === 'attention') ? 'not-ready' : 'in-progress', label: n.candidateReadiness };
+  return { release: n.release, headline: n.headline, readiness, product: n.product, system: n.system, milestones, recent,
+    lastSourceSuccessAt: snapshot.lastSourceSuccessAt, collectionState: snapshot.collectionState, collectedAt: snapshot.collectedAt };
 }
 
 async function writeJson(directory, name, snapshot) {

@@ -277,5 +277,67 @@
       ],
       "note": "Separate optional gate, not an owner-trial prerequisite: experiments may remain default OFF. Coordinator reported not connected / OFF on 2026-10-16. No hosted API is configured, so current hosted state is UNKNOWN. Context only: not in the current owner-trial launch sequence (PR52 hosted checks -> installer -> owner manual check -> integration/release + PR54 hosting -> live download)."
     }
-  ]
+  ],
+  "narrative": {
+    "release": "Next release: Budlark owner trial",
+    "headline": "Budlark: simpler personal habit garden, release validation in progress.",
+    "candidateReadiness": "Candidate preparation; owner installation validation pending",
+    "readyReadiness": "Ready for owner launch decision",
+    "product": [
+      "One consistent Budlark identity, from installer artwork to the app.",
+      "Clearer separation between the garden on this device and the garden in your account.",
+      "Plain disclosures before copying a garden or signing out.",
+      "Profile and settings actions that work with assistive technology."
+    ],
+    "system": [
+      "Expired sessions now close outdated profile dialogs instead of leaving them open.",
+      "Hosted verification checks both Windows architectures before an installer is packaged."
+    ],
+    "milestones": [
+      {
+        "label": "Hosted quality checks",
+        "source": "release",
+        "done": [
+          "review-ready",
+          "merged"
+        ]
+      },
+      {
+        "label": "Installer candidate built",
+        "source": "installer",
+        "done": [
+          "verified"
+        ]
+      },
+      {
+        "label": "Owner accepted installation",
+        "source": "owner-check",
+        "done": [
+          "verified"
+        ]
+      },
+      {
+        "label": "Release approved",
+        "source": "integration",
+        "done": [
+          "verified"
+        ]
+      },
+      {
+        "label": "Website experience prepared",
+        "source": "website",
+        "done": [
+          "review-ready",
+          "merged"
+        ]
+      },
+      {
+        "label": "Live download verified",
+        "source": "download",
+        "done": [
+          "verified"
+        ]
+      }
+    ]
+  }
 }

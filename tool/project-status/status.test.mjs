@@ -477,3 +477,67 @@ test('contract: live config reads PR52 and PR54 as gating sources; executive cou
   assert.equal(result.executive.counts.blocked, 0);
   assert.equal(result.executive.nonGating.blocked, 1);
 });
+
+const narrative = {
+  release: 'Next release', headline: 'Simpler product, validation in progress.',
+  candidateReadiness: 'Candidate preparation; owner validation pending', readyReadiness: 'Ready for owner decision',
+  product: ['Clearer product identity.'], system: ['Checks cover both architectures.'],
+  milestones: [
+    { label: 'Quality checks', source: 'code', done: ['review-ready', 'merged'] },
+    { label: 'Candidate composed', source: 'candidate', done: ['verified'] },
+  ],
+};
+const narrConfig = { ...execConfig, narrative };
+const lowLevel = /github\.com|\bPR\s?\d|#\d|\b[0-9a-f]{7,40}\b|\bjobs?\b|\bVM\b|self-hosted|\bnode\b|status\.mjs|%/i;
+
+test('contract: next-release narrative config is exec-level, anchored to the gating launch path', () => {
+  validateConfig(sourceConfig);
+  const n = sourceConfig.narrative;
+  assert.match(n.headline, /Budlark: simpler personal habit garden, release validation in progress/);
+  assert.equal(n.candidateReadiness, 'Candidate preparation; owner installation validation pending');
+  assert.ok(n.product.length >= 2 && n.product.length <= 4 && n.system.length >= 1 && n.system.length <= 3);
+  assert.doesNotMatch(JSON.stringify(n), lowLevel);
+  assert.doesNotMatch(JSON.stringify(n), /\b(launched|shipped|available now|customer-proven|accepted by)\b/i);
+  const ids = Object.fromEntries(sourceConfig.workstreams.map(row => [row.id, row]));
+  const closure = new Set([sourceConfig.target]);
+  (function walk(id) { for (const dep of ids[id].dependencies) { closure.add(dep.id); walk(dep.id); } })(sourceConfig.target);
+  assert.deepEqual(n.milestones.map(m => m.source), ['release', 'installer', 'owner-check', 'integration', 'website', 'download']);
+  for (const m of n.milestones) assert.ok(closure.has(m.source), m.source);
+  assert.ok(n.milestones.some(m => /owner/i.test(m.label) && /accept/i.test(m.label)));
+  assert.ok(n.milestones.some(m => /live download/i.test(m.label)));
+  assert.throws(() => validateConfig({ ...narrConfig, narrative: { ...narrative, milestones: [{ label: 'X', source: 'missing', done: ['merged'] }] } }));
+  assert.throws(() => validateConfig({ ...narrConfig, narrative: { ...narrative, product: [] } }));
+});
+
+test('contract: narrative maps observed states to plain milestones and never exposes engineering detail', async () => {
+  const failing = path => path.includes('/jobs?') ? [{ total_count: 2, jobs: [job('api'), job('native', 'failure')] }] : reader(path);
+  const result = await collect(narrConfig, { now, auth: async () => {}, read: async path => failing(path) });
+  const n = result.narrative;
+  assert.equal(n.readiness.tone, 'not-ready');
+  assert.equal(n.readiness.label, narrative.candidateReadiness);
+  assert.deepEqual(n.milestones.map(m => m.status), ['attention', 'waiting']);
+  assert.equal(n.lastSourceSuccessAt, now);
+  assert.doesNotMatch(JSON.stringify(n), lowLevel);
+});
+
+test('contract: narrative fails closed to unknown and only says ready when every milestone is evidenced', async () => {
+  const failed = await collect(narrConfig, { now, auth: async () => { throw Error('auth'); }, read: async () => {} });
+  assert.equal(failed.narrative.readiness.tone, 'unknown');
+  assert.match(failed.narrative.readiness.label, /unknown/i);
+  assert.ok(failed.narrative.milestones.every(m => m.status === 'unknown'));
+  const ready = await collect(narrConfig, { now, auth: async () => {}, read: async path => reader(path) });
+  assert.equal(ready.narrative.milestones[0].status, 'done');
+  assert.notEqual(ready.narrative.readiness.label, narrative.readyReadiness, 'gate without verification is not ready');
+  assert.equal(ready.narrative.readiness.label, narrative.candidateReadiness);
+});
+
+test('contract: narrative recent progress is plain-language milestone movement only', async () => {
+  const failing = path => path.includes('/jobs?') ? [{ total_count: 2, jobs: [job('api'), job('native', 'failure')] }] : reader(path);
+  const first = await collect(narrConfig, { now, auth: async () => {}, read: async path => failing(path) });
+  assert.deepEqual(first.narrative.recent, []);
+  const second = await collect(narrConfig, { now: later, previous: first, auth: async () => {}, read: async path => reader(path) });
+  assert.deepEqual(second.narrative.recent, [{ text: 'Quality checks: needs attention → passing', observedAt: later }]);
+  const errored = await collect(narrConfig, { now: '2026-10-16T00:02:00.000Z', previous: second, auth: async () => {}, read: async () => { throw Error('timeout'); } });
+  assert.equal(errored.narrative.recent.length, 1);
+  assert.doesNotMatch(JSON.stringify(errored.narrative), lowLevel);
+});

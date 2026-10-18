@@ -29,42 +29,51 @@ if necessary. No dependencies need installing.
 
 Run `collect` again in a second terminal whenever fresh source evidence is
 needed in manual mode. The page rereads the saved snapshot and polling status
-every 15 seconds (toggleable), or use **Reload saved snapshot**. Neither starts
-GitHub collection. Only the explicit `serve --poll-seconds` mode runs local
-authenticated source polling; there is no scheduler or refresh endpoint. Observations
-expire after five minutes even while the page remains open. No real-time
-agent-session API is connected: agent status is always **unavailable**, never
-inferred from branches, workflow time or agent busy duration.
+every 15 seconds, or use **Refresh view**. Neither starts GitHub collection.
+Only the explicit `serve --poll-seconds` mode runs local authenticated source
+polling; there is no scheduler or refresh endpoint. Observations expire after
+five minutes even while the page remains open. No real-time agent-session API is
+connected: agent activity is never shown or inferred.
 
-## Executive view
+## Executive one-slide view
 
-The top of the page is an executive summary for Budlark, computed by the
-collector (`executive` in the snapshot) and shown with the local evidence age:
+The page is a single executive slide about the **next release**, not an
+engineering board. It shows only:
 
-- **Owner-trial launch readiness**: `Ready for owner decision` only when
-  every configured prerequisite of the target has fresh accepted evidence;
-  `NOT READY` when a root prerequisite is observed in a non-accepted state;
-  otherwise `UNKNOWN`. A stale snapshot or failed polling attempt always shows
-  `UNKNOWN`. It is never green by default and is not public-MVP readiness.
-- **Changes since previous collection**: differences between the previous and
-  new snapshot only: workstream state, head commit, published release tag and
-  exact-head job outcome (job diffs are skipped when the head commit changed).
-  The first collection is a baseline. Polling attempts, timestamps and
-  unchanged reads are never changes. Source read failures/recoveries are listed
-  but marked *not progress*; failed reads never fabricate state changes. The
-  last 50 changes are kept as history in the git-ignored snapshot.
-- **Blockers**, then **Next: AGENT** and **Next: OWNER** actions from the
-  optional `agentNext` / `ownerNext` fields in `sources.json` (root causes first).
-- **Last successful source refresh** (any source read succeeded) and **last
-  complete refresh**, plus error / unknown / blocked counts.
+- **Release headline and readiness**: `narrative.headline` and the readiness
+  label from `sources.json`. Readiness stays the configured candidate label
+  (currently "Candidate preparation; owner installation validation pending")
+  until every milestone has observed done evidence; `Not ready` when any
+  milestone needs attention; `Unknown` when collection failed, evidence is
+  stale (older than five minutes), the latest polling attempt failed or the
+  snapshot cannot be read. It never shows shipped, launched or accepted claims.
+- **Product taking shape**: reviewed customer-value statements in the release
+  candidate, labelled not yet owner-validated or customer-proven.
+- **Verified progress**: plain-language milestones mapped from the gating
+  launch sequence (hosted checks -> installer candidate -> owner accepted
+  installation -> release approved, plus website prepared -> live download
+  verified). A milestone is *Done* only for its configured observed states;
+  steps without a live source show *Waiting* or *Not yet evidenced*; read errors
+  and stale data show *Unknown*. The latest observed milestone state change is
+  shown; polling heartbeats are never progress.
+- **System improving**: reviewed quality/delivery improvements in the candidate.
+
+No PR numbers, commits, jobs, links, commands, dependency layers or historical
+VM gates appear on the slide. The collector still computes the full evidence,
+change history, blockers and next actions in the git-ignored
+`.project-status\snapshot.json` (`workstreams`, `changes`, `executive`) for
+agents; the slide reads only `narrative`. Narrative text lives in
+`sources.json` (`narrative`) and is validated: 1-4 short statements per
+dimension and milestones that reference configured gating sources. Update it
+only from release/website owner review; do not add percent complete or dates.
 
 The owner-trial launch sequence in `sources.json` is: PR52 hosted checks ->
 installer artifact -> owner manual installer check -> approved integration/release,
 plus PR54 hosting -> live budlark.com download verification -> owner-trial
 launch decision. PR52/PR54 are read live; the other steps have no live source and
-stay UNKNOWN until evidence exists. Abandoned VM native acceptance, the combined
-candidate, PR48/49, visual, preview and hosted GrowthBook rows are non-gating
-context only and are counted separately. This tool changes no CI, protections or PRs.
+stay unknown/waiting until evidence exists. Abandoned VM native acceptance, the
+combined candidate, PR48/49, visual, preview and hosted GrowthBook rows are
+non-gating context in the snapshot only. This tool changes no CI, protections or PRs.
 
 ## Source of truth and integration
 
@@ -119,17 +128,15 @@ changes or PR mutations are performed by collection/serving.
   GrowthBook and launch acceptance have no live source configured. Their
   historical OFF/unverified context is labeled, not asserted as current truth.
 
-The combined-candidate card is a dependency gate, **not** a live child-agent
+The combined-candidate row is a dependency gate, **not** a live child-agent
 status. It cannot turn verified automatically. Configure an exact candidate
 source and independent acceptance evidence in a reviewed follow-up when those
 exist; the dashboard makes no completion claim in the meantime.
 
 Dependency edges specify their accepted states: `merged` and `released` cannot
-satisfy `verified`. Cards retain their own observed state even if prerequisites
-are unmet, and show those unmet prerequisites separately. Dependency layers
-show order, not dates. The **active gating path** shows all longest unresolved
-paths to the **owner-trial launch decision** by dependency depth, not a duration-based
-critical-path schedule or invented progress percentage.
+satisfy `verified`. Snapshot rows retain their own observed state even if prerequisites are unmet;
+unmet prerequisites are recorded separately in `graph`. Order is by dependency
+depth, never by dates, durations or invented progress percentages.
 
 Hosted GrowthBook activation is an independent optional workstream with its
 own blockers, not an owner-trial prerequisite (context only): the default-OFF adapter may ship
