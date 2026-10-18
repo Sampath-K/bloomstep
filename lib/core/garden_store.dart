@@ -511,7 +511,8 @@ class GardenStore {
       requireSyncSession(owner, generation);
       final current = await _owned(habit.id, txn);
       final material =
-          _recipeMeaning(anchor) != _recipeMeaning(current['anchor'] as String) ||
+          _recipeMeaning(anchor) !=
+              _recipeMeaning(current['anchor'] as String) ||
           _recipeMeaning(behavior) !=
               _recipeMeaning(current['behavior'] as String);
       var timestamp = _clock().toUtc();

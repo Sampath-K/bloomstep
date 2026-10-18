@@ -16,7 +16,10 @@ void main() {
     final absent = IdentityProfile.fromClaims({'sub': 'private-subject'});
     expect(absent.displayName, isNull);
     expect(absent.photoUrl, isNull);
-    expect(IdentityProfile.fromClaims({'name': ' Unknown '}).displayName, isNull);
+    expect(
+      IdentityProfile.fromClaims({'name': ' Unknown '}).displayName,
+      isNull,
+    );
     expect(
       IdentityProfile.fromClaims({
         'name': 'Unknown',
@@ -157,29 +160,28 @@ void main() {
     expect(find.byType(Image), findsNothing);
   });
 
-  testWidgets(
-    'placeholder provider name does not appear as an Unknown badge',
-    (tester) async {
-      await tester.pumpWidget(
-        MaterialApp(
-          home: Scaffold(
-            body: ProfileSection(
-              signedIn: true,
-              compactSummary: true,
-              profile: IdentityProfile.fromClaims({'name': 'Unknown'}),
-              configured: true,
-              busy: false,
-              onSignIn: () async {},
-              onSignOut: () async {},
-            ),
+  testWidgets('placeholder provider name does not appear as an Unknown badge', (
+    tester,
+  ) async {
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: ProfileSection(
+            signedIn: true,
+            compactSummary: true,
+            profile: IdentityProfile.fromClaims({'name': 'Unknown'}),
+            configured: true,
+            busy: false,
+            onSignIn: () async {},
+            onSignOut: () async {},
           ),
         ),
-      );
-      expect(find.text('Signed-in account'), findsOneWidget);
-      expect(find.text('Unknown'), findsNothing);
-      expect(find.text('U'), findsNothing);
-    },
-  );
+      ),
+    );
+    expect(find.text('Signed-in account'), findsOneWidget);
+    expect(find.text('Unknown'), findsNothing);
+    expect(find.text('U'), findsNothing);
+  });
 
   testWidgets(
     'absent name explains the provider gap without invented initials',
@@ -311,6 +313,13 @@ void main() {
           ),
         ),
       );
+      expect(
+        find.text('Your account needs attention. Try signing in again.'),
+        findsOneWidget,
+      );
+      expect(find.text(message), findsNothing);
+      await tester.tap(find.text('Details'));
+      await tester.pumpAndSettle();
       expect(find.text(message), findsOneWidget);
       expect(find.text('Signed in'), findsNothing);
       expect(find.text('Sign in with Microsoft or Google'), findsOneWidget);

@@ -9,13 +9,24 @@ void main() {
   for (final field in ['anchor', 'behavior']) {
     test('$field replacement resets eligibility, not history or growth', () async {
       var now = DateTime.utc(2026, 9, 1);
-      final store = await GardenStore.open(':memory:', 'owner', clock: () => now);
-      final replica = await GardenStore.open(':memory:', 'owner', clock: () => now);
+      final store = await GardenStore.open(
+        ':memory:',
+        'owner',
+        clock: () => now,
+      );
+      final replica = await GardenStore.open(
+        ':memory:',
+        'owner',
+        clock: () => now,
+      );
       addTearDown(store.close);
       addTearDown(replica.close);
       final h = await store.plant(
-        aspiration: 'Calm', anchor: 'pour coffee', behavior: 'one breath',
-        celebration: 'smile', species: 'Fern',
+        aspiration: 'Calm',
+        anchor: 'pour coffee',
+        behavior: 'one breath',
+        celebration: 'smile',
+        species: 'Fern',
       );
       for (var i = 0; i < 28; i++) {
         now = DateTime.utc(2026, 9, i + 1);
@@ -48,7 +59,10 @@ void main() {
       final payload = await store.syncPayload();
       await replica.mergeSync(Map<String, dynamic>.from(payload));
       await replica.mergeSync(Map<String, dynamic>.from(stale));
-      expect((await replica.habits()).single.recipeRevision, revised.recipeRevision);
+      expect(
+        (await replica.habits()).single.recipeRevision,
+        revised.recipeRevision,
+      );
       expect((await replica.habits()).single.status, 'active');
       expect((await replica.habits()).single.recentPractice, 0);
       expect(await replica.naturalnessAvailableAt(h.id), isNotNull);
@@ -65,23 +79,37 @@ void main() {
     });
   }
 
-  test('case, whitespace and celebration refinements retain eligibility', () async {
-    final now = DateTime.utc(2026, 9, 1);
-    final store = await GardenStore.open(':memory:', 'owner', clock: () => now);
-    addTearDown(store.close);
-    final h = await store.plant(
-      aspiration: 'Calm', anchor: 'pour coffee', behavior: 'one breath',
-      celebration: 'smile', species: 'Fern',
-    );
-    await store.checkIn(h.id, CheckInResult.did);
-    await store.reflect(h.id, [6, 6, 6, 6]);
-    await store.edit(h, anchor: '  POUR \n coffee ', behavior: ' ONE  BREATH ',
-      celebration: 'quiet nod');
-    final refined = (await store.habits()).single;
-    expect(refined.recipeRevision, '');
-    expect(refined.recentPractice, 1);
-    expect(await store.naturalnessAvailableAt(h.id), isNotNull);
-  });
+  test(
+    'case, whitespace and celebration refinements retain eligibility',
+    () async {
+      final now = DateTime.utc(2026, 9, 1);
+      final store = await GardenStore.open(
+        ':memory:',
+        'owner',
+        clock: () => now,
+      );
+      addTearDown(store.close);
+      final h = await store.plant(
+        aspiration: 'Calm',
+        anchor: 'pour coffee',
+        behavior: 'one breath',
+        celebration: 'smile',
+        species: 'Fern',
+      );
+      await store.checkIn(h.id, CheckInResult.did);
+      await store.reflect(h.id, [6, 6, 6, 6]);
+      await store.edit(
+        h,
+        anchor: '  POUR \n coffee ',
+        behavior: ' ONE  BREATH ',
+        celebration: 'quiet nod',
+      );
+      final refined = (await store.habits()).single;
+      expect(refined.recipeRevision, '');
+      expect(refined.recentPractice, 1);
+      expect(await store.naturalnessAvailableAt(h.id), isNotNull);
+    },
+  );
 
   test('v5 evidence migrates and revision survives reopen', () async {
     final directory = await Directory.current.createTemp('recipe-revision-');
@@ -89,8 +117,11 @@ void main() {
     final path = '${directory.path}/garden.sqlite';
     var store = await GardenStore.open(path, 'owner');
     final h = await store.plant(
-      aspiration: 'Calm', anchor: 'pour coffee', behavior: 'one breath',
-      celebration: 'smile', species: 'Fern',
+      aspiration: 'Calm',
+      anchor: 'pour coffee',
+      behavior: 'one breath',
+      celebration: 'smile',
+      species: 'Fern',
     );
     await store.checkIn(h.id, CheckInResult.did);
     await store.reflect(h.id, [6, 6, 6, 6]);
@@ -103,8 +134,12 @@ void main() {
     await db.close();
     store = await GardenStore.open(path, 'owner');
     expect((await store.habits()).single.recentPractice, 1);
-    await store.edit(h, anchor: 'close laptop', behavior: h.behavior,
-      celebration: h.celebration);
+    await store.edit(
+      h,
+      anchor: 'close laptop',
+      behavior: h.behavior,
+      celebration: h.celebration,
+    );
     final revision = (await store.habits()).single.recipeRevision;
     await store.close();
     store = await GardenStore.open(path, 'owner');
