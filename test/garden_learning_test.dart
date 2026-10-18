@@ -414,12 +414,14 @@ void main() {
       await tester.pump(const Duration(milliseconds: 300));
 
       expect(
-        find.text('Saved. That tiny step counts! Now smile.'),
-        findsOneWidget,
-      );
-      expect(
         (await tester.runAsync(store.habits))!.single.today,
         CheckInResult.did,
+        reason: 'the attributed notification callback must commit its check-in',
+      );
+      expect(find.text('Something needs your attention.'), findsNothing);
+      expect(
+        find.text('Saved. That tiny step counts! Now smile.'),
+        findsOneWidget,
       );
       expect(gateway.requests, isEmpty, reason: 'acknowledgement stays in-app');
     },

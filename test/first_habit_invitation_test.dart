@@ -48,6 +48,7 @@ Future<void> ready(
   Finder finder, {
   bool dismissRecipeBuilder = false,
 }) async {
+  var settingsRequested = find.byType(AlertDialog).evaluate().isNotEmpty;
   final needsProfile = [
     'Sign in with Microsoft or Google',
     'Not signed in',
@@ -84,17 +85,22 @@ Future<void> ready(
           !finder.toString().contains('Complete sign-in in your browser')) {
         await tester.tap(find.text('Done'));
         await tester.pump(const Duration(milliseconds: 350));
+        settingsRequested = false;
         continue;
       }
     }
     if (finder.evaluate().isNotEmpty) return;
     final settings = find.byWidgetPredicate(
-      (widget) => widget is IconButton &&
-          widget.tooltip == 'Settings and privacy' && widget.onPressed != null,
+      (widget) =>
+          widget is IconButton &&
+          widget.tooltip == 'Settings and privacy' &&
+          widget.onPressed != null,
     );
     if (needsProfile &&
+        !settingsRequested &&
         find.byType(AlertDialog).evaluate().isEmpty &&
         settings.evaluate().isNotEmpty) {
+      settingsRequested = true;
       await tester.tap(settings);
       await tester.pump(const Duration(milliseconds: 350));
     }
@@ -112,8 +118,10 @@ Future<void> ready(
     );
     if (needsProfile &&
         details.evaluate().isNotEmpty &&
-        find.descendant(of: profile, matching: find.byType(SelectableText))
-            .evaluate().isEmpty) {
+        find
+            .descendant(of: profile, matching: find.byType(SelectableText))
+            .evaluate()
+            .isEmpty) {
       await tester.ensureVisible(details);
       await tester.tap(details);
       await tester.pump(const Duration(milliseconds: 350));

@@ -130,6 +130,7 @@ void main() {
       );
       expect(tester.widget<SwitchListTile>(toggle).value, isFalse);
       await tester.ensureVisible(toggle);
+      await tester.pumpAndSettle();
       await tester.tap(toggle);
       final stopwatch = Stopwatch()..start();
       while (stopwatch.elapsed < const Duration(seconds: 10) &&
