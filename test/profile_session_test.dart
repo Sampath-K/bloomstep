@@ -438,8 +438,9 @@ void main() {
       await _ready(tester, find.text('Plant a habit'));
       expect(find.byTooltip('Settings and privacy'), findsOneWidget);
       await tester.tap(find.byTooltip('Settings and privacy'));
-      await _ready(tester, find.text('Settings'));
-      await tester.tap(find.text('Garden & data'));
+      await _ready(tester, find.text('Garden & data'));
+      await tester.ensureVisible(find.text('Garden & data'));
+      await tester.tap(find.text('Garden & data').hitTestable());
       await tester.pumpAndSettle();
       expect(find.text('Export my data (JSON)'), findsOneWidget);
       expect(find.text('Delete local garden'), findsOneWidget);

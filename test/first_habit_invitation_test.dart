@@ -48,6 +48,21 @@ Future<void> ready(
   Finder finder, {
   bool dismissRecipeBuilder = false,
 }) async {
+  Future<void> openSettings(Finder settings) async {
+    await tester.tap(settings);
+    for (var attempt = 0; attempt < 200; attempt++) {
+      await tester.runAsync(
+        () => Future<void>.delayed(const Duration(milliseconds: 20)),
+      );
+      await tester.pump(const Duration(milliseconds: 50));
+      if (find.text('Settings').hitTestable().evaluate().isNotEmpty) {
+        await tester.pump(const Duration(milliseconds: 350));
+        return;
+      }
+    }
+    fail('Settings did not finish opening.');
+  }
+
   var missingBeforeSettings = 0;
   Future<void> settleUi() => tester.pump(const Duration(milliseconds: 350));
   final needsProfile = [
@@ -114,7 +129,7 @@ Future<void> ready(
         missingBeforeSettings >= 5 &&
         find.byType(AlertDialog).evaluate().isEmpty &&
         settings.evaluate().isNotEmpty) {
-      await tester.tap(settings);
+      await openSettings(settings);
       missingBeforeSettings = 0;
       await settleUi();
     }
