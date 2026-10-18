@@ -544,7 +544,7 @@ void main() {
       identity.pending!.complete();
       await _ready(
         tester,
-        find.text('Your account needs attention. Try signing in again.'),
+        find.text('Sign-in didn’t complete. Your device garden is unchanged.'),
       );
       expect(find.text('Not signed in'), findsOneWidget);
       expect(identity.account, isNull);
@@ -665,8 +665,9 @@ void main() {
       await _ready(tester, find.text('Clear saved sign-in'));
       await _ready(
         tester,
-        find.text('Your account needs attention. Try signing in again.'),
+        find.textContaining('Couldn’t finish sign-out'),
       );
+      await _ready(tester, find.text('Not signed in'));
       expect(find.text('Not signed in'), findsOneWidget);
       identity.failSignOut = false;
       await _ready(tester, find.text('Clear saved sign-in'));
@@ -720,7 +721,7 @@ void main() {
       await _ready(tester, find.text('Not signed in'));
       await _ready(
         tester,
-        find.text('Your account needs attention. Try signing in again.'),
+        find.textContaining('offline session ended'),
       );
       expect(find.text('Synthetic account habit'), findsNothing);
       await tester.pumpWidget(const SizedBox());

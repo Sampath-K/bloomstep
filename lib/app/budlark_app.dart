@@ -380,6 +380,7 @@ class _HabitHomeState extends State<HabitHome> {
   }
 
   Future<void> _expire(String? reason) async {
+    Navigator.of(context).popUntil((route) => route.isFirst);
     var cleanupFailed = false;
     var message =
         'Your offline session ended. Sign in again; your saved account garden was not deleted.';

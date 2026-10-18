@@ -48,8 +48,6 @@ Future<void> ready(
   Finder finder, {
   bool dismissRecipeBuilder = false,
 }) async {
-  var settingsPending = false;
-  var dialogWasOpen = false;
   var missingBeforeSettings = 0;
   Future<void> settleUi() => tester.pump(const Duration(milliseconds: 350));
   final needsProfile = [
@@ -70,17 +68,14 @@ Future<void> ready(
     "Couldn't copy",
     'Clear saved sign-in',
     'Saved sign-in cleared',
+    'offline session ended',
+    'Couldn’t finish sign-out',
   ].any(finder.toString().contains);
   for (var i = 0; i < 600; i++) {
     await tester.runAsync(
       () => Future<void>.delayed(const Duration(milliseconds: 20)),
     );
     await tester.pump(const Duration(milliseconds: 350));
-    final dialogOpen = find.byType(AlertDialog).evaluate().isNotEmpty;
-    if (settingsPending && dialogWasOpen && !dialogOpen) {
-      settingsPending = false;
-    }
-    dialogWasOpen = dialogOpen;
     if (dismissRecipeBuilder &&
         find.byType(RecipeBuilder).evaluate().isNotEmpty &&
         (find.text('Choose a moment').evaluate().isNotEmpty ||
@@ -110,14 +105,35 @@ Future<void> ready(
     }
     missingBeforeSettings++;
     final settings = find.byTooltip('Settings and privacy');
+    final gardens = find.byType(GardenScreen);
+    final gardenReady =
+        gardens.evaluate().length == 1 &&
+        tester.widget<GardenScreen>(gardens).firstHabitInvitationReady;
     if (needsProfile &&
-        !settingsPending &&
+        gardenReady &&
         missingBeforeSettings >= 5 &&
         find.byType(AlertDialog).evaluate().isEmpty &&
         settings.evaluate().isNotEmpty) {
-      settingsPending = true;
       await tester.tap(settings);
+      missingBeforeSettings = 0;
       await settleUi();
+    }
+    final details = find.descendant(
+      of: profile,
+      matching: find.text('Details'),
+    );
+    if (needsProfile &&
+        details.evaluate().length == 1 &&
+        find
+            .descendant(of: profile, matching: find.byType(SelectableText))
+            .evaluate()
+            .isEmpty) {
+      await tester.ensureVisible(details);
+      await settleUi();
+      if (details.hitTestable().evaluate().isNotEmpty) {
+        await tester.tap(details.hitTestable());
+        await settleUi();
+      }
     }
     final profileGroup = find.ancestor(
       of: find.text('Profile & account'),
