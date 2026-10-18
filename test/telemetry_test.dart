@@ -44,7 +44,7 @@ void main() {
       await store.checkIn(h.id, CheckInResult.did);
       await store.undo(h.id);
       final exported = await store.export();
-      final saved = (exported['checkins'] as List).cast<Map>()
+      final saved = (exported['checkins'] as List).cast<Map>().toList()
         ..sort((a, b) => DateTime.parse(a['ts'] as String)
             .compareTo(DateTime.parse(b['ts'] as String)));
       final observations = await events(store);
