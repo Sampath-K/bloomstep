@@ -1,0 +1,10 @@
+{
+  "files": [
+    {
+      "publicName": "Budlark-0.1.0-preview.14-windows-universal-setup.exe",
+      "source": "https://github.com/Sampath-K/bloomstep/releases/download/v0.1.0-preview.14/Bloomstep-0.1.0-preview.14-windows-universal-setup.exe",
+      "sha256": "7ad56cc3c71a40d78dd7cb043b43aa42ea884cb0484da982cffa386c9384b094",
+      "bytes": 22261590
+    }
+  ]
+}
