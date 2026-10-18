@@ -38,6 +38,8 @@ class _InvitationDialogState extends State<InvitationDialog> {
   InvitationReceipt? receipt;
   bool busy = false;
   String? failure;
+  String? supportInfo;
+  String? supportCopyOutcome;
   String? outcome;
   late final ExperienceResolver experiments =
       widget.experiments ?? ExperienceExperiments(widget.store);
@@ -68,6 +70,8 @@ class _InvitationDialogState extends State<InvitationDialog> {
     setState(() {
       busy = true;
       failure = null;
+      supportInfo = null;
+      supportCopyOutcome = null;
       receipt = null;
       outcome = null;
     });
@@ -83,7 +87,7 @@ class _InvitationDialogState extends State<InvitationDialog> {
           Uri(
             scheme: 'mailto',
             query:
-                'subject=${Uri.encodeComponent('A tiny step together with Budlark')}&body=${Uri.encodeComponent('Grow a tiny habit with Budlark. $url')}',
+                'subject=${Uri.encodeComponent('A tiny step together with Budlark')}&body=${Uri.encodeComponent('Grow a tiny habit with Budlark. ${card == null ? '' : 'This link includes my chosen recipe: ${card!['aspiration']}. '}$url')}',
           ),
         )) {
           throw StateError('No email application is available.');
@@ -118,7 +122,17 @@ class _InvitationDialogState extends State<InvitationDialog> {
         setState(() {
           receipt = null;
           outcome = null;
-          failure = invitationErrorMessage(error, phase: phase);
+          failure = invitationErrorMessage(
+            error,
+            phase: phase,
+            includeSupportCode: false,
+          );
+          supportInfo = error is InvitationFailure
+              ? error.supportCode
+              : InvitationFailure(
+                  InvitationFailureKind.unknown,
+                  phase,
+                ).supportCode;
         });
         await observe(ExperienceOutcome.error);
       }
@@ -194,6 +208,13 @@ class _InvitationDialogState extends State<InvitationDialog> {
             const Text(
               'Anyone with the link can open it. No one is contacted automatically.',
             ),
+            if (card != null) ...[
+              const SizedBox(height: 8),
+              Text('Chosen recipe: ${card!['aspiration']}'),
+              const Text(
+                'Your chosen recipe is included in the link for email, QR and Windows share.',
+              ),
+            ],
             const SizedBox(height: 16),
             if (busy)
               Semantics(
@@ -262,8 +283,8 @@ class _InvitationDialogState extends State<InvitationDialog> {
                 ListTile(
                   leading: const Icon(Icons.mail_outline),
                   title: const Text('Email invite'),
-                  subtitle: const Text(
-                    'Choose a recipient and send the email.',
+                  subtitle: Text(
+                    card == null ? 'Choose a recipient and send the email.' : 'The email link includes your chosen recipe. You choose the recipient and send.',
                   ),
                   enabled: !busy,
                   onTap: busy ? null : () => share('email'),
@@ -271,14 +292,20 @@ class _InvitationDialogState extends State<InvitationDialog> {
                 ListTile(
                   leading: const Icon(Icons.qr_code),
                   title: const Text('Show QR'),
-                  subtitle: const Text('Your friend can scan the link.'),
+                  subtitle: Text(
+                    card == null
+                        ? 'Your friend can scan the link.'
+                        : 'The QR link includes your chosen recipe.',
+                  ),
                   enabled: !busy,
                   onTap: busy ? null : () => share('qr'),
                 ),
                 ListTile(
                   leading: const Icon(Icons.ios_share),
                   title: const Text('Windows share'),
-                  subtitle: const Text('Choose an app and where to share.'),
+                  subtitle: Text(
+                    card == null ? 'Choose an app and where to share.' : 'The shared link includes your chosen recipe. Choose an app and where to share.',
+                  ),
                   enabled: !busy,
                   onTap: busy ? null : () => share('native'),
                 ),
@@ -315,6 +342,9 @@ class _InvitationDialogState extends State<InvitationDialog> {
                                   card = chosen;
                                   receipt = null;
                                   outcome = null;
+                                  failure = null;
+                                  supportInfo = null;
+                                  supportCopyOutcome = null;
                                 });
                               }
                             } finally {
@@ -331,6 +361,9 @@ class _InvitationDialogState extends State<InvitationDialog> {
                             card = null;
                             receipt = null;
                             outcome = null;
+                            failure = null;
+                            supportInfo = null;
+                            supportCopyOutcome = null;
                           }),
                     child: const Text('Remove recipe card'),
                   ),
@@ -341,6 +374,34 @@ class _InvitationDialogState extends State<InvitationDialog> {
               tilePadding: EdgeInsets.zero,
               title: const Text('Privacy and link details'),
               children: [
+                if (supportInfo != null) ...[
+                  SelectableText(supportInfo!),
+                  TextButton(
+                    onPressed: () async {
+                      final info = supportInfo!;
+                      try {
+                        await Clipboard.setData(ClipboardData(text: info));
+                        if (mounted && supportInfo == info) {
+                          setState(
+                            () => supportCopyOutcome = 'Support info copied',
+                          );
+                        }
+                      } catch (_) {
+                        if (mounted && supportInfo == info) {
+                          setState(
+                            () => supportCopyOutcome = "Couldn't copy support info. Select the code to copy it.",
+                          );
+                        }
+                      }
+                    },
+                    child: const Text('Copy support info'),
+                  ),
+                  if (supportCopyOutcome != null)
+                    Semantics(
+                      liveRegion: true,
+                      child: Text(supportCopyOutcome!),
+                    ),
+                ],
                 const Text(
                   'Optional analytics is off by default; when enabled, Budlark '
                   'records invitation creation and the sharing method. Recipe '

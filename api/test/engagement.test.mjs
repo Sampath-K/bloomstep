@@ -661,7 +661,7 @@ test('signed customer requests create exact approved cards and refresh status fo
   const authenticate = createPrimaryAuthenticator({
     issuer, audience, keys: publicKey, databaseConfigured: () => true,
   });
-  const card = { explicitChoice: true, templateCategory: 'calm', aspiration: 'Calm',
+  const card = { explicitChoice: true, aspiration: 'Calm',
     anchor: 'After tea', behavior: 'One breath', celebration: 'Smile', species: 'Fern' };
   for (const channel of ['link', 'email', 'qr', 'native']) {
     const h = harness({ roles: [] });
@@ -692,6 +692,12 @@ test('signed customer requests create exact approved cards and refresh status fo
     assert.deepEqual(status.rewards, []);
     assert.equal([...h.documents.values()].filter(row => row.type === 'invitation_secret').length, 1);
     assert.equal([...h.documents.values()].filter(row => row.type === 'invitation_code').length, 1);
+    const accepted = (await friendHandlers(h).redeemInvitation(request('POST', {
+      requestId: randomUUID(), token: created.token,
+    }))).jsonBody;
+    assert.deepEqual(accepted.recipeCard, card);
+    assert.equal(Object.hasOwn(accepted.recipeCard, 'templateCategory'), false);
+    assert.equal(accepted.channel, channel);
   }
 });
 

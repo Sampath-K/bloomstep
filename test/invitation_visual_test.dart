@@ -258,19 +258,29 @@ void main() {
       await tester.tap(find.text('Copy link'));
       await waitInvitation(
         tester,
-        find.text(invitationErrorMessage(const InvitationFailure(
-          InvitationFailureKind.backend,
-          InvitationPhase.creation,
-          httpStatus: 503,
-        ))),
+        find.text(
+          invitationErrorMessage(
+            const InvitationFailure(
+              InvitationFailureKind.backend,
+              InvitationPhase.creation,
+              httpStatus: 503,
+            ),
+            includeSupportCode: false,
+          ),
+        ),
       );
       await tester.pumpAndSettle();
       await tester.ensureVisible(
-        find.text(invitationErrorMessage(const InvitationFailure(
-          InvitationFailureKind.backend,
-          InvitationPhase.creation,
-          httpStatus: 503,
-        ))),
+        find.text(
+          invitationErrorMessage(
+            const InvitationFailure(
+              InvitationFailureKind.backend,
+              InvitationPhase.creation,
+              httpStatus: 503,
+            ),
+            includeSupportCode: false,
+          ),
+        ),
       );
       await captureVisual(tester, key, 'invite-${variant.name}-failure');
       expect(find.text('Link copied'), findsNothing);
@@ -355,14 +365,22 @@ void main() {
       await tester.tap(find.text('Copy link'));
       await waitInvitation(
         tester,
-        find.text(invitationErrorMessage(
-          StateError('synthetic clipboard'),
-          phase: InvitationPhase.handoff,
-        )),
+        find.text(
+          invitationErrorMessage(
+            StateError('synthetic clipboard'),
+            phase: InvitationPhase.handoff,
+            includeSupportCode: false,
+          ),
+        ),
       );
       await tester.pumpAndSettle();
       expect(find.text('Link copied'), findsNothing);
-      expect(find.byType(SelectableText), findsNothing);
+      expect(
+        tester.widget<SelectableText>(find.byType(SelectableText)).data,
+        'invite-handoff-unknown',
+      );
+      expect(find.text('Copy support info'), findsOneWidget);
+      expect(find.textContaining('https://synthetic.example/'), findsNothing);
       expect(requests, createdRequests);
       await tester.sendKeyEvent(LogicalKeyboardKey.escape);
       await tester.pumpAndSettle();

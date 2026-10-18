@@ -25,6 +25,63 @@ void main() {
     clock: () => now,
   );
 
+  test('category-free approved recipes and legacy category cards keep distinct exact cached snapshots', () async {
+    final card = <String, dynamic>{
+      'explicitChoice': true,
+      'aspiration': 'Calm',
+      'anchor': 'After tea',
+      'behavior': 'One breath',
+      'celebration': 'Smile',
+      'species': 'Fern',
+    };
+    var requests = 0;
+    final api = service(
+      MockClient((request) async {
+        requests++;
+        final body = jsonDecode(request.body) as Map;
+        return http.Response(
+          jsonEncode({
+            'invitationId': body['requestId'],
+            'token': token,
+            'channel': body['channel'],
+            'recipeCard': body['recipeCard'],
+            'expiresAt': now.add(const Duration(days: 7)).toIso8601String(),
+          }),
+          200,
+        );
+      }),
+    );
+    final plain = await api.create('email', recipeCard: card);
+    expect(plain.recipeCard, card);
+    expect(plain.recipeCard!.containsKey('templateCategory'), isFalse);
+    final legacy = {...card, 'templateCategory': 'calm'};
+    expect((await api.create('email', recipeCard: legacy)).recipeCard, legacy);
+    expect((await api.create('email', recipeCard: card)).cached, isTrue);
+    expect((await api.create('email', recipeCard: legacy)).cached, isTrue);
+    expect(requests, 2);
+    final raw = await store.setting('invitationState');
+    for (final invalid in [
+      {...card, 'templateCategory': null},
+      {...card, 'templateCategory': 'inferred'},
+      {...card, 'explicitChoice': false},
+      {...card, 'habitId': 'private'},
+      {...card}..remove('behavior'),
+    ]) {
+      await expectLater(
+        api.create('qr', recipeCard: invalid),
+        throwsA(
+          isA<InvitationFailure>().having(
+            (e) => e.kind,
+            'kind',
+            InvitationFailureKind.invalidRequest,
+          ),
+        ),
+      );
+    }
+    expect(await store.setting('invitationState'), raw);
+    expect(requests, 2);
+  });
+
   test('create persists identical retry IDs, custom auth and offline existing links', () async {
     final requests = <Map<String, dynamic>>[];
     var fail = true;
@@ -338,55 +395,80 @@ void main() {
     },
   );
 
-  test('HTTP failures expose only typed phase/status and retain retry history', () async {
-    final cases = {
-      400: InvitationFailureKind.invalidRequest,
-      401: InvitationFailureKind.authentication,
-      403: InvitationFailureKind.permission,
-      409: InvitationFailureKind.conflict,
-      410: InvitationFailureKind.expired,
-      429: InvitationFailureKind.limit,
-      500: InvitationFailureKind.backend,
-      503: InvitationFailureKind.backend,
-    };
-    final payloads = <Map>[];
-    final card = {
-      'explicitChoice': true,
-      'templateCategory': 'calm',
-      'aspiration': 'Calm',
-      'anchor': 'After tea',
-      'behavior': 'One breath',
-      'celebration': 'Smile',
-      'species': 'Fern',
-    };
-    var status = 503;
-    final api = service(MockClient((request) async {
-      if (request.method == 'POST') payloads.add(jsonDecode(request.body) as Map);
-      return http.Response('private-server-body-token-account-id', status);
-    }));
-    for (final entry in cases.entries) {
-      status = entry.key;
-      for (final phase in [InvitationPhase.creation, InvitationPhase.status]) {
-        await expectLater(
-          phase == InvitationPhase.creation
-              ? api.create('link', recipeCard: card)
-              : api.refreshStatus(),
-          throwsA(isA<InvitationFailure>()
-              .having((e) => e.kind, 'kind', entry.value)
-              .having((e) => e.phase, 'phase', phase)
-              .having((e) => e.httpStatus, 'httpStatus', status)
-              .having((e) => e.toString(), 'safe copy',
-                  isNot(contains('private-server-body')))),
-        );
+  test(
+    'HTTP failures expose only typed phase/status and retain retry history',
+    () async {
+      final cases = {
+        400: InvitationFailureKind.invalidRequest,
+        401: InvitationFailureKind.authentication,
+        403: InvitationFailureKind.permission,
+        409: InvitationFailureKind.conflict,
+        410: InvitationFailureKind.expired,
+        429: InvitationFailureKind.limit,
+        500: InvitationFailureKind.backend,
+        503: InvitationFailureKind.backend,
+      };
+      final payloads = <Map>[];
+      final card = {
+        'explicitChoice': true,
+        'templateCategory': 'calm',
+        'aspiration': 'Calm',
+        'anchor': 'After tea',
+        'behavior': 'One breath',
+        'celebration': 'Smile',
+        'species': 'Fern',
+      };
+      var status = 503;
+      final api = service(
+        MockClient((request) async {
+          if (request.method == 'POST')
+            payloads.add(jsonDecode(request.body) as Map);
+          return http.Response('private-server-body-token-account-id', status);
+        }),
+      );
+      for (final entry in cases.entries) {
+        status = entry.key;
+        for (final phase in [
+          InvitationPhase.creation,
+          InvitationPhase.status,
+        ]) {
+          await expectLater(
+            phase == InvitationPhase.creation
+                ? api.create('link', recipeCard: card)
+                : api.refreshStatus(),
+            throwsA(
+              isA<InvitationFailure>()
+                  .having((e) => e.kind, 'kind', entry.value)
+                  .having((e) => e.phase, 'phase', phase)
+                  .having((e) => e.httpStatus, 'httpStatus', status)
+                  .having(
+                    (e) => e.toString(),
+                    'safe copy',
+                    isNot(contains('private-server-body')),
+                  ),
+            ),
+          );
+        }
       }
-    }
-    expect(payloads.every((body) => body['requestId'] == payloads.first['requestId']), isTrue);
-    expect(payloads.every((body) => jsonEncode(body['recipeCard']) == jsonEncode(card)), isTrue);
-    final history = jsonDecode((await store.setting('invitationState'))!) as Map;
-    expect(history['creations'], hasLength(1));
-    expect(history['creations'][0]['receipt'], isNull);
-    expect(await api.cachedStatus(), isNull);
-  });
+      expect(
+        payloads.every(
+          (body) => body['requestId'] == payloads.first['requestId'],
+        ),
+        isTrue,
+      );
+      expect(
+        payloads.every(
+          (body) => jsonEncode(body['recipeCard']) == jsonEncode(card),
+        ),
+        isTrue,
+      );
+      final history =
+          jsonDecode((await store.setting('invitationState'))!) as Map;
+      expect(history['creations'], hasLength(1));
+      expect(history['creations'][0]['receipt'], isNull);
+      expect(await api.cachedStatus(), isNull);
+    },
+  );
 
   test('invalid configuration and unverifiable response are not backend or handoff failures', () async {
     final unconfigured = InvitationService(
@@ -394,14 +476,32 @@ void main() {
       origin: '',
       tokenProvider: () async => 'synthetic',
     );
-    await expectLater(unconfigured.refreshStatus(),
-        throwsA(isA<InvitationFailure>().having(
-            (e) => e.kind, 'kind', InvitationFailureKind.configuration)));
-    final invalid = service(MockClient((_) async =>
-        http.Response('{"private":"not an invitation status"}', 200)));
-    await expectLater(invalid.refreshStatus(),
-        throwsA(isA<InvitationFailure>().having(
-            (e) => e.kind, 'kind', InvitationFailureKind.invalidResponse)));
+    await expectLater(
+      unconfigured.refreshStatus(),
+      throwsA(
+        isA<InvitationFailure>().having(
+          (e) => e.kind,
+          'kind',
+          InvitationFailureKind.configuration,
+        ),
+      ),
+    );
+    final invalid = service(
+      MockClient(
+        (_) async =>
+            http.Response('{"private":"not an invitation status"}', 200),
+      ),
+    );
+    await expectLater(
+      invalid.refreshStatus(),
+      throwsA(
+        isA<InvitationFailure>().having(
+          (e) => e.kind,
+          'kind',
+          InvitationFailureKind.invalidResponse,
+        ),
+      ),
+    );
     expect(await invalid.cachedStatus(), isNull);
   });
 
@@ -411,14 +511,31 @@ void main() {
       tokenProvider: () async => throw StateError('private-token'),
       origin: 'https://approved.example',
     );
-    await expectLater(authentication.refreshStatus(),
-        throwsA(isA<InvitationFailure>().having(
-            (e) => e.kind, 'kind', InvitationFailureKind.authentication)));
-    final offline = service(MockClient((_) async =>
-        throw http.ClientException('private-url-and-token')));
-    await expectLater(offline.refreshStatus(),
-        throwsA(isA<InvitationFailure>().having(
-            (e) => e.kind, 'kind', InvitationFailureKind.network)));
+    await expectLater(
+      authentication.refreshStatus(),
+      throwsA(
+        isA<InvitationFailure>().having(
+          (e) => e.kind,
+          'kind',
+          InvitationFailureKind.authentication,
+        ),
+      ),
+    );
+    final offline = service(
+      MockClient(
+        (_) async => throw http.ClientException('private-url-and-token'),
+      ),
+    );
+    await expectLater(
+      offline.refreshStatus(),
+      throwsA(
+        isA<InvitationFailure>().having(
+          (e) => e.kind,
+          'kind',
+          InvitationFailureKind.network,
+        ),
+      ),
+    );
     final switched = InvitationService(
       store,
       tokenProvider: () async {
@@ -427,15 +544,31 @@ void main() {
       },
       origin: 'https://approved.example',
     );
-    await expectLater(switched.refreshStatus(),
-        throwsA(isA<InvitationFailure>().having(
-            (e) => e.kind, 'kind', InvitationFailureKind.session)));
+    await expectLater(
+      switched.refreshStatus(),
+      throwsA(
+        isA<InvitationFailure>().having(
+          (e) => e.kind,
+          'kind',
+          InvitationFailureKind.session,
+        ),
+      ),
+    );
     await store.setSetting('invitationState', '{private damaged history');
-    await expectLater(offline.create('qr'),
-        throwsA(isA<InvitationFailure>().having(
-            (e) => e.kind, 'kind', InvitationFailureKind.cache)));
+    await expectLater(
+      offline.create('qr'),
+      throwsA(
+        isA<InvitationFailure>().having(
+          (e) => e.kind,
+          'kind',
+          InvitationFailureKind.cache,
+        ),
+      ),
+    );
     expect(await store.setting('invitationState'), '{private damaged history');
-    expect(invitationErrorMessage(StateError('secret')),
-        isNot(contains('secret')));
+    expect(
+      invitationErrorMessage(StateError('secret')),
+      isNot(contains('secret')),
+    );
   });
 }

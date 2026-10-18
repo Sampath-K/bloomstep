@@ -48,27 +48,20 @@ class InvitationFailure implements Exception {
       'Invitation sign-in could not be verified. Reconnect or sign in again.',
     InvitationFailureKind.permission =>
       'This account is not authorized for invitations. Contact support.',
-    InvitationFailureKind.session =>
-      'The signed-in garden changed. Reopen invitations in your current garden.',
-    InvitationFailureKind.cache =>
-      'Private invitation history could not be read or saved. Do not clear it; contact support.',
-    InvitationFailureKind.network =>
-      'The invitation service could not be reached. Check your connection and retry.',
-    InvitationFailureKind.conflict =>
-      'The invitation request conflicts with server state. Retry the same action; if it persists, contact support.',
-    InvitationFailureKind.expired =>
-      'This invitation or its account data is no longer available. Check its expiry before retrying.',
-    InvitationFailureKind.limit =>
-      'An invitation or preview request limit was reached. Wait before retrying; contact support if it persists.',
-    InvitationFailureKind.invalidRequest =>
-      'The invitation details were not accepted. Review the approved recipe card before retrying.',
-    InvitationFailureKind.invalidResponse =>
-      'The invitation response could not be verified. Retry the same action; contact support if it persists.',
+    InvitationFailureKind.session => 'The signed-in garden changed. Reopen invitations in your current garden.',
+    InvitationFailureKind.cache => 'Private invitation history could not be read or saved. Do not clear it; contact support.',
+    InvitationFailureKind.network => 'The invitation service could not be reached. Check your connection and retry.',
+    InvitationFailureKind.conflict => 'The invitation request conflicts with server state. Retry the same action; if it persists, contact support.',
+    InvitationFailureKind.expired => 'This invitation or its account data is no longer available. Check its expiry before retrying.',
+    InvitationFailureKind.limit => 'An invitation or preview request limit was reached. Wait before retrying; contact support if it persists.',
+    InvitationFailureKind.invalidRequest => 'The invitation details were not accepted. Review the approved recipe card before retrying.',
+    InvitationFailureKind.invalidResponse => 'The invitation response could not be verified. Retry the same action; contact support if it persists.',
     InvitationFailureKind.configuration =>
       'The invitation connection is not configured. Contact support.',
-    InvitationFailureKind.unknown => phase == InvitationPhase.handoff
-        ? 'An invitation is ready, but the sharing app or clipboard could not be opened. Retry or choose another sharing method.'
-        : 'The invitation action could not be completed. Retry the same action; contact support if it persists.',
+    InvitationFailureKind.unknown =>
+      phase == InvitationPhase.handoff
+          ? 'An invitation is ready, but the sharing app or clipboard could not be opened. Retry or choose another sharing method.'
+          : 'The invitation action could not be completed. Retry the same action; contact support if it persists.',
   };
 
   // Only bounded categories and an HTTP status are exposed, never response data.
@@ -82,10 +75,13 @@ class InvitationFailure implements Exception {
 String invitationErrorMessage(
   Object error, {
   InvitationPhase phase = InvitationPhase.creation,
-}) => (error is InvitationFailure
-        ? error
-        : InvitationFailure(InvitationFailureKind.unknown, phase))
-    .toString();
+  bool includeSupportCode = true,
+}) {
+  final failure = error is InvitationFailure
+      ? error
+      : InvitationFailure(InvitationFailureKind.unknown, phase);
+  return includeSupportCode ? failure.toString() : failure.message;
+}
 
 void validateRecipeCard(Map<String, dynamic> card) {
   if (card.keys.toSet().difference({
@@ -97,9 +93,10 @@ void validateRecipeCard(Map<String, dynamic> card) {
         'celebration',
         'species',
       }).isNotEmpty ||
-      card.length != 7 ||
+      card.length != (card.containsKey('templateCategory') ? 7 : 6) ||
       card['explicitChoice'] != true ||
-      !invitationCategories.contains(card['templateCategory']) ||
+      (card.containsKey('templateCategory') &&
+          !invitationCategories.contains(card['templateCategory'])) ||
       !{'Cosmos', 'Sunflower', 'Fern'}.contains(card['species'])) {
     throw const FormatException('Approve the complete recipe card explicitly.');
   }
@@ -392,13 +389,9 @@ class InvitationService {
     }
     final transport = client ?? http.Client();
     try {
-      final request =
-          http.Request(
-              body == null ? 'GET' : 'POST',
-              endpoint,
-            )
-            ..followRedirects = false
-            ..headers['X-Bloomstep-Authorization'] = 'Bearer $token';
+      final request = http.Request(body == null ? 'GET' : 'POST', endpoint)
+        ..followRedirects = false
+        ..headers['X-Bloomstep-Authorization'] = 'Bearer $token';
       if (body != null) {
         request.headers['Content-Type'] = 'application/json';
         request.body = jsonEncode(body);

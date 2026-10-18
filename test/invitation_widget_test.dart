@@ -67,74 +67,177 @@ void main() {
   final token = base64Url
       .encode(List<int>.generate(32, (i) => i))
       .replaceAll('=', '');
-  testWidgets('service rejection and native handoff failure show distinct safe retry errors', (tester) async {
-    final store = (await tester.runAsync(
-      () => GardenStore.open(':memory:', 'synthetic-failure-ui'),
-    ))!;
-    addTearDown(() => tester.runAsync(store.close));
-    var status = 503;
-    var requests = 0;
-    final service = InvitationService(
-      store,
-      tokenProvider: () async => 'synthetic',
-      origin: 'https://approved.example',
-      client: MockClient((request) async {
-        requests++;
-        final body = jsonDecode(request.body) as Map;
-        return http.Response(status == 200 ? jsonEncode({
-          'invitationId': body['requestId'],
-          'token': token,
-          'channel': body['channel'],
-          'recipeCard': body['recipeCard'],
-          'expiresAt': DateTime.now().toUtc()
-              .add(const Duration(days: 7)).toIso8601String(),
-        }) : 'private server details', status);
-      }),
-    );
-    const bridge = MethodChannel('bloomstep/native_share');
-    TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
-        .setMockMethodCallHandler(bridge, (_) async {
-          throw PlatformException(code: 'private', message: 'private platform details');
-        });
-    addTearDown(() => TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
-        .setMockMethodCallHandler(bridge, null));
-    await tester.pumpWidget(MaterialApp(home: Builder(builder: (context) =>
-      TextButton(onPressed: () => showDialog<void>(
-        context: context,
-        builder: (_) => InvitationDialog(
-          store: store, service: service, hasRecipes: false,
-          chooseCard: () async => null,
+  testWidgets(
+    'service rejection and native handoff failure show distinct safe retry errors',
+    (tester) async {
+      final store = (await tester.runAsync(
+        () => GardenStore.open(':memory:', 'synthetic-failure-ui'),
+      ))!;
+      addTearDown(() => tester.runAsync(store.close));
+      var status = 503;
+      var requests = 0;
+      final card = <String, dynamic>{
+        'explicitChoice': true,
+        'aspiration': 'My chosen calm recipe',
+        'anchor': 'After tea',
+        'behavior': 'One breath',
+        'celebration': 'Smile',
+        'species': 'Fern',
+      };
+      String? copiedSupport;
+      tester.binding.defaultBinaryMessenger.setMockMethodCallHandler(
+        SystemChannels.platform,
+        (call) async {
+          if (call.method == 'Clipboard.setData') {
+            copiedSupport = (call.arguments as Map)['text'] as String;
+          }
+          return null;
+        },
+      );
+      addTearDown(
+        () => tester.binding.defaultBinaryMessenger.setMockMethodCallHandler(
+          SystemChannels.platform,
+          null,
         ),
-      ), child: const Text('Open invitation')),
-    )));
-    await tester.tap(find.text('Open invitation'));
-    await tester.pumpAndSettle();
-    await tester.tap(find.text('Copy link'));
-    final backendError = invitationErrorMessage(const InvitationFailure(
-      InvitationFailureKind.backend, InvitationPhase.creation, httpStatus: 503,
-    ));
-    await waitInvitation(tester, find.text(backendError));
-    expect(requests, 1);
-    expect(find.textContaining('private'), findsNothing);
-    status = 200;
-    await tester.ensureVisible(find.text('More ways to invite'));
-    await tester.tap(find.text('More ways to invite'));
-    await tester.pumpAndSettle();
-    await tester.ensureVisible(find.text('Windows share'));
-    await tester.tap(find.text('Windows share'));
-    final handoffError = invitationErrorMessage(
-      StateError('ignored'), phase: InvitationPhase.handoff,
-    );
-    await waitInvitation(tester, find.text(handoffError));
-    expect(find.text('Windows share panel requested'), findsNothing);
-    expect(requests, 2);
-    await tester.ensureVisible(find.text('Windows share'));
-    await tester.tap(find.text('Windows share'));
-    await waitInvitation(tester, find.text(handoffError));
-    expect(requests, 2, reason: 'Retry reuses the server receipt after handoff failure.');
-    expect(find.textContaining('private platform'), findsNothing);
-    await tester.pumpWidget(const SizedBox.shrink());
-  });
+      );
+      final service = InvitationService(
+        store,
+        tokenProvider: () async => 'synthetic',
+        origin: 'https://approved.example',
+        client: MockClient((request) async {
+          requests++;
+          final body = jsonDecode(request.body) as Map;
+          expect(body['recipeCard'], card);
+          expect(
+            (body['recipeCard'] as Map).containsKey('templateCategory'),
+            isFalse,
+          );
+          return http.Response(
+            status == 200
+                ? jsonEncode({
+                    'invitationId': body['requestId'],
+                    'token': token,
+                    'channel': body['channel'],
+                    'recipeCard': body['recipeCard'],
+                    'expiresAt': DateTime.now()
+                        .toUtc()
+                        .add(const Duration(days: 7))
+                        .toIso8601String(),
+                  })
+                : 'private server details',
+            status,
+          );
+        }),
+      );
+      const bridge = MethodChannel('bloomstep/native_share');
+      TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+          .setMockMethodCallHandler(bridge, (_) async {
+            throw PlatformException(
+              code: 'private',
+              message: 'private platform details',
+            );
+          });
+      addTearDown(
+        () => TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+            .setMockMethodCallHandler(bridge, null),
+      );
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Builder(
+            builder: (context) => TextButton(
+              onPressed: () => showDialog<void>(
+                context: context,
+                builder: (_) => InvitationDialog(
+                  store: store,
+                  service: service,
+                  hasRecipes: true,
+                  chooseCard: () async => card,
+                ),
+              ),
+              child: const Text('Open invitation'),
+            ),
+          ),
+        ),
+      );
+      await tester.tap(find.text('Open invitation'));
+      await tester.pumpAndSettle();
+      await tester.ensureVisible(find.text('Include a recipe? Optional'));
+      await tester.tap(find.text('Include a recipe? Optional'));
+      await tester.pumpAndSettle();
+      await tester.ensureVisible(find.text('Choose and approve a recipe card'));
+      await tester.tap(find.text('Choose and approve a recipe card'));
+      await tester.pumpAndSettle();
+      expect(find.text('Chosen recipe: My chosen calm recipe'), findsOneWidget);
+      expect(
+        find.text(
+          'Your chosen recipe is included in the link for email, QR and Windows share.',
+        ),
+        findsOneWidget,
+      );
+      await tester.ensureVisible(find.text('Copy link'));
+      await tester.tap(find.text('Copy link'));
+      final backendError = invitationErrorMessage(
+        const InvitationFailure(
+          InvitationFailureKind.backend,
+          InvitationPhase.creation,
+          httpStatus: 503,
+        ),
+        includeSupportCode: false,
+      );
+      await waitInvitation(tester, find.text(backendError));
+      expect(requests, 1);
+      expect(find.textContaining('private'), findsNothing);
+      expect(find.textContaining('invite-creation-backend'), findsNothing);
+      await tester.ensureVisible(find.text('Privacy and link details'));
+      await tester.tap(find.text('Privacy and link details'));
+      await tester.pumpAndSettle();
+      await tester.ensureVisible(find.text('Copy support info'));
+      await tester.tap(find.text('Copy support info'));
+      await tester.pumpAndSettle();
+      expect(copiedSupport, 'invite-creation-backend-http503');
+      expect(copiedSupport, isNot(contains(card['aspiration'])));
+      status = 200;
+      await tester.ensureVisible(find.text('More ways to invite'));
+      await tester.tap(find.text('More ways to invite'));
+      await tester.pumpAndSettle();
+      expect(
+        find.text(
+          'The email link includes your chosen recipe. You choose the recipient and send.',
+        ),
+        findsOneWidget,
+      );
+      expect(
+        find.text('The QR link includes your chosen recipe.'),
+        findsOneWidget,
+      );
+      expect(
+        find.text(
+          'The shared link includes your chosen recipe. Choose an app and where to share.',
+        ),
+        findsOneWidget,
+      );
+      await tester.ensureVisible(find.text('Windows share'));
+      await tester.tap(find.text('Windows share'));
+      final handoffError = invitationErrorMessage(
+        StateError('ignored'),
+        phase: InvitationPhase.handoff,
+        includeSupportCode: false,
+      );
+      await waitInvitation(tester, find.text(handoffError));
+      expect(find.text('Windows share panel requested'), findsNothing);
+      expect(requests, 2);
+      await tester.ensureVisible(find.text('Windows share'));
+      await tester.tap(find.text('Windows share'));
+      await waitInvitation(tester, find.text(handoffError));
+      expect(
+        requests,
+        2,
+        reason: 'Retry reuses the server receipt after handoff failure.',
+      );
+      expect(find.textContaining('private platform'), findsNothing);
+      await tester.pumpWidget(const SizedBox.shrink());
+    },
+  );
 
   testWidgets('visual invitation contract: quiet, private and dismissible', (
     tester,
@@ -485,20 +588,35 @@ void main() {
       await tester.tap(find.text('Accept invitation'));
       await waitInvitation(
         tester,
-        find.text('Rare flower — server-granted cosmetic'),
+        find.text('Review shared recipe before planting'),
       );
       expect(redeemed, 1);
       expect((await tester.runAsync(store.habits))!, isEmpty);
-      expect(find.text('Refresh invitation status'), findsOneWidget);
+      await tester.tap(find.byTooltip('Settings and privacy'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Garden & data'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Invitation status'));
+      await tester.pumpAndSettle();
+      expect(
+        find.text('Rare flower — server-granted cosmetic'),
+        findsOneWidget,
+      );
       expect(find.text('Refresh invitation receipts'), findsNothing);
       expect(find.text('Invitation status'), findsOneWidget);
       expect(find.text('Private invitation receipts'), findsNothing);
       expect(statusRequests, 1);
+      await tester.tap(find.text('Garden & data'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('App & support'));
+      await tester.pumpAndSettle();
       await tester.tap(find.text('Refresh invitation status'));
       await waitInvitationCondition(tester, () => statusRequests == 2);
       expect(statusRequests, 2);
       await tester.pumpAndSettle();
       await captureVisual(tester, boundary, 'incoming-accepted-cosmetic');
+      await tester.tap(find.text('Done'));
+      await tester.pumpAndSettle();
       await tester.tap(find.text('Review shared recipe before planting'));
       await waitInvitation(tester, find.text('Open recipe builder'));
       expect(find.textContaining('After I tea'), findsOneWidget);
