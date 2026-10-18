@@ -53,6 +53,17 @@ test('ci.yml (registered on the default branch) dispatches functional acceptance
   assert.doesNotMatch(job, /secrets: inherit|contents: write/);
   for (const name of ['api', 'funnel-composed-acceptance', 'test-and-build-windows', 'edge-download-observation']) {
     const ifLine = ci.match(new RegExp('\\n  ' + name + ':\\n(?:    (?!if:).*\\n)*    if: (.*)\\n'))?.[1] ?? '';
-    assert.match(ifLine, /inputs\.functional_mode == 'none'/, name);
+    assert.match(ifLine, /inputs\.functional_mode == 'none' && !inputs\.export_installer_art/, name);
   }
+});
+
+test('ci.yml exposes an exclusive opt-in real PlantArt export that uploads unmodified outputs and commits nothing', () => {
+  const ci = readFileSync(new URL('../.github/workflows/ci.yml', import.meta.url), 'utf8').replace(/\r\n/g, '\n');
+  const job = ci.match(/\n  installer-art-export:\n((?:    .*\n)+)/)?.[1] ?? '';
+  assert.match(job, /if: github\.event_name == 'workflow_dispatch' && inputs\.export_installer_art && inputs\.functional_mode == 'none'/);
+  assert.match(job, /BLOOMSTEP_EXPORT_INSTALLER_ART: 'true'/);
+  assert.match(job, /flutter test tool\/installer_art_export_test\.dart/);
+  assert.match(job, /node tool\/generate_installer_art\.mjs --check/);
+  for (const f of ['welcome-steps.bmp', 'welcome-garden.bmp', 'education-art-provenance.json']) assert.ok(job.includes('packaging/assets/' + f), f);
+  assert.doesNotMatch(job, /contents: write|git (commit|push)|secrets\./);
 });

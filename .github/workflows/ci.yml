@@ -40,6 +40,10 @@ on:
       functional_installer_sha256:
         description: 'Functional acceptance: expected installer SHA-256'
         default: ''
+      export_installer_art:
+        description: 'Run only the opt-in real PlantArt installer-art export (uploads regenerated welcome BMPs + provenance; commits nothing)'
+        type: boolean
+        default: false
 
 jobs:
   functional-acceptance:
@@ -54,8 +58,50 @@ jobs:
       artifact_id: ${{ inputs.functional_artifact_id }}
       installer_sha256: ${{ inputs.functional_installer_sha256 }}
       mode: ${{ inputs.functional_mode }}
+  installer-art-export:
+    if: github.event_name == 'workflow_dispatch' && inputs.export_installer_art && inputs.functional_mode == 'none'
+    runs-on: windows-latest
+    timeout-minutes: 45
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          flutter-version: '3.47.6'
+          architecture: x64
+          cache: true
+      - run: flutter pub get
+      - name: Render real PlantArt installer illustrations (explicit opt-in)
+        shell: pwsh
+        env:
+          BLOOMSTEP_EXPORT_INSTALLER_ART: 'true'
+        run: |
+          flutter test tool/installer_art_export_test.dart
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+      - name: Validate regenerated provenance against rendered bytes
+        shell: pwsh
+        run: |
+          node tool/generate_installer_art.mjs --check
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          git status --porcelain -- packaging/assets
+          Get-FileHash packaging/assets/welcome-steps.bmp, packaging/assets/welcome-garden.bmp, packaging/assets/education-art-provenance.json -Algorithm SHA256 | Format-Table -AutoSize | Out-String -Width 300
+      - name: Upload the three unmodified rendered outputs
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: installer-art-export-${{ github.sha }}
+          if-no-files-found: error
+          path: |
+            packaging/assets/welcome-steps.bmp
+            packaging/assets/welcome-garden.bmp
+            packaging/assets/education-art-provenance.json
   edge-download-observation:
-    if: github.event_name == 'workflow_dispatch' && inputs.verify_edge_warning && !inputs.verify_aggregates && !inputs.verify_spend_guard && inputs.functional_mode == 'none'
+    if: github.event_name == 'workflow_dispatch' && inputs.verify_edge_warning && !inputs.verify_aggregates && !inputs.verify_spend_guard && inputs.functional_mode == 'none' && !inputs.export_installer_art
     runs-on: windows-latest
     steps:
       - uses: actions/checkout@v4
@@ -89,7 +135,7 @@ jobs:
       id-token: write
     uses: ./.github/workflows/aggregates.yml
   api:
-    if: github.event_name != 'workflow_dispatch' || (!inputs.verify_aggregates && !inputs.verify_spend_guard && !inputs.verify_edge_warning && inputs.functional_mode == 'none')
+    if: github.event_name != 'workflow_dispatch' || (!inputs.verify_aggregates && !inputs.verify_spend_guard && !inputs.verify_edge_warning && inputs.functional_mode == 'none' && !inputs.export_installer_art)
     runs-on: ubuntu-latest
     defaults:
       run:
@@ -132,7 +178,7 @@ jobs:
           if-no-files-found: warn
   funnel-composed-acceptance:
     name: 'funnel composed acceptance: telemetry + AARRR + experiment loop (isolated synthetic; installer excluded)'
-    if: github.event_name != 'workflow_dispatch' || (!inputs.verify_aggregates && !inputs.verify_spend_guard && !inputs.verify_edge_warning && inputs.functional_mode == 'none')
+    if: github.event_name != 'workflow_dispatch' || (!inputs.verify_aggregates && !inputs.verify_spend_guard && !inputs.verify_edge_warning && inputs.functional_mode == 'none' && !inputs.export_installer_art)
     runs-on: windows-latest
     timeout-minutes: 60
     steps:
@@ -172,7 +218,7 @@ jobs:
           path: ${{ runner.temp }}/console-preview/
           if-no-files-found: warn
   test-and-build-windows:
-    if: github.event_name != 'workflow_dispatch' || (!inputs.verify_aggregates && !inputs.verify_spend_guard && !inputs.verify_edge_warning && inputs.functional_mode == 'none')
+    if: github.event_name != 'workflow_dispatch' || (!inputs.verify_aggregates && !inputs.verify_spend_guard && !inputs.verify_edge_warning && inputs.functional_mode == 'none' && !inputs.export_installer_art)
     strategy:
       fail-fast: false
       matrix:
