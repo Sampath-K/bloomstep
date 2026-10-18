@@ -225,7 +225,9 @@ export function verifyOwnerStatement({ trial, comment, repository, owner }) {
   o(nonEmpty(owner) && comment.user?.login === owner && comment.user?.type === 'User' && comment.author_association === 'OWNER',
     'comment is not authored by the repository owner');
   o(trial.by === owner, 'record attributes the trial to someone other than the owner');
-  o(!comment.updated_at || !comment.created_at || comment.updated_at === comment.created_at, 'comment was edited after posting');
+  const ts = (v) => typeof v === 'string' && /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(\.\d+)?Z$/.test(v) && !Number.isNaN(Date.parse(v));
+  o(ts(comment.created_at) && ts(comment.updated_at), 'comment must carry valid created_at and updated_at');
+  o(comment.updated_at === comment.created_at, 'comment was edited after posting');
   const body = comment.body ?? '';
   o(body.includes(trial.candidateCommit) && body.includes(trial.installerSha256), 'comment must name the exact candidate commit and installer SHA-256');
   o(/\bPASS\b/.test(body) && !/\bFAIL\b/i.test(body), 'comment must state PASS and no FAIL');

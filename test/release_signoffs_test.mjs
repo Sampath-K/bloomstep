@@ -304,6 +304,7 @@ test('QA-1: owner trial reference must resolve to an owner-authored comment in t
   const trial = { candidateCommit: CANDIDATE, installerSha256: SHA, result: 'PASS', by: 'Sampath-K',
     reference: 'https://github.com/Sampath-K/bloomstep/pull/52#issuecomment-123' };
   const comment = { id: 123, html_url: trial.reference, user: { login: 'Sampath-K', type: 'User' }, author_association: 'OWNER',
+    created_at: '2026-10-21T00:00:00Z', updated_at: '2026-10-21T00:00:00Z',
     body: `Installer test PASS for ${CANDIDATE} installer ${SHA}` };
   const args = { trial, comment, repository: 'Sampath-K/bloomstep', owner: 'Sampath-K' };
   assert.equal(verifyOwnerStatement(args).ok, true);
@@ -317,6 +318,9 @@ test('QA-1: owner trial reference must resolve to an owner-authored comment in t
   bad({ comment: { ...comment, body: `PASS for ${CANDIDATE}` } });
   bad({ comment: { ...comment, body: `Installer ${SHA} ${CANDIDATE} FAIL` } });
   bad({ comment: { ...comment, body: `PASS ${SHA} ${CANDIDATE} edited`, updated_at: '2026-10-22T00:00:00Z', created_at: '2026-10-21T00:00:00Z' } });
+  bad({ comment: { ...comment, created_at: undefined } });
+  bad({ comment: { ...comment, updated_at: undefined } });
+  bad({ comment: { ...comment, created_at: 'not-a-date', updated_at: 'not-a-date' } });
 });
 
 test('QA-1: release job authenticates the owner statement via the API before promotion', () => {
