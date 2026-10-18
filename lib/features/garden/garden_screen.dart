@@ -1057,7 +1057,7 @@ class _GardenScreenState extends State<GardenScreen> {
     final owner = widget.store.account;
     final generation = widget.store.syncGeneration;
     try {
-      await showDialog<void>(
+      final route = DialogRoute<void>(
         context: context,
         barrierDismissible: false,
         builder: (context) => StatefulBuilder(
@@ -1176,6 +1176,8 @@ class _GardenScreenState extends State<GardenScreen> {
           ),
         ),
       );
+      await Navigator.of(context).push(route);
+      await route.completed;
     } finally {
       body.dispose();
     }

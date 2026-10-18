@@ -187,4 +187,30 @@ void main() {
       isNull,
     );
   });
+
+  testWidgets('feedback controller survives the closing route transition', (
+    tester,
+  ) async {
+    final (store, _) = await fixture(tester);
+    await tester.pumpWidget(
+      MaterialApp(
+        home: GardenScreen(store: store, testDisableServices: true),
+      ),
+    );
+    await settleDatabase(tester);
+    for (var i = 0; i < 2; i++) {
+      await tester.tap(find.byTooltip('Help us grow'));
+      await tester.pumpAndSettle();
+      final field = find.widgetWithText(TextField, 'Your feedback');
+      expect(tester.widget<TextField>(field).controller!.text, isEmpty);
+      await tester.enterText(field, 'Unsent synthetic feedback');
+      await tester.tap(find.widgetWithText(TextButton, 'Close'));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 50));
+      expect(tester.takeException(), isNull);
+      await tester.pumpAndSettle();
+      expect(tester.takeException(), isNull);
+      expect(find.text('Send feedback'), findsNothing);
+    }
+  });
 }
