@@ -59,8 +59,16 @@ function Assert-NoReparse([string]$Path) {
 }
 function Assert-Defender {
   $status = Get-MpComputerStatus -ErrorAction Stop
+  $result['defender'] = [ordered]@{
+    observedAt = [DateTime]::UtcNow.ToString('yyyy-MM-ddTHH:mm:ssZ')
+    AMServiceEnabled = $status.AMServiceEnabled
+    AntivirusEnabled = $status.AntivirusEnabled
+    RealTimeProtectionEnabled = $status.RealTimeProtectionEnabled
+    AMRunningMode = $status.AMRunningMode
+    AntivirusSignatureVersion = $status.AntivirusSignatureVersion
+  }
   if (!$status.AMServiceEnabled -or !$status.AntivirusEnabled -or !$status.RealTimeProtectionEnabled) {
-    throw 'Defender protection unavailable/disabled; no bypass permitted.'
+    throw "Defender protection unavailable/disabled; no bypass permitted. AMServiceEnabled=$($status.AMServiceEnabled); AntivirusEnabled=$($status.AntivirusEnabled); RealTimeProtectionEnabled=$($status.RealTimeProtectionEnabled); AMRunningMode=$($status.AMRunningMode)"
   }
   $detections = @(Get-MpThreatDetection -ErrorAction Stop)
   foreach ($d in $detections) {

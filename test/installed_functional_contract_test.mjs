@@ -76,6 +76,12 @@ test('interactive UIA and real clipboard chord require owned process, foreground
 
 test('Defender, explicit time bounds, owned cleanup and finally receipts cannot turn failures into acceptance', () => {
   assert.match(source, /Get-MpComputerStatus/);
+  assert.ok(source.indexOf("$result['defender']") < source.indexOf('Defender protection unavailable/disabled'));
+  for (const field of ['AMServiceEnabled', 'AntivirusEnabled', 'RealTimeProtectionEnabled',
+    'AMRunningMode', 'AntivirusSignatureVersion']) {
+    assert.ok(source.includes(`${field} = $status.${field}`), `Missing Defender observation ${field}`);
+  }
+  assert.match(source, /if \(!\$status.AMServiceEnabled -or !\$status.AntivirusEnabled -or !\$status.RealTimeProtectionEnabled\)/);
   assert.match(source, /Get-MpThreatDetection/);
   assert.match(source, /Defender detection.*hard failure/);
   assert.match(source, /Defender final check/);
