@@ -803,6 +803,7 @@ export const eventRegistry = {
       },
       "kind": {
         "enum": [
+          "General",
           "Idea",
           "Bug",
           "Question",
@@ -3127,6 +3128,7 @@ export const eventJsonSchema = {
             "kind": {
               "type": "string",
               "enum": [
+                "General",
                 "Idea",
                 "Bug",
                 "Question",

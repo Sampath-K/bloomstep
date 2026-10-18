@@ -806,6 +806,7 @@ final Map<String, dynamic> eventRegistry = jsonDecode(r'''{
       },
       "kind": {
         "enum": [
+          "General",
           "Idea",
           "Bug",
           "Question",

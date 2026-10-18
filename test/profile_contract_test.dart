@@ -16,6 +16,15 @@ void main() {
     final absent = IdentityProfile.fromClaims({'sub': 'private-subject'});
     expect(absent.displayName, isNull);
     expect(absent.photoUrl, isNull);
+    expect(IdentityProfile.fromClaims({'name': ' Unknown '}).displayName, isNull);
+    expect(
+      IdentityProfile.fromClaims({
+        'name': 'Unknown',
+        'given_name': 'Ada',
+        'family_name': 'Lovelace',
+      }).displayName,
+      'Ada Lovelace',
+    );
     expect(
       IdentityProfile.fromClaims({
         'given_name': 'Ada',
@@ -147,6 +156,30 @@ void main() {
     expect(find.text('Sign out'), findsOneWidget);
     expect(find.byType(Image), findsNothing);
   });
+
+  testWidgets(
+    'placeholder provider name does not appear as an Unknown badge',
+    (tester) async {
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: ProfileSection(
+              signedIn: true,
+              compactSummary: true,
+              profile: IdentityProfile.fromClaims({'name': 'Unknown'}),
+              configured: true,
+              busy: false,
+              onSignIn: () async {},
+              onSignOut: () async {},
+            ),
+          ),
+        ),
+      );
+      expect(find.text('Signed-in account'), findsOneWidget);
+      expect(find.text('Unknown'), findsNothing);
+      expect(find.text('U'), findsNothing);
+    },
+  );
 
   testWidgets(
     'absent name explains the provider gap without invented initials',

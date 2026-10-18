@@ -15,7 +15,7 @@
     "latencyMs": {"type":"number","min":0,"max":86400000},
     "score": {"type":"number","min":1,"max":7},
     "rating": {"type":"integer","min":1,"max":5},
-    "kind": {"enum":["Idea","Bug","Question","Praise","This felt wrong","Rating"]},
+    "kind": {"enum":["General","Idea","Bug","Question","Praise","This felt wrong","Rating"]},
     "action": {"enum":["did","snooze","fewer","off","open"]},
     "experiment": {"enum":["reminder_copy_v1"]},
     "variant": {"enum":["control","gentle"]},

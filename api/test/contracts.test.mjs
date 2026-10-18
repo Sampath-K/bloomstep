@@ -114,6 +114,17 @@ test('rating feedback permits optional text only with a valid rating', () => {
   assert.equal(voiceSchema.safeParse({ ...voice, body: 'x'.repeat(2001) }).success, false);
   assert.equal(voiceSchema.safeParse({ ...voice, status: 'received' }).success, false);
 });
+test('general feedback supports a single text and optional stars submission', () => {
+  const voice = { id: randomUUID(), kind: 'General', body: 'Helpful', rating: 4, ts: new Date().toISOString() };
+  assert.equal(voiceSchema.safeParse(voice).success, true);
+  assert.equal(voiceSchema.safeParse({ ...voice, rating: null }).success, true);
+  assert.equal(voiceSchema.safeParse({ ...voice, body: '' }).success, true);
+  assert.equal(voiceSchema.safeParse({ ...voice, body: '', rating: null }).success, false);
+  for (const rating of [0, 6, 2.5, '5']) {
+    assert.equal(voiceSchema.safeParse({ ...voice, rating }).success, false);
+  }
+  assert.equal(voiceSchema.safeParse({ ...voice, status: 'received' }).success, false);
+});
 test('strict limits and valid local dates preserve sync contract', () => {
   const input = { habits: [], checkins: [], reflections: [], voice: [], events: [] };
   assert.equal(syncSchema.safeParse(input).success, true);

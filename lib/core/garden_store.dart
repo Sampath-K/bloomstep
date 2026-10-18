@@ -1532,8 +1532,9 @@ class GardenStore {
     });
   }
 
-  Future<void> submitVoice(String kind, String body, {int? rating}) async {
+  Future<String> submitVoice(String kind, String body, {int? rating}) async {
     if (![
+          'General',
           'Idea',
           'Bug',
           'Question',
@@ -1541,7 +1542,9 @@ class GardenStore {
           'This felt wrong',
           'Rating',
         ].contains(kind) ||
-        (body.trim().isEmpty && kind != 'Rating') ||
+        (body.trim().isEmpty &&
+            kind != 'Rating' &&
+            !(kind == 'General' && rating != null)) ||
         body.length > 2000 ||
         (kind == 'Rating' && rating == null) ||
         (rating != null && (rating < 1 || rating > 5))) {
@@ -1568,7 +1571,7 @@ class GardenStore {
         'platform': telemetryPlatform,
       },
     );
-    if (kind == 'Rating') {
+    if (kind == 'Rating' || (kind == 'General' && rating != null)) {
       await track(
         'rated',
         properties: {
@@ -1578,6 +1581,7 @@ class GardenStore {
         },
       );
     }
+    return id;
   }
 
   Future<List<Map<String, Object?>>> voice() => _db.query(

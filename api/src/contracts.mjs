@@ -29,9 +29,10 @@ export const reflectionSchema = z.object({
   score: z.number().min(1).max(7), ts: timestamp, recipeRevision,
 }).strict().refine(r => Math.abs(r.items.reduce((a, b) => a + b, 0) / 4 - r.score) < .001);
 export const voiceSchema = z.object({
-  id, kind: z.enum(['Idea', 'Bug', 'Question', 'Praise', 'This felt wrong', 'Rating']),
+  id, kind: z.enum(['General', 'Idea', 'Bug', 'Question', 'Praise', 'This felt wrong', 'Rating']),
   body: z.string().trim().max(2000), rating: z.number().int().min(1).max(5).nullable(), ts: timestamp,
-}).strict().refine(voice => voice.kind === 'Rating' ? voice.rating !== null : voice.body.length > 0,
+}).strict().refine(voice => voice.kind === 'Rating' ? voice.rating !== null :
+  voice.body.length > 0 || (voice.kind === 'General' && voice.rating !== null),
   'Ratings require a score; other feedback requires text.');
 /** @param {any} rule */
 function propertySchema(rule) {

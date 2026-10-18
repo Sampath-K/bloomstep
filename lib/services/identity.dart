@@ -29,8 +29,11 @@ class IdentityProfile {
       text(claims['given_name']),
       text(claims['family_name']),
     ].whereType<String>().join(' ');
+    final name = text(claims['name']);
     return IdentityProfile(
-      displayName: text(claims['name']) ?? (parts.isEmpty ? null : parts),
+      displayName: name != null && name.toLowerCase() != 'unknown'
+          ? name
+          : (parts.isEmpty ? null : parts),
       photoUrl:
           pictureUri != null &&
               pictureUri.scheme == 'https' &&

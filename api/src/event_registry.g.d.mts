@@ -33,7 +33,7 @@ export type TelemetryEvent = { id: string; name: "analytics_consent"; ts: string
   | { id: string; name: "paywall_view"; ts: string; schemaVersion?: 1; properties?: { platform?: "windows" | "macos" | "linux" | "android" | "ios" | "web" } }
   | { id: string; name: "trial_start"; ts: string; schemaVersion?: 1; properties?: { platform?: "windows" | "macos" | "linux" | "android" | "ios" | "web" } }
   | { id: string; name: "purchase"; ts: string; schemaVersion?: 1; properties?: { platform?: "windows" | "macos" | "linux" | "android" | "ios" | "web" } }
-  | { id: string; name: "feedback_submitted"; ts: string; schemaVersion?: 1; properties?: { feedbackId?: string; kind?: "Idea" | "Bug" | "Question" | "Praise" | "This felt wrong" | "Rating"; platform?: "windows" | "macos" | "linux" | "android" | "ios" | "web" } }
+  | { id: string; name: "feedback_submitted"; ts: string; schemaVersion?: 1; properties?: { feedbackId?: string; kind?: "General" | "Idea" | "Bug" | "Question" | "Praise" | "This felt wrong" | "Rating"; platform?: "windows" | "macos" | "linux" | "android" | "ios" | "web" } }
   | { id: string; name: "rating_prompted"; ts: string; schemaVersion?: 1; properties?: { platform?: "windows" | "macos" | "linux" | "android" | "ios" | "web"; localDay?: string } }
   | { id: string; name: "rating_prompt_shown"; ts: string; schemaVersion?: 1; properties?: { platform?: "windows" | "macos" | "linux" | "android" | "ios" | "web"; localDay?: string } }
   | { id: string; name: "rated"; ts: string; schemaVersion?: 1; properties?: { rating?: number; platform?: "windows" | "macos" | "linux" | "android" | "ios" | "web"; localDay?: string } }
