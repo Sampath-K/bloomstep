@@ -2,7 +2,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 
-const wf = readFileSync(new URL('../.github/workflows/functional-acceptance.yml', import.meta.url), 'utf8');
+const wf = readFileSync(new URL('../.github/workflows/functional-acceptance.yml', import.meta.url), 'utf8').replace(/\r\n/g, '\n');
 const runBlocks = [...wf.matchAll(/run: \|\n((?:          .*\n|\n)+)/g)].map((m) => m[1]).join('\n');
 
 test('functional acceptance runs only on demand against an exact artifact on a fresh hosted Windows VM', () => {
