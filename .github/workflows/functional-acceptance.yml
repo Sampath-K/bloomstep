@@ -1,8 +1,9 @@
 name: functional-acceptance
 
 # Owner-trial precondition: run the exact CI-built installer on a fresh GitHub-hosted
-# Windows VM and collect evidence. The harness owns every PASS/FAIL; this workflow
-# only proves identity, installs, and preserves output. See docs/release-governance.md.
+# Windows VM and collect evidence. The harness owns hash check, scoped install, UIA
+# tests, PASS/FAIL and cleanup; this workflow only proves artifact identity and
+# preserves output. See docs/release-governance.md.
 on:
   workflow_dispatch:
     inputs:
@@ -38,54 +39,66 @@ jobs:
     timeout-minutes: 90
     env:
       GH_TOKEN: ${{ github.token }}
-      OUT: ${{ github.workspace }}\functional-output
+      REPO: ${{ github.repository }}
+      IN_CANDIDATE: ${{ inputs.candidate }}
+      IN_RUN_ID: ${{ inputs.run_id }}
+      IN_ARTIFACT_ID: ${{ inputs.artifact_id }}
+      IN_SHA256: ${{ inputs.installer_sha256 }}
+      IN_MODE: ${{ inputs.mode }}
+      RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
     steps:
       - uses: actions/checkout@v4
       - name: Prove artifact identity and download the exact installer
         shell: pwsh
         run: |
           $ErrorActionPreference = 'Stop'
-          if ('${{ inputs.candidate }}' -notmatch '^[0-9a-f]{40}$' -or '${{ inputs.installer_sha256 }}' -notmatch '^[0-9a-f]{64}$' -or '${{ inputs.run_id }}' -notmatch '^[1-9][0-9]*$' -or '${{ inputs.artifact_id }}' -notmatch '^[1-9][0-9]*$') { throw 'malformed inputs' }
-          New-Item -ItemType Directory -Force $env:OUT, installer | Out-Null
-          $meta = gh api "repos/${{ github.repository }}/actions/artifacts/${{ inputs.artifact_id }}" | ConvertFrom-Json
-          if ("$($meta.workflow_run.id)" -ne '${{ inputs.run_id }}') { throw "artifact belongs to run $($meta.workflow_run.id), not ${{ inputs.run_id }}" }
-          if ($meta.workflow_run.head_sha -ne '${{ inputs.candidate }}') { throw "artifact built from $($meta.workflow_run.head_sha), not ${{ inputs.candidate }}" }
+          if ($env:IN_CANDIDATE -cnotmatch '^[0-9a-f]{40}$' -or $env:IN_SHA256 -cnotmatch '^[0-9a-f]{64}$' -or $env:IN_RUN_ID -notmatch '^[1-9][0-9]*$' -or $env:IN_ARTIFACT_ID -notmatch '^[1-9][0-9]*$' -or $env:IN_MODE -notin @('candidate','baseline')) { throw 'malformed inputs' }
+          $out = Join-Path $env:RUNNER_TEMP 'functional-output'
+          $dl = Join-Path $env:RUNNER_TEMP 'installer'
+          $installDir = Join-Path $env:RUNNER_TEMP "budlark-install-$env:GITHUB_RUN_ID"
+          New-Item -ItemType Directory -Force $out, $dl | Out-Null
+          $metaJson = gh api "repos/$env:REPO/actions/artifacts/$env:IN_ARTIFACT_ID"
+          if ($LASTEXITCODE -ne 0) { throw "artifact metadata lookup failed ($LASTEXITCODE)" }
+          $meta = $metaJson | ConvertFrom-Json
+          if ("$($meta.workflow_run.id)" -ne $env:IN_RUN_ID) { throw "artifact belongs to run $($meta.workflow_run.id), not $env:IN_RUN_ID" }
+          if ($meta.workflow_run.head_sha -ne $env:IN_CANDIDATE) { throw "artifact built from $($meta.workflow_run.head_sha), not $env:IN_CANDIDATE" }
           if ($meta.expired) { throw 'artifact expired; rebuild the exact commit' }
-          gh api "repos/${{ github.repository }}/actions/artifacts/${{ inputs.artifact_id }}/zip" > artifact.zip
-          Expand-Archive artifact.zip installer -Force
-          $exe = @(Get-ChildItem installer -Recurse -Filter '*-setup.exe')
+          $zip = Join-Path $env:RUNNER_TEMP 'artifact.zip'
+          gh api "repos/$env:REPO/actions/artifacts/$env:IN_ARTIFACT_ID/zip" > $zip
+          if ($LASTEXITCODE -ne 0) { throw "artifact download failed ($LASTEXITCODE)" }
+          Expand-Archive $zip $dl -Force
+          $exe = @(Get-ChildItem $dl -Recurse -Filter '*-setup.exe')
           if ($exe.Count -ne 1) { throw "expected exactly one installer, found $($exe.Count)" }
           $hash = (Get-FileHash $exe[0].FullName -Algorithm SHA256).Hash.ToLower()
-          if ($hash -ne '${{ inputs.installer_sha256 }}') { throw "installer SHA-256 mismatch: $hash" }
+          if ($hash -ne $env:IN_SHA256) { throw "installer SHA-256 mismatch: $hash" }
+          @{ schema='budlark-functional-identity-v1'; candidate=$env:IN_CANDIDATE; runId=$env:IN_RUN_ID; artifactId=$env:IN_ARTIFACT_ID; installerSha256=$hash; mode=$env:IN_MODE; os=((Get-CimInstance Win32_OperatingSystem).Caption + ' ' + [Environment]::OSVersion.Version); runner=$env:RUNNER_NAME; run=$env:RUN_URL; installDir=$installDir } | ConvertTo-Json | Set-Content (Join-Path $out 'identity.json')
           "INSTALLER=$($exe[0].FullName)" >> $env:GITHUB_ENV
-          @{ candidate='${{ inputs.candidate }}'; runId='${{ inputs.run_id }}'; artifactId='${{ inputs.artifact_id }}'; installerSha256=$hash; mode='${{ inputs.mode }}'; os=(Get-CimInstance Win32_OperatingSystem).Caption + ' ' + [Environment]::OSVersion.Version; runner=$env:RUNNER_NAME; run="${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}" } | ConvertTo-Json | Set-Content "$env:OUT\identity.json"
-      - name: Silent install of the exact bytes
-        shell: pwsh
-        run: |
-          $p = Start-Process $env:INSTALLER -ArgumentList '/VERYSILENT /SUPPRESSMSGBOXES /NORESTART', "/LOG=`"$env:OUT\install.log`"" -Wait -PassThru
-          "install exit $($p.ExitCode)" | Tee-Object "$env:OUT\install-exit.txt"
-          if ($p.ExitCode -ne 0) { exit 1 }
+          "INSTALL_DIR=$installDir" >> $env:GITHUB_ENV
+          "OUT=$out" >> $env:GITHUB_ENV
       - name: Run installed-app acceptance harness
         shell: pwsh
         run: |
-          $harness = 'tool/functional/run_installed_acceptance.ps1'
+          $harness = 'tool/verify_installed_functional.ps1'
           if (-not (Test-Path $harness)) {
-            @{ status='FAIL'; reason='harness-missing'; detail="$harness not present at this commit" } | ConvertTo-Json | Set-Content "$env:OUT\harness-status.json"
+            @{ status='FAIL'; reason='harness-missing'; detail="$harness not present at this commit" } | ConvertTo-Json | Set-Content (Join-Path $env:OUT 'harness-status.json')
             Write-Error 'harness-missing: no acceptance tests were executed'; exit 1
           }
-          & $harness -Mode '${{ inputs.mode }}' -Requirements release/functional-requirements.json -Identity "$env:OUT\identity.json" -Output $env:OUT
+          & $harness -Installer $env:INSTALLER -ExpectedSha256 $env:IN_SHA256 -InstallDir $env:INSTALL_DIR -Mode $env:IN_MODE -Requirements release/functional-requirements.json -Identity (Join-Path $env:OUT 'identity.json') -Output $env:OUT
           exit $LASTEXITCODE
-      - name: Uninstall (lifecycle evidence)
-        if: always()
+      - name: Uninstall the exact owned install (lifecycle evidence)
+        if: always() && env.INSTALL_DIR != ''
         shell: pwsh
         run: |
-          $u = Get-ChildItem "$env:LOCALAPPDATA\Programs","$env:ProgramFiles" -Recurse -Filter 'unins*.exe' -ErrorAction SilentlyContinue | Where-Object FullName -match 'Bloomstep|Budlark' | Select-Object -First 1
-          if ($u) { Start-Process $u.FullName -ArgumentList '/VERYSILENT /SUPPRESSMSGBOXES /NORESTART' -Wait; "uninstalled via $($u.FullName)" } else { 'no uninstaller found' } | Tee-Object "$env:OUT\uninstall.txt"
+          $u = Join-Path $env:INSTALL_DIR 'unins000.exe'
+          if (Test-Path -LiteralPath $u) {
+            $p = Start-Process -FilePath $u -ArgumentList '/VERYSILENT /SUPPRESSMSGBOXES /NORESTART' -Wait -PassThru
+            "uninstalled $u exit $($p.ExitCode)"
+          } else { "no uninstaller at $u (harness already cleaned up or install did not occur)" } | Tee-Object (Join-Path $env:OUT 'workflow-uninstall.txt')
       - name: Preserve evidence
-        if: always()
+        if: always() && env.OUT != ''
         uses: actions/upload-artifact@v4
         with:
           name: budlark-functional-${{ inputs.mode }}-${{ inputs.candidate }}
-          path: functional-output
+          path: ${{ env.OUT }}
           if-no-files-found: error
           retention-days: 90

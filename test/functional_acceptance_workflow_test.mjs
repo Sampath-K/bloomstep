@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 
 const wf = readFileSync(new URL('../.github/workflows/functional-acceptance.yml', import.meta.url), 'utf8');
+const runBlocks = [...wf.matchAll(/run: \|\n((?:          .*\n|\n)+)/g)].map((m) => m[1]).join('\n');
 
 test('functional acceptance runs only on demand against an exact artifact on a fresh hosted Windows VM', () => {
   assert.match(wf, /^on:\n  workflow_dispatch:/m);
@@ -10,23 +11,33 @@ test('functional acceptance runs only on demand against an exact artifact on a f
   for (const input of ['candidate', 'run_id', 'artifact_id', 'installer_sha256', 'mode']) assert.match(wf, new RegExp(`\\n      ${input}:`));
   assert.match(wf, /runs-on: windows-latest/);
   assert.match(wf, /permissions:\n  contents: read\n  actions: read/);
-  assert.doesNotMatch(wf, /secrets\.GITHUB_TOKEN.*write|contents: write|environment: public-launch/);
+  assert.doesNotMatch(wf, /contents: write|environment: public-launch/);
 });
 
-test('installer identity is proven before execution and never relabelled', () => {
-  assert.match(wf, /actions\/artifacts\/\$\{\{ inputs\.artifact_id \}\}/);
-  assert.match(wf, /workflow_run\.id/);
-  assert.match(wf, /workflow_run\.head_sha/);
-  assert.match(wf, /Get-FileHash .* -Algorithm SHA256/);
-  assert.match(wf, /installer SHA-256 mismatch/);
-  assert.match(wf, /\/VERYSILENT \/SUPPRESSMSGBOXES \/NORESTART/);
+test('inputs never reach shell scripts by expression interpolation', () => {
+  assert.ok(runBlocks.length > 0);
+  assert.doesNotMatch(runBlocks, /\$\{\{/);
+  assert.match(wf, /IN_CANDIDATE: \$\{\{ inputs\.candidate \}\}/);
+  assert.match(runBlocks, /-cnotmatch '\^\[0-9a-f\]\{40\}\$'/);
 });
 
-test('harness owns results; a missing harness or failed install is recorded as FAIL, never PASS', () => {
-  assert.match(wf, /tool\/functional\/run_installed_acceptance\.ps1/);
-  assert.match(wf, /harness-missing/);
+test('installer identity is proven before execution and gh failures are fatal', () => {
+  assert.match(runBlocks, /actions\/artifacts\/\$env:IN_ARTIFACT_ID/);
+  assert.match(runBlocks, /workflow_run\.id/);
+  assert.match(runBlocks, /workflow_run\.head_sha/);
+  assert.equal((runBlocks.match(/if \(\$LASTEXITCODE -ne 0\) \{ throw/g) || []).length, 2);
+  assert.match(runBlocks, /Get-FileHash .* -Algorithm SHA256/);
+  assert.match(runBlocks, /installer SHA-256 mismatch/);
+});
+
+test('harness owns install and results; cleanup touches only the owned install dir', () => {
+  assert.match(runBlocks, /tool\/verify_installed_functional\.ps1/);
+  assert.match(runBlocks, /-Installer \$env:INSTALLER -ExpectedSha256 \$env:IN_SHA256 -InstallDir \$env:INSTALL_DIR/);
+  assert.match(runBlocks, /RUNNER_TEMP "budlark-install-\$env:GITHUB_RUN_ID"/);
+  assert.match(runBlocks, /harness-missing/);
+  assert.doesNotMatch(runBlocks, /-Recurse -Filter 'unins|ProgramFiles|LOCALAPPDATA\\\\Programs/);
+  assert.match(runBlocks, /Join-Path \$env:INSTALL_DIR 'unins000\.exe'/);
   assert.doesNotMatch(wf, /result\s*=\s*'PASS'|"result":\s*"PASS"/);
   assert.match(wf, /if: always\(\)/);
   assert.match(wf, /upload-artifact@v4/);
-  assert.match(wf, /budlark-functional-\$\{\{ inputs\.mode \}\}-\$\{\{ inputs\.candidate \}\}/);
 });
