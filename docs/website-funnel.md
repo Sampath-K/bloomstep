@@ -89,20 +89,28 @@ current release assets/checksums and empty search verification placeholders.
 Build inserts verification meta tags only for bounded valid tokens supplied
 through deployment variables or that config. The owner must sign into Bing
 Webmaster Tools and Google Search Console to obtain/verify those values and
-submit `/sitemap.xml`. No real verification secret is committed. The current
-website download is the already-published `v0.1.0-preview.12` unsigned
-universal installer (21,542,145 bytes); ARM64/x64 links are collapsed troubleshooting
-options only. The owner explicitly authorized this website pointer update before
-manual acceptance so the complete website-to-installer journey can be tested.
-Launch after Finish and the full owner journey remain unverified; no customer-ready
-or safety claim follows from publication. `site/build.mjs` keeps the home and
-releases pages aligned. The customer-site contract test pins both exact release
-URLs and SHA-256 values. Preview.8 remains historical release evidence, not a
-current download. Customer-provided preview.8 warning images retain their explicit
-historical provenance and are not evidence of a warning on preview.12.
+submit `/sitemap.xml`. No real verification secret is committed. The configured
+website download pointer is the already-published `v0.1.0-preview.14` unsigned
+universal installer (22,261,590 bytes,
+`7ad56cc3c71a40d78dd7cb043b43aa42ea884cb0484da982cffa386c9384b094`,
+`https://github.com/Sampath-K/bloomstep/releases/download/v0.1.0-preview.14/Bloomstep-0.1.0-preview.14-windows-universal-setup.exe`);
+ARM64/x64 links are collapsed troubleshooting options only. This records the
+configured pointer, not a newer owner-test candidate or approval to upgrade the
+website pointer. The current download remains for designated owner testing;
+launch after Finish and the full owner journey remain unverified, with no
+customer-ready or safety claim following from publication. `site/build.mjs`
+keeps the home and releases pages aligned. The customer-site contract test pins
+the configured release URLs and SHA-256 values. Preview.8 warning screenshots
+are historical evidence only, not evidence about preview.14 or the current
+download.
 
-TODO(owner): supply controller identity, privacy contact, applicable legal basis
-and processor/backup retention details. These facts are not invented by code.
+The owner-approved public support/privacy contact,
+`store-developer@outlook.com`, is published on both customer pages. Mailbox
+delivery has not been tested and no response time is promised. This approval
+does not resolve the formal controller/legal identity, applicable
+jurisdiction-specific legal bases, provider logging or identity retention, or
+processor and backup deletion/recovery behavior; those remain explicit owner
+and service-provider verification gaps.
 
 CI verifies API schemas/type safety, site contracts and bundled assets; a
 separate lightweight Lighthouse job measures the public pages against 90 for

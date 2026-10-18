@@ -93,7 +93,7 @@ test('owner-test downloads match the exact preview.14 release without implying g
     assert.match(page, /owner-test candidate, not a general customer release/);
     assert.match(page, /Owner-test download \(designated testers only\)/);
   }
-  assert.match(releases, /Launch after installation and the complete sign-in and app journey have not been verified/);
+  assert.match(releases, /Launch after installation and the complete app journey have not been verified/);
   assert.match(releases, /Recent preview changes/);
   assert.doesNotMatch(releases, /owner-trial-checklist|docs\/status\.md|launch gates|elevated worker|\bCI\b|worker/i);
 });

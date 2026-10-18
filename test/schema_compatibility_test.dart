@@ -8,7 +8,7 @@ void main() {
   test(
     'legacy version relabeling repairs v5 without erasing the deletion ledger',
     () async {
-      final dir = await Directory.systemTemp.createTemp('bloomstep-schema-');
+      final dir = await Directory.current.createTemp('bloomstep-schema-');
       addTearDown(() => dir.delete(recursive: true));
       final path = '${dir.path}${Platform.pathSeparator}garden.sqlite';
       var store = await GardenStore.open(path, 'synthetic-owner');
@@ -52,7 +52,7 @@ void main() {
   test(
     'current client refuses a future schema and leaves records intact',
     () async {
-      final dir = await Directory.systemTemp.createTemp('bloomstep-future-');
+      final dir = await Directory.current.createTemp('bloomstep-future-');
       addTearDown(() => dir.delete(recursive: true));
       final path = '${dir.path}${Platform.pathSeparator}garden.sqlite';
       final store = await GardenStore.open(path, 'synthetic-owner');
@@ -65,7 +65,7 @@ void main() {
       );
       await store.close();
       var raw = await databaseFactoryFfi.openDatabase(path);
-      await raw.execute('PRAGMA user_version = 6');
+      await raw.execute('PRAGMA user_version = 7');
       await raw.close();
 
       GardenStore? unexpected;
@@ -82,7 +82,7 @@ void main() {
       }
       raw = await databaseFactoryFfi.openDatabase(path);
       addTearDown(raw.close);
-      expect(await raw.getVersion(), 6);
+      expect(await raw.getVersion(), 7);
       expect((await raw.query('habits')).single['id'], habit.id);
       expect((await raw.query('habits')).single['account'], 'synthetic-owner');
     },
@@ -91,7 +91,7 @@ void main() {
   test(
     'malformed existing deletion table is rejected without a migration',
     () async {
-      final dir = await Directory.systemTemp.createTemp('bloomstep-shape-');
+      final dir = await Directory.current.createTemp('bloomstep-shape-');
       addTearDown(() => dir.delete(recursive: true));
       final path = '${dir.path}${Platform.pathSeparator}garden.sqlite';
       final store = await GardenStore.open(path, 'synthetic-owner');

@@ -102,6 +102,10 @@ function initializeCustomer() {
   const stopForPrivacy = () => {
     consentGeneration++; controller.abort(); observer.reset(); consent.checked = false;
     status.textContent = 'Your browser privacy setting is on, so this page will not send measurement data.';
+    delete document.documentElement.dataset.experimentArm;
+    void experiments.stop().catch(() => {
+      status.textContent += ' Page-test deletion could not be confirmed; it expires automatically.';
+    });
   };
   const record = (event, arch) => {
     if (blocked()) { stopForPrivacy(); return; }
@@ -113,8 +117,9 @@ function initializeCustomer() {
     });
   };
   if (blocked()) { consent.disabled = true; status.textContent = 'Your browser privacy setting is on, so this page will not send measurement data.'; }
-  const experiments = createExperimentClient({ document, fetchJson: async (path, body) => {
-    if (blocked()) throw Error('Browser privacy setting is on.');
+  const experiments = createExperimentClient({ document, allowed: () => consent.checked && !blocked(), fetchJson: async (path, body) => {
+    // Withdrawal is deletion, not collection; browser privacy signals must not prevent cleanup.
+    if (path !== '/api/web/experiments/forget' && (!consent.checked || blocked())) throw Error('Website measurement is off.');
     const response = await fetch(path, { method: body ? 'POST' : 'GET', headers: body ? { 'Content-Type': 'application/json' } : {},
       body: body ? JSON.stringify(body) : undefined, credentials: 'omit', referrerPolicy: 'no-referrer', cache: 'no-store',
       signal: AbortSignal.timeout(4000), keepalive: !!body });
@@ -127,12 +132,16 @@ function initializeCustomer() {
   };
   consent.addEventListener('change', () => {
     consentGeneration++; controller.abort(); controller = new AbortController(); observer.reset();
-    if (blocked()) { consent.checked = false; status.textContent = 'Your browser privacy setting is on, so this page will not send measurement data.'; return; }
+    if (blocked()) { stopForPrivacy(); return; }
     status.textContent = consent.checked ? 'Optional website counts are on for this visit only.' : 'Website counts are off. Earlier anonymous counts cannot be linked back to you.';
     if (consent.checked) {
       record('landing_view');
-      void experiments.start().then(state => { document.documentElement.dataset.experimentArm = state.arm ?? 'none'; })
-        .catch(() => { document.documentElement.dataset.experimentArm = 'error'; });
+      const generation = consentGeneration;
+      void experiments.start().then(state => {
+        if (generation === consentGeneration && consent.checked && !blocked()) document.documentElement.dataset.experimentArm = state.arm ?? 'none';
+      }).catch(() => {
+        if (generation === consentGeneration && consent.checked && !blocked()) document.documentElement.dataset.experimentArm = 'error';
+      });
     } else {
       void experiments.stop().then(deleted => { if (deleted) status.textContent += ' This visit\'s page-test record was deleted.'; }).catch(() => {
         status.textContent += ' Page-test deletion could not be confirmed; it expires automatically.';
@@ -142,6 +151,8 @@ function initializeCustomer() {
   });
   window.addEventListener('pagehide', () => {
     consentGeneration++; controller.abort(); observer.reset(); consent.checked = false;
+    delete document.documentElement.dataset.experimentArm;
+    void experiments.end().catch(() => {});
   });
   for (const link of document.querySelectorAll('#primary-cta, [data-primary-cta]')) {
     link.addEventListener('click', () => {

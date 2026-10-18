@@ -183,6 +183,20 @@ void main() {
     await escape();
     await tester.tap(find.byTooltip('Settings and privacy'));
     await settleDatabase(tester);
+    expect(
+      find.textContaining(
+        'private account details, sensitive habit details',
+      ),
+      findsOneWidget,
+    );
+    expect(
+      find.textContaining('Device-only gardens send nothing'),
+      findsOneWidget,
+    );
+    expect(
+      find.textContaining('Turning off stops future sharing and clears unsent counts'),
+      findsOneWidget,
+    );
     await capture('settings-consent');
     await tester.ensureVisible(find.text('Export my data (JSON)'));
     await capture('settings-export');
@@ -270,6 +284,10 @@ void main() {
       await settleDatabase(tester);
       expect(find.text('Privacy choices'), findsOneWidget);
       expect(find.text('What these counts include'), findsOneWidget);
+      await tester.ensureVisible(find.text('What these counts include'));
+      await tester.tap(find.text('What these counts include'));
+      await tester.pumpAndSettle();
+      expect(find.textContaining('Device-only gardens do not send counts'), findsOneWidget);
       await tester.ensureVisible(find.text('Delete local garden'));
       await tester.tap(find.text('Delete local garden'));
       await tester.pumpAndSettle();

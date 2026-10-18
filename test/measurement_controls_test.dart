@@ -42,6 +42,7 @@ void main() {
     WidgetTester tester, {
     required bool consent,
     String? text,
+    Object? pickerError,
   }) async {
     final store = (await tester.runAsync(
       () => GardenStore.open(':memory:', 'synthetic-controls'),
@@ -57,7 +58,10 @@ void main() {
           body: MeasurementControls(
             store: store,
             analytics: consent,
-            pickReceipt: () async => stableReceipt,
+            pickReceipt: () async {
+              if (pickerError != null) throw pickerError;
+              return stableReceipt;
+            },
           ),
         ),
       ),
@@ -117,7 +121,19 @@ void main() {
     await tester.runAsync(() => store.setSetting('analytics', 'false'));
     await tester.tap(find.text('Link to this account'));
     await finishAction(tester);
-    expect(find.textContaining('Receipt action failed:'), findsOneWidget);
+    const failure =
+        'Couldn’t link this receipt. Check that it is valid and current, and that account product-event consent is on, then try again.';
+    expect(find.text(failure), findsOneWidget);
+    expect(find.textContaining('Receipt action failed:'), findsNothing);
+    expect(
+      find.ancestor(
+        of: find.text(failure),
+        matching: find.byWidgetPredicate(
+          (widget) => widget is Semantics && widget.properties.liveRegion,
+        ),
+      ),
+      findsOneWidget,
+    );
     expect((await tester.runAsync(store.export))!['events'], isEmpty);
   });
   testWidgets('invalid receipt surfaces a privacy-safe failure', (
@@ -130,10 +146,27 @@ void main() {
     );
     await tester.tap(find.text('Link my exported website receipt'));
     await tester.pumpAndSettle();
+    expect(find.textContaining('Couldn’t link this receipt.'), findsOneWidget);
+    expect(find.textContaining('private_error_receipt_content'), findsNothing);
+  });
+  testWidgets('picker exceptions show safe failure, not success or details', (
+    tester,
+  ) async {
+    await mount(
+      tester,
+      consent: true,
+      pickerError: StateError('private_picker_path_and_token'),
+    );
+    await tester.tap(find.text('Link my exported website receipt'));
+    await tester.pumpAndSettle();
     expect(
-      find.textContaining('Invalid, expired or unsupported'),
+      find.text(
+        'Couldn’t link this receipt. Check that it is valid and current, and that account product-event consent is on, then try again.',
+      ),
       findsOneWidget,
     );
-    expect(find.textContaining('private_error_receipt_content'), findsNothing);
+    expect(find.textContaining('private_picker_path_and_token'), findsNothing);
+    expect(find.textContaining('observations linked'), findsNothing);
+    expect(find.text('Link to this account'), findsNothing);
   });
 }

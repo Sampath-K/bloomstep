@@ -10,7 +10,8 @@ const releases = readFileSync(new URL('../releases/index.html', import.meta.url)
 const launchVerifier = readFileSync(new URL('../verify-launch.mjs', import.meta.url), 'utf8');
 test('launch path discloses prerequisites and support/privacy limits without collecting contact details', () => {
   const download = /<section id="download"[\s\S]*?<\/section>/.exec(home)[0];
-  assert.match(download, /id="download-prerequisites"[\s\S]*64-bit Windows[\s\S]*sign-in[\s\S]*ages 16[\s\S]*unsigned/);
+  assert.match(download, /id="download-prerequisites"[\s\S]*64-bit Windows[\s\S]*ages 16[\s\S]*unsigned/);
+  assert.match(download, /local device garden without signing in; sign in is needed for an account garden and sync/);
   assert.match(download, /id="website-measurement"/);
   assert.equal((home.match(/id="website-consent"/g) ?? []).length, 1);
   assert.doesNotMatch(home, /id="website-consent"[^>]*checked/);
@@ -64,6 +65,43 @@ test('initial demand link uses fixed allowlisted labels and never treats interes
   assert.deepEqual(touch, { source: 'campaign', referrerDomain: 'linkedin.com',
     campaignSource: 'linkedin', campaignMedium: 'social', campaignName: 'tiny_habits' });
   assert.equal(classifyAttribution('', '?utm_source=person@example.com', 'https://site.test').campaignSource, 'unknown');
+});
+test('customer copy distinguishes local guest use from sign-in for an account garden and sync', () => {
+  assert.match(home, /Plant locally without signing in; sign in to sync an account garden/);
+  assert.match(home, /You can plant in a local device garden without signing in; sign in is needed for an account garden and sync/);
+  assert.match(home, /No account is needed to plant in a local device garden\. Sign in to use an account garden and sync/);
+  assert.match(home, /local device garden without signing in; account gardens and sync require sign-in/);
+  assert.doesNotMatch(home, /Sign-in required|Sign-in is required, and some features|You need to sign in to get started|Sign-in is needed to use the app/);
+  assert.match(releases, /You can plant in a local device garden without signing in; account gardens and sync require sign-in/);
+  assert.match(releases, /Your local device garden stays on that device; signing in and syncing an account garden require an internet connection/);
+  assert.doesNotMatch(releases, /Sign-in is required, and some features/);
+});
+test('Grove graduation is an app milestone, not a claim of automaticity or permanence', () => {
+  assert.match(releases, /recorded practice and your report that a habit feels natural meet the app's criteria/);
+  assert.match(releases, /This is an app milestone, not proof that the habit became automatic or permanent/);
+  assert.doesNotMatch(releases, /automatic habits graduate/);
+});
+test('launch documentation matches the configured preview14 pointer and keeps contact facts bounded', () => {
+  const config = JSON.parse(readFileSync(new URL('../customer-config.json', import.meta.url), 'utf8'));
+  const launch = readFileSync(new URL('../../docs/website-launch.md', import.meta.url), 'utf8');
+  const funnel = readFileSync(new URL('../../docs/website-funnel.md', import.meta.url), 'utf8');
+  const normalizedFunnel = funnel.replace(/\s+/g, ' ');
+  const universal = config.release.universal;
+  for (const documentation of [launch, funnel]) {
+    assert.ok(documentation.includes(config.release.tag));
+    assert.ok(documentation.includes(universal.url));
+    assert.ok(documentation.includes(universal.sha256));
+    assert.ok(documentation.includes('22,261,590 bytes'));
+    assert.doesNotMatch(documentation, /current(?: website)? download(?: pointer)?[^\n]*preview\.12|21,542,145/);
+  }
+  assert.match(normalizedFunnel, /Preview\.8 warning screenshots are historical evidence only/);
+  assert.match(normalizedFunnel, /not a newer owner-test candidate or approval to upgrade the website pointer/);
+  assert.match(launch, /not a general release or an upgrade to the newer owner-test candidate/);
+  assert.match(launch, /owner manual verification of that newer exact installer is pending/);
+  assert.match(normalizedFunnel, /owner-approved public support\/privacy contact/);
+  assert.match(normalizedFunnel, /Mailbox delivery has not been tested/);
+  assert.match(normalizedFunnel, /does not resolve the formal controller\/legal identity, applicable jurisdiction-specific legal bases, provider logging or identity retention, or processor and backup deletion\/recovery behavior/);
+  assert.doesNotMatch(normalizedFunnel, /TODO\(owner\): supply controller identity, privacy contact/);
 });
 test('customer navigation and linked local destinations resolve to real sections and files', () => {
   const siteRoot = fileURLToPath(new URL('../', import.meta.url));

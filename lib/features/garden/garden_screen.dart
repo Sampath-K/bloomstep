@@ -147,9 +147,15 @@ class _GardenScreenState extends State<GardenScreen> {
     _load();
     if (!widget.testDisableServices &&
         (widget.identity != null || widget.reminderGateway != null)) {
-      reminders = DesktopReminders(widget.store, _load, (message) {
-        if (mounted) setState(() => error = message);
-      }, gateway: widget.reminderGateway);
+      reminders = DesktopReminders(
+        widget.store,
+        _load,
+        (message) {
+          if (mounted) setState(() => error = message);
+        },
+        gateway: widget.reminderGateway,
+        onPositiveCheckIn: _acknowledgeSavedPractice,
+      );
       reminders!.initialize().catchError((Object e) {
         if (mounted) {
           setState(() => error = 'Could not start reminders. Check Settings.');
@@ -378,6 +384,19 @@ class _GardenScreenState extends State<GardenScreen> {
     }
   }
 
+  Future<void> _acknowledgeSavedPractice(String habitId) async {
+    if (!mounted || closing) return;
+    final matches = habits.where((candidate) => candidate.id == habitId);
+    if (matches.isEmpty) return;
+    final habit = matches.first;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text('Saved. That tiny step counts! Now ${habit.celebration}.'),
+        duration: const Duration(seconds: 3),
+      ),
+    );
+  }
+
   Future<void> _plant({Habit? prefill}) async {
     if (habits.where((h) => h.status == 'active').length >= 3) {
       final more = await _confirm(
@@ -454,7 +473,6 @@ class _GardenScreenState extends State<GardenScreen> {
 
   Future<void> _check(Habit habit, CheckInResult result) async {
     String? reason;
-    ScaffoldFeatureController<SnackBar, SnackBarClosedReason>? celebration;
     if (result == CheckInResult.notToday) {
       reason = await showDialog<String>(
         context: context,
@@ -477,24 +495,23 @@ class _GardenScreenState extends State<GardenScreen> {
       );
       if (reason == null) return;
       if (reason == 'skip') reason = null;
-    } else {
-      // Show the personal celebration immediately; persistence follows independently.
-      celebration = ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(
-            '${result == CheckInResult.didMore ? 'A little extra! ' : 'That tiny step counts! '}Now ${habit.celebration}.',
-          ),
-          duration: const Duration(seconds: 5),
-        ),
-      );
     }
     var saved = false;
     await _act(() async {
       await widget.store.checkIn(habit.id, result, reason: reason, now: _now());
       saved = true;
     });
-    await reminders?.practiced(habit.id);
-    if (saved && celebration != null) {
+    if (saved) await reminders?.practiced(habit.id);
+    if (!saved || result == CheckInResult.notToday) return;
+    final celebration = ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(
+          '${result == CheckInResult.didMore ? 'A little extra! ' : 'That tiny step counts! '}Now ${habit.celebration}.',
+        ),
+        duration: const Duration(seconds: 5),
+      ),
+    );
+    if (saved) {
       unawaited(_offerRatingAfterCelebration(celebration.closed, ratingMoment));
     }
   }
@@ -656,7 +673,7 @@ class _GardenScreenState extends State<GardenScreen> {
         final celebration = ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
             content: Text(
-              'This one is part of you now. Welcome to your evergreen Grove!',
+              'Your recent practice and reflections met the graduation criteria. This is a milestone; keep adapting your habit whenever it suits you.',
             ),
           ),
         );
@@ -1079,7 +1096,7 @@ class _GardenScreenState extends State<GardenScreen> {
                   SwitchListTile(
                     title: const Text('Share product event counts'),
                     subtitle: const Text(
-                      'Optional, off by default. Counts and up to 10 fixed-category error and 10 account-session attempts per session. No message/stack, credentials, habit text, email or feedback. Turning off clears queued events; synced events follow account deletion and retention rules.',
+                      'Optional, off by default. Shares up to 10 error types and 10 sign-in or session attempts per session, plus basic counts. No error messages or stacks, passwords or credentials, private account details, sensitive habit details, email or feedback. Device-only gardens send nothing. Turning off stops future sharing and clears unsent counts; sent counts follow account deletion and retention rules.',
                     ),
                     value: analytics,
                     onChanged: widget.deviceGuest
@@ -1111,7 +1128,7 @@ class _GardenScreenState extends State<GardenScreen> {
                       Padding(
                         padding: EdgeInsets.fromLTRB(16, 0, 16, 16),
                         child: Text(
-                          'Only fixed stage/outcome/category and elapsed time from observed Dart/Flutter errors and account-session/token attempts. Pre-sign-in failures and provider choice are not captured. Native/process deaths are not captured; no crash-free claim.',
+                          'Counts use set categories, app stages and elapsed time for errors Budlark sees while open, plus sign-in and session attempts after sign-in. We do not collect error messages or stacks, what you type, passwords or credentials, private account details, sensitive habit details, email, feedback or which sign-in provider you use. Device-only gardens send no counts. App closures Budlark cannot observe are not included, so this is not a crash-free measure.',
                         ),
                       ),
                     ],
@@ -1728,7 +1745,7 @@ class _GardenScreenState extends State<GardenScreen> {
                           onPressed: working
                               ? null
                               : () => _act(_refreshInvitations),
-                          child: const Text('Refresh invitation receipts'),
+                          child: const Text('Refresh invitation status'),
                         ),
                       if (invitationStatus != null &&
                           invitationStatus!.rewards.isNotEmpty)
@@ -1746,7 +1763,7 @@ class _GardenScreenState extends State<GardenScreen> {
                                     invitationStatus!.invitations.isNotEmpty)
                                   ExpansionTile(
                                     title: const Text(
-                                      'Private invitation receipts',
+                                      'Invitation status',
                                     ),
                                     subtitle: Text(
                                       '${invitationStatus!.cached ? "Cached" : "Server"} status as of ${invitationStatus!.fetchedAt.toLocal()}',
@@ -1887,7 +1904,7 @@ class _GardenScreenState extends State<GardenScreen> {
                                           Expanded(
                                             child: Text(
                                               habit.status == 'graduated'
-                                                  ? 'Evergreen Grove'
+                                                  ? 'Graduation milestone · ${habit.aspiration}'
                                                   : habit.aspiration,
                                               style: compactPracticeFirst
                                                   ? theme.textTheme.titleMedium

@@ -328,6 +328,7 @@ void main() {
         'species': 'Fern',
       };
       var redeemed = 0;
+      var statusRequests = 0;
       final service = InvitationService(
         store,
         tokenProvider: () async => 'ciam',
@@ -353,9 +354,21 @@ void main() {
               200,
             );
           }
+          statusRequests++;
           return http.Response(
             jsonEncode({
-              'invitations': [],
+              'invitations': [
+                {
+                  'invitationId': '22222222-2222-4222-8222-222222222222',
+                  'direction': 'outgoing',
+                  'channel': 'link',
+                  'acceptedAt': null,
+                  'expiresAt': now
+                      .add(const Duration(days: 30))
+                      .toIso8601String(),
+                  'status': 'created',
+                },
+              ],
               'rewards': [
                 {
                   'id': 'a' * 64,
@@ -391,6 +404,14 @@ void main() {
       );
       expect(redeemed, 1);
       expect((await tester.runAsync(store.habits))!, isEmpty);
+      expect(find.text('Refresh invitation status'), findsOneWidget);
+      expect(find.text('Refresh invitation receipts'), findsNothing);
+      expect(find.text('Invitation status'), findsOneWidget);
+      expect(find.text('Private invitation receipts'), findsNothing);
+      expect(statusRequests, 1);
+      await tester.tap(find.text('Refresh invitation status'));
+      await settleDatabase(tester);
+      expect(statusRequests, 2);
       await tester.pumpAndSettle();
       await captureVisual(tester, boundary, 'incoming-accepted-cosmetic');
       await tester.tap(find.text('Review shared recipe before planting'));

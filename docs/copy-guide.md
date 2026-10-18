@@ -1,4 +1,4 @@
-# Bloomstep editorial copy guide
+# Bud Lark editorial copy guide
 
 This guide applies to every user-facing string: titles, body text, buttons,
 menus, labels, tooltips, status and error messages, onboarding, notifications,
@@ -10,7 +10,7 @@ the owner has approved a rendered proposal.
 
 - Use sentence case, familiar words, active voice, and a warm, direct tone.
 - Lead with the action or the information the person needs. Prefer fewer words.
-- Use standard Windows and Microsoft product terms unless Bloomstep has a
+- Use standard Windows and Microsoft product terms unless Bud Lark has a
   user-tested term with a clear reason to keep it.
 - Confirmation titles ask a concise question that names the action, such as
   `Delete recipe?` or `Copy to your account?`.

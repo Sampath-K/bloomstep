@@ -4,6 +4,7 @@ import { eventRegistry, registryVersion } from './event_registry.g.mjs';
 
 const id = z.uuid();
 const text = z.string().trim().min(1).max(200);
+const recipeRevision = z.union([z.literal(''), z.uuid()]).default('');
 const timestamp = z.iso.datetime()
   .refine(value => !/\.\d{7,}Z$/.test(value), 'Microsecond precision is the maximum.')
   .refine(value => Date.parse(value) <= Date.now() + 300000, 'Timestamp is too far in the future.');
@@ -12,20 +13,20 @@ export const habitSchema = z.object({
   id, aspiration: text, anchor: text, behavior: text, celebration: text,
   species: z.enum(['Cosmos', 'Sunflower', 'Fern']),
   stage: z.number().int().min(0).max(4), status: z.enum(['active', 'graduated', 'archived']),
-  updated: timestamp,
+  updated: timestamp, recipeRevision,
 }).strict();
 export const checkinSchema = z.object({
   id, habitId: id,
   day: z.iso.date(), result: z.enum(['did', 'didMore', 'notToday']).nullable(),
   reason: z.enum(['forgot', 'too hard', 'anchor', 'motivation']).nullable(),
-  ts: timestamp,
+  ts: timestamp, recipeRevision,
 }).strict();
 export const reflectionSchema = z.object({
   id, habitId: id, items: z.string().transform((s, context) => {
     try { return JSON.parse(s); }
     catch { context.addIssue({ code: 'custom', message: 'Invalid reflection JSON' }); return z.NEVER; }
   }).pipe(z.array(z.number().int().min(1).max(7)).length(4)),
-  score: z.number().min(1).max(7), ts: timestamp,
+  score: z.number().min(1).max(7), ts: timestamp, recipeRevision,
 }).strict().refine(r => Math.abs(r.items.reduce((a, b) => a + b, 0) / 4 - r.score) < .001);
 export const voiceSchema = z.object({
   id, kind: z.enum(['Idea', 'Bug', 'Question', 'Praise', 'This felt wrong', 'Rating']),
@@ -120,7 +121,7 @@ function newerVersion(incoming, existing, fields) {
 }
 /** @param {Record<string, unknown>} incoming @param {Record<string, unknown>} existing */
 export function newerRecipe(incoming, existing) {
-  return newerVersion(incoming, existing, ['aspiration', 'anchor', 'behavior', 'celebration', 'species', 'status']);
+  return newerVersion(incoming, existing, ['aspiration', 'anchor', 'behavior', 'celebration', 'species', 'status', 'recipeRevision']);
 }
 /** @param {Record<string, unknown>} incoming @param {Record<string, unknown>} existing */
 export function newerSetting(incoming, existing) {

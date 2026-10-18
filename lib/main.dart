@@ -50,7 +50,7 @@ Future<void> main(List<String> arguments) async {
               child: Padding(
                 padding: EdgeInsets.all(32),
                 child: SelectableText(
-                  'Budlark could not safely process this invitation or open its app window. Use a valid Budlark link, or close an existing Budlark window and retry. No new garden or session was opened.',
+                  'The app could not start. Try opening it again. If this continues, contact support. No new garden or session was opened.',
                 ),
               ),
             ),

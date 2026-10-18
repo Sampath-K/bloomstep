@@ -1,7 +1,40 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { randomUUID } from 'node:crypto';
-import { accountKey, isAdmin, syncSchema, eventSchema, voiceSchema, checkinSchema, reflectionSchema, newerRecipe, settingSchema } from '../src/contracts.mjs';
+import { effectiveCheckins, normalizedEvents } from '../src/dashboards.mjs';
+import { accountKey, isAdmin, syncSchema, eventSchema, voiceSchema, checkinSchema, reflectionSchema, habitSchema, newerRecipe, settingSchema } from '../src/contracts.mjs';
+
+test('recipe revisions survive all evidence schemas; legacy rows default to initial episode', () => {
+  const revision = randomUUID();
+  const ts = '2026-09-01T12:00:00Z';
+  for (const [schema, row] of [
+    [habitSchema, { id: randomUUID(), aspiration: 'Calm', anchor: 'coffee',
+      behavior: 'breathe', celebration: 'smile', species: 'Fern', stage: 4,
+      status: 'active', updated: ts }],
+    [checkinSchema, { id: randomUUID(), habitId: randomUUID(), day: '2026-09-01',
+      result: 'did', reason: null, ts }],
+    [reflectionSchema, { id: randomUUID(), habitId: randomUUID(), items: '[6,6,6,6]',
+      score: 6, ts }],
+  ]) {
+    assert.equal(schema.parse(row).recipeRevision, '');
+    assert.equal(schema.parse({ ...row, recipeRevision: revision }).recipeRevision, revision);
+    assert.equal(schema.safeParse({ ...row, recipeRevision: 'untrusted text' }).success, false);
+  }
+});
+
+test('monotonic operation timestamp prevents first_checkin alias resurrecting undone practice', () => {
+  const habitId = randomUUID();
+  const observation = (name, ts, result) => ({ userId: 'owner', record: {
+    id: randomUUID(), name, ts,
+    properties: { habitId, localDay: '2026-09-01', result },
+  } });
+  const rows = [
+    observation('first_checkin', '2026-09-01T12:00:00.000Z', 'did'),
+    observation('checkin', '2026-09-01T12:00:00.000Z', 'did'),
+    observation('checkin', '2026-09-01T12:00:00.000001Z', 'undo'),
+  ];
+  assert.deepEqual(effectiveCheckins(normalizedEvents(rows.reverse())), []);
+});
 
 test('settings exclude remote consent and validate quiet hours', () => {
   const setting = { key: 'quietStart', value: '1200', updated: new Date().toISOString() };

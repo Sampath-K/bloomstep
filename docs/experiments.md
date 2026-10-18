@@ -35,6 +35,15 @@ step in `.github/workflows/aggregates.yml`) runs one bounded step:
 - Consent withdrawal calls `/api/web/experiments/forget`: the visit record is deleted and replaced with a tombstone
   so late queued exposures/outcomes return 410 instead of recreating it. Subject records expire after 90 days.
 - Caps fail visibly: 120 admissions/minute, 429/503 surfaced; client falls back to the standard page.
+- Pending enrollment is generation-bound: withdrawal cancels it before exposure, restores control immediately,
+  and deletes any potentially committed in-flight exposure after its request settles. Failed exposure also
+  restores control and queues deletion; failed cleanup remains retryable and blocks new enrollment until
+  confirmed. Privacy signals stop collection but do not block deletion. Page exit cancels pending enrollment,
+  but retains previously completed consented observations (it is not an explicit withdrawal). Exit-time
+  cleanup of an unfinished exposure is best-effort, not a promise of confirmed deletion.
+
+Dependency-free lifecycle regression checks (synthetic, no installer or service requests):
+`node --test test/experiment_client_test.mjs`.
 
 ## Catalog (finite, curated, low-risk)
 

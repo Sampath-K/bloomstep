@@ -122,6 +122,7 @@ class DesktopReminders with TrayListener, WindowListener {
     this.reportError, {
     ReminderGateway? gateway,
     DateTime Function()? clock,
+    this.onPositiveCheckIn,
   }) : gateway = gateway ?? WindowsReminderGateway(),
        clock = clock ?? DateTime.now,
        _native = gateway == null {
@@ -131,6 +132,7 @@ class DesktopReminders with TrayListener, WindowListener {
   final GardenStore store;
   final Future<void> Function() changed;
   final void Function(String) reportError;
+  final Future<void> Function(String habitId)? onPositiveCheckIn;
   final ReminderGateway gateway;
   final DateTime Function() clock;
   final bool _native;
@@ -428,6 +430,7 @@ class DesktopReminders with TrayListener, WindowListener {
         );
         await practiced(habitId);
         await changed();
+        if (action == 'did') await onPositiveCheckIn?.call(habitId);
       case 'snooze':
         await snoozeHabit(habitId);
       case 'fewer':
@@ -781,6 +784,7 @@ class DesktopReminders with TrayListener, WindowListener {
       await store.checkIn(habitId, CheckInResult.did, now: clock().toLocal());
       await practiced(habitId);
       await changed();
+      await onPositiveCheckIn?.call(habitId);
       await gateway.showAndFocus();
     } else if (key == 'snooze') {
       await snooze();

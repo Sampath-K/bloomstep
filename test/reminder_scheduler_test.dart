@@ -10,6 +10,7 @@ import 'package:sqflite_common_ffi/sqflite_ffi.dart';
 class FakeReminderGateway implements ReminderGateway {
   final requests = <ReminderRequest>[];
   final operations = <String>[];
+  Future<void> Function(String)? action;
   bool failShow = false;
   bool failInitialize = false;
   bool failCancelAll = false;
@@ -17,6 +18,7 @@ class FakeReminderGateway implements ReminderGateway {
   Future<void> Function(ReminderRequest)? beforeShow;
   @override
   Future<void> initialize(Future<void> Function(String) action) async {
+    this.action = action;
     await beforeInitialize?.call();
     if (failInitialize) throw StateError('Synthetic initialization failed');
   }
@@ -56,8 +58,10 @@ void main() {
   late FakeReminderGateway gateway;
   late DesktopReminders reminders;
   late DateTime now;
+  late List<String> positiveCheckIns;
   setUp(() async {
     now = DateTime(2026, 10, 4, 18);
+    positiveCheckIns = [];
     store = await GardenStore.open(':memory:', 'account-a', clock: () => now);
     gateway = FakeReminderGateway();
     reminders = DesktopReminders(
@@ -66,6 +70,7 @@ void main() {
       (_) {},
       gateway: gateway,
       clock: () => now,
+      onPositiveCheckIn: (id) async => positiveCheckIns.add(id),
     );
     await reminders.enable();
   });
@@ -94,6 +99,49 @@ void main() {
       );
     },
   );
+
+  test('saved positive reminder and tray check-ins acknowledge once in app', () async {
+    final h = await plantReminder(store);
+    await reminders.tick();
+    final request = gateway.requests.single;
+    final requestCount = gateway.requests.length;
+    await gateway.action!(request.payloadFor('did'));
+    expect(positiveCheckIns, [h.id]);
+    expect((await store.habits()).single.today, CheckInResult.did);
+
+    await gateway.action!(request.payloadFor('did'));
+    expect(positiveCheckIns, [h.id], reason: 'a repeated toast action is ignored');
+
+    now = now.add(const Duration(days: 1));
+    await reminders.handleTrayAction('did:${h.id}');
+    expect(positiveCheckIns, [h.id, h.id]);
+    expect((await store.habits()).single.today, CheckInResult.did);
+    expect(gateway.requests, hasLength(requestCount));
+  });
+
+  test('rest, rejected, stale and duplicate reminder actions do not celebrate', () async {
+    final h = await plantReminder(store);
+    await reminders.tick();
+    final request = gateway.requests.single;
+
+    await gateway.action!(request.payloadFor('rest'));
+    expect(positiveCheckIns, isEmpty);
+    expect((await store.habits()).single.today, CheckInResult.notToday);
+    await gateway.action!(request.payloadFor('rest'));
+    expect(positiveCheckIns, isEmpty);
+
+    await expectLater(
+      gateway.action!(
+        request.payloadFor('did').replaceFirst('account-a', 'another-account'),
+      ),
+      throwsStateError,
+    );
+    expect(positiveCheckIns, isEmpty);
+
+    now = now.add(const Duration(days: 1));
+    await gateway.action!(request.payloadFor('did'));
+    expect(positiveCheckIns, isEmpty, reason: 'old-day actions only reopen the app');
+  });
 
   test('restoration never enrolls; genuine fresh-consent enable, followup and explicit disable use app preference provenance', () async {
     await reminders.disable(explicitChoice: false);
@@ -647,6 +695,7 @@ void main() {
       await expectLater(reminders.tick(), throwsStateError);
       expect(await store.setting('reminderLog'), isNull);
       expect(await store.setting('ignored:${h.id}'), isNull);
+      expect(positiveCheckIns, isEmpty);
       expect(
         gateway.operations,
         contains('cancel:${gateway.requests.single.id}'),
