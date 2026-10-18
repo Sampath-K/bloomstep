@@ -664,7 +664,7 @@ void main() {
       await _ready(tester, find.textContaining('Couldn’t finish sign-out'));
       expect(find.text('Not signed in'), findsOneWidget);
       identity.failSignOut = false;
-      await _ready(tester, find.text('Sign in with Microsoft or Google'));
+      await _ready(tester, find.text('Clear saved sign-in'));
       await tester.tap(find.text('Clear saved sign-in'));
       await _ready(tester, find.textContaining('Saved sign-in cleared.'));
       expect(find.text('Clear saved sign-in'), findsNothing);

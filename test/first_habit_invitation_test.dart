@@ -85,6 +85,15 @@ Future<void> ready(
     final profile = find.byType(ProfileSection);
     if (needsProfile && profile.evaluate().isNotEmpty) {
       final section = tester.widget<ProfileSection>(profile);
+      final home = find.byType(HabitHome);
+      final identity = home.evaluate().isEmpty
+          ? null
+          : tester.widget<HabitHome>(home).testIdentity;
+      if (identity != null && section.signedIn != identity.hasValidSession) {
+        await tester.tap(find.text('Done'));
+        await tester.pump(const Duration(milliseconds: 350));
+        continue;
+      }
       if (section.busy &&
           !finder.toString().contains('Complete sign-in in your browser')) {
         await tester.tap(find.text('Done'));
@@ -142,7 +151,23 @@ Future<void> ready(
       await tester.pump(const Duration(milliseconds: 350));
     }
   }
-  fail('Timed out waiting for $finder');
+  final profiles = find
+      .byType(ProfileSection)
+      .evaluate()
+      .map((element) {
+        final section = element.widget as ProfileSection;
+        return 'signedIn=${section.signedIn}, busy=${section.busy}';
+      })
+      .join('; ');
+  final texts = find
+      .byType(Text)
+      .evaluate()
+      .map((element) => (element.widget as Text).data)
+      .whereType<String>()
+      .join(' | ');
+  fail(
+    'Timed out waiting for $finder; profiles: $profiles; visible text: $texts',
+  );
 }
 
 void main() {
