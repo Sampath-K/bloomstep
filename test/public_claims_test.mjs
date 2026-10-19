@@ -19,8 +19,8 @@ test('customer surfaces and current product documents make bounded privacy claim
   assert.match(home, /habit text is never sold or used for ads/i);
   assert.match(home, /public website does not use third-party product analytics/i);
   assert.match(home, /separate testing website uses Google Analytics only when its tester chooses to allow it/i);
-  assert.match(home, /Early preview — not yet verified for general use/);
-  assert.match(home, /owner-test candidate, not a general customer release/);
+  assert.match(home, /Internal dogfood preview — not verified for general use/);
+  assert.match(home, /Internal dogfood preview \(unsigned; designated testers only\)/);
   assert.match(home, /Website measurement is off by default/);
   assert.match(home, /does not include AI features; any future AI feature would be explained and optional/);
 });

@@ -129,7 +129,7 @@ try {
         `${path} must reflow in ${scenario.name}`);
       const previewText = await page.$eval('main', node => node.textContent);
       assert.match(previewText, /This version is for designated owner testing only; it has not been verified for general use/);
-      assert.match(previewText, /Early preview — not yet verified for general use/);
+      assert.match(previewText, /Internal dogfood preview — not verified for general use/);
       assert.equal(await page.$$eval('a[href="https://tinyhabits.com/book/"]', links => links.length), 1);
       const images = await page.$$eval('img', images => images.filter(image => image.loading !== 'lazy')
         .map(image => ({ complete: image.complete, width: image.naturalWidth })));
