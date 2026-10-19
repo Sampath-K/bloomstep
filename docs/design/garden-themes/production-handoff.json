@@ -1,0 +1,24 @@
+{
+  "status": "approved-for-production-asset-work",
+  "sourceCommit": "103134d95315af31dc00cd9ad10f347c2ffe5858",
+  "pullRequest": 56,
+  "targetBranch": "sampath-k-budlark-garden-themes",
+  "ownerDirection": "All six themes approved and user-selectable; very high quality animations and graphics.",
+  "deliverables": [
+    "Refine original theme vectors into production-consumable assets with clean paths and high-DPI exports where needed.",
+    "Provide Lottie or Rive-style animation specifications for bud growth and the approximately one-second lark landing and song.",
+    "Provide a reduced-motion still frame for every animation.",
+    "Coordinate stable theme picker asset paths and contracts with the release session.",
+    "Push commits to the existing PR branch and report exact head SHA and real test results."
+  ],
+  "releaseSession": "b4bec15c-983d-430e-a068-7fa34b56f845",
+  "coordinatorSession": "b82cac61-8e83-4ab4-8766-2ebf1476e19c",
+  "boundaries": [
+    "Cloud execution owns production asset work; this local session remains coordinator only.",
+    "Do not modify release branches or overlap the release session's Flutter UI implementation.",
+    "Keep a single animation trigger after successful durable practice, never after failed writes.",
+    "App OR OS reduced motion disables movement; preserve equivalent final growth and perched bird.",
+    "Do not merge or release PR56 without separate authorization.",
+    "Earlier milestone unlock defaults remain review context; explicit approval of all six as selectable supersedes assumptions that prevent access."
+  ]
+}
