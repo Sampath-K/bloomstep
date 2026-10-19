@@ -61,7 +61,18 @@ void main() {
         await tester.runAsync(
           () => tester.tap(find.widgetWithText(FilledButton, 'Send feedback')),
         );
-        await settleDatabase(tester);
+        final submission = Stopwatch()..start();
+        final finished = accepted
+            ? find.text('Received by the team.')
+            : find.textContaining('Saved on this device — not received.');
+        while (finished.evaluate().isEmpty &&
+            submission.elapsed < const Duration(seconds: 10)) {
+          await tester.runAsync(
+            () => Future<void>.delayed(const Duration(milliseconds: 25)),
+          );
+          await tester.pump();
+        }
+        expect(finished, findsOneWidget);
         expect(requests, 1);
         expect(find.text('Received by the team.'), accepted ? findsOneWidget : findsNothing);
         expect(await tester.runAsync(feedback.pendingCount), accepted ? 0 : 1);

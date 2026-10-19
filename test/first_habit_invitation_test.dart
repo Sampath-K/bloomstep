@@ -144,7 +144,11 @@ Future<void> ready(
       return;
     }
     missingBeforeSettings++;
-    final settings = find.byTooltip('Settings and privacy');
+    final settings = find.byWidgetPredicate(
+      (widget) => widget is IconButton &&
+          widget.tooltip == 'Settings and privacy' &&
+          widget.onPressed != null,
+    ).hitTestable();
     final gardens = find.byType(GardenScreen);
     final gardenReady =
         gardens.evaluate().length == 1 &&
@@ -153,7 +157,8 @@ Future<void> ready(
         gardenReady &&
         missingBeforeSettings >= 5 &&
         find.byType(AlertDialog).evaluate().isEmpty &&
-        settings.evaluate().isNotEmpty) {
+        settings.evaluate().length == 1 &&
+        ModalRoute.of(tester.element(settings))?.isCurrent == true) {
       await openSettings(settings);
       missingBeforeSettings = 0;
       await settleUi();
