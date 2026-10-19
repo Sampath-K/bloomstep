@@ -2,7 +2,6 @@ import 'package:budlark/core/models.dart';
 import 'package:budlark/core/garden_store.dart';
 import 'package:budlark/features/garden/recipe_builder.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 
@@ -61,8 +60,6 @@ Future<void> more(WidgetTester tester) async {
 
 void main() {
   testWidgets('Windows Ctrl+V works in every disclosed custom field', (tester) async {
-    debugDefaultTargetPlatformOverride = TargetPlatform.windows;
-    addTearDown(() => debugDefaultTargetPlatformOverride = null);
     var clipboard = '';
     tester.binding.defaultBinaryMessenger.setMockMethodCallHandler(
       SystemChannels.platform,
@@ -86,12 +83,13 @@ void main() {
       await tester.tap(field);
       await tester.pump();
       await tester.sendKeyDownEvent(LogicalKeyboardKey.controlLeft);
+      await tester.sendKeyEvent(LogicalKeyboardKey.keyA);
       await tester.sendKeyEvent(LogicalKeyboardKey.keyV);
       await tester.sendKeyUpEvent(LogicalKeyboardKey.controlLeft);
       await tester.pumpAndSettle();
       expect(tester.widget<TextFormField>(field).controller!.text, clipboard);
     }
-  });
+  }, variant: TargetPlatformVariant.only(TargetPlatform.windows));
 
   testWidgets('More retains comprehensive custom fields, plant and optional practice',
       (tester) async {

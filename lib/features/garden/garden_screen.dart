@@ -695,7 +695,7 @@ class _GardenScreenState extends State<GardenScreen>
         celebrationPracticed: recipe.celebrationPracticed,
       );
     });
-    if (!mounted || closing || error != null || planted == null) return;
+    if (!mounted || closing || planted == null) return;
     await showDialog<void>(
       context: context,
       builder: (_) =>
@@ -1543,7 +1543,9 @@ class _GardenScreenState extends State<GardenScreen>
                               Text(
                                 reminderSetupInProgress
                                     ? 'Windows reminders are starting.'
-                                    : reminders!.unavailableReason ??
+                                    : (reminderSetupError == null
+                                          ? reminders!.unavailableReason
+                                          : null) ??
                                           'Your reminder preference is on, but Windows delivery is not active.',
                               ),
                               if (!reminderSetupInProgress)
@@ -2453,7 +2455,7 @@ class _GardenScreenState extends State<GardenScreen>
                                 ),
                                 if (reminderSetupError != null &&
                                     error == reminderSetupError) ...[
-                                  Text(reminders?.unavailableReason ?? reminderSetupError!),
+                                  Text(reminderSetupError!),
                                   TextButton(
                                     onPressed: _settings,
                                     child: const Text('Set up reminders'),

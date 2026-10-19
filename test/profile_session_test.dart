@@ -303,7 +303,7 @@ void main() {
     expect(find.textContaining('Google'), findsNothing);
     expect(find.textContaining('unknown'), findsNothing);
     expect(find.text('ST'), findsOneWidget);
-    expect(find.byTooltip('Settings and privacy'), findsOneWidget);
+    expect(find.widgetWithText(TextButton, 'Sign out'), findsOneWidget);
     expect(find.text('Did it'), findsNothing);
     expect(find.textContaining('Device garden stays separate'), findsOneWidget);
     expect(find.byType(BackButton), findsNothing);
@@ -429,7 +429,7 @@ void main() {
           ),
         ),
       );
-      await _ready(tester, find.text('Plant a habit'));
+      await _ready(tester, find.byTooltip('Settings and privacy').hitTestable());
       expect(find.byTooltip('Settings and privacy'), findsOneWidget);
       await tester.tap(find.byTooltip('Settings and privacy'));
       await _ready(tester, find.text('Garden & data'));
@@ -484,8 +484,10 @@ void main() {
     await tester.pumpWidget(
       MaterialApp(
         builder: (context, child) => MediaQuery(
-          data: MediaQuery.of(context)
-              .copyWith(textScaler: const TextScaler.linear(2)),
+          data: MediaQuery.of(context).copyWith(
+            size: const Size(360, 600),
+            textScaler: const TextScaler.linear(2),
+          ),
           child: child!,
         ),
         home: HabitHome(

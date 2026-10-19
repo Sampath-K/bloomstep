@@ -184,12 +184,13 @@ void main() {
     await tester.tap(find.byTooltip('Settings and privacy'));
     await settleDatabase(tester);
     await tap('Privacy & measurement');
+    await tap('What these counts include');
     expect(
       find.textContaining('private account details, sensitive habit details'),
       findsOneWidget,
     );
     expect(
-      find.textContaining('Device-only gardens send nothing'),
+      find.textContaining('Device-only gardens send no counts'),
       findsOneWidget,
     );
     expect(

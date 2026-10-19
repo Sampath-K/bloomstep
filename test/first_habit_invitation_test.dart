@@ -94,8 +94,15 @@ Future<void> ready(
     await tester.pump(const Duration(milliseconds: 350));
     if (find.text('Sign in to grow').evaluate().isNotEmpty &&
         find.byType(GardenScreen).evaluate().isEmpty) {
-      await tester.tap(find.byTooltip('Settings and privacy'));
+      final settings = find.byWidgetPredicate(
+        (widget) => widget is IconButton &&
+            widget.tooltip == 'Settings and privacy',
+      );
+      if (tester.widget<IconButton>(settings).onPressed == null) continue;
+      if (settings.hitTestable().evaluate().isEmpty) continue;
+      await tester.tap(settings);
       await tester.pumpAndSettle();
+      if (find.text('Advanced').evaluate().isEmpty) continue;
       await tester.tap(find.text('Advanced'));
       await tester.pumpAndSettle();
       await tester.tap(find.text('Use a device-only garden'));
@@ -105,6 +112,7 @@ Future<void> ready(
     if (dismissRecipeBuilder &&
         find.byType(RecipeBuilder).evaluate().isNotEmpty &&
         (find.text('Plant a Seed').evaluate().isNotEmpty ||
+            find.text('Plant a habit').evaluate().isNotEmpty ||
             find.text('Plant one tiny step').evaluate().isNotEmpty ||
             find.text('Adjust your recipe').evaluate().isNotEmpty)) {
       final cancel = find.descendant(
@@ -120,13 +128,18 @@ Future<void> ready(
         }
       }
     }
-    final profile = find.byType(ProfileSection);
+    final profile = find.byWidgetPredicate(
+      (widget) => widget is ProfileSection &&
+          !widget.compactSummary && !widget.detailsOnly,
+    );
     await openGardenMore(tester);
-    if (finder.evaluate().isNotEmpty) {
+    if (finder.evaluate().isNotEmpty &&
+        (!needsProfile || profile.evaluate().isNotEmpty)) {
       missingBeforeSettings = 0;
       if (needsProfile) {
         await tester.ensureVisible(finder);
         await settleUi();
+        if (finder.evaluate().isEmpty) continue;
       }
       return;
     }
@@ -423,7 +436,7 @@ void main() {
         ),
       );
       await ready(tester, find.byType(RecipeBuilder));
-      expect(find.text('pour my morning drink'), findsOneWidget);
+      expect(find.widgetWithText(ChoiceChip, 'coffee'), findsOneWidget);
       final semantics = tester.ensureSemantics();
       await expectLater(tester, meetsGuideline(labeledTapTargetGuideline));
       semantics.dispose();
