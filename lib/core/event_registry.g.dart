@@ -2,7 +2,7 @@
 import 'dart:convert';
 
 const eventRegistryVersion = 1;
-const eventNames = <String>{'analytics_consent','landing_view','invite_link_open','download_click','store_page_view','installer_started','install_completed','first_launch','signin_view','signin_provider_selected','signin_succeeded','signin_failed','aspiration_selected','recipe_created','celebration_practiced','first_checkin','checkin','comeback','recipe_doctor_applied','automaticity_score','reflection','weekly_reflection','habit_graduated','share_initiated','invite_accepted','buddy_added','paywall_view','trial_start','purchase','feedback_submitted','rating_prompted','rating_prompt_shown','rated','review_responded','reminder_sent','notif_sent','notif_delivered','notif_opened','notif_actioned','notif_dismissed','notif_disabled','reminder_preference_started','reminder_preference_disabled','reminder_preference_followup','session_started','crash','app_hang','cold_start','sync_error','auth_error','auth_observation','experiment_exposure'};
+const eventNames = <String>{'analytics_consent','landing_view','invite_link_open','download_click','store_page_view','installer_started','install_completed','first_launch','signin_view','signin_provider_selected','signin_succeeded','signin_failed','aspiration_selected','recipe_created','celebration_practiced','first_checkin','checkin','comeback','recipe_doctor_applied','automaticity_score','reflection','weekly_reflection','habit_graduated','share_initiated','invite_accepted','buddy_added','paywall_view','trial_start','purchase','feedback_submitted','rating_prompted','rating_prompt_shown','rated','review_responded','reminder_sent','notif_sent','notif_delivered','notif_opened','notif_actioned','notif_dismissed','notif_disabled','reminder_preference_started','reminder_preference_disabled','reminder_preference_followup','session_started','crash','app_hang','cold_start','sync_error','auth_error','auth_observation','experiment_exposure','experience_observation'};
 final Map<String, dynamic> eventRegistry = jsonDecode(r'''{
   "analytics_consent": {
     "properties": {
@@ -806,6 +806,7 @@ final Map<String, dynamic> eventRegistry = jsonDecode(r'''{
       },
       "kind": {
         "enum": [
+          "General",
           "Idea",
           "Bug",
           "Question",
@@ -1398,6 +1399,66 @@ final Map<String, dynamic> eventRegistry = jsonDecode(r'''{
     },
     "observable": false,
     "legacy": false
+  },
+  "experience_observation": {
+    "properties": {
+      "experienceStudy": {
+        "enum": [
+          "invitation_heading_v1",
+          "garden_prompt_v1"
+        ]
+      },
+      "experienceArm": {
+        "enum": [
+          "control",
+          "candidate"
+        ]
+      },
+      "experienceOutcome": {
+        "enum": [
+          "rendered",
+          "task_completed",
+          "followup",
+          "practice",
+          "error",
+          "burden",
+          "opt_out"
+        ]
+      },
+      "experiencePolicy": {
+        "enum": [
+          "app_experience_v1"
+        ]
+      },
+      "configVersion": {
+        "type": "integer",
+        "min": 1,
+        "max": 2147483647
+      },
+      "cohortId": {
+        "type": "uuid"
+      },
+      "consentEpoch": {
+        "type": "uuid"
+      },
+      "platform": {
+        "enum": [
+          "windows"
+        ]
+      }
+    },
+    "observable": true,
+    "legacy": false,
+    "required": [
+      "experienceStudy",
+      "experienceArm",
+      "experienceOutcome",
+      "experiencePolicy",
+      "configVersion",
+      "cohortId",
+      "consentEpoch",
+      "platform"
+    ]
   }
 }''') as Map<String, dynamic>;
 

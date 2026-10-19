@@ -64,7 +64,7 @@ $parameters=@{
   CustomerTenantId='33333333-3333-4333-8333-333333333333'
   ResourceTenantId='22222222-2222-4222-8222-222222222222'
   SubscriptionId='11111111-1111-4111-8111-111111111111'
-  ResourceGroup='mock';SwaName='mock';Repository='Sampath-K/bloomstep'
+  ResourceGroup='mock';SwaName='mock';Repository='Sampath-K/budlark'
   ApiClientId='44444444-4444-4444-8444-444444444444'
   AuthenticationEventsFlowId='66666666-6666-4666-8666-666666666666'
   CustomerIssuer='https://customer.ciamlogin.com/33333333-3333-4333-8333-333333333333/v2.0'

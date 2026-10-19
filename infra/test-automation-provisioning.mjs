@@ -1,13 +1,13 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { provisioningPreflight, temporaryPermissions, provisionAutomation } from './provision-automation.mjs';
+import { automationUser, provisioningPreflight, temporaryPermissions, provisionAutomation } from './provision-automation.mjs';
 
 test('provisioning is restricted to the approved tenant, free temporary Graph scopes and no customer-policy changes', () => {
-  const organization = { id: '80e48373-4f7c-4871-9223-1c83a780bba9', verifiedDomains: [{ name: 'bloomstepcustomers261004.onmicrosoft.com', isDefault: true }] };
+  const organization = { id: '80e48373-4f7c-4871-9223-1c83a780bba9', verifiedDomains: [{ name: 'budlarkcustomers261004.onmicrosoft.com', isDefault: true }] };
   const safe = { organization, defaults: { isEnabled: false }, policies: { value: [] },
     providers: { value: [{ id: 'EmailPassword-OAUTH', identityProviderType: 'EmailPassword' }] } };
-  assert.equal(provisioningPreflight(safe), 'bloomstepcustomers261004.onmicrosoft.com');
-  assert.equal(provisioningPreflight({ ...safe, defaults: { isEnabled: true } }), 'bloomstepcustomers261004.onmicrosoft.com');
+  assert.equal(provisioningPreflight(safe), 'budlarkcustomers261004.onmicrosoft.com');
+  assert.equal(provisioningPreflight({ ...safe, defaults: { isEnabled: true } }), 'budlarkcustomers261004.onmicrosoft.com');
   assert.deepEqual(temporaryPermissions, ['EventListener.ReadWrite.All', 'IdentityProvider.Read.All', 'Policy.Read.All']);
   for (const bad of [{ ...safe, organization: { ...organization, id: 'other' } },
     { ...safe, defaults: { isEnabled: 'unknown' } }, { ...safe, defaults: {} },
@@ -18,14 +18,56 @@ test('provisioning is restricted to the approved tenant, free temporary Graph sc
   }
 });
 
+test('existing dedicated users migrate in place and read back before credentials are published', async () => {
+  const domain = 'existing-customers.onmicrosoft.com';
+  const prefix = ['bloom', 'step'].join('');
+  for (const label of ['a', 'b', 'admin']) {
+    const calls = [];
+    let stored = { id: `user-${label}`, displayName: `${prefix}-test-${label}`,
+      identities: [{ signInType: 'emailAddress', issuer: domain, issuerAssignedId: `${prefix}-test-${label}@${domain}` }] };
+    const graph = async (method, path, body) => {
+      calls.push({ method, path });
+      if (method === 'GET' && path.startsWith('/users?')) return {
+        value: path.includes(`'${stored.identities[0].issuerAssignedId}'`) ? [stored] : [],
+      };
+      if (method === 'PATCH' && path === `/users/user-${label}`) { stored = { ...stored, ...body }; return; }
+      if (method === 'GET' && path.startsWith(`/users/user-${label}?`)) return stored;
+      assert.fail(`Unexpected operation: ${method} ${path}`);
+    };
+    const profile = { password: 'synthetic-password-not-for-login', forceChangePasswordNextSignIn: false };
+    const result = await automationUser(graph, { label, domain, passwordProfile: profile });
+    assert.equal(result.user.id, `user-${label}`);
+    assert.equal(result.email, `budlark-test-${label}@${domain}`);
+    assert.equal(stored.passwordProfile, profile);
+    assert.equal(calls.some(call => call.method === 'POST' || call.method === 'DELETE'), false);
+  }
+});
+
+test('ambiguous, incomplete or unowned test users fail before mutation', async () => {
+  const domain = 'existing-customers.onmicrosoft.com';
+  for (const scenario of ['duplicate', 'unowned', 'paginated']) {
+    const graph = async (method, path) => {
+      assert.equal(method, 'GET');
+      const address = path.match(/issuerAssignedId eq '([^']+)'/)[1];
+      const name = address.split('@')[0];
+      return { value: scenario === 'paginated' ? [] : [{
+        id: name, displayName: scenario === 'unowned' ? 'customer' : name,
+        identities: [{ signInType: 'emailAddress', issuer: domain, issuerAssignedId: address }],
+      }], ...(scenario === 'paginated' ? { '@odata.nextLink': 'more' } : {}) };
+    };
+    await assert.rejects(automationUser(graph, { label: 'a', domain, passwordProfile: {} }),
+      /Ambiguous|ownership unverified|Incomplete/);
+  }
+});
+
 test('temporary credentials and assignments are removed even when policy preflight blocks provisioning', async () => {
   const calls = [];
   const clock = () => new Date('2026-10-12T01:00:00Z');
   const graph = async (method, path, body) => {
     calls.push({ method, path, body });
     if (method === 'DELETE') return;
-    if (path.startsWith('/organization')) return { value: [{ id: '80e48373-4f7c-4871-9223-1c83a780bba9', verifiedDomains: [{ name: 'bloomstepcustomers261004.onmicrosoft.com', isDefault: true }] }] };
-    if (path.startsWith('/servicePrincipals/7f7')) return { appId: 'api', appRoles: [{ id: 'admin', value: 'Bloomstep.Admin', isEnabled: true, allowedMemberTypes: ['User'] }],
+    if (path.startsWith('/organization')) return { value: [{ id: '80e48373-4f7c-4871-9223-1c83a780bba9', verifiedDomains: [{ name: 'budlarkcustomers261004.onmicrosoft.com', isDefault: true }] }] };
+    if (path.startsWith('/servicePrincipals/7f7')) return { appId: 'api', appRoles: [{ id: 'admin', value: 'Budlark.Admin', isEnabled: true, allowedMemberTypes: ['User'] }],
       oauth2PermissionScopes: [{ id: 'garden', value: 'Garden.ReadWrite', isEnabled: true }] };
     if (path.startsWith('/servicePrincipals?')) return { value: [{ id: 'graph', appRoles: temporaryPermissions.map((value, id) => ({ id: String(id), value, isEnabled: true, allowedMemberTypes: ['Application'] })) }] };
     if (method === 'POST' && path === '/applications') return { id: 'temp-app', appId: 'temp-client' };

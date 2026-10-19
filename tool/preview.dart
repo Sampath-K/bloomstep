@@ -8,10 +8,10 @@ import 'package:flutter/rendering.dart';
 import 'package:flutter/services.dart';
 import 'package:path/path.dart' as p;
 import 'package:path_provider/path_provider.dart';
-import 'package:bloomstep/app/theme.dart';
-import 'package:bloomstep/core/garden_store.dart';
-import 'package:bloomstep/core/models.dart';
-import 'package:bloomstep/features/garden/garden_screen.dart';
+import 'package:budlark/app/theme.dart';
+import 'package:budlark/core/garden_store.dart';
+import 'package:budlark/core/models.dart';
+import 'package:budlark/features/garden/garden_screen.dart';
 
 // Explicit CI-only profile preview. Never the release target or installer.
 Future<void> main() async {
@@ -21,7 +21,7 @@ Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
   final temporary = await getTemporaryDirectory();
   final store = await GardenStore.open(
-    p.join(temporary.path, 'bloomstep-synthetic-preview.sqlite'),
+    p.join(temporary.path, 'budlark-synthetic-preview.sqlite'),
     'synthetic-preview-only',
   );
   if ((await store.habits()).isEmpty) {
@@ -67,7 +67,7 @@ class _SyntheticPreviewState extends State<_SyntheticPreview> {
   }
 
   Future<void> _capture() async {
-    final folder = Platform.environment['BLOOMSTEP_PREVIEW_ARTIFACTS'];
+    final folder = Platform.environment['BUDLARK_PREVIEW_ARTIFACTS'];
     if (!mounted || folder == null) return;
     try {
       await WidgetsBinding.instance.endOfFrame;
@@ -104,9 +104,9 @@ class _SyntheticPreviewState extends State<_SyntheticPreview> {
 
   @override
   Widget build(BuildContext context) => MaterialApp(
-    title: 'Bloomstep - isolated synthetic preview',
-    theme: BloomstepTheme.light(),
-    darkTheme: BloomstepTheme.dark(),
+    title: 'Budlark - isolated synthetic preview',
+    theme: BudlarkTheme.light(),
+    darkTheme: BudlarkTheme.dark(),
     debugShowCheckedModeBanner: false,
     home: CallbackShortcuts(
       bindings: {
@@ -126,7 +126,7 @@ class _SyntheticPreviewState extends State<_SyntheticPreview> {
               SizedBox(
                 width: double.infinity,
                 child: Material(
-                  color: BloomstepTheme.light().colorScheme.tertiaryContainer,
+                  color: BudlarkTheme.light().colorScheme.tertiaryContainer,
                   child: SafeArea(
                     bottom: false,
                     child: Padding(
@@ -134,7 +134,7 @@ class _SyntheticPreviewState extends State<_SyntheticPreview> {
                       child: Text(
                         captureError ?? 'ISOLATED SYNTHETIC PREVIEW - no account, no cloud, not a release. Ctrl+Shift+S captures this app only.',
                         style: TextStyle(
-                          color: BloomstepTheme.light()
+                          color: BudlarkTheme.light()
                               .colorScheme
                               .onTertiaryContainer,
                         ),

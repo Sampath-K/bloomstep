@@ -19,7 +19,7 @@ function ManagedApp([string]$Name, $Definition) {
   $matching = @($all.value | Where-Object displayName -eq $Name)
   if ($matching.Count -gt 1) { throw "Multiple registrations named $Name; resolve manually." }
   if ($matching.Count -eq 1) {
-    if ($matching[0].tags -notcontains 'Bloomstep-managed-free') { throw "Existing $Name is not managed by this project." }
+    if ($matching[0].tags -notcontains 'Budlark-managed-free') { throw "Existing $Name is not managed by this project." }
     return $matching[0]
   }
   Graph 'applications' 'POST' $Definition
@@ -32,20 +32,20 @@ function Principal([string]$AppId) {
 }
 $scopeId = [guid]::NewGuid().ToString()
 $adminRoleId = [guid]::NewGuid().ToString()
-$api = ManagedApp 'Bloomstep API' @{
-  displayName = 'Bloomstep API'; signInAudience = 'AzureADMyOrg'; tags = @('Bloomstep-managed-free')
+$api = ManagedApp 'Budlark API' @{
+  displayName = 'Budlark API'; signInAudience = 'AzureADMyOrg'; tags = @('Budlark-managed-free')
   api = @{
     requestedAccessTokenVersion = 2
     oauth2PermissionScopes = @(@{
       id = $scopeId; value = 'Garden.ReadWrite'; type = 'Admin'; isEnabled = $true
-      adminConsentDisplayName = 'Read and write your private Bloomstep garden'
+      adminConsentDisplayName = 'Read and write your private Budlark garden'
       adminConsentDescription = 'Sync the signed-in account garden, private feedback and optional event counts.'
       userConsentDisplayName = 'Sync your private garden'
-      userConsentDescription = 'Read and write only your signed-in Bloomstep account data.'
+      userConsentDescription = 'Read and write only your signed-in Budlark account data.'
     })
   }
   appRoles = @(@{
-    id = $adminRoleId; value = 'Bloomstep.Admin'; displayName = 'Bloomstep product team'
+    id = $adminRoleId; value = 'Budlark.Admin'; displayName = 'Budlark product team'
     description = 'Read private feedback, reply and view aggregates. Assigned explicitly, never inferred.'
     isEnabled = $true; allowedMemberTypes = @('User', 'Application')
   })
@@ -53,8 +53,8 @@ $api = ManagedApp 'Bloomstep API' @{
 $scopeId = $api.api.oauth2PermissionScopes[0].id
 $null = Graph "applications/$($api.id)" 'PATCH' @{ identifierUris = @("api://$($api.appId)") }
 $apiPrincipal = Principal $api.appId
-$desktop = ManagedApp 'Bloomstep Windows' @{
-  displayName = 'Bloomstep Windows'; signInAudience = 'AzureADMyOrg'; tags = @('Bloomstep-managed-free')
+$desktop = ManagedApp 'Budlark Windows' @{
+  displayName = 'Budlark Windows'; signInAudience = 'AzureADMyOrg'; tags = @('Budlark-managed-free')
   isFallbackPublicClient = $true
   publicClient = @{ redirectUris = @('http://127.0.0.1:43821/callback') }
   requiredResourceAccess = @(@{
@@ -75,17 +75,17 @@ $organizations = Graph 'organization'
 $domain = @($organizations.value[0].verifiedDomains | Where-Object isInitial)[0].name
 if (-not $domain.EndsWith('.onmicrosoft.com')) { throw 'Customer initial domain could not be verified.' }
 $subdomain = $domain.Substring(0, $domain.Length - '.onmicrosoft.com'.Length)
-$callbacks = @(Get-BloomstepFederationCallbacks -TenantId $TenantId -Subdomain $subdomain -Domain $domain)
-$microsoft = ManagedApp 'Bloomstep consumer federation' @{
-  displayName = 'Bloomstep consumer federation'
+$callbacks = @(Get-BudlarkFederationCallbacks -TenantId $TenantId -Subdomain $subdomain -Domain $domain)
+$microsoft = ManagedApp 'Budlark consumer federation' @{
+  displayName = 'Budlark consumer federation'
   signInAudience = 'AzureADandPersonalMicrosoftAccount'
-  tags = @('Bloomstep-managed-free')
+  tags = @('Budlark-managed-free')
   api = @{ requestedAccessTokenVersion = 2 }
   web = @{ redirectUris = $callbacks }
   requiredResourceAccess = @()
 }
 $microsoft = Graph "applications/$($microsoft.id)"
-$mergedCallbacks = @(Merge-BloomstepFederationCallbacks -Existing @($microsoft.web.redirectUris) -Required $callbacks)
+$mergedCallbacks = @(Merge-BudlarkFederationCallbacks -Existing @($microsoft.web.redirectUris) -Required $callbacks)
 if (@(Compare-Object @($microsoft.web.redirectUris) $mergedCallbacks -CaseSensitive).Count) {
   $null = Graph "applications/$($microsoft.id)" 'PATCH' @{ web = @{ redirectUris = $mergedCallbacks } }
 }

@@ -28,7 +28,7 @@ try {
   const load = async () => page.evaluate(async token => {
     const { loadAarrr } = await import('/aarrr-panels.mjs');
     const request = async path => {
-      const response = await fetch(path, { headers: { 'X-Bloomstep-Authorization': `Bearer ${token}` } });
+      const response = await fetch(path, { headers: { 'X-Budlark-Authorization': `Bearer ${token}` } });
       if (!response.ok) throw Error(`Fixture pipeline ${response.status}`);
       return response.json();
     };
@@ -65,7 +65,7 @@ try {
   const web = await page.evaluate(async token => {
     const { loadWebsite } = await import('/website-panels.mjs');
     return loadWebsite(document.getElementById('website-funnel'), async path => {
-      const response = await fetch(path, { headers: { 'X-Bloomstep-Authorization': `Bearer ${token}` } });
+      const response = await fetch(path, { headers: { 'X-Budlark-Authorization': `Bearer ${token}` } });
       if (!response.ok) throw Error(`Fixture website pipeline ${response.status}`);
       return response.json();
     }, 30, { fixture: true });

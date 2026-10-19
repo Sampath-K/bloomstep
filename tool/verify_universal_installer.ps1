@@ -11,13 +11,13 @@ if ($env:GITHUB_ACTIONS -ne 'true' -or -not $env:RUNNER_TEMP) {
 $manifest = Get-Content (Join-Path $PackageDir 'universal-manifest.json') -Raw | ConvertFrom-Json
 $installer = Join-Path $PackageDir $manifest.installerFile
 $source = git rev-parse HEAD
-if ($manifest.kind -ne 'bloomstep-offline-universal-v1' -or $manifest.source -ne $source -or
-    $manifest.installerFile -ne "Bloomstep-$($manifest.version)-windows-universal-setup.exe" -or
+if ($manifest.kind -ne 'budlark-offline-universal-v1' -or $manifest.source -ne $source -or
+    $manifest.installerFile -ne "Budlark-$($manifest.version)-windows-universal-setup.exe" -or
     $manifest.installerSha256 -ne (Get-FileHash $installer).Hash.ToLower()) {
   throw 'Universal package source/name/hash authority mismatch.'
 }
 $payload = Get-Content (Join-Path $PackageDir "payload-manifest-$ExpectedArch.json") -Raw | ConvertFrom-Json
-if ($payload.kind -ne 'bloomstep-release-payload-v1' -or $payload.arch -ne $ExpectedArch -or
+if ($payload.kind -ne 'budlark-release-payload-v1' -or $payload.arch -ne $ExpectedArch -or
     $payload.source -ne $manifest.source -or $payload.version -ne $manifest.version) {
   throw 'Selected payload source/version/architecture identity mismatch.'
 }
@@ -44,11 +44,11 @@ if ($LASTEXITCODE -ne 0 -or $native.nativeArchitecture -ne $ExpectedArch -or -no
     ($ExpectedArch -eq 'arm64' -and $native.processMachine -ne 0x8664)) {
   throw 'Actual x64 process native-host/emulation architecture evidence failed.'
 }
-$target = Join-Path $env:RUNNER_TEMP 'Bloomstep-universal-smoke'
-$cancelTarget = Join-Path $env:RUNNER_TEMP 'Bloomstep-universal-cancel'
-$corruptTarget = Join-Path $env:RUNNER_TEMP 'Bloomstep-universal-corrupt'
-$measurement = Join-Path $env:LOCALAPPDATA 'Bloomstep\measurement\installer-receipt.json'
-$protocol = 'Registry::HKEY_CURRENT_USER\Software\Classes\bloomstep\shell\open\command'
+$target = Join-Path $env:RUNNER_TEMP 'Budlark-universal-smoke'
+$cancelTarget = Join-Path $env:RUNNER_TEMP 'Budlark-universal-cancel'
+$corruptTarget = Join-Path $env:RUNNER_TEMP 'Budlark-universal-corrupt'
+$measurement = Join-Path $env:LOCALAPPDATA 'Budlark\measurement\installer-receipt.json'
+$protocol = 'Registry::HKEY_CURRENT_USER\Software\Classes\budlark\shell\open\command'
 foreach ($path in @($target,$cancelTarget,$corruptTarget,$measurement,$protocol)) {
   if (Test-Path $path) { throw 'Clean disposable universal proof refuses pre-existing product state.' }
 }
@@ -226,7 +226,7 @@ try {
   $report.cancelBeforePayload = $true
   Save-NativeStage 'cancel-exit-verified'
   $installed = Invoke-NativeProcess 'install' $installer "/VERYSILENT /SUPPRESSMSGBOXES /NORESTART /DIR=`"$target`""
-  if ($installed.ExitCode -ne 0 -or -not (Test-Path "$target\bloomstep.exe")) { throw 'Universal native installation failed.' }
+  if ($installed.ExitCode -ne 0 -or -not (Test-Path "$target\budlark.exe")) { throw 'Universal native installation failed.' }
   if (Test-Path $measurement) { throw 'Universal silent installation collected observations.' }
   foreach ($file in $payload.files) {
     $installedPath = Join-Path $target $file.path
@@ -241,7 +241,7 @@ try {
       throw 'Installed inventory contains extra or missing files, possibly from the non-selected payload.'
     }
   }
-  $bytes = [IO.File]::ReadAllBytes("$target\bloomstep.exe")
+  $bytes = [IO.File]::ReadAllBytes("$target\budlark.exe")
   $machine = [BitConverter]::ToUInt16($bytes,[BitConverter]::ToInt32($bytes,60)+4)
   $expectedMachine = if ($ExpectedArch -eq 'arm64') {0xaa64} else {0x8664}
   if ($machine -ne $expectedMachine) { throw 'Installed PE is not native to the OS.' }
@@ -249,7 +249,7 @@ try {
   $report.installedPeMachine = $machine
   $report.nonSelectedPayloadNotInstalled = $true
   $uninstall = Invoke-NativeProcess 'uninstall' "$target\unins000.exe" '/VERYSILENT /SUPPRESSMSGBOXES /NORESTART'
-  if ($uninstall.ExitCode -ne 0 -or (Test-Path "$target\bloomstep.exe") -or (Test-Path $protocol)) {
+  if ($uninstall.ExitCode -ne 0 -or (Test-Path "$target\budlark.exe") -or (Test-Path $protocol)) {
     throw 'Universal owned uninstall did not remove payload/protocol.'
   }
   $report.uninstallVerified = $true
@@ -260,10 +260,10 @@ try {
   if ($fault.kind -ne 'isolated-embedded-checksum-fault-v1' -or $fault.source -ne $source -or
       $fault.fixtureAppId -ne 'A6690692-4D92-475A-9EAC-1AD867AB0635' -or
       $fault.installerSha256 -ne (Get-FileHash $faultExe).Hash.ToLower() -or
-      -not (Test-BloomstepInnoProductName (Get-Item $faultExe).VersionInfo.ProductName 'Bloomstep isolated journey proof')) {
+      -not (Test-BudlarkInnoProductName (Get-Item $faultExe).VersionInfo.ProductName 'Budlark isolated journey proof')) {
     throw 'Isolated corrupted fixture identity/hash authority mismatch.'
   }
-  $faultLog = Join-Path $env:RUNNER_TEMP 'Bloomstep-universal-corrupt-private.log'
+  $faultLog = Join-Path $env:RUNNER_TEMP 'Budlark-universal-corrupt-private.log'
   $report.corruptionLogFile = [IO.Path]::GetFileName($faultLog)
   & "$PSScriptRoot\setup_defender_test_vm.ps1" -Mode ScanCandidate -Installer $faultExe `
     -ExpectedSha256 (Get-FileHash $faultExe).Hash.ToLower() -EvidenceDir (Join-Path $EvidenceDir 'fault-fixture-scan')

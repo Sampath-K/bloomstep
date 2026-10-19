@@ -3,7 +3,7 @@ import 'dart:math';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:bloomstep/features/garden/garden_screen.dart';
+import 'package:budlark/features/garden/garden_screen.dart';
 
 import '../integration_test/support/test_only_app.dart';
 
@@ -22,11 +22,11 @@ void main() {
     tester,
   ) async {
     final runRoot = (await tester.runAsync(
-      () => Directory.systemTemp.createTemp('bloomstep-it-'),
+      () => Directory.systemTemp.createTemp('budlark-it-'),
     ))!;
     addTearDown(() => tester.runAsync(() => runRoot.delete(recursive: true)));
     await tester.pumpWidget(
-      TestOnlyBloomstepApp(runRoot: runRoot, expectedSecret: null),
+      TestOnlyBudlarkApp(runRoot: runRoot, expectedSecret: null),
     );
     expect(find.text('Test sign-in is unavailable.'), findsOneWidget);
     expect(find.byKey(TestOnlyAuthGate.usernameFieldKey), findsOneWidget);
@@ -50,11 +50,11 @@ void main() {
         (_) => random.nextInt(16).toRadixString(16),
       ).join();
       final runRoot = (await tester.runAsync(
-        () => Directory.systemTemp.createTemp('bloomstep-it-'),
+        () => Directory.systemTemp.createTemp('budlark-it-'),
       ))!;
       addTearDown(() => tester.runAsync(() => runRoot.delete(recursive: true)));
       await tester.pumpWidget(
-        TestOnlyBloomstepApp(runRoot: runRoot, expectedSecret: expected),
+        TestOnlyBudlarkApp(runRoot: runRoot, expectedSecret: expected),
       );
       await tester.enterText(
         find.byKey(TestOnlyAuthGate.usernameFieldKey),

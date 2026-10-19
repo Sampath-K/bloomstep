@@ -5,13 +5,13 @@ import 'package:crypto/crypto.dart';
 import 'package:flutter/material.dart';
 import 'package:path/path.dart' as p;
 
-import 'package:bloomstep/core/garden_store.dart';
-import 'package:bloomstep/features/garden/garden_screen.dart';
-import 'package:bloomstep/services/identity.dart';
+import 'package:budlark/core/garden_store.dart';
+import 'package:budlark/features/garden/garden_screen.dart';
+import 'package:budlark/services/identity.dart';
 
-const _testBuild = bool.fromEnvironment('BLOOMSTEP_TEST_BUILD');
-const _testIssuer = 'https://bloomstep.test';
-const _testAudience = 'bloomstep-test-api';
+const _testBuild = bool.fromEnvironment('BUDLARK_TEST_BUILD');
+const _testIssuer = 'https://budlark.test';
+const _testAudience = 'budlark-test-api';
 
 List<int> _decodeTestSecret(String secret) => List.generate(
   secret.length ~/ 2,
@@ -129,8 +129,8 @@ class TestOnlyAuthGate {
   }
 }
 
-class TestOnlyBloomstepApp extends StatefulWidget {
-  const TestOnlyBloomstepApp({
+class TestOnlyBudlarkApp extends StatefulWidget {
+  const TestOnlyBudlarkApp({
     super.key,
     required this.runRoot,
     required this.expectedSecret,
@@ -150,10 +150,10 @@ class TestOnlyBloomstepApp extends StatefulWidget {
   onSessionClosed;
 
   @override
-  State<TestOnlyBloomstepApp> createState() => _TestOnlyBloomstepAppState();
+  State<TestOnlyBudlarkApp> createState() => _TestOnlyBudlarkAppState();
 }
 
-class _TestOnlyBloomstepAppState extends State<TestOnlyBloomstepApp> {
+class _TestOnlyBudlarkAppState extends State<TestOnlyBudlarkApp> {
   final _username = TextEditingController();
   final _secret = TextEditingController();
   SyntheticTestSession? _session;
@@ -166,7 +166,7 @@ class _TestOnlyBloomstepAppState extends State<TestOnlyBloomstepApp> {
     final temp = p.normalize(p.absolute(Directory.systemTemp.path));
     return TestOnlyAuthGate.enabled &&
         p.isWithin(temp, root) &&
-        p.basename(root).startsWith('bloomstep-it-') &&
+        p.basename(root).startsWith('budlark-it-') &&
         Directory(root).existsSync();
   }
 
@@ -271,7 +271,7 @@ class _TestOnlyBloomstepAppState extends State<TestOnlyBloomstepApp> {
     }
     if (store != null && session != null) {
       return MaterialApp(
-        title: 'Bloomstep isolated test build',
+        title: 'Budlark isolated test build',
         home: Scaffold(
           body: SafeArea(
             child: Column(
@@ -337,7 +337,7 @@ class _TestOnlyBloomstepAppState extends State<TestOnlyBloomstepApp> {
       widget.expectedSecret,
     );
     return MaterialApp(
-      title: 'Bloomstep isolated test sign-in',
+      title: 'Budlark isolated test sign-in',
       home: Scaffold(
         body: Center(
           child: ConstrainedBox(
@@ -347,7 +347,7 @@ class _TestOnlyBloomstepAppState extends State<TestOnlyBloomstepApp> {
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  const Text('TEST ONLY - disposable Bloomstep profile'),
+                  const Text('TEST ONLY - disposable Budlark profile'),
                   TextField(
                     key: TestOnlyAuthGate.usernameFieldKey,
                     controller: _username,

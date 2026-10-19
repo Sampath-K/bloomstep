@@ -63,9 +63,10 @@ class _SessionBoundaryState extends State<SessionBoundary>
     _checkpointing = true;
     try {
       await widget.onCheckpoint!();
-    } catch (error) {
+    } catch (_) {
       if (mounted && !_expired) {
-        _error = 'The session clock could not be saved: $error';
+        _error =
+            'Your session couldn’t be saved. Please sign in again; your saved garden was not deleted.';
         _reject();
       }
     } finally {
@@ -86,9 +87,12 @@ class _SessionBoundaryState extends State<SessionBoundary>
   Future<void> _finish() async {
     try {
       await widget.onExpired(_error);
-    } catch (error) {
+    } catch (_) {
       if (mounted) {
-        setState(() => _error = 'Authentication cleanup failed: $error');
+        setState(
+          () => _error =
+              'Your saved sign-in couldn’t be cleared. Keep this Windows account private until you can clear it.',
+        );
       }
     }
   }
@@ -112,9 +116,12 @@ class _SessionBoundaryState extends State<SessionBoundary>
           body: Center(
             child: Padding(
               padding: const EdgeInsets.all(32),
-              child: SelectableText(
-                'Please sign in again. Your offline session has ended. Your saved garden was not deleted.'
-                '${_error == null ? '' : '\n\n$_error'}',
+              child: Semantics(
+                liveRegion: true,
+                child: SelectableText(
+                  'Please sign in again. Your offline session has ended. Your saved garden was not deleted.'
+                  '${_error == null ? '' : '\n\n$_error'}',
+                ),
               ),
             ),
           ),

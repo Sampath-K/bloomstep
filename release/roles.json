@@ -1,0 +1,88 @@
+{
+  "schema": "budlark-release-roles-v1",
+  "stages": [
+    "owner-test",
+    "public-launch"
+  ],
+  "policy": "Every required role must record an explicit, evidence-backed sign-off bound to the exact candidate commit, source tree and installer SHA-256. Owner-test requires owner-test roles; public-launch requires every role.",
+  "roles": [
+    {
+      "id": "product",
+      "requiredAt": "owner-test",
+      "accountableFor": "Outcome, scope, go/no-go recommendation",
+      "title": "Product lead"
+    },
+    {
+      "id": "domain-tiny-habits",
+      "requiredAt": "owner-test",
+      "accountableFor": "Method fidelity: anchor, tiny behavior, celebration; positive-only motivation",
+      "title": "Domain expert (Tiny Habits / learning science)"
+    },
+    {
+      "id": "ux-content-accessibility",
+      "requiredAt": "owner-test",
+      "accountableFor": "Flow clarity, copy, keyboard/screen-reader access, contrast",
+      "title": "UX, content and accessibility"
+    },
+    {
+      "id": "architect",
+      "requiredAt": "owner-test",
+      "accountableFor": "Technical design, simplicity, dependency and data-flow soundness",
+      "title": "Architect"
+    },
+    {
+      "id": "engineering",
+      "requiredAt": "owner-test",
+      "accountableFor": "Code quality, tests, build health",
+      "title": "Engineering owner"
+    },
+    {
+      "id": "qa-release",
+      "requiredAt": "owner-test",
+      "accountableFor": "Test strategy, installer behavior, artifact identity, release readiness",
+      "title": "QA and release owner"
+    },
+    {
+      "id": "brand-marketing",
+      "requiredAt": "owner-test",
+      "accountableFor": "Vets and recommends every customer-facing name, icon, image, theme and visual identity (incl. sign-in, installer, store, website) so each lands what Budlark is",
+      "title": "Marketing and visual brand"
+    },
+    {
+      "id": "security-privacy",
+      "requiredAt": "owner-test",
+      "accountableFor": "Threat model, permissions, data handling, Defender/SmartScreen posture without bypass",
+      "title": "Security and privacy"
+    },
+    {
+      "id": "legal-compliance",
+      "requiredAt": "public-launch",
+      "accountableFor": "Terms, privacy policy, licenses, store policy",
+      "title": "Legal and compliance"
+    },
+    {
+      "id": "growth-website",
+      "requiredAt": "public-launch",
+      "accountableFor": "Positioning, website, download path, acquisition claims",
+      "title": "Growth and website"
+    },
+    {
+      "id": "editorial-brand",
+      "requiredAt": "public-launch",
+      "accountableFor": "Budlark voice, naming consistency, launch materials",
+      "title": "Editorial and brand"
+    },
+    {
+      "id": "analytics",
+      "requiredAt": "public-launch",
+      "accountableFor": "Success metrics, privacy-respecting measurement, experiment readiness",
+      "title": "Analytics owner"
+    },
+    {
+      "id": "support",
+      "requiredAt": "public-launch",
+      "accountableFor": "Feedback intake, issue triage, known-issues readiness",
+      "title": "Support and community"
+    }
+  ]
+}

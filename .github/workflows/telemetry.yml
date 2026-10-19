@@ -30,11 +30,11 @@ jobs:
       - name: Verify browser to disk and app to disk, never an installer
         shell: pwsh
         run: |
-          .\tool\verify_telemetry.ps1 -EvidenceDir (Join-Path $env:RUNNER_TEMP 'bloomstep-telemetry-evidence')
+          .\tool\verify_telemetry.ps1 -EvidenceDir (Join-Path $env:RUNNER_TEMP 'budlark-telemetry-evidence')
       - name: Preserve source-bound synthetic evidence
         if: always()
         uses: actions/upload-artifact@v4
         with:
           name: isolated-telemetry-NOT-CUSTOMER-ACCEPTANCE
-          path: ${{ runner.temp }}/bloomstep-telemetry-evidence/
+          path: ${{ runner.temp }}/budlark-telemetry-evidence/
           if-no-files-found: error

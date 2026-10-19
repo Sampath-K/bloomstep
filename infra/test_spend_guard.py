@@ -16,8 +16,8 @@ class SpendGuardTests(unittest.TestCase):
             "swa": {"sku": {"name": "Free"}},
             "cosmos": {"properties": {"enableFreeTier": True, "locations": [{}], "capabilities": []}},
             "throughputs": [{"properties": {"resource": {"throughput": 400}}}],
-            "customerDirectoryName": "bloomstepcustomers261004",
-            "customerDirectory": {"name": "bloomstepcustomers261004", "sku": {"name": "Base", "tier": "A0"}},
+            "customerDirectoryName": "budlarkcustomers261004",
+            "customerDirectory": {"name": "budlarkcustomers261004", "sku": {"name": "Base", "tier": "A0"}},
             "inventory": ["Microsoft.Web/staticSites", "Microsoft.DocumentDB/databaseAccounts", "Microsoft.AzureActiveDirectory/ciamDirectories"],
         }
 
@@ -61,8 +61,8 @@ class SpendGuardTests(unittest.TestCase):
         self.assertEqual(evaluate(self.fixture(), None)["status"], "warning_cost_unknown")
         for directory in [
             {"name": "othercustomer", "sku": {"name": "Base", "tier": "A0"}},
-            {"name": "bloomstepcustomers261004", "sku": {"name": "Premium", "tier": "P1"}},
-            {"name": "bloomstepcustomers261004", "sku": {"name": "Base", "tier": "A1"}},
+            {"name": "budlarkcustomers261004", "sku": {"name": "Premium", "tier": "P1"}},
+            {"name": "budlarkcustomers261004", "sku": {"name": "Base", "tier": "A1"}},
             {},
         ]:
             data = self.fixture()
@@ -112,13 +112,13 @@ class SpendGuardTests(unittest.TestCase):
             env = {
                 "GUARD_TENANT_ID": tenant, "GUARD_CLIENT_ID": client, "GUARD_SUBSCRIPTION_ID": subscription,
                 "GUARD_RESOURCE_GROUP": "mock", "GUARD_SWA_NAME": "mock", "GUARD_COSMOS_NAME": "mockcosmos",
-                "GUARD_CUSTOMER_DIRECTORY_NAME": "bloomstepcustomers261004",
-                "API_ORIGIN": "https://mock.azurestaticapps.net", "GITHUB_REPOSITORY": "Sampath-K/bloomstep",
+                "GUARD_CUSTOMER_DIRECTORY_NAME": "budlarkcustomers261004",
+                "API_ORIGIN": "https://mock.azurestaticapps.net", "GITHUB_REPOSITORY": "Sampath-K/budlark",
                 "GITHUB_REPOSITORY_ID": "1404357574", "GITHUB_REPOSITORY_OWNER_ID": "72682617",
                 "ACTIONS_ID_TOKEN_REQUEST_URL": "https://github.invalid/assertion?x=1",
                 "ACTIONS_ID_TOKEN_REQUEST_TOKEN": "offline-request-token", "GITHUB_RUN_ID": "123",
             }
-            subject = "repo:Sampath-K@72682617/bloomstep@1404357574:environment:bloomstep-operations"
+            subject = "repo:Sampath-K@72682617/budlark@1404357574:environment:budlark-operations"
             claims = {"iss": "https://token.actions.githubusercontent.com", "aud": "api://AzureADTokenExchange",
                       "sub": "wrong-subject" if invalid_subject else subject}
             assertion = "fixture." + base64.urlsafe_b64encode(json.dumps(claims).encode()).decode().rstrip("=") + ".fixture"
@@ -139,7 +139,7 @@ class SpendGuardTests(unittest.TestCase):
                         return Response({"access_token": "offline-arm-token" if "management.azure" in scope else "offline-api-token"})
                     if "operational-pause" in url:
                         self.assertIsNone(req.get_header("Authorization"))
-                        self.assertEqual(req.get_header("X-bloomstep-authorization"), "Bearer offline-api-token")
+                        self.assertEqual(req.get_header("X-budlark-authorization"), "Bearer offline-api-token")
                         self.assertIn(json.loads(req.data)["reason"], ("paid_sku", "positive_cost", "configuration_unknown"))
                         return Response({"paused": True})
                     self.assertNotIn("listKeys", url)
@@ -168,7 +168,7 @@ class SpendGuardTests(unittest.TestCase):
                             raise HTTPError(url, 404, "No shared throughput", {}, None)
                         return Response({"properties": {"resource": {"throughput": 400}}})
                     if "/sqlDatabases?" in url:
-                        return Response({"value": [{"name": "bloomstep"}]})
+                        return Response({"value": [{"name": "budlark"}]})
                     if "/containers?" in url:
                         return Response({"value": [{"name": "data"}]})
                     if "/databaseAccounts/" in url:
@@ -202,10 +202,10 @@ class SpendGuardTests(unittest.TestCase):
             self.assertEqual(len(requests), 1)
 
     def test_runtime_reads_each_additional_static_site_sku_read_only(self):
-            requests, output = self.transport(extra_swas=[("bloomstep-analytics-staging", "Free")])
+            requests, output = self.transport(extra_swas=[("budlark-analytics-staging", "Free")])
             self.assertIn('"pauseReason": null', output)
             self.assertFalse(any("operational-pause" in req.full_url for req in requests))
-            self.assertEqual(sum("/staticSites/bloomstep-analytics-staging?" in req.full_url for req in requests), 1)
+            self.assertEqual(sum("/staticSites/budlark-analytics-staging?" in req.full_url for req in requests), 1)
             self.assertTrue(all(req.data is None for req in requests if "/staticSites/" in req.full_url))
             for extras, reason in [([("paid-site", "Standard")], "paid_sku"),
                                    ([("unreadable", HTTPError("u", 403, "Forbidden", {}, None))], "configuration_unknown"),

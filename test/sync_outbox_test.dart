@@ -1,10 +1,10 @@
 import 'dart:convert';
 import 'dart:io';
 
-import 'package:bloomstep/core/garden_store.dart';
-import 'package:bloomstep/core/models.dart';
-import 'package:bloomstep/services/identity.dart';
-import 'package:bloomstep/services/sync_service.dart';
+import 'package:budlark/core/garden_store.dart';
+import 'package:budlark/core/models.dart';
+import 'package:budlark/services/identity.dart';
+import 'package:budlark/services/sync_service.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
@@ -173,7 +173,7 @@ void main() {
       final client = MockClient((request) async {
         methods.add(request.method);
         expect(
-          request.headers['X-Bloomstep-Authorization'],
+          request.headers['X-Budlark-Authorization'],
           'Bearer test-token',
         );
         expect(request.headers.containsKey('Authorization'), isFalse);

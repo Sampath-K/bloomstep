@@ -5,7 +5,7 @@ import 'package:http/http.dart' as http;
 import '../core/garden_store.dart';
 import 'identity.dart';
 
-const _testBuild = bool.fromEnvironment('BLOOMSTEP_TEST_BUILD');
+const _testBuild = bool.fromEnvironment('BUDLARK_TEST_BUILD');
 
 class SyncService {
   SyncService(this.identity, this.store, {this.client, Uri? testApiOrigin})
@@ -155,7 +155,7 @@ class SyncService {
     store.requireSyncSession(account, generation);
     final url = _apiOrigin.resolve('/api/sync');
     final headers = {
-      'X-Bloomstep-Authorization': 'Bearer $token',
+      'X-Budlark-Authorization': 'Bearer $token',
       'Content-Type': 'application/json',
     };
     final httpClient = client ?? http.Client();
@@ -331,7 +331,7 @@ class SyncService {
           .delete(
             Uri.parse('${IdentityService.apiOrigin}/api/account'),
             headers: {
-              'X-Bloomstep-Authorization': 'Bearer $token',
+              'X-Budlark-Authorization': 'Bearer $token',
               'x-confirm-delete': 'delete-my-garden',
             },
           )

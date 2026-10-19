@@ -13,7 +13,7 @@ test('sign-in diagnostics redact credentials, accounts, tokens and identifiers',
 });
 
 test('hosted sign-in uses PKCE/state with the real username control and stops on an MFA prompt', async () => {
-  const account = { email: 'bloomstep-test-a@bloomstepcustomers261004.onmicrosoft.com', password: 'synthetic-password-not-for-login' };
+  const account = { email: 'budlark-test-a@budlarkcustomers261004.onmicrosoft.com', password: 'synthetic-password-not-for-login' };
   for (const mfa of [false, true]) {
     let authorization, passwordEntered = false, closed = false, exchanges = 0;
     const page = {
@@ -57,12 +57,12 @@ test('hosted sign-in uses PKCE/state with the real username control and stops on
 test('only dedicated local accounts are accepted and missing/duplicate credentials fail closed', () => {
   const env = {};
   for (const label of ['A', 'B', 'ADMIN']) {
-    env[`BLOOMSTEP_TEST_${label}_EMAIL`] = `bloomstep-test-${label.toLowerCase()}@bloomstepcustomers261004.onmicrosoft.com`;
-    env[`BLOOMSTEP_TEST_${label}_PASSWORD`] = 'synthetic-fixture-password-not-for-login';
+    env[`BUDLARK_TEST_${label}_EMAIL`] = `budlark-test-${label.toLowerCase()}@budlarkcustomers261004.onmicrosoft.com`;
+    env[`BUDLARK_TEST_${label}_PASSWORD`] = 'synthetic-fixture-password-not-for-login';
   }
   assert.equal(automationAccounts(env).length, 3);
-  for (const invalid of [{}, { ...env, BLOOMSTEP_TEST_A_EMAIL: 'real-customer@example.com' },
-    { ...env, BLOOMSTEP_TEST_A_PASSWORD: '' }, { ...env, BLOOMSTEP_TEST_B_EMAIL: env.BLOOMSTEP_TEST_A_EMAIL }]) {
+  for (const invalid of [{}, { ...env, BUDLARK_TEST_A_EMAIL: 'real-customer@example.com' },
+    { ...env, BUDLARK_TEST_A_PASSWORD: '' }, { ...env, BUDLARK_TEST_B_EMAIL: env.BUDLARK_TEST_A_EMAIL }]) {
     assert.throws(() => automationAccounts(invalid), /Dedicated automation credentials/);
   }
 });

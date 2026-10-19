@@ -8,7 +8,7 @@ const tag = 'v0.0.0-universal-render-test';
 const fixture = {
   tag,
   ...Object.fromEntries(['x64', 'arm64', 'universal'].map(arch => [arch, {
-    url: `https://github.com/Sampath-K/bloomstep/releases/download/${tag}/Bloomstep-${tag.slice(1)}-windows-${arch}-setup.exe`,
+    url: `https://github.com/Sampath-K/budlark/releases/download/${tag}/Budlark-${tag.slice(1)}-windows-${arch}-setup.exe`,
     sha256: 'a'.repeat(64),
   }])),
 };

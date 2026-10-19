@@ -5,7 +5,7 @@ import 'package:path/path.dart' as p;
 import 'package:path_provider/path_provider.dart';
 import 'package:window_manager/window_manager.dart';
 
-import 'app/bloomstep_app.dart';
+import 'app/budlark_app.dart';
 import 'services/single_instance.dart';
 import 'services/invitation_intent.dart';
 import 'services/installer_measurement.dart';
@@ -44,13 +44,13 @@ Future<void> main(List<String> arguments) async {
     } catch (_) {
       runApp(
         const MaterialApp(
-          title: 'Bloomstep',
+          title: 'Budlark',
           home: Scaffold(
             body: Center(
               child: Padding(
                 padding: EdgeInsets.all(32),
                 child: SelectableText(
-                  'Bloomstep could not safely process this invitation or open its app window. Use a valid Bloomstep link, or close an existing Bloomstep window and retry. No new garden or session was opened.',
+                  'The app could not start. Try opening it again. If this continues, contact support. No new garden or session was opened.',
                 ),
               ),
             ),
@@ -66,7 +66,7 @@ Future<void> main(List<String> arguments) async {
       measurementWarning = 'Optional installer measurement path is unavailable. No local observations collected; sign-in still works.';
     } else {
       measurement = InstallerMeasurement(
-        p.join(local, 'Bloomstep', 'measurement'),
+        p.join(local, 'Budlark', 'measurement'),
       );
       try {
         final marker = File(
@@ -92,7 +92,7 @@ Future<void> main(List<String> arguments) async {
           }
         }
         measurement = InstallerMeasurement(
-          p.join(local, 'Bloomstep', 'measurement'),
+          p.join(local, 'Budlark', 'measurement'),
           ownerId: owner,
         );
         await measurement.observe('first_launch');
@@ -102,7 +102,7 @@ Future<void> main(List<String> arguments) async {
     }
   }
   runApp(
-    BloomstepApp(
+    BudlarkApp(
       invitationInbox: invitations,
       measurement: measurement,
       measurementWarning: measurementWarning,

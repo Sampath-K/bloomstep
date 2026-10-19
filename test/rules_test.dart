@@ -1,4 +1,4 @@
-import 'package:bloomstep/core/rules.dart';
+import 'package:budlark/core/rules.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {

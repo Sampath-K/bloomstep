@@ -11,8 +11,8 @@ function Assert-WelcomeCancelExit([int]$ExitCode) {
   if ($ExitCode -ne 2) { throw "Owned Welcome wizard did not return Inno's pre-install Cancel exit code 2: $ExitCode" }
 }
 
-function Test-BloomstepInnoProductName([string]$ProductName,
-    [ValidateSet('Bloomstep','Bloomstep isolated journey proof')][string]$ExpectedName = 'Bloomstep') {
+function Test-BudlarkInnoProductName([string]$ProductName,
+    [ValidateSet('Budlark','Budlark isolated journey proof')][string]$ExpectedName = 'Budlark') {
   if ($null -eq $ProductName) { return $false }
   return ($ProductName.TrimEnd([char]32) -ceq $ExpectedName)
 }
@@ -70,8 +70,8 @@ function Invoke-StandardWizardStep([IntPtr]$Window, [hashtable]$Journey, [bool]$
   if ($button -eq [IntPtr]::Zero) { throw "Native $stage button missing: $caption" }
   if ($stage -eq 'finish') {
     $choice = [OnboardingWizard]::LaunchChoiceState($Window)
-    if ($choice -eq 0) { throw 'Launch Bloomstep must be checked by default.' }
-    if ($choice -eq -1 -and $CheckLaunch) { throw 'Explicit Launch Bloomstep choice unavailable on checked proof.' }
+    if ($choice -eq 0) { throw 'Launch Budlark must be checked by default.' }
+    if ($choice -eq -1 -and $CheckLaunch) { throw 'Explicit Launch Budlark choice unavailable on checked proof.' }
     $Journey.launchDefaultChecked = if ($choice -eq 1) { $true } else { $null }
     if (-not $CheckLaunch -and $choice -eq 1) {
       [OnboardingWizard]::ToggleLaunchChoice($Window)
@@ -79,7 +79,7 @@ function Invoke-StandardWizardStep([IntPtr]$Window, [hashtable]$Journey, [bool]$
       while ([OnboardingWizard]::LaunchChoiceState($Window) -ne 0 -and (Get-Date) -lt $deadline) {
         Start-Sleep -Milliseconds 50
       }
-      if ([OnboardingWizard]::LaunchChoiceState($Window) -ne 0) { throw 'Explicit Launch Bloomstep deselection was not verified.' }
+      if ([OnboardingWizard]::LaunchChoiceState($Window) -ne 0) { throw 'Explicit Launch Budlark deselection was not verified.' }
     }
     $Journey.launchSelected = $CheckLaunch;
   }
@@ -120,7 +120,7 @@ function Get-InstallerProtectionSnapshot {
 }
 
 function Start-ProtectedInstallerProof([string]$Installer, [string]$ExpectedSha256, [string]$EvidenceDir) {
-  if ($env:GITHUB_ACTIONS -ne 'true' -or $env:BLOOMSTEP_DISPOSABLE_VM -ne 'true') {
+  if ($env:GITHUB_ACTIONS -ne 'true' -or $env:BUDLARK_DISPOSABLE_VM -ne 'true') {
     throw 'Protected installer execution requires explicitly authorized disposable CI, never the local host.'
   }
   $baseline = Get-InstallerProtectionSnapshot

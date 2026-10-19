@@ -36,17 +36,17 @@ for (const page of ['index.html','releases/index.html']) {
   html = renderDownloads(html, customer.release);
   html = html.replaceAll('https://brave-plant-02c10e800.5.azurestaticapps.net',customer.origin);
   for (const arch of ['arm64','x64']) {
-    html = html.replace(new RegExp(`https://github\\.com/Sampath-K/bloomstep/releases/download/[^"\\s]+-windows-${arch}-setup\\.exe`,'g'),customer.release[arch].url);
-    html = html.replace(new RegExp(`Bloomstep-[0-9A-Za-z.-]+-windows-${arch}-setup\\.exe(?=</code>)`, 'g'),
-      `Bloomstep-${customer.release.tag.slice(1)}-windows-${arch}-setup.exe`);
+    html = html.replace(new RegExp(`https://github\\.com/Sampath-K/budlark/releases/download/[^"\\s]+-windows-${arch}-setup\\.exe`,'g'),customer.release[arch].url);
+    html = html.replace(new RegExp(`Budlark-[0-9A-Za-z.-]+-windows-${arch}-setup\\.exe(?=</code>)`, 'g'),
+      `Budlark-${customer.release.tag.slice(1)}-windows-${arch}-setup.exe`);
   }
   html = html.replace(/(<span id="download-version">)[^<]+(<\/span>)/,
     `$1${customer.release.tag.slice(1)}$2`);
   if(page === 'releases/index.html') {
     html = html.replace(/ARM64 SHA-256: [a-f0-9]{64}/,`ARM64 SHA-256: ${customer.release.arm64.sha256}`)
       .replace(/x64 SHA-256: [a-f0-9]{64}/,`x64 SHA-256: ${customer.release.x64.sha256}`);
-    html = html.replace(/https:\/\/github\.com\/Sampath-K\/bloomstep\/releases\/tag\/v[0-9A-Za-z.-]+/,
-      `https://github.com/Sampath-K/bloomstep/releases/tag/${customer.release.tag}`);
+    html = html.replace(/https:\/\/github\.com\/Sampath-K\/budlark\/releases\/tag\/v[0-9A-Za-z.-]+/,
+      `https://github.com/Sampath-K/budlark/releases/tag/${customer.release.tag}`);
   }
   html = html.replace(/\s*<meta name="(?:google-site-verification|msvalidate\.01)" content="[^"]*">/g,'');
   for (const [name, token] of [

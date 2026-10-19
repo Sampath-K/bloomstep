@@ -3,9 +3,9 @@ import 'dart:io';
 import 'dart:typed_data';
 import 'dart:ui' as ui;
 
-import 'package:bloomstep/app/theme.dart';
-import 'package:bloomstep/core/models.dart';
-import 'package:bloomstep/features/garden/plant_art.dart';
+import 'package:budlark/app/theme.dart';
+import 'package:budlark/core/models.dart';
+import 'package:budlark/features/garden/plant_art.dart';
 import 'package:crypto/crypto.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
@@ -208,7 +208,7 @@ void main() {
     'export original full-panel PlantArt illustrations, not screenshots',
     (tester) async {
       expect(
-        Platform.environment['BLOOMSTEP_EXPORT_INSTALLER_ART'],
+        Platform.environment['BUDLARK_EXPORT_INSTALLER_ART'],
         'true',
         reason: 'Explicit authoring command only; never silently replace committed art.',
       );
@@ -251,7 +251,7 @@ void main() {
             key: key,
             child: MaterialApp(
               debugShowCheckedModeBanner: false,
-              theme: BloomstepTheme.light(),
+              theme: BudlarkTheme.light(),
               home: Scaffold(backgroundColor: paper, body: illustration(name)),
             ),
           ),

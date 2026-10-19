@@ -8,12 +8,12 @@ test('spend verifier pins dedicated resource issuer/audience and application-onl
   const config = { issuer: 'https://resource.invalid/tenant/v2.0', audience: 'guard-api', jwksUri: 'https://resource.invalid/keys' };
   const auth = createSpendAuthenticator(config, async () => publicKey);
   const sign = (claims = {}, issuer = config.issuer, audience = config.audience) =>
-    new SignJWT({ roles: ['Bloomstep.SpendGuard'], ...claims }).setProtectedHeader({ alg: 'RS256' })
+    new SignJWT({ roles: ['Budlark.SpendGuard'], ...claims }).setProtectedHeader({ alg: 'RS256' })
       .setIssuer(issuer).setAudience(audience).setSubject('guard').setIssuedAt().setExpirationTime('5m').sign(privateKey);
-  const request = token => ({ headers: new Headers({ 'X-Bloomstep-Authorization': `Bearer ${token}` }) });
-  assert.deepEqual((await auth(request(await sign()))).roles, ['Bloomstep.SpendGuard']);
-  for (const claims of [{ roles: ['Bloomstep.AggregateWriter'] }, { roles: ['Bloomstep.Admin'] },
-    { roles: ['Owner'] }, { scp: 'Garden.ReadWrite' }, { roles: ['Bloomstep.SpendGuard', 'Bloomstep.AggregateWriter'] }]) {
+  const request = token => ({ headers: new Headers({ 'X-Budlark-Authorization': `Bearer ${token}` }) });
+  assert.deepEqual((await auth(request(await sign()))).roles, ['Budlark.SpendGuard']);
+  for (const claims of [{ roles: ['Budlark.AggregateWriter'] }, { roles: ['Budlark.Admin'] },
+    { roles: ['Owner'] }, { scp: 'Garden.ReadWrite' }, { roles: ['Budlark.SpendGuard', 'Budlark.AggregateWriter'] }]) {
     await assert.rejects(auth(request(await sign(claims))), error => error.status === 403);
   }
   await assert.rejects(auth(request(await sign({}, 'https://customer.invalid/v2.0'))), error => error.status === 401);

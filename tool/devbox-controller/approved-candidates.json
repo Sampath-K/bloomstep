@@ -1,0 +1,15 @@
+{
+  "schema": 1,
+  "candidates": {
+    "bd5ad93-owner-trial": {
+      "repository": "Sampath-K/budlark",
+      "source": "bd5ad93ad28988123ef7d3e28eab989f91cc4362",
+      "runId": "38994109408",
+      "artifactId": "12086798368",
+      "installerFile": "Budlark-0.1.0-preview-windows-universal-setup.exe",
+      "installerSha256": "664b60d44929da601e22832568d0c88d8baa70f119764958336e065ff4892162",
+      "packageUrl": "https://raw.githubusercontent.com/Sampath-K/budlark/d7eda331f0531312e2d6b74f6115c69716395447/docs/downloads/budlark-devbox-installer-trial.zip",
+      "packageSha256": "ca521b4921cbeade0745984ba725c154f531f0f069f5e668d5ad5f6def23d822"
+    }
+  }
+}

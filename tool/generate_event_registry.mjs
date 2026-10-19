@@ -37,7 +37,7 @@ const ruleSchema = rule => rule.enum ? { type: 'string', enum: rule.enum }
   : rule.type === 'uuid' || rule.type === 'date' ? { type: 'string', format: rule.type }
     : { type: rule.type, minimum: rule.min, maximum: rule.max };
 const schema = {
-  $schema: 'https://json-schema.org/draft/2020-12/schema', title: `Bloomstep telemetry v${source.version}`,
+  $schema: 'https://json-schema.org/draft/2020-12/schema', title: `Budlark telemetry v${source.version}`,
   oneOf: Object.entries(registry).map(([name, entry]) => ({
     type: 'object', additionalProperties: false, required: ['id','name','ts', ...(entry.required?.length ? ['properties'] : [])],
     properties: {

@@ -107,7 +107,7 @@ test('build-time promotions only accept reviewed catalog winners against exact c
 });
 
 async function harness({ environment = 'isolated', settings = () => ({}), stage = summary(0.4, 0.3) } = {}) {
-  const directory = await mkdtemp(join(tmpdir(), 'bloomstep-it-'));
+  const directory = await mkdtemp(join(tmpdir(), 'budlark-it-'));
   const store = await FileBackedCosmosContainer.openFresh(join(directory, 'store.json'));
   let now = at(0);
   const role = (/** @type {string} */ name) => async (/** @type {any} */ request) => {
@@ -115,7 +115,7 @@ async function harness({ environment = 'isolated', settings = () => ({}), stage 
     return { roles: [name] };
   };
   const handlers = createExperimentHandlers({ container: () => /** @type {any} */ (store), environment, settings,
-    authenticate: role('Bloomstep.Admin'), authenticateWorker: role('Bloomstep.AggregateWriter'),
+    authenticate: role('Budlark.Admin'), authenticateWorker: role('Budlark.AggregateWriter'),
     stageSummary: async () => stage, clock: () => now });
   const request = (/** @type {unknown} */ body, headers = {}) => /** @type {any} */ ({
     headers: new Headers({ 'content-type': 'application/json', ...headers }), text: async () => typeof body === 'string' ? body : JSON.stringify(body) });
@@ -124,8 +124,8 @@ async function harness({ environment = 'isolated', settings = () => ({}), stage 
     catch (error) { if (error instanceof ServiceError) return { status: error.status, body: { error: error.message } }; throw error; }
   };
   return { store, handlers, request, call, set: (/** @type {Date} */ value) => { now = value; },
-    worker: () => call(handlers.tick(request({}, { 'x-role': 'Bloomstep.AggregateWriter' }))),
-    admin: () => request({}, { 'x-role': 'Bloomstep.Admin' }),
+    worker: () => call(handlers.tick(request({}, { 'x-role': 'Budlark.AggregateWriter' }))),
+    admin: () => request({}, { 'x-role': 'Budlark.Admin' }),
     close: async () => { await store.close(); await rm(directory, { recursive: true, force: true }); } };
 }
 
@@ -143,14 +143,14 @@ test('production is OFF by default: config disabled, tick no-op, writes rejected
 });
 
 test('production gate requires deployment hash + server-verified receipt for this exact policy', async () => {
-  const receipt = { schemaVersion: 1, kind: 'bloomstep-experiment-isolated-acceptance', result: 'passed', policyVersion: 'x', policyHash: await policyHash(),
+  const receipt = { schemaVersion: 1, kind: 'budlark-experiment-isolated-acceptance', result: 'passed', policyVersion: 'x', policyHash: await policyHash(),
     segregation: { environment: 'isolated', productionDocuments: 0, syntheticOnly: true },
     scenarios: Array.from({ length: 6 }, (_, index) => ({ name: `s${index}`, passed: true })), costs: { declaration: 'run_dependencies_only', paidServices: [], newBillableResources: [], actualHostingBill: 'not_measured' } };
   const hash = await sha256Hex(canonicalJson(receipt));
   const h = await harness({ environment: 'production', settings: () => ({ production: 'enabled', acceptanceSha256: hash }) });
   try {
     assert.equal((await h.call(h.handlers.config())).body.reason, 'acceptance_receipt_not_verified');
-    const admin = (/** @type {unknown} */ body) => /** @type {any} */ ({ headers: new Headers({ 'x-role': 'Bloomstep.Admin' }), text: async () => JSON.stringify(body) });
+    const admin = (/** @type {unknown} */ body) => /** @type {any} */ ({ headers: new Headers({ 'x-role': 'Budlark.Admin' }), text: async () => JSON.stringify(body) });
     assert.equal((await h.call(h.handlers.acceptance(admin({ ...receipt, result: 'failed' })))).status, 400);
     assert.equal((await h.call(h.handlers.acceptance(admin({ ...receipt, policyVersion: 'tampered' })))).status, 409);
     assert.equal((await h.call(h.handlers.acceptance(admin({ ...receipt, policyHash: 'b'.repeat(64) })))).status, 409);
@@ -184,7 +184,7 @@ test('isolated loop: launch, exposure-before-outcome, idempotence, forget tombst
     assert.deepEqual(await counts(), arm(1, 1));
     assert.equal((await h.call(h.handlers.forget(h.request({ subjectId })))).body.deleted, true);
     assert.deepEqual(await counts(), arm(0, 0), 'withdrawn visit removed from aggregates');
-    const visit = (await h.store.item(`visit:${await sha256Hex(`bloomstep-visit:${subjectId}`)}`, PARTITIONS.isolated).read()).resource;
+    const visit = (await h.store.item(`visit:${await sha256Hex(`budlark-visit:${subjectId}`)}`, PARTITIONS.isolated).read()).resource;
     assert.deepEqual(Object.keys(visit).filter(key => !key.startsWith('_')).sort(), ['forgotten', 'id', 'schemaVersion', 'ttl', 'type', 'userId']);
     assert.equal((await h.call(h.handlers.outcome(h.request({ ...base, event: 'primary_cta_click' })))).status, 410, 'late outcome cannot recreate');
     assert.equal((await h.call(h.handlers.exposure(h.request({ ...base, definitionHash: active.definitionHash, arm: assigned, applied: true })))).status, 410);
@@ -199,7 +199,7 @@ test('isolated loop: launch, exposure-before-outcome, idempotence, forget tombst
     const concluded = await h.worker();
     assert.equal(concluded.body.actions[0].decision.status, 'no_data');
     assert.equal(concluded.body.active?.startsWith('hero-cta-label-v1.'), true, 'next experiment launched');
-    const kill = await h.call(h.handlers.kill(/** @type {any} */ ({ headers: new Headers({ 'x-role': 'Bloomstep.Admin', 'content-type': 'application/json' }),
+    const kill = await h.call(h.handlers.kill(/** @type {any} */ ({ headers: new Headers({ 'x-role': 'Budlark.Admin', 'content-type': 'application/json' }),
       text: async () => JSON.stringify({ killed: true, reason: 'test kill' }) })));
     assert.equal(kill.body.killed, true);
     assert.deepEqual([(await h.call(h.handlers.config())).body.active, (await h.call(h.handlers.config())).body.reason], [null, 'killed']);

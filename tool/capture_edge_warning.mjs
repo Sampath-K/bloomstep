@@ -8,12 +8,12 @@ import { join } from 'node:path';
 import { pathToFileURL } from 'node:url';
 
 const root = process.cwd();
-const output = process.env.BLOOMSTEP_EDGE_EVIDENCE_DIR;
-const profile = process.env.BLOOMSTEP_EDGE_PROFILE_DIR;
-const preflightOnly = process.env.BLOOMSTEP_EDGE_PREFLIGHT_ONLY === 'true';
+const output = process.env.BUDLARK_EDGE_EVIDENCE_DIR;
+const profile = process.env.BUDLARK_EDGE_PROFILE_DIR;
+const preflightOnly = process.env.BUDLARK_EDGE_PREFLIGHT_ONLY === 'true';
 const config = JSON.parse(await readFile(join(root, 'site', 'customer-config.json'), 'utf8'));
 const { url: assetUrl, sha256: expectedHash } = config.release.x64;
-const assetFile = 'Bloomstep-0.1.0-preview.8-windows-x64-setup.exe';
+const assetFile = 'Budlark-0.1.0-preview.8-windows-x64-setup.exe';
 if (config.release.tag !== 'v0.1.0-preview.8' ||
     new URL(assetUrl).pathname.split('/').at(-1) !== assetFile ||
     expectedHash !== 'ecd122fd8cc222fc197157595960210ed413e1aa4824c25b24bf3793649e2ae3') {

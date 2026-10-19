@@ -40,18 +40,18 @@ const authenticateSpend = createSpendAuthenticator({
 const handlers = createHandlers({ container, authenticate, authenticateAggregate, authenticateSpend });
 const website = createWebsiteHandlers({ container, authenticate, authenticateProof: authenticateAggregate, operationalEnabled: websiteOperational });
 async function websiteOperational() {
-  if (['true','1'].includes((process.env.BLOOMSTEP_API_DISABLED ?? '').toLowerCase()) ||
-      ['true','1'].includes((process.env.BLOOMSTEP_WEBSITE_DISABLED ?? '').toLowerCase())) {
+  if (['true','1'].includes((process.env.BUDLARK_API_DISABLED ?? '').toLowerCase()) ||
+      ['true','1'].includes((process.env.BUDLARK_WEBSITE_DISABLED ?? '').toLowerCase())) {
     throw new ServiceError(503, 'Website observations are paused.');
   }
   const gate = (await container().item('budget', '__preview_budget').read()).resource;
   if (gate?.operationalPause?.paused === true) throw new ServiceError(503, 'Website observations paused for spending review.');
 }
-// Production experiments stay OFF until BLOOMSTEP_EXPERIMENTS_PRODUCTION=enabled AND a verified acceptance receipt hash.
+// Production experiments stay OFF until BUDLARK_EXPERIMENTS_PRODUCTION=enabled AND a verified acceptance receipt hash.
 const experiments = createExperimentHandlers({ container, environment: 'production', authenticate, authenticateWorker: authenticateAggregate,
   operationalEnabled: websiteOperational,
-  settings: () => ({ production: process.env.BLOOMSTEP_EXPERIMENTS_PRODUCTION, acceptanceSha256: process.env.BLOOMSTEP_EXPERIMENTS_ACCEPTANCE_SHA256,
-    disabled: process.env.BLOOMSTEP_EXPERIMENTS_DISABLED }),
+  settings: () => ({ production: process.env.BUDLARK_EXPERIMENTS_PRODUCTION, acceptanceSha256: process.env.BUDLARK_EXPERIMENTS_ACCEPTANCE_SHA256,
+    disabled: process.env.BUDLARK_EXPERIMENTS_DISABLED }),
   stageSummary: websiteStageSummary(container, '__website_counts') });
 /**
  * @param {(request: import('@azure/functions').HttpRequest) => Promise<import('@azure/functions').HttpResponseInit>} handler

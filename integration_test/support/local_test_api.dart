@@ -48,11 +48,11 @@ class LocalTestApi {
     );
     final processEnvironment = <String, String>{
       ..._allowedProcessEnvironment(),
-      'BLOOMSTEP_TEST_AUTH_SECRET': secret,
-      'BLOOMSTEP_TEST_DATABASE': database.path,
-      'BLOOMSTEP_TEST_PORT': '0',
-      'BLOOMSTEP_TEST_REUSE_DATABASE': 'false',
-      'BLOOMSTEP_TEST_TELEMETRY': '$telemetry',
+      'BUDLARK_TEST_AUTH_SECRET': secret,
+      'BUDLARK_TEST_DATABASE': database.path,
+      'BUDLARK_TEST_PORT': '0',
+      'BUDLARK_TEST_REUSE_DATABASE': 'false',
+      'BUDLARK_TEST_TELEMETRY': '$telemetry',
     };
     final process = await Process.start(
       'node',

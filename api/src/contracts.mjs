@@ -4,6 +4,7 @@ import { eventRegistry, registryVersion } from './event_registry.g.mjs';
 
 const id = z.uuid();
 const text = z.string().trim().min(1).max(200);
+const recipeRevision = z.union([z.literal(''), z.uuid()]).default('');
 const timestamp = z.iso.datetime()
   .refine(value => !/\.\d{7,}Z$/.test(value), 'Microsecond precision is the maximum.')
   .refine(value => Date.parse(value) <= Date.now() + 300000, 'Timestamp is too far in the future.');
@@ -12,25 +13,26 @@ export const habitSchema = z.object({
   id, aspiration: text, anchor: text, behavior: text, celebration: text,
   species: z.enum(['Cosmos', 'Sunflower', 'Fern']),
   stage: z.number().int().min(0).max(4), status: z.enum(['active', 'graduated', 'archived']),
-  updated: timestamp,
+  updated: timestamp, recipeRevision,
 }).strict();
 export const checkinSchema = z.object({
   id, habitId: id,
   day: z.iso.date(), result: z.enum(['did', 'didMore', 'notToday']).nullable(),
   reason: z.enum(['forgot', 'too hard', 'anchor', 'motivation']).nullable(),
-  ts: timestamp,
+  ts: timestamp, recipeRevision,
 }).strict();
 export const reflectionSchema = z.object({
   id, habitId: id, items: z.string().transform((s, context) => {
     try { return JSON.parse(s); }
     catch { context.addIssue({ code: 'custom', message: 'Invalid reflection JSON' }); return z.NEVER; }
   }).pipe(z.array(z.number().int().min(1).max(7)).length(4)),
-  score: z.number().min(1).max(7), ts: timestamp,
+  score: z.number().min(1).max(7), ts: timestamp, recipeRevision,
 }).strict().refine(r => Math.abs(r.items.reduce((a, b) => a + b, 0) / 4 - r.score) < .001);
 export const voiceSchema = z.object({
-  id, kind: z.enum(['Idea', 'Bug', 'Question', 'Praise', 'This felt wrong', 'Rating']),
+  id, kind: z.enum(['General', 'Idea', 'Bug', 'Question', 'Praise', 'This felt wrong', 'Rating']),
   body: z.string().trim().max(2000), rating: z.number().int().min(1).max(5).nullable(), ts: timestamp,
-}).strict().refine(voice => voice.kind === 'Rating' ? voice.rating !== null : voice.body.length > 0,
+}).strict().refine(voice => voice.kind === 'Rating' ? voice.rating !== null :
+  voice.body.length > 0 || (voice.kind === 'General' && voice.rating !== null),
   'Ratings require a score; other feedback requires text.');
 /** @param {any} rule */
 function propertySchema(rule) {
@@ -89,7 +91,7 @@ export const syncSchema = z.object({
   events: z.array(eventSchema).max(1000),
   settings: z.array(settingSchema).max(20).default([]),
   deletions: z.array(z.object({
-    id, type: z.enum(['habits', 'voice']), recordId: id, ts: timestamp,
+    id, type: z.enum(['habits', 'voice', 'experienceEvents']), recordId: id, ts: timestamp,
   }).strict()).max(100).default([]),
 }).strict();
 export const replySchema = z.object({
@@ -105,7 +107,7 @@ export function accountKey(issuer, subject) {
 
 /** @param {unknown} roles */
 export function isAdmin(roles) {
-  return Array.isArray(roles) && roles.includes('Bloomstep.Admin');
+  return Array.isArray(roles) && roles.includes('Budlark.Admin');
 }
 
 /** @param {string} value */
@@ -120,7 +122,7 @@ function newerVersion(incoming, existing, fields) {
 }
 /** @param {Record<string, unknown>} incoming @param {Record<string, unknown>} existing */
 export function newerRecipe(incoming, existing) {
-  return newerVersion(incoming, existing, ['aspiration', 'anchor', 'behavior', 'celebration', 'species', 'status']);
+  return newerVersion(incoming, existing, ['aspiration', 'anchor', 'behavior', 'celebration', 'species', 'status', 'recipeRevision']);
 }
 /** @param {Record<string, unknown>} incoming @param {Record<string, unknown>} existing */
 export function newerSetting(incoming, existing) {

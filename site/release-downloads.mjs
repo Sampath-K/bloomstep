@@ -2,7 +2,7 @@ export function validateRelease(release) {
   if (!/^v\d+\.\d+\.\d+(?:-[0-9A-Za-z.-]+)?$/.test(release.tag)) throw Error('Explicit release tag required.');
   for (const arch of ['arm64', 'x64', ...(release.universal !== undefined ? ['universal'] : [])]) {
     const asset = release[arch];
-    const expected = `https://github.com/Sampath-K/bloomstep/releases/download/${release.tag}/Bloomstep-${release.tag.slice(1)}-windows-${arch}-setup.exe`;
+    const expected = `https://github.com/Sampath-K/budlark/releases/download/${release.tag}/Budlark-${release.tag.slice(1)}-windows-${arch}-setup.exe`;
     if (asset?.url !== expected || !/^[a-f0-9]{64}$/.test(asset?.sha256)) {
       throw Error('Verified release assets and checksums required.');
     }
@@ -24,7 +24,7 @@ export function renderDownloads(html, release) {
   const secondary = `<details><summary>Other files (owner testing only)</summary>
         <p class="small">The secondary x64 and ARM64 installers are for troubleshooting by designated testers. Windows needs a 64-bit version; 32-bit Windows is not supported.</p>
         ${exactSize}
-        <p><a data-download="x64" href="${release.x64.url}">Legacy Bloomstep x64</a> · <a data-download="arm64" href="${release.arm64.url}">Legacy Bloomstep ARM64</a></p>
+        <p><a data-download="x64" href="${release.x64.url}">Budlark x64</a> · <a data-download="arm64" href="${release.arm64.url}">Budlark ARM64</a></p>
       </details>`;
   const size = release.universal.bytes === undefined ? '' :
     `\n      <p class="small">Download size: ${(release.universal.bytes / 1e6).toFixed(2)} MB.</p>`;
@@ -40,6 +40,6 @@ export function renderDownloads(html, release) {
   const pattern = /<p>Choose ARM64[\s\S]*?(?=\s*<p class="small">The preview installer is unsigned)|<p id="architecture-guidance">[\s\S]*?(?=\s*<p class="small">The preview installer is unsigned)/;
   if (!pattern.test(html)) throw Error('Releases download region missing.');
   return html.replace(pattern, `${primary}
-      <p class="small"><strong>Owner-test file fingerprint:</strong> <code>Bloomstep-${release.tag.slice(1)}-windows-universal-setup.exe</code><br><code>Universal SHA-256: ${release.universal.sha256}</code></p>
+      <p class="small"><strong>Owner-test file fingerprint:</strong> <code>Budlark-${release.tag.slice(1)}-windows-universal-setup.exe</code><br><code>Universal SHA-256: ${release.universal.sha256}</code></p>
       <details><summary>Other owner-test file fingerprints</summary><p class="small"><code>ARM64 SHA-256: ${release.arm64.sha256}</code><br><code>x64 SHA-256: ${release.x64.sha256}</code></p></details>`);
 }

@@ -5,8 +5,8 @@ param(
 )
 $ErrorActionPreference = 'Stop'
 . "$PSScriptRoot\universal_integrity_contract.ps1"
-if ($env:GITHUB_ACTIONS -ne 'true' -or $env:BLOOMSTEP_UNIVERSAL_APP_PROOF -ne 'true' -or
-    $env:BLOOMSTEP_DISPOSABLE_VM -ne 'true') {
+if ($env:GITHUB_ACTIONS -ne 'true' -or $env:BUDLARK_UNIVERSAL_APP_PROOF -ne 'true' -or
+    $env:BUDLARK_DISPOSABLE_VM -ne 'true') {
   throw 'Genuine universal app launch proof is restricted to explicitly authorized disposable CI.'
 }
 New-Item -ItemType Directory -Path $EvidenceDir -Force | Out-Null
@@ -24,10 +24,10 @@ $protection = $null
 try {
   $manifest = Get-Content (Join-Path $PackageDir 'universal-manifest.json') -Raw | ConvertFrom-Json
   $installer = Join-Path $PackageDir $manifest.installerFile
-  if ($manifest.kind -ne 'bloomstep-offline-universal-v1' -or $manifest.source -ne $report.source -or
-      $manifest.installerFile -ne "Bloomstep-$($manifest.version)-windows-universal-setup.exe" -or
+  if ($manifest.kind -ne 'budlark-offline-universal-v1' -or $manifest.source -ne $report.source -or
+      $manifest.installerFile -ne "Budlark-$($manifest.version)-windows-universal-setup.exe" -or
       $manifest.installerSha256 -ne (Get-FileHash $installer).Hash.ToLower() -or
-      -not (Test-BloomstepInnoProductName (Get-Item $installer).VersionInfo.ProductName)) {
+      -not (Test-BudlarkInnoProductName (Get-Item $installer).VersionInfo.ProductName)) {
     throw 'Genuine universal source/name/hash/product authority mismatch.'
   }
   $payloadPath = Join-Path $PackageDir "payload-manifest-$ExpectedArch.json"
@@ -48,16 +48,16 @@ try {
     throw 'Genuine universal app proof is not on the expected native OS.'
   }
   & "$PSScriptRoot\verify_onboarding_wizard.ps1" -Installer $installer -EvidenceDir $EvidenceDir -LoadHelpersOnly
-  $measurement = Join-Path $env:LOCALAPPDATA 'Bloomstep\measurement\installer-receipt.json'
-  $protocol = 'Registry::HKEY_CURRENT_USER\Software\Classes\bloomstep\shell\open\command'
-  if ((Test-Path $measurement) -or (Test-Path $protocol) -or (Get-Process -Name bloomstep -ErrorAction SilentlyContinue)) {
+  $measurement = Join-Path $env:LOCALAPPDATA 'Budlark\measurement\installer-receipt.json'
+  $protocol = 'Registry::HKEY_CURRENT_USER\Software\Classes\budlark\shell\open\command'
+  if ((Test-Path $measurement) -or (Test-Path $protocol) -or (Get-Process -Name budlark -ErrorAction SilentlyContinue)) {
     throw 'Genuine proof refuses pre-existing product state or processes.'
   }
   $report.proofAutomation = 'Explicit disposable test-driver Install/Finish and launch deselection; no Next or customer automatic behavior claim'
   $protection = Start-ProtectedInstallerProof $installer $manifest.installerSha256 $EvidenceDir
   foreach ($mode in @('checked-launch','unchecked-launch','silent-no-launch')) {
     Assert-InstallerProtectionUnchanged $protection
-    $target = Join-Path $EvidenceDir "Bloomstep-genuine-universal-$mode"
+    $target = Join-Path $EvidenceDir "Budlark-genuine-universal-$mode"
     if (Test-Path $target) { throw 'Genuine proof refuses an existing install target.' }
     $owned.Clear(); $apps.Clear()
     $journey = New-StandardWizardJourney
@@ -76,8 +76,8 @@ try {
           if ($owned.Contains([int]$process.ParentProcessId)) { [void]$owned.Add([int]$process.ProcessId) }
         }
       }
-      foreach ($app in @(Get-Process -Name bloomstep -ErrorAction SilentlyContinue)) {
-        if ($app.Path -ne "$target\bloomstep.exe" -or $mode -ne 'checked-launch' -or $journey.finishClicks -ne 1) {
+      foreach ($app in @(Get-Process -Name budlark -ErrorAction SilentlyContinue)) {
+        if ($app.Path -ne "$target\budlark.exe" -or $mode -ne 'checked-launch' -or $journey.finishClicks -ne 1) {
           throw 'Genuine app started without explicit checked Finish or outside the owned target.'
         }
         [void]$apps.Add($app.Id)
@@ -125,8 +125,8 @@ try {
     $launcherExitCode = $setup.ExitCode
     $observeUntil = (Get-Date).AddSeconds(10)
     do {
-      foreach ($app in @(Get-Process -Name bloomstep -ErrorAction SilentlyContinue)) {
-        if ($app.Path -ne "$target\bloomstep.exe") { throw 'Unexpected genuine app process outside the exact owned target.' }
+      foreach ($app in @(Get-Process -Name budlark -ErrorAction SilentlyContinue)) {
+        if ($app.Path -ne "$target\budlark.exe") { throw 'Unexpected genuine app process outside the exact owned target.' }
         [void]$apps.Add($app.Id)
         if ([ProcessTokenProbe]::Sid($app.Id) -ne $installingSid -or [ProcessTokenProbe]::Elevated($app.Id)) {
           throw 'Actual genuine app installing-user or non-elevated token mismatch.'
@@ -139,7 +139,7 @@ try {
     $ownedAppWindowVisible = $false
     if ($apps.Count -eq 1) {
       $app = Get-Process -Id (@($apps)[0])
-      $sameExactTargetAppAlive = -not $app.HasExited -and $app.Path -eq "$target\bloomstep.exe"
+      $sameExactTargetAppAlive = -not $app.HasExited -and $app.Path -eq "$target\budlark.exe"
       if ([ProcessTokenProbe]::Sid($app.Id) -ne $installingSid -or [ProcessTokenProbe]::Elevated($app.Id)) {
         throw 'Actual surviving app installing-user or token elevation changed.'
       }
@@ -159,7 +159,7 @@ try {
     Assert-InstallerProtectionUnchanged $protection
     $uninstall = Start-Process "$target\unins000.exe" -ArgumentList '/VERYSILENT /SUPPRESSMSGBOXES /NORESTART' -PassThru
     if (-not $uninstall.WaitForExit(30000)) { Stop-Process -Id $uninstall.Id; throw 'Genuine uninstall exceeded deadline.' }
-    if ($uninstall.ExitCode -ne 0 -or (Test-Path "$target\bloomstep.exe") -or (Test-Path $protocol)) { throw 'Genuine owned uninstall failed.' }
+    if ($uninstall.ExitCode -ne 0 -or (Test-Path "$target\budlark.exe") -or (Test-Path $protocol)) { throw 'Genuine owned uninstall failed.' }
     if (Test-Path $target) { Remove-Item -LiteralPath $target -Recurse -Force }
     Assert-InstallerProtectionUnchanged $protection
     $target = $null

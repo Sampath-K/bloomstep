@@ -4,6 +4,236 @@
 cloud deployment and native background behavior require integration evidence.
 This ledger is updated with verified outcomes, not inferred from source code.
 
+## Current installer launch contract
+
+**Clean-break identity update:** source now uses Budlark throughout, including
+package identifiers, installer and data paths, protocol and API authorization
+header. This invalidates prior candidate approvals. No replacement candidate
+has been cut; fresh x64/ARM64 installers, exact-byte evidence and owner manual
+`PASS <installer SHA-256>` remain required. API/client changes must ship together.
+The coordinator owns external resource and credential migration.
+
+**Historical owner-test installer (18 October 2026):** source
+`083f2def66c1e084c56653238b85802ff260c3c3`,
+[push CI run 39100447327](https://github.com/Sampath-K/budlark/actions/runs/39100447327),
+[artifact 12127077182](https://github.com/Sampath-K/budlark/actions/runs/39100447327/artifacts/12127077182).
+The archived universal setup is
+22,313,341 bytes, SHA-256
+`8bac5279fc24db9a0e00ef423d650b02b4298f02ade0200b60110e5506abe6f6`.
+The coordinator delivered those bytes to the owner as
+`Downloads\Budlark-0.1.0-preview-setup.exe`. Independent artifact download
+verified the checksum, universal manifest and both source-bound payload
+manifest hashes. API, hosted Windows x64/ARM64 tests/builds, funnel and
+universal packaging passed on that exact source.
+
+The artifact's `defender-static-scan.json` reports
+`STATIC_SCAN_COMPLETED_NO_THREATS_REPORTED`, exit 0, signature version
+`1.461.84.0`, bound to the SHA-256 above. The coordinator also reports a local
+static Defender scan with no threats; its raw local receipt was not inspected
+by this agent. Neither static result establishes runtime safety or the cause
+of the earlier detection. The installer remains unsigned. Owner manual
+installation and launch succeeded as a smoke test only; no merge, release, deployment or
+public-pointer change is authorized. This documentation receipt does not
+replace or rebuild those bytes. Historical download labels elsewhere in this
+repository have been normalized; their recorded hashes do not identify a new
+Budlark build or establish that a renamed historical asset exists.
+
+**Owner-reported security hold:** candidate source `9085df1`, installer SHA-256
+`e1cfd59719ee5e9a14703159c6d9c4bea4532a5555936304094b62290250bce3`,
+was stopped by Defender with `Behavior:Win32/DefenseEvasion.A!ml` in the Inno
+setup runtime. Do not restore or rerun these bytes or bypass protection.
+The follow-up removes custom window-station inspection and unused setup
+autorun cleanup. The detection's cause is not established; these source changes
+are not proof of remediation. A replacement requires fresh exact-byte evidence
+and owner feedback. Authenticode signing of both setup and `budlark.exe`
+requires owner provisioning; unsigned builds do not establish durable trust.
+
+Hosted CI remains responsible for API tests, Windows x64/ARM64 build and test,
+installer compilation and correctness contracts, universal-package byte/hash
+verification, and the existing hosted website/security checks. The self-hosted
+VM installation/lifecycle/launch jobs are removed from the launch workflow;
+no runner registration or local VM is part of this launch path.
+
+The owner must manually verify the exact downloadable installer and report
+feedback against its source commit and SHA-256. That result is **PENDING** until
+the owner supplies it; hosted build/package checks are not installation or
+launch acceptance. The public download pointer and customer launch remain held.
+The withdrawn Defender-quarantined candidate remains excluded. No release,
+deployment, merge or protection bypass is authorized by this contract change.
+
+## 17 October approved preview.15 candidate (not yet released)
+
+Approved accessibility/copy implementation is committed in `ad80c23`, with the
+strict short-window correction in `6adb889db5a95e9345cd2894519c383a2c302058`
+and Windows E2E copy alignment in `56100590d4715773f21c7f945f1cf3a7378f26c3`.
+The practice tests now set the exact MediaQuery viewport and require every
+edge of the Did it control inside 420x820/200% and 640x480/200%, with recipe
+context, semantics, and keyboard ordering. Actual-source synthetic renders
+are `docs/evidence/visual-quality/chrome-account-populated-large.png`,
+`chrome-account-populated-short-large.png`, and
+`device-copy-confirmation-SYNTHETIC.png`; they were reviewed in Browser canvas.
+Native accessibility and protected launch are not established by these renders.
+
+PR50's local-only status tooling is composed in
+`8d3fb21729215bec33aff43796acd491a1310510` (21 Node contracts passed).
+PR36's photo foundation is composed in
+`8dc00de88c0b8414065026f7c1cc46f2db35ea3a`: production immutable linkage remains
+null, so no Microsoft photo browser/Graph path is activated. The profile name
+and approved compact layout remain intact. Analyzer and all 37 targeted
+photo/profile/viewport regressions passed.
+
+The full Flutter suite on `8dc00de` passed through the bounded execution
+watchdog with exit 0, receipt
+`7b5f1da8203227716745bc3b503e19d96a7f55b81c2a07d48fac336df7c74358`.
+The private dashboard test receipt is
+`23f8814473159223ef8cad5a445a71328c326a8518e8a1a108be4a4b272f79e4`.
+Both ran without tracked/source changes. Local tests use `--no-test-assets`;
+native asset/plugin compilation is a distinct hosted gate.
+
+PRs #27/#29/#30/#38 remain open and excluded from preview.15, pending exact
+copy/mockup approval. This disposition was confirmed by the coordinator on
+17 October: do not block the approved preview on those four additions.
+Their proposed copy and conceptual renders are recorded in
+[the deferred review packet](evidence/copy-review/deferred-pr-copy.md).
+PR26's branch also contains the held coach patch; do not merge it wholesale.
+PR28/31/33 are closed with superseding main-commit evidence. PR49/50/36 closure
+waits for the combined candidate to land.
+
+Hosted x64/ARM64 and other required engineering checks on the latest candidate
+must pass before merge. Owner manual installer verification remains pending and
+is not inferred from hosted checks. No preview.15 tag/release has been published
+at this checkpoint. Production downloads and customer configuration stay on
+preview.14; no site deployment or promotion is authorized.
+
+## 15 October preview-trial continuity correction (source only)
+
+Owner feedback: device habits appeared to vanish after sign-in; the profile did
+not display a name. Source tracing and isolated SQLite/production HabitHome
+fixtures show that preview.14 deliberately selected a separate account file,
+leaving device habits stored; its minimal profile hid identity text and its
+signed-in branch omitted the persistent notice. The owner's actual database
+and actual provider claims were not inspected; data preservation/name availability
+on that installation remain unconfirmed.
+
+The bounded correction follows the owner-directed spec amendment: persistent
+garden messaging, non-destructive garden viewing, explicit cloud-disclosed opt-in
+copy preserving originals/history and isolation, transactional rollback and
+idempotent retries, visible authoritative name or honest missing-name fallback.
+Settings/export/deletion/consent are retained. This is PR/source work, not a
+new release, installed-candidate acceptance or production site promotion.
+Preview.14 and its assets remain immutable.
+
+Existing in-app live-region errors, pending/sync status, confirmation dialogs
+and snackbars can explain next steps without enabling OS notifications. Native
+Windows reminders already exist in `desktop_reminders.dart`, surfaced as
+`Gentle Windows reminders` in Settings: opt-in, app/tray must remain running,
+chosen local time and default quiet hours 21:30–07:30, daily caps, Later/fewer/off
+and ignored-reminder backoff. `windows_toast_history.dart` checks Windows
+notification permission rather than enabling it. Focus/OS policy can suppress
+delivery; initialization/request success is not proof of delivery, and installed
+owner/native delivery remains unverified. No permission, startup choice or
+notification was changed or sent for this correction.
+
+Validation on 15 October: analyzer clean; all 44 targeted copy/profile/session/
+first-habit contracts pass, including cancellation, visible storage failure and
+retry, transaction rollback on lost authority, concurrent/restart idempotency,
+account edits/deletions/isolation, preserved originals/history, Settings and
+200% compact layout/session expiry. Synthetic production-HabitHome frames
+show the authoritative fixture name, persistent garden explanation, actual
+cloud-disclosed copy confirmation and the copied habit; they are not provider
+or installed-customer acceptance. The unchanged release/security/branding
+source contracts pass (28 tests).
+
+The initial continuity full-suite run had 280 passes, one existing skip and one
+**pre-existing failure**:
+`reminder_scheduler_test.dart:588`, "seven actual unanswered requests pause with
+alternate-day backoff", expects two reconnect requests but observes one.
+The same failure was reproduced from pristine main
+`a778a66560b8a7b3ee9449d8e00af876c41461ec` on 15 October using its original
+`lib/`, test, pubspec and assets with existing resolved dependencies:
+`flutter test --no-pub --dart-define=BUDLARK_TEST_BUILD=true test/reminder_scheduler_test.dart --plain-name "seven actual unanswered requests pause with alternate-day backoff"`.
+The fixture advanced reminder time through 4–20 October while recipe interaction
+used the real clock. The original failure was reproduced again on 15 October at
+continuity head `0a094e92e2f14a4ab4f59dd5b07a7cc0aa25f2b3` before the distinct
+test-only follow-up below.
+
+The reminder fixture now supplies the same mutable clock to `GardenStore.open`
+and `DesktopReminders`, using the existing test-build-only injection API; no
+production API or reminder policy changed. Planting must record exactly that
+injected timestamp. The unchanged seven-request, two-reconnect and seven-ignored
+outcomes and exact request dates are asserted for the original 4 October start,
+a year boundary (28 December 2025), a non-leap February boundary (26 February
+2027), and a leap-day boundary (26 February 2028). These calendar cases retain
+the existing even-day backoff rule, including its behavior across month changes.
+All 30 reminder tests pass; analyzer is clean. The subsequent full app suite
+passes with 284 tests and the same one existing skip, using
+`flutter test --no-pub --concurrency 1 --dart-define=BUDLARK_TEST_BUILD=true`.
+The follow-up added three calendar cases and resolved the original failed case;
+no test was skipped or weakened. Full CI is not claimed green.
+Exact-head Windows compilation, protected native
+lifecycle/security/launch, real-provider claims and a separately authorized
+installed-candidate trial/release remain distinct pending gates.
+
+## Combined continuity and visual candidate (source only)
+
+PR48 continuity is composed with the recovered visual/invitation/GrowthBook
+handoff. The source composition is `785cd5ebd97782baa3e9517e8c36597f2ea0406a`;
+test/render harness and synthetic evidence are committed at
+`162572b194554720eef3740052c5a7a1827d26a2`; compact practice test/evidence is
+`f44f73e38c731a6c697b39b1a1e29b72841a9dce`; the invitation branding source
+assertion now follows the unchanged subject into its extracted dialog in
+`3d2deb1e3902f1e9540cbf2e00d67b8f9cef353c`. The visual branch handoff was
+`b31d5ae66ccda42a97bc4358d11e0f9edd9495a7`. PR48's `contentRevision` reload
+hook, device/account isolation, explicit opt-in copy, persistent garden notice,
+name fallback, Settings, and invite behavior are retained. GrowthBook remains
+default off; there is no hosted study or outcome claim.
+
+Synthetic renders now show the provider-supplied fixture name, explicit
+device-to-account copy confirmation, view-device state, copied profile, populated
+garden, and invite at desktop and large-text sizes. These use disposable SQLite
+fixtures and mock identity/services; the owner's installed database and provider
+were not inspected. Source and tests establish local preservation/copy behavior,
+not owner-data acceptance.
+
+Validation on the combined tree: garden chrome visual tests **6 passed**,
+profile-session tests **15 passed**, and the full Flutter suite passed
+**315 tests with one existing skip**; Flutter analyzer clean. The API suite
+passed **217 tests**; API TypeScript and generated registry checks passed.
+Client tests used `--no-test-assets`: Flutter's normal test-asset rebuild is
+blocked by the existing protected `build\\unit_test_assets` reparse point.
+The detached native validation checkout also reports the Flutter plugin
+symlink/Developer Mode prerequisite. Neither limitation was bypassed.
+
+The first pushed-head CI at `182924303aa4f3504b66c0886b80e1b47bc59861`
+reported a repository-level branding contract failure: it searched for the
+unchanged invitation subject in `garden_screen.dart` after the invite dialog
+extraction. The assertion now reads `invitation_dialog.dart`; the exact
+nine-file Node CI selection passes **47 tests**.
+
+On combined code/test SHA `6c95718acbfee8dc5a3822692084e04ded805a88`,
+[CI run 38833006325](https://github.com/Sampath-K/budlark/actions/runs/38833006325)
+passes API, x64 and ARM64 Windows test/build, funnel acceptance, and universal
+installer compilation. The customer-site run 38833006303, telemetry run
+38833006363, offline-sandbox run 38833006301, and website run 38833006301
+passed. The overall CI workflow remains queued because protected genuine
+launch-after-install, installer lifecycle and universal-native-proof jobs
+remain pending; they are not passes. This establishes hosted compilation only,
+not interactive installation, protected security lifecycle or launch.
+
+The primary **Did it** practice action is reachable after scrolling in both
+the 640x480 short view and 420x820/200% view. At 200%, the profile occupies the
+initial viewport and the practice action is below the fold; that hierarchy gap
+remains scored below target rather than being hidden by the after-scroll render.
+
+**Still open:** owner manual installer verification for the exact candidate;
+local native plugin setup and owner-installed-candidate validation; Windows
+Narrator/high contrast/keyboard/mixed-DPI review; real provider claims and
+installed-owner data readback. The continuity score is 4/3/4/3/4, with hierarchy
+and accessibility below the heuristic target. Existing in-app pending/error/
+status feedback can communicate next steps, but no OS permission was enabled
+and no notification was sent. No merge, tag, release, site update or
+owner-trial promotion is part of this integration.
+
 ## Current owner-trial shipping composition
 
 This source composes PR26 only through native one-click commit
@@ -33,13 +263,13 @@ PR46 merged as `d0c3ad1dbaa8a2f42a6f9dcb8277d94b1d749603`; PR47 then
 restored account Settings/export/deletion/consent access, reproduced by a
 production HabitHome regression. The immutable preview.14 source is
 `7552b520e183d219f668fbdc02005d8acb20758f`.
-[Tag-run 38331127153](https://github.com/Sampath-K/bloomstep/actions/runs/38331127153)
+[Tag-run 38331127153](https://github.com/Sampath-K/budlark/actions/runs/38331127153)
 passed API, both hosted native architecture test/build jobs, isolated synthetic
 funnel acceptance and offline universal compilation. Original same-run native
 payload inventories/PE architectures, installer checksums, universal source,
 version and payload-manifest bindings were verified before publication.
 
-[The prerelease](https://github.com/Sampath-K/bloomstep/releases/tag/v0.1.0-preview.14)
+[The prerelease](https://github.com/Sampath-K/budlark/releases/tag/v0.1.0-preview.14)
 contains the exact manifests, checksums and a separately labeled
 `owner-trial-manifest.json`. GitHub asset digest/size readback matches the
 original bytes: universal `7ad56cc3c71a40d78dd7cb043b43aa42ea884cb0484da982cffa386c9384b094`
@@ -69,7 +299,7 @@ not current distribution or acceptance.
 **Production download receipt, 13 October 2026 at 01:56 UTC:**
 site metadata commit `4ed42220c521b4464446e9fd6d579c5792e70566` deployed
 successfully through unchanged
-[Azure run 38334280792](https://github.com/Sampath-K/bloomstep/actions/runs/38334280792),
+[Azure run 38334280792](https://github.com/Sampath-K/budlark/actions/runs/38334280792),
 including protected-route 401 readback. Customer quality run `38334280826`
 also passed. Live [home](https://brave-plant-02c10e800.5.azurestaticapps.net/)
 and [preview details](https://brave-plant-02c10e800.5.azurestaticapps.net/releases/)
@@ -87,7 +317,7 @@ zero-click bytes are withdrawn after severe Defender behavior quarantine.
 The owner-directed correction preserves static Anchor/Action/Celebrate art but
 removes extra Next pages: one visible native Ready page with Install, default
 per-user location, progress, then Finish with a default-checked, freely toggleable
-**Launch Bloomstep** checkbox. No automatic navigation,
+**Launch Budlark** checkbox. No automatic navigation,
 forced launch, timers or artificial holds. This design is not proof of the
 detection cause or a clean security outcome. Protected genuine/fixture launch
 jobs require an owner-prepared disposable non-admin interactive Hyper-V VM with
@@ -357,7 +587,7 @@ Google verified/published OAuth branding remain genuine gates.
 | 2 | Check in | Tests pass for did/more/rest, idempotency, append edits/undo, local midnight. Actual MSAA Did-it action in the newer synthetic native garden exposed celebration in67ms (<=300ms); not a customer-use measurement. |
 | 3 | Visual garden | True ARM64 synthetic profile captures inspected: readable banner and reserved Plant bar fixes observed. Responsive/200%-text regressions pass. Actual Flutter child HWND exposes38 MSAA nodes including labeled action buttons; UIA is empty, not evidence of no MSAA support. Narrator interaction remains unobserved. |
 | 4 | Local reminders | Real runtime probe observed tray bounds/hidden window and clean teardown. It exposed the dependency's unpackaged Win32 history/individual-cancel limitation. Native explicit-AUMID/grouped WinRT request/history/removal now replaces that path, with OS permission preflight and surfaced errors. This machine reports NotificationSetting2 (DisabledForUser); no OS settings changed or delivery claimed. New adapter full native/link/removal and popup/Focus/restart observations remain pending. |
-| 5 | Sign in | Real Google/MSA callback mismatches corrected: operator saved exact Google Authorized redirect URI; MSA narrowly added with authorized Graph/preserved entries/readback. Fresh isolated expected clients/callbacks reach BOTH credential forms without mismatch. Genuine exchanges remain unverified. Actual default/en-US hosted Bloomstep wordmark, favicon and product text applied; English/French-browser fallback verified. Google published/verified consent branding remains an operator gate. |
+| 5 | Sign in | Real Google/MSA callback mismatches corrected: operator saved exact Google Authorized redirect URI; MSA narrowly added with authorized Graph/preserved entries/readback. Fresh isolated expected clients/callbacks reach BOTH credential forms without mismatch. Genuine exchanges remain unverified. Actual default/en-US hosted Budlark wordmark, favicon and product text applied; English/French-browser fallback verified. Google published/verified consent branding remains an operator gate. |
 | 6 | Sync | Personal SWA Free/Cosmos free tier provisioned; live unauthenticated sync API returns 401. SQLite v4 preserves durable fingerprints and adds typed event properties; partial upload/concurrent edits, consent purge and account isolation tested. Live probes exposed SWA replacing Authorization and reserved admin routes: dedicated client-token header and team routes fixed in source, deployment smoke gate added. Actual authenticated two-account/device/offline round trips remain pending. |
 | 7 | Funnel | Versioned48-event registry and strict metadata, four typed dashboards/minimum50. Default-off browser/installer local receipts and independently consented explicit account linkage preserve original times/IDs; strict privacy/expiry/retry/account tests and actual browser+dual installer observations pass. Bounded opt-in Dart categories are not a native-death census; crash-free remains null. Actual main worker37222477262 wrote one snapshot; worker rejected by garden/team. Scheduled tick/customer population/OS-delivery remain unobserved. |
 | 8 | Feedback | Private queue/status/replies; audited pagination/retry/deletion protections tested. Real browser PKCE operator source and separately registered SPA/consent/flow binding now prepared; credentials memory-only, no pasted token. Actual selected customer Admin and feedback/rating round trip still pending. |
@@ -522,13 +752,13 @@ the new preview.4 candidate described below.
 
 ## Authorized branding increment
 
-The real hosted broker page formerly showed "BLOOMSTEP CUSTOMERS"; Google's
+The real hosted broker page formerly showed "BUDLARK CUSTOMERS"; Google's
 own page actually showed "continue to ciamlogin.com". Authorized no-cost Graph
-branding now supplies Bloomstep's original wordmark/favicon, product headings,
+branding now supplies Budlark's original wordmark/favicon, product headings,
 signup/account/OTP-page strings and truthful credential/domain explanation.
 Actual default locale0 and en-US writes/readbacks succeeded; fresh isolated
 English and French-browser fallback both load the245-by-36 wordmark and show
-"Sign in to Bloomstep", without the previous Customers fallback.
+"Sign in to Budlark", without the previous Customers fallback.
 No auth screenshot, credentials, issuer/callback/secret/contact/license change.
 The platform's generic localized browser-tab title remains unchanged.
 
@@ -579,10 +809,10 @@ runner directory. Tag workflow publishes **prereleases**, never production.
 
 Core UI test: choose Plant; Calm; practice celebration; Plant this seed; Did it;
 Undo today. A test-only injected SQLite account drives the widget harness; there
-is no anonymous release entry point. `BLOOMSTEP_SCREENSHOTS` optionally writes
+is no anonymous release entry point. `BUDLARK_SCREENSHOTS` optionally writes
 rendered images to an explicit local artifact directory (not committed).
-The separate runtime profile accepts `BLOOMSTEP_RUNTIME_REPORT` for a private
-report and `BLOOMSTEP_RUNTIME_SHARE=1` to request the actual Share surface with
+The separate runtime profile accepts `BUDLARK_RUNTIME_REPORT` for a private
+report and `BUDLARK_RUNTIME_SHARE=1` to request the actual Share surface with
 an example.com synthetic link. It never sends an invitation; inspect and cancel
 the OS surface independently. A returned request is not evidence of transmission.
 Use its synthetic Share button only while this app is foreground; background

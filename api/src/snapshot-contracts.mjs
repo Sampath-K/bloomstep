@@ -62,6 +62,16 @@ const dashboards = z.strictObject({
     definition: z.literal(definition.appHealth.definition),
   }),
   experiment: z.strictObject({ enabled: z.literal(false), reason: z.literal(definition.experiment.reason) }),
+  appExperience: z.strictObject({
+    policyHash: z.string().regex(/^[a-f0-9]{64}$/), provider: z.literal('growthbook'),
+    productionEnabled: z.literal(false), minimumCohort: z.literal(50),
+    studies: z.array(z.strictObject({
+      study: z.enum(['invitation_heading_v1', 'garden_prompt_v1']),
+      exposedUnits: count, decision: z.literal('inconclusive'),
+      reason: z.enum(['invalid_observations', 'growthbook_analysis_not_connected']),
+    })).length(2),
+    definition: z.literal(definition.appExperience.definition),
+  }).optional(),
 });
 
 export const dailySnapshotRecordSchema = z.strictObject({
@@ -69,7 +79,7 @@ export const dailySnapshotRecordSchema = z.strictObject({
   daily: z.array(z.strictObject({
     day, suppressed: z.boolean(), users: count,
     counts: z.strictObject(Object.fromEntries(Object.keys(eventRegistry).map(name => [
-      name, name === 'auth_observation' ? count.optional() : count,
+      name, ['auth_observation', 'experience_observation'].includes(name) ? count.optional() : count,
     ]))).nullable(),
   })).length(1),
   categories: z.strictObject({

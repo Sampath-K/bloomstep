@@ -121,7 +121,7 @@ const sourceFiles = git(['ls-files', 'api/src', 'site/*.mjs', 'site/*.html', 'si
 for (const file of sourceFiles) sources[file] = sha256(await readFile(join(root, file)));
 
 const receipt = {
-  schemaVersion: 1, kind: 'bloomstep-composed-funnel-acceptance', passed: !failed, generatedAt: new Date().toISOString(),
+  schemaVersion: 1, kind: 'budlark-composed-funnel-acceptance', passed: !failed, generatedAt: new Date().toISOString(),
   sourceRevision: revision, sourceDirty: dirtyAtStart !== '', platform: `${process.platform}-${process.arch}`, node: process.version,
   stages: results,
   segregation: { syntheticOnly: true, customerData: false, productionWrites: false,

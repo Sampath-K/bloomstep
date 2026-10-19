@@ -7,7 +7,7 @@ const values = await localConfig();
 const output = new URL('../build/analytics-defines.json', import.meta.url);
 await mkdir(new URL('../build/', import.meta.url), { recursive: true });
 await writeFile(output, JSON.stringify({
-  BLOOMSTEP_ANALYTICS_SANDBOX: 'true',
+  BUDLARK_ANALYTICS_SANDBOX: 'true',
   APTABASE_APP_KEY: values.APTABASE_APP_KEY || '',
   SENTRY_DSN: values.SENTRY_DSN || '',
 }));

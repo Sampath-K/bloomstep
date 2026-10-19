@@ -184,7 +184,9 @@ export class FileBackedCosmosContainer {
       rows = rows.filter(row => row.userId === parameters['@u'] && row.type !== 'account' && (
         row.type === type && row.record?.id === target ||
         type === 'habits' && (row.record?.habitId === target || row.record?.properties?.habitId === target) ||
-        type === 'voice' && row.type === 'audit' && row.targetId === target
+        type === 'voice' && row.type === 'audit' && row.targetId === target ||
+        type === 'experienceEvents' && row.type === 'events' &&
+          row.record?.name === 'experience_observation' && row.record?.properties?.consentEpoch === target
       ));
     } else if (query.includes('c.type != "account"')) {
       rows = rows.filter(row => row.userId === parameters['@u'] && row.type !== 'account');
@@ -245,5 +247,5 @@ export function isWithinDisposableTestDirectory(databasePath) {
     relativePath !== '..' &&
     !relativePath.startsWith(`..${sep}`) &&
     !isAbsolute(relativePath) &&
-    root.split(sep).at(-1)?.startsWith('bloomstep-it-') === true;
+    root.split(sep).at(-1)?.startsWith('budlark-it-') === true;
 }

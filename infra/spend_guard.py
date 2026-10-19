@@ -103,7 +103,7 @@ def run():
         raise ValueError("Pinned managed SWA origin required")
     repo, repo_id, owner_id = os.environ["GITHUB_REPOSITORY"], os.environ["GITHUB_REPOSITORY_ID"], os.environ["GITHUB_REPOSITORY_OWNER_ID"]
     owner, name = repo.split("/")
-    subject = f"repo:{owner}@{owner_id}/{name}@{repo_id}:environment:bloomstep-operations"
+    subject = f"repo:{owner}@{owner_id}/{name}@{repo_id}:environment:budlark-operations"
     assertion_url = os.environ["ACTIONS_ID_TOKEN_REQUEST_URL"]
     assertion = mask(call(assertion_url + ("&" if "?" in assertion_url else "?") + urlencode({"audience": "api://AzureADTokenExchange"}),
                           os.environ["ACTIONS_ID_TOKEN_REQUEST_TOKEN"])["value"])
@@ -192,7 +192,7 @@ def run():
         request_id = str(uuid.uuid5(uuid.NAMESPACE_URL, os.environ["GITHUB_RUN_ID"] + ":" + result["pauseReason"]))
         body = json.dumps({"requestId": request_id, "reason": result["pauseReason"]}).encode()
         with opener.open(Request(origin + "/api/internal/operational-pause", data=body,
-                                 headers={"Content-Type": "application/json", "X-Bloomstep-Authorization": "Bearer " + guard_token}), timeout=40) as response:
+                                 headers={"Content-Type": "application/json", "X-Budlark-Authorization": "Bearer " + guard_token}), timeout=40) as response:
             receipt = json.load(response)
             if receipt.get("paused") is not True:
                 raise ValueError("Pause receipt not confirmed")

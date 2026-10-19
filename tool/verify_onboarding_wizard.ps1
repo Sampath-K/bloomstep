@@ -74,9 +74,9 @@ public static class OnboardingWizard {
   }
   static int LaunchChild(IAccessible accessible) {
     for (int child = 1; child <= accessible.accChildCount; child++) {
-      if (accessible.get_accName(child) == "Launch Bloomstep") return child;
+      if (accessible.get_accName(child) == "Launch Budlark") return child;
     }
-    throw new InvalidOperationException("Exact Launch Bloomstep accessibility item unavailable.");
+    throw new InvalidOperationException("Exact Launch Budlark accessibility item unavailable.");
   }
   public static int LaunchChoiceState(IntPtr owner) {
     var accessible = LaunchList(owner);
@@ -158,8 +158,8 @@ $protection = Start-ProtectedInstallerProof $Installer $compiledFixture.installe
 if (-not [OnboardingWizard]::SetProcessDpiAwarenessContext([IntPtr](-4))) {
   throw 'Capture process could not use per-monitor DPI coordinates.'
 }
-$target = Join-Path $env:LOCALAPPDATA 'Programs\Bloomstep'
-$receipt = Join-Path $env:LOCALAPPDATA 'Bloomstep\measurement\installer-receipt.json'
+$target = Join-Path $env:LOCALAPPDATA 'Programs\Budlark'
+$receipt = Join-Path $env:LOCALAPPDATA 'Budlark\measurement\installer-receipt.json'
 if ((Test-Path $target) -or (Test-Path $receipt)) { throw 'Capture refuses existing installation/receipt state.' }
 $states = [Collections.Generic.List[object]]::new()
 $report = @{ sourceRevision = $compiledFixture.sourceRevision; installerSha256 = $compiledFixture.installerSha256;

@@ -2,10 +2,10 @@ import 'dart:convert';
 import 'dart:io';
 import 'dart:math';
 
-import 'package:bloomstep/core/garden_store.dart';
-import 'package:bloomstep/core/measurement_receipt.dart';
-import 'package:bloomstep/core/models.dart';
-import 'package:bloomstep/services/sync_service.dart';
+import 'package:budlark/core/garden_store.dart';
+import 'package:budlark/core/measurement_receipt.dart';
+import 'package:budlark/core/models.dart';
+import 'package:budlark/services/sync_service.dart';
 import 'package:crypto/crypto.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:http/http.dart' as http;
@@ -41,12 +41,12 @@ class _LostAcknowledgement extends http.BaseClient {
 void main() {
   test('real SQLite receipt import and HTTP sync persist once across lost ack, revoke and account deletion', () async {
     expect(
-      const bool.fromEnvironment('BLOOMSTEP_TEST_BUILD'),
+      const bool.fromEnvironment('BUDLARK_TEST_BUILD'),
       isTrue,
-      reason: 'Run with --dart-define=BLOOMSTEP_TEST_BUILD=true.',
+      reason: 'Run with --dart-define=BUDLARK_TEST_BUILD=true.',
     );
-    final receiptPath = Platform.environment['BLOOMSTEP_TEST_RECEIPT_PATH'];
-    final runRoot = await Directory.systemTemp.createTemp('bloomstep-it-app-');
+    final receiptPath = Platform.environment['BUDLARK_TEST_RECEIPT_PATH'];
+    final runRoot = await Directory.systemTemp.createTemp('budlark-it-app-');
     final evidenceDir = Platform.environment['EVIDENCE_DIR'] ?? runRoot.path;
     final fixtureAt = DateTime.now()
         .toUtc()
@@ -190,7 +190,7 @@ void main() {
       final response = await http.delete(
         api.origin.resolve('/api/account'),
         headers: {
-          'X-Bloomstep-Authorization': 'Bearer ${await identity.accessToken()}',
+          'X-Budlark-Authorization': 'Bearer ${await identity.accessToken()}',
           'X-Confirm-Delete': 'delete-my-garden',
         },
       );
@@ -244,5 +244,5 @@ void main() {
         await file.writeAsString(jsonEncode(result));
       }
     }
-  }, skip: !const bool.fromEnvironment('BLOOMSTEP_TEST_BUILD'));
+  }, skip: !const bool.fromEnvironment('BUDLARK_TEST_BUILD'));
 }

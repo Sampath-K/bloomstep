@@ -1,7 +1,7 @@
 import 'package:flutter/services.dart';
 
 class NativeShare {
-  static const _channel = MethodChannel('bloomstep/native_share');
+  static const _channel = MethodChannel('budlark/native_share');
 
   static Future<void> share(Uri url) async {
     if (url.scheme != 'https' ||
@@ -16,7 +16,7 @@ class NativeShare {
       'url': url.toString(),
       'title': 'A little is enough',
       'description':
-          'Grow a tiny habit with Bloomstep. No private garden data is shared.',
+          'Grow a tiny habit with Budlark. No private garden data is shared.',
     });
   }
 }

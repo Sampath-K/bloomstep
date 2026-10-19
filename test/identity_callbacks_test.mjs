@@ -19,7 +19,7 @@ function evaluate(expression) {
 }
 
 test('federation callbacks include the observed canonical tenant-ID host, not the native loopback', () => {
-  const callbacks = evaluate(`@(Get-BloomstepFederationCallbacks -TenantId '${tenant}' -Subdomain 'examplecustomers' -Domain 'examplecustomers.onmicrosoft.com') | ConvertTo-Json -AsArray`);
+  const callbacks = evaluate(`@(Get-BudlarkFederationCallbacks -TenantId '${tenant}' -Subdomain 'examplecustomers' -Domain 'examplecustomers.onmicrosoft.com') | ConvertTo-Json -AsArray`);
   assert.deepEqual(callbacks, [
     `https://${tenant}.ciamlogin.com/${tenant}/federation/oauth2`,
     `https://examplecustomers.ciamlogin.com/${tenant}/federation/oauth2`,
@@ -29,14 +29,14 @@ test('federation callbacks include the observed canonical tenant-ID host, not th
 });
 
 test('callback reconciliation preserves existing registrations and is idempotent', () => {
-  const callbacks = evaluate(`$required = @(Get-BloomstepFederationCallbacks -TenantId '${tenant}' -Subdomain 'examplecustomers' -Domain 'examplecustomers.onmicrosoft.com'); $existing = @('https://preserved.example/callback', $required[1]); $first = @(Merge-BloomstepFederationCallbacks -Existing $existing -Required $required); $second = @(Merge-BloomstepFederationCallbacks -Existing $first -Required $required); @{ first = $first; second = $second } | ConvertTo-Json -Depth 4`);
+  const callbacks = evaluate(`$required = @(Get-BudlarkFederationCallbacks -TenantId '${tenant}' -Subdomain 'examplecustomers' -Domain 'examplecustomers.onmicrosoft.com'); $existing = @('https://preserved.example/callback', $required[1]); $first = @(Merge-BudlarkFederationCallbacks -Existing $existing -Required $required); $second = @(Merge-BudlarkFederationCallbacks -Existing $first -Required $required); @{ first = $first; second = $second } | ConvertTo-Json -Depth 4`);
   assert.equal(callbacks.first.length, 4);
   assert.equal(callbacks.first[0], 'https://preserved.example/callback');
   assert.deepEqual(callbacks.first, callbacks.second);
 });
 
 test('provisioning reconciles the existing managed federation app and verifies readback', () => {
-  assert.match(provisioning, /Merge-BloomstepFederationCallbacks/);
+  assert.match(provisioning, /Merge-BudlarkFederationCallbacks/);
   assert.match(provisioning, /Graph "applications\/\$\(\$microsoft\.id\)" 'PATCH'/);
   assert.match(provisioning, /Federation callback readback mismatch/);
 });
@@ -52,7 +52,7 @@ test('actual provisioning block adds missing callbacks once and preserves unrela
       } else { $script:app }
     }
     $microsoft = $script:app
-    $callbacks = @(Get-BloomstepFederationCallbacks -TenantId '${tenant}' -Subdomain 'examplecustomers' -Domain 'examplecustomers.onmicrosoft.com')
+    $callbacks = @(Get-BudlarkFederationCallbacks -TenantId '${tenant}' -Subdomain 'examplecustomers' -Domain 'examplecustomers.onmicrosoft.com')
     ${reconciliation}
     ${reconciliation}
     @{ writes = $script:writes; callbacks = $microsoft.web.redirectUris } | ConvertTo-Json -Depth 4
@@ -69,7 +69,7 @@ test('actual provisioning block rejects unsuccessful registration readback', () 
       if ($Method -ne 'PATCH') { $script:app }
     }
     $microsoft = $script:app
-    $callbacks = @(Get-BloomstepFederationCallbacks -TenantId '${tenant}' -Subdomain 'examplecustomers' -Domain 'examplecustomers.onmicrosoft.com')
+    $callbacks = @(Get-BudlarkFederationCallbacks -TenantId '${tenant}' -Subdomain 'examplecustomers' -Domain 'examplecustomers.onmicrosoft.com')
     $message = ''
     try { ${reconciliation} } catch { $message = $_.Exception.Message }
     @{ error = $message } | ConvertTo-Json

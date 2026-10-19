@@ -7,12 +7,12 @@ import { fileURLToPath } from 'node:url';
 
 const read = path => readFileSync(new URL(`../${path}`, import.meta.url), 'utf8');
 test('one native Ready Install commitment leads to progress and Finish', () => {
-  const setup = read('packaging/bloomstep.iss');
+  const setup = read('packaging/budlark.iss');
   assert.match(setup, /DisableWelcomePage=yes/);
   assert.match(setup, /DisableReadyPage=no/);
   assert.match(setup, /DisableFinishedPage=no/);
   assert.match(setup, /DisableDirPage=yes/);
-  assert.match(setup, /DefaultDirName=\{localappdata\}\\Programs\\Bloomstep/);
+  assert.match(setup, /DefaultDirName=\{localappdata\}\\Programs\\Budlark/);
   assert.match(setup, /UsePreviousAppDir=yes/);
   assert.doesNotMatch(setup, /msgButtonInstall|NextButton\.Caption/);
   assert.match(read('tool/verify_onboarding_wizard.ps1'), /expectedOrder = @\('ready'\)/);
@@ -22,7 +22,7 @@ test('one native Ready Install commitment leads to progress and Finish', () => {
   assert.match(setup, /runasoriginaluser/);
 });
 test('static welcome artwork does not own timers or advance native pages', () => {
-  const setup = read('packaging/bloomstep.iss');
+  const setup = read('packaging/budlark.iss');
   assert.match(setup, /#include "install-progress\.iss"/);
   const progress = read('packaging/install-progress.iss');
   assert.doesNotMatch(progress, /SetTimer|KillTimer|CreateCallback|PeekMessage|DispatchMessage|OnClick|Sleep\(/);
@@ -31,7 +31,7 @@ test('static welcome artwork does not own timers or advance native pages', () =>
   for (const name of ['welcome-steps.bmp', 'welcome-garden.bmp']) assert.ok(progress.includes(name));
 });
 test('installer never creates or adopts receipt consent; legacy owner-matched uninstall and app compatibility remain', () => {
-  const setup = read('packaging/bloomstep.iss');
+  const setup = read('packaging/budlark.iss');
   assert.doesNotMatch(setup, /SaveStringToFile|CoCreateGuid|GetSystemTime|install_completed|MeasurementStarted/);
   assert.match(setup, /\[InstallDelete\][\s\S]*measurement-owner\.txt/);
   assert.match(setup, /CurUninstallStepChanged[\s\S]*Length\(Owner\) = 36/);
@@ -53,7 +53,7 @@ test('actual proof captures standard native pages; static art is never motion ev
 });
 test('owned capture success/timeout/cleanup write exact stage and process exit state without an installer',
   { skip: process.platform !== 'win32' }, () => {
-    const directory = mkdtempSync(fileURLToPath(new URL('../.bloomstep-benign-capture-wait-', import.meta.url)));
+    const directory = mkdtempSync(fileURLToPath(new URL('../.budlark-benign-capture-wait-', import.meta.url)));
     const library = fileURLToPath(new URL('../tool/installer_owned_capture.ps1', import.meta.url));
     const quote = value => `'${value.replaceAll("'", "''")}'`;
     const script = `

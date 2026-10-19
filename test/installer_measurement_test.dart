@@ -1,7 +1,7 @@
 import 'dart:convert';
 import 'dart:io';
 
-import 'package:bloomstep/services/installer_measurement.dart';
+import 'package:budlark/services/installer_measurement.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
@@ -10,7 +10,7 @@ void main() {
   late DateTime now;
   setUp(() async {
     directory = await Directory.systemTemp.createTemp(
-      'bloomstep-receipt-test-',
+      'budlark-receipt-test-',
     );
     now = DateTime.utc(2026, 10, 5, 12);
     collector = InstallerMeasurement(

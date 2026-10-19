@@ -6,7 +6,7 @@ param(
 )
 $ErrorActionPreference = 'Stop'
 if (-not $ConfirmCustomerBranding) { throw 'Confirm the selected customer tenant branding change explicitly.' }
-if (-not (Test-Path -LiteralPath $LogoPath)) { throw 'Bloomstep wordmark asset is missing.' }
+if (-not (Test-Path -LiteralPath $LogoPath)) { throw 'Budlark wordmark asset is missing.' }
 $logo = [IO.File]::ReadAllBytes((Resolve-Path -LiteralPath $LogoPath).Path)
 if ($logo.Length -lt 24 -or [Convert]::ToHexString($logo[0..7]) -ne '89504E470D0A1A0A') { throw 'Wordmark must be a PNG.' }
 function PngDimension([int]$Offset) {
@@ -15,8 +15,8 @@ function PngDimension([int]$Offset) {
   [BitConverter]::ToUInt32($bytes, 0)
 }
 if ((PngDimension 16) -gt 245 -or (PngDimension 20) -gt 36) { throw 'Wordmark exceeds the supported sign-in banner size.' }
-if (-not $IconPath) { $IconPath = Join-Path (Split-Path $LogoPath) 'bloomstep-favicon.png' }
-if (-not (Test-Path -LiteralPath $IconPath)) { throw 'Bloomstep favicon asset is missing.' }
+if (-not $IconPath) { $IconPath = Join-Path (Split-Path $LogoPath) 'budlark-favicon.png' }
+if (-not (Test-Path -LiteralPath $IconPath)) { throw 'Budlark favicon asset is missing.' }
 $logo = [IO.File]::ReadAllBytes((Resolve-Path -LiteralPath $IconPath).Path)
 if ($logo.Length -lt 24 -or [Convert]::ToHexString($logo[0..7]) -ne '89504E470D0A1A0A' -or
   (PngDimension 16) -ne 32 -or (PngDimension 20) -ne 32) { throw 'Favicon must be a 32-by-32 PNG.' }
@@ -38,18 +38,18 @@ try {
   try { $current = Graph $path }
   catch {
     if ([int]$_.Exception.Response.StatusCode -ne 404) { throw }
-    $null = Graph "$path/localizations" 'POST' @{ id = 'en-US'; signInPageText = 'Welcome to Bloomstep.' }
+    $null = Graph "$path/localizations" 'POST' @{ id = 'en-US'; signInPageText = 'Welcome to Budlark.' }
     $current = Graph $path
   }
   $desired = [ordered]@{
-    SignIn_Title = 'Sign in to Bloomstep'
-    SignIn_Description = 'Sign in to keep your Bloomstep garden private and safe across devices.'
-    SignUp_Title = 'Create your Bloomstep account'
-    SignUp_Description = 'One tiny step. A private Bloomstep garden that grows with you.'
-    AttributeCollection_Title = 'Your Bloomstep account'
-    SisuOtc_Title = 'Verify your Bloomstep sign-in'
+    SignIn_Title = 'Sign in to Budlark'
+    SignIn_Description = 'Sign in to keep your Budlark garden private and safe across devices.'
+    SignUp_Title = 'Create your Budlark account'
+    SignUp_Description = 'One tiny step. A private Budlark garden that grows with you.'
+    AttributeCollection_Title = 'Your Budlark account'
+    SisuOtc_Title = 'Verify your Budlark sign-in'
   }
-  $text = "Bloomstep - one tiny step, a garden that grows with you. Microsoft hosts this secure sign-in at ciamlogin.com. Your chosen provider handles its credentials; Bloomstep never collects your password."
+  $text = "Budlark - one tiny step, a garden that grows with you. Microsoft hosts this secure sign-in at ciamlogin.com. Your chosen provider handles its credentials; Budlark never collects your password."
   # The parent alias follows Accept-Language. Locale 0 is the actual default.
   $targets = @("$path/localizations/0", "$path/localizations/en-US")
   foreach ($target in $targets) {
@@ -84,7 +84,7 @@ try {
       throw 'Branding readback mismatch for wordmark or favicon.'
     }
   }
-  Write-Output 'Bloomstep default/en-US sign-in text, wordmark and favicon applied with text readback. Verify the actual isolated hosted page; no issuer, callback, provider secret, contact or license changed.'
+  Write-Output 'Budlark default/en-US sign-in text, wordmark and favicon applied with text readback. Verify the actual isolated hosted page; no issuer, callback, provider secret, contact or license changed.'
 } finally {
   Remove-Variable token, headers
 }

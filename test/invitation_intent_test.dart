@@ -1,13 +1,13 @@
 import 'dart:io';
 
-import 'package:bloomstep/services/invitation_intent.dart';
+import 'package:budlark/services/invitation_intent.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
   final code = List.filled(43, 'A').join();
   test('concurrent protocol arrivals are serialized with the latest valid intent retained', () async {
     final folder = await Directory.systemTemp.createTemp(
-      'bloomstep-invite-race-',
+      'budlark-invite-race-',
     );
     addTearDown(() => folder.delete(recursive: true));
     final inbox = InvitationInbox(folder.path);
@@ -21,7 +21,7 @@ void main() {
     'opaque invitation links validate both native and approved web boundaries',
     () {
       final intent = InvitationIntent.parseNative(
-        Uri.parse('bloomstep://invite?code=$code&channel=qr'),
+        Uri.parse('budlark://invite?code=$code&channel=qr'),
       );
       expect(intent.code, code);
       expect(intent.channel, 'qr');
@@ -33,12 +33,12 @@ void main() {
         'email',
       );
       for (final uri in [
-        'bloomstep://user@invite?code=$code',
-        'bloomstep://invite/path?code=$code',
-        'bloomstep://invite?code=$code&code=$code',
-        'bloomstep://invite?code=$code&private=secret',
-        'bloomstep://invite?code=invalid',
-        'bloomstep://invite?code=$code&channel=unknown',
+        'budlark://user@invite?code=$code',
+        'budlark://invite/path?code=$code',
+        'budlark://invite?code=$code&code=$code',
+        'budlark://invite?code=$code&private=secret',
+        'budlark://invite?code=invalid',
+        'budlark://invite?code=$code&channel=unknown',
       ]) {
         expect(
           () => InvitationIntent.parseNative(Uri.parse(uri)),
@@ -58,7 +58,7 @@ void main() {
   test(
     'intent survives restart and sign-in delay without private identity data',
     () async {
-      final folder = await Directory.systemTemp.createTemp('bloomstep-invite-');
+      final folder = await Directory.systemTemp.createTemp('budlark-invite-');
       addTearDown(() => folder.delete(recursive: true));
       final now = DateTime.utc(2026, 10, 4);
       final inbox = InvitationInbox(folder.path, now: () => now);

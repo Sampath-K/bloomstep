@@ -16,7 +16,7 @@ function global:az {
     return (@{id='11111111-1111-4111-8111-111111111111';tenantId=$bound;state='Enabled'}|ConvertTo-Json)
   }
   if($args[0] -eq 'rest'){
-    if(($args -join ' ') -match '/ciamDirectories/'){return '{"name":"bloomstepcustomers261004","sku":{"name":"Base","tier":"A0"}}'}
+    if(($args -join ' ') -match '/ciamDirectories/'){return '{"name":"budlarkcustomers261004","sku":{"name":"Base","tier":"A0"}}'}
     return '{"subscriptionPolicies":{"quotaId":"FreeTrial_2014-09-01","spendingLimit":"On"}}'
   }
   if($args[0] -eq 'cosmosdb'){
@@ -47,9 +47,9 @@ function global:gh {
   $path=$args[1]
   if($path -match 'API_ORIGIN'){return '{"value":"https://mock.azurestaticapps.net"}'}
   if($path -match 'customization'){return '{"use_default":true}'}
-  if($path -match 'deployment-branch-policies'){return '{"total_count":2,"branch_policies":[{"name":"main","type":"branch"},{"name":"sampath-k-bloomstep-mvp-implementation","type":"branch"}]}'}
+  if($path -match 'deployment-branch-policies'){return '{"total_count":2,"branch_policies":[{"name":"main","type":"branch"},{"name":"sampath-k-budlark-mvp-implementation","type":"branch"}]}'}
   if($path -match '/environments/'){return '{"deployment_branch_policy":{"custom_branch_policies":true}}'}
-  return '{"full_name":"Sampath-K/bloomstep","id":1404357574,"name":"bloomstep","owner":{"login":"Sampath-K","id":72682617}}'
+  return '{"full_name":"Sampath-K/budlark","id":1404357574,"name":"budlark","owner":{"login":"Sampath-K","id":72682617}}'
 }
 function global:Invoke-RestMethod {
   param($Uri,$Headers,$Method='GET',$ContentType,$Body)
@@ -62,7 +62,7 @@ function global:Invoke-RestMethod {
   }
   if($Uri -match 'federatedIdentityCredentials'){
     if($Method -eq 'POST'){
-      if($b.subject -ne 'repo:Sampath-K@72682617/bloomstep@1404357574:environment:bloomstep-operations'){throw 'Immutable FIC subject mismatch'}
+      if($b.subject -ne 'repo:Sampath-K@72682617/budlark@1404357574:environment:budlark-operations'){throw 'Immutable FIC subject mismatch'}
       $global:guardFics+= $b;$global:guardMutations++;return $b
     }
     return [pscustomobject]@{value=@($global:guardFics)}
@@ -73,7 +73,7 @@ function global:Invoke-RestMethod {
   }
   if($Uri -match 'applications'){
     if($Method -eq 'POST'){
-      if($b.api.requestedAccessTokenVersion -ne 2 -or $b.appRoles[0].allowedMemberTypes[0] -ne 'Application' -or $b.appRoles[0].value -ne 'Bloomstep.SpendGuard'){throw 'Role/token contract mismatch'}
+      if($b.api.requestedAccessTokenVersion -ne 2 -or $b.appRoles[0].allowedMemberTypes[0] -ne 'Application' -or $b.appRoles[0].value -ne 'Budlark.SpendGuard'){throw 'Role/token contract mismatch'}
       $global:guardApp=[pscustomobject]@{id='app';appId='44444444-4444-4444-8444-444444444444';tags=$b.tags;signInAudience=$b.signInAudience;appRoles=$b.appRoles;passwordCredentials=@();keyCredentials=@();requiredResourceAccess=@()}
       $global:guardMutations++;return $global:guardApp
     }
@@ -83,7 +83,7 @@ function global:Invoke-RestMethod {
   throw 'Unexpected Graph call'
 }
 try{
-  $params=@{ResourceTenantId=$tenant;SubscriptionId=$subscription;ResourceGroup='mock';SwaName='mock';CosmosName='mockcosmos';CustomerDirectoryName='bloomstepcustomers261004';Repository='Sampath-K/bloomstep';Environment='bloomstep-operations';ConfirmPersonalResourceTenant=$true}
+  $params=@{ResourceTenantId=$tenant;SubscriptionId=$subscription;ResourceGroup='mock';SwaName='mock';CosmosName='mockcosmos';CustomerDirectoryName='budlarkcustomers261004';Repository='Sampath-K/budlark';Environment='budlark-operations';ConfirmPersonalResourceTenant=$true}
   $script=Join-Path $PSScriptRoot 'configure-spend-guard.ps1'
   for($i=0;$i -lt 2;$i++){$null=& $script @params}
   if($global:guardMutations -ne 6 -or $global:guardSettings -ne 2){throw 'Idempotency or pinned settings writes failed'}

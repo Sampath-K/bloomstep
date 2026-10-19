@@ -1,5 +1,5 @@
-import 'package:bloomstep/core/garden_store.dart';
-import 'package:bloomstep/services/session_events.dart';
+import 'package:budlark/core/garden_store.dart';
+import 'package:budlark/services/session_events.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {

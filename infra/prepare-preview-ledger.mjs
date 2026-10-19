@@ -5,7 +5,7 @@ const { CosmosClient } = require('@azure/cosmos');
 if (!process.env.COSMOS_CONNECTION_STRING || !process.argv.includes('--confirm-empty')) {
   throw new Error('Set the approved database connection in memory and pass --confirm-empty. No secrets are printed.');
 }
-const data = new CosmosClient(process.env.COSMOS_CONNECTION_STRING).database('bloomstep').container('data');
+const data = new CosmosClient(process.env.COSMOS_CONNECTION_STRING).database('budlark').container('data');
 const existing = (await data.item('budget', '__preview_budget').read()).resource;
 if (existing) {
   console.log('Existing preview budget preserved; no counters reset.');

@@ -1,0 +1,123 @@
+name: functional-acceptance
+
+# Owner-trial precondition: run the exact CI-built installer on a fresh GitHub-hosted
+# Windows VM and collect evidence. The harness owns hash check, scoped install, UIA
+# tests, PASS/FAIL and cleanup; this workflow only proves artifact identity and
+# preserves output. See docs/release-governance.md.
+on:
+  # Dispatched through ci.yml (functional_mode input) because GitHub only dispatches
+  # workflows registered on the default branch; ci.yml is, this file is not yet.
+  workflow_call:
+    inputs:
+      candidate: { type: string, required: true }
+      run_id: { type: string, required: true }
+      artifact_id: { type: string, required: true }
+      installer_sha256: { type: string, required: true }
+      mode: { type: string, required: true }
+      runner: { type: string, required: false, default: hosted }
+  workflow_dispatch:
+    inputs:
+      candidate:
+        description: 'Commit SHA the installer was built from (candidate, or 083f2de... for baseline)'
+        required: true
+      run_id:
+        description: 'CI run id that produced the installer artifact'
+        required: true
+      artifact_id:
+        description: 'Artifact id holding the installer'
+        required: true
+      installer_sha256:
+        description: 'Expected installer SHA-256 (64 lowercase hex)'
+        required: true
+      mode:
+        description: 'candidate or baseline'
+        type: choice
+        options: [candidate, baseline]
+        default: candidate
+      runner:
+        description: 'hosted (GitHub windows-latest; Defender real-time protection is off there, so the harness preflight stops) or self-hosted-defender (owner-registered runner with live Defender)'
+        type: choice
+        options: [hosted, self-hosted-defender]
+        default: hosted
+
+permissions:
+  contents: read
+  actions: read
+
+jobs:
+  acceptance:
+    # Self-hosted runs only on explicit dispatch (never pull_request) and only on a runner
+    # carrying the dedicated budlark-defender label; the Defender preflight is never relaxed.
+    runs-on: ${{ inputs.runner == 'self-hosted-defender' && fromJSON('["self-hosted","windows","x64","budlark-defender"]') || 'windows-latest' }}
+    timeout-minutes: 90
+    concurrency:
+      group: functional-acceptance-${{ inputs.mode }}-${{ inputs.candidate }}
+      cancel-in-progress: false
+    env:
+      GH_TOKEN: ${{ github.token }}
+      REPO: ${{ github.repository }}
+      IN_CANDIDATE: ${{ inputs.candidate }}
+      IN_RUN_ID: ${{ inputs.run_id }}
+      IN_ARTIFACT_ID: ${{ inputs.artifact_id }}
+      IN_SHA256: ${{ inputs.installer_sha256 }}
+      IN_MODE: ${{ inputs.mode }}
+      RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Prove artifact identity and download the exact installer
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          if ($env:IN_CANDIDATE -cnotmatch '^[0-9a-f]{40}$' -or $env:IN_SHA256 -cnotmatch '^[0-9a-f]{64}$' -or $env:IN_RUN_ID -notmatch '^[1-9][0-9]*$' -or $env:IN_ARTIFACT_ID -notmatch '^[1-9][0-9]*$' -or $env:IN_MODE -notin @('candidate','baseline')) { throw 'malformed inputs' }
+          $out = Join-Path $env:RUNNER_TEMP 'functional-output'
+          $dl = Join-Path $env:RUNNER_TEMP 'installer'
+          $installDir = Join-Path $env:RUNNER_TEMP "budlark-install-$env:GITHUB_RUN_ID"
+          New-Item -ItemType Directory -Force $out, $dl | Out-Null
+          $metaJson = gh api "repos/$env:REPO/actions/artifacts/$env:IN_ARTIFACT_ID"
+          if ($LASTEXITCODE -ne 0) { throw "artifact metadata lookup failed ($LASTEXITCODE)" }
+          $meta = $metaJson | ConvertFrom-Json
+          if ("$($meta.workflow_run.id)" -ne $env:IN_RUN_ID) { throw "artifact belongs to run $($meta.workflow_run.id), not $env:IN_RUN_ID" }
+          if ($meta.workflow_run.head_sha -ne $env:IN_CANDIDATE) { throw "artifact built from $($meta.workflow_run.head_sha), not $env:IN_CANDIDATE" }
+          if ($meta.expired) { throw 'artifact expired; rebuild the exact commit' }
+          $zip = Join-Path $env:RUNNER_TEMP 'artifact.zip'
+          gh api "repos/$env:REPO/actions/artifacts/$env:IN_ARTIFACT_ID/zip" > $zip
+          if ($LASTEXITCODE -ne 0) { throw "artifact download failed ($LASTEXITCODE)" }
+          Expand-Archive $zip $dl -Force
+          $exe = @(Get-ChildItem $dl -Recurse -Filter '*-setup.exe')
+          if ($exe.Count -ne 1) { throw "expected exactly one installer, found $($exe.Count)" }
+          $hash = (Get-FileHash $exe[0].FullName -Algorithm SHA256).Hash.ToLower()
+          if ($hash -ne $env:IN_SHA256) { throw "installer SHA-256 mismatch: $hash" }
+          @{ schema='budlark-functional-identity-v1'; candidate=$env:IN_CANDIDATE; runId=$env:IN_RUN_ID; artifactId=$env:IN_ARTIFACT_ID; installerSha256=$hash; mode=$env:IN_MODE; os=((Get-CimInstance Win32_OperatingSystem).Caption + ' ' + [Environment]::OSVersion.Version); runner=$env:RUNNER_NAME; run=$env:RUN_URL; installDir=$installDir } | ConvertTo-Json | Set-Content (Join-Path $out 'identity.json')
+          "INSTALLER=$($exe[0].FullName)" >> $env:GITHUB_ENV
+          "INSTALL_DIR=$installDir" >> $env:GITHUB_ENV
+          "OUT=$out" >> $env:GITHUB_ENV
+      - name: Run installed-app acceptance harness
+        shell: pwsh
+        run: |
+          $harness = 'tool/verify_installed_functional.ps1'
+          if (-not (Test-Path $harness)) {
+            @{ status='FAIL'; reason='harness-missing'; detail="$harness not present at this commit" } | ConvertTo-Json | Set-Content (Join-Path $env:OUT 'harness-status.json')
+            Write-Error 'harness-missing: no acceptance tests were executed'; exit 1
+          }
+          # UIA requires 64-bit Windows PowerShell in STA mode.
+          $ps = Join-Path $env:SystemRoot 'System32\WindowsPowerShell\v1.0\powershell.exe'
+          & $ps -NoProfile -NonInteractive -STA -File $harness -Installer $env:INSTALLER -ExpectedSha256 $env:IN_SHA256 -InstallDir $env:INSTALL_DIR -Mode $env:IN_MODE -Requirements release/functional-requirements.json -Identity (Join-Path $env:OUT 'identity.json') -Output $env:OUT
+          exit $LASTEXITCODE
+      - name: Uninstall the exact owned install (lifecycle evidence)
+        if: always() && env.INSTALL_DIR != ''
+        shell: pwsh
+        run: |
+          $u = Join-Path $env:INSTALL_DIR 'unins000.exe'
+          $message = if (Test-Path -LiteralPath $u) {
+            $p = Start-Process -FilePath $u -ArgumentList '/VERYSILENT /SUPPRESSMSGBOXES /NORESTART' -Wait -PassThru
+            "uninstalled $u exit $($p.ExitCode)"
+          } else { "no uninstaller at $u (harness already cleaned up or install did not occur)" }
+          $message | Tee-Object -FilePath (Join-Path $env:OUT 'workflow-uninstall.txt')
+      - name: Preserve evidence
+        if: always() && env.OUT != ''
+        uses: actions/upload-artifact@v4
+        with:
+          name: budlark-functional-${{ inputs.mode }}-${{ inputs.candidate }}
+          path: ${{ env.OUT }}
+          if-no-files-found: error
+          retention-days: 90

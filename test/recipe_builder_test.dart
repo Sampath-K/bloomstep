@@ -1,12 +1,54 @@
-import 'package:bloomstep/core/models.dart';
-import 'package:bloomstep/core/garden_store.dart';
-import 'package:bloomstep/features/garden/recipe_builder.dart';
+import 'package:budlark/core/models.dart';
+import 'package:budlark/core/garden_store.dart';
+import 'package:budlark/features/garden/recipe_builder.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 
-import '../integration_test/bloomstep_windows_e2e_test.dart' as journey;
+import '../integration_test/budlark_windows_e2e_test.dart' as journey;
 
 void main() {
+  testWidgets('Windows Ctrl+V works in each custom recipe step', (tester) async {
+    debugDefaultTargetPlatformOverride = TargetPlatform.windows;
+    addTearDown(() => debugDefaultTargetPlatformOverride = null);
+    var clipboard = '';
+    tester.binding.defaultBinaryMessenger.setMockMethodCallHandler(
+      SystemChannels.platform,
+      (call) async {
+        if (call.method == 'Clipboard.getData') return {'text': clipboard};
+        if (call.method == 'Clipboard.hasStrings') return {'value': true};
+        return null;
+      },
+    );
+    addTearDown(
+      () => tester.binding.defaultBinaryMessenger.setMockMethodCallHandler(
+        SystemChannels.platform,
+        null,
+      ),
+    );
+    await tester.pumpWidget(
+      const MaterialApp(home: Scaffold(body: RecipeBuilder())),
+    );
+    for (final key in ['custom-anchor', 'custom-action', 'custom-celebration']) {
+      final field = find.byKey(ValueKey(key));
+      clipboard = 'Pasted $key';
+      await tester.ensureVisible(field);
+      await tester.tap(field);
+      await tester.pump();
+      await tester.sendKeyDownEvent(LogicalKeyboardKey.controlLeft);
+      await tester.sendKeyEvent(LogicalKeyboardKey.keyV);
+      await tester.sendKeyUpEvent(LogicalKeyboardKey.controlLeft);
+      await tester.pumpAndSettle();
+      expect(tester.widget<TextFormField>(field).controller!.text, clipboard);
+      if (key != 'custom-celebration') {
+        await tester.testTextInput.receiveAction(TextInputAction.next);
+        await tester.pumpAndSettle();
+      }
+    }
+    debugDefaultTargetPlatformOverride = null;
+  });
+
   Future<void> openBuilder(
     WidgetTester tester, {
     void Function(RecipeDraft?)? onSaved,
@@ -44,19 +86,18 @@ void main() {
     (tester) async {
       RecipeDraft? saved;
       await openBuilder(tester, onSaved: (draft) => saved = draft);
+      expect(find.text('Step 1 of 3'), findsOneWidget);
+      expect(find.text('Choose a moment'), findsOneWidget);
+      expect(find.text('Write my own'), findsOneWidget);
       expect(
-        find.text('Step 1 of 3 · Start with something familiar'),
+        find.text('Pick a daily routine, or write your own.'),
         findsOneWidget,
       );
-      expect(find.text('Choose an anchor to continue.'), findsOneWidget);
       expect(find.widgetWithText(TextFormField, 'After I...'), findsOneWidget);
       await tester.ensureVisible(find.text('pour my morning drink'));
       await tester.tap(find.text('pour my morning drink'));
       await tester.pumpAndSettle();
-      expect(
-        find.text('Step 2 of 3 · Make it wonderfully small'),
-        findsOneWidget,
-      );
+      expect(find.text('Step 2 of 3'), findsOneWidget);
       expect(
         find.textContaining('After I pour my morning drink'),
         findsOneWidget,
@@ -64,7 +105,21 @@ void main() {
       await tester.ensureVisible(find.text('take one slow breath'));
       await tester.tap(find.text('take one slow breath'));
       await tester.pumpAndSettle();
-      expect(find.text('Step 3 of 3 · Almost there'), findsOneWidget);
+      expect(find.text('Step 3 of 3'), findsOneWidget);
+      expect(
+        find.text('Suggested · a short way to mark your step.'),
+        findsOneWidget,
+      );
+      expect(
+        tester
+            .widget<TextFormField>(
+              find.byKey(const ValueKey('custom-celebration')),
+            )
+            .controller!
+            .text,
+        isEmpty,
+        reason: 'A suggestion must not preselect an optional recommendation.',
+      );
       await tester.ensureVisible(find.text('relax my shoulders and smile'));
       await tester.tap(find.text('relax my shoulders and smile'));
       await tester.pumpAndSettle();
@@ -86,7 +141,78 @@ void main() {
       expect(saved?.behavior, starterRecipes.first.behavior);
       expect(saved?.celebration, starterRecipes.first.celebration);
       expect(saved?.templateCategory, 'calm');
+      expect(saved?.aspiration, 'Calm');
+      expect(saved?.species, 'Cosmos');
       expect(saved?.celebrationPracticed, isFalse);
+      expect(tester.takeException(), isNull);
+    },
+  );
+
+  testWidgets(
+    'custom plant options and optional practice survive the three choices',
+    (tester) async {
+      await tester.binding.setSurfaceSize(const Size(1200, 1000));
+      addTearDown(() => tester.binding.setSurfaceSize(null));
+      RecipeDraft? saved;
+      await openBuilder(tester, onSaved: (draft) => saved = draft);
+      await tester.ensureVisible(find.text('open my laptop'));
+      await tester.tap(find.text('open my laptop'));
+      await tester.pumpAndSettle();
+      await tester.ensureVisible(find.text('write my one next step'));
+      await tester.tap(find.text('write my one next step'));
+      await tester.pumpAndSettle();
+      final recommendation = find.ancestor(
+        of: find.text('Suggested · a short way to mark your step.'),
+        matching: find.byType(OutlinedButton),
+      );
+      expect(
+        find.descendant(
+          of: recommendation,
+          matching: find.text('say "I have a starting point"'),
+        ),
+        findsOneWidget,
+      );
+      final celebration = find.byKey(const ValueKey('custom-celebration'));
+      await tester.ensureVisible(celebration);
+      await tester.enterText(celebration, 'a quiet hooray');
+      await tester.pumpAndSettle();
+      await tester.ensureVisible(find.text('I practiced my celebration'));
+      await tester.tap(find.text('I practiced my celebration'));
+      await tester.pumpAndSettle();
+      expect(
+        tester.widget<CheckboxListTile>(find.byType(CheckboxListTile)).value,
+        isTrue,
+      );
+      await tester.ensureVisible(celebration);
+      await tester.enterText(celebration, 'a different quiet hooray');
+      await tester.pumpAndSettle();
+      expect(
+        tester.widget<CheckboxListTile>(find.byType(CheckboxListTile)).value,
+        isFalse,
+        reason: 'Editing a celebration must clear its previous practice.',
+      );
+      await tester.ensureVisible(find.text('Plant details (optional)'));
+      await tester.tap(find.text('Plant details (optional)'));
+      await tester.pumpAndSettle();
+      final aspiration = find.widgetWithText(TextFormField, 'I want more...');
+      await tester.ensureVisible(aspiration);
+      await tester.enterText(aspiration, 'More quiet');
+      final species = find.byType(DropdownButtonFormField<String>);
+      await tester.ensureVisible(species);
+      await tester.tap(species);
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Fern').last);
+      await tester.pumpAndSettle();
+      await tester.ensureVisible(find.text('I practiced my celebration'));
+      await tester.tap(find.text('I practiced my celebration'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Plant this seed'));
+      await tester.pumpAndSettle();
+      expect(saved?.aspiration, 'More quiet');
+      expect(saved?.species, 'Fern');
+      expect(saved?.celebration, 'a different quiet hooray');
+      expect(saved?.celebrationPracticed, isTrue);
+      expect(saved?.templateCategory, isNull);
       expect(tester.takeException(), isNull);
     },
   );
@@ -98,15 +224,18 @@ void main() {
       await openBuilder(tester, onSaved: (draft) => saved = draft);
       final anchor = find.byKey(const ValueKey('custom-anchor'));
       expect(anchor, findsOneWidget);
+      expect(find.text('Write my own'), findsOneWidget);
       await tester.enterText(anchor, '  put my cup away  ');
       await tester.testTextInput.receiveAction(TextInputAction.next);
       await tester.pumpAndSettle();
       final action = find.byKey(const ValueKey('custom-action'));
       expect(action, findsOneWidget);
+      expect(find.text('Write my own'), findsOneWidget);
       await tester.enterText(action, '  stretch one finger  ');
       await tester.testTextInput.receiveAction(TextInputAction.next);
       await tester.pumpAndSettle();
       final celebration = find.byKey(const ValueKey('custom-celebration'));
+      expect(find.text('Write my own'), findsOneWidget);
       await tester.enterText(celebration, '  whisper well done  ');
       await tester.tap(find.text('Back'));
       await tester.pumpAndSettle();
@@ -224,7 +353,7 @@ void main() {
       await tester.tap(find.text('write my one next step'));
       await tester.pumpAndSettle();
       expect(
-        find.text('Choose a celebration to plant your seed.'),
+        find.text('Pick a gesture or phrase. Practicing is optional.'),
         findsOneWidget,
       );
       expect(
@@ -292,14 +421,48 @@ void main() {
       expect(find.text('Your seed is planted'), findsOneWidget);
       expect(
         find.text(
-          'Your next step:\nAfter I pour my morning drink, I will take one slow breath. Then I celebrate: relax my shoulders and smile.',
+          'After I pour my morning drink, I will take one slow breath. Then I celebrate: relax my shoulders and smile.',
         ),
         findsOneWidget,
       );
-      expect(find.widgetWithText(FilledButton, 'See my seed'), findsOneWidget);
+      expect(find.widgetWithText(FilledButton, 'See my garden'), findsOneWidget);
+      expect(find.byType(FilledButton), findsOneWidget);
+      expect(
+        find.text('Try it when your moment comes. Practicing now is optional.'),
+        findsOneWidget,
+      );
+      expect(find.textContaining('A glimpse of growth'), findsNothing);
       expect(tester.takeException(), isNull);
     },
   );
+
+  for (final systemReduced in [false, true]) {
+    testWidgets('planted preview respects reduced motion ($systemReduced)', (
+      tester,
+    ) async {
+      final semantics = tester.ensureSemantics();
+      await tester.pumpWidget(
+        MaterialApp(
+          home: MediaQuery(
+            data: MediaQueryData(disableAnimations: systemReduced),
+            child: Scaffold(
+              body: SeedGrowthPreview(
+                species: 'Fern',
+                reducedMotion: !systemReduced,
+              ),
+            ),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+      expect(find.byKey(const ValueKey('growth-static-sprout')), findsOneWidget);
+      expect(find.byKey(const ValueKey('growth-sprout-opacity')), findsNothing);
+      expect(find.bySemanticsLabel(RegExp('Seed planted')), findsOneWidget);
+      expect(tester.binding.transientCallbackCount, 0);
+      expect(tester.takeException(), isNull);
+      semantics.dispose();
+    });
+  }
 
   test('synthetic UTC window respects API future cap and distinct days', () {
     for (final runStartedAt in [

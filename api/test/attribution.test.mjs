@@ -26,12 +26,12 @@ test('strict bounded attribution rejects arbitrary strings, mismatched source, e
 });
 
 test('persisted dedup survives restart, changed retries conflict, UTC timing fails closed', async () => {
-  const dir = await mkdtemp(join(tmpdir(), 'bloomstep-it-attribution-'));
+  const dir = await mkdtemp(join(tmpdir(), 'budlark-it-attribution-'));
   const path = join(dir, 'collector.json');
   let store = await FileBackedCosmosContainer.openFresh(path);
   let time = Date.parse('2026-10-09T04:00:00Z');
   const handlers = () => createWebsiteHandlers({ container: () => store,
-    authenticate: async () => ({ roles: ['Bloomstep.Admin'] }), clock: () => new Date(time) });
+    authenticate: async () => ({ roles: ['Budlark.Admin'] }), clock: () => new Date(time) });
   try {
     const value = payload();
     assert.equal((await handlers().ingest(request(value))).status, 202);
@@ -61,7 +61,7 @@ test('attribute vectors suppress whole marginal dimensions, never expose daily c
 });
 
 test('two collectors racing the same timestamped retry commit at most one event', async () => {
-  const dir = await mkdtemp(join(tmpdir(), 'bloomstep-it-attribution-'));
+  const dir = await mkdtemp(join(tmpdir(), 'budlark-it-attribution-'));
   const store = await FileBackedCosmosContainer.openFresh(join(dir, 'collector.json'));
   const create = () => createWebsiteHandlers({ container: () => store,
     authenticate: async () => ({ roles: [] }), clock: () => new Date('2026-10-09T04:00:00Z') });

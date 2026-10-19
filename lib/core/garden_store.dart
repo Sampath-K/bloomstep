@@ -10,8 +10,11 @@ import 'rules.dart';
 import 'event_registry.g.dart' as registry;
 import 'measurement_receipt.dart';
 import 'reminder_preference_episode.dart';
+import 'experience_policy.dart';
 
-const _testBuild = bool.fromEnvironment('BLOOMSTEP_TEST_BUILD');
+part 'experience_store.dart';
+
+const _testBuild = bool.fromEnvironment('BUDLARK_TEST_BUILD');
 
 class GardenStore {
   GardenStore._(this._db, this._account, this._clock);
@@ -19,10 +22,14 @@ class GardenStore {
   final DateTime Function() _clock;
   String _account;
   String get account => _account;
+  String get storagePath => _db.path;
   int _syncGeneration = 0;
   int get syncGeneration => _syncGeneration;
   int _analyticsGeneration = 0;
   int get analyticsGeneration => _analyticsGeneration;
+  final experienceChanges = ValueNotifier<int>(0);
+  ExperienceConfig _experienceConfig = ExperienceConfig.off;
+  ExperienceAssignmentProvider? _experienceProvider;
   static const _uuid = Uuid();
 
   static Future<GardenStore> open(
@@ -39,7 +46,7 @@ class GardenStore {
     final db = await databaseFactoryFfi.openDatabase(
       path,
       options: OpenDatabaseOptions(
-        version: 5,
+        version: 6,
         onUpgrade: (db, oldVersion, _) async {
           if (oldVersion < 2) {
             await db.execute(
@@ -54,9 +61,10 @@ class GardenStore {
             await _createDeletions(db);
             await _purgeDeleted(db, account);
           }
+          if (oldVersion < 6) await _createRecipeRevisions(db);
         },
         onDowngrade: (_, oldVersion, newVersion) => throw StateError(
-          'This garden uses a newer Bloomstep data format '
+          'This garden uses a newer Budlark data format '
           '($oldVersion; this app supports $newVersion). '
           'Install a compatible newer version. Your data was not changed.',
         ),
@@ -84,11 +92,28 @@ class GardenStore {
           );
           await _createSyncState(db);
           await _createDeletions(db);
+          await _createRecipeRevisions(db);
         },
       ),
     );
     return GardenStore._(db, account, clock ?? DateTime.now);
   }
+
+  static Future<void> _createRecipeRevisions(DatabaseExecutor db) async {
+    for (final table in ['habits', 'checkins', 'reflections']) {
+      final columns = await db.rawQuery('PRAGMA table_info($table)');
+      if (!columns.any((column) => column['name'] == 'recipeRevision')) {
+        await db.execute(
+          "ALTER TABLE $table ADD COLUMN recipeRevision TEXT NOT NULL DEFAULT ''",
+        );
+      }
+    }
+  }
+
+  // Case and whitespace-only refinements retain evidence; all other changes
+  // to either the anchor or behavior start a new eligibility episode.
+  static String _recipeMeaning(String value) =>
+      value.trim().replaceAll(RegExp(r'\s+'), ' ').toLowerCase();
 
   static Future<void> _createSyncState(DatabaseExecutor db) => db.execute(
     'CREATE TABLE sync_state (account TEXT NOT NULL, tableName TEXT NOT NULL, recordId TEXT NOT NULL, fingerprint TEXT NOT NULL, PRIMARY KEY(account,tableName,recordId))',
@@ -202,6 +227,41 @@ class GardenStore {
     for (final deletion in rows) {
       final type = deletion['type'] as String;
       final id = deletion['recordId'] as String;
+      if (type == 'experienceEvents') {
+        final observations = await db.query(
+          'events',
+          where: 'account = ? AND name = ?',
+          whereArgs: [owner, 'experience_observation'],
+        );
+        for (final event in observations) {
+          final properties = jsonDecode(event['properties'] as String) as Map;
+          if (properties['consentEpoch'] == id) {
+            await db.delete(
+              'events',
+              where: 'account = ? AND id = ?',
+              whereArgs: [owner, event['id']],
+            );
+            await db.delete(
+              'sync_state',
+              where: 'account = ? AND tableName = ? AND recordId = ?',
+              whereArgs: [owner, 'events', event['id']],
+            );
+          }
+        }
+        final saved = await GardenStore._valueWith(
+          db,
+          owner,
+          'experienceExperimentState',
+        );
+        if (saved != null && (jsonDecode(saved) as Map)['consentEpoch'] == id) {
+          await db.delete(
+            'settings',
+            where: 'account = ? AND key = ?',
+            whereArgs: [owner, 'experienceExperimentState'],
+          );
+        }
+        continue;
+      }
       if (type == 'habits') {
         for (final table in ['checkins', 'reflections']) {
           await db.rawDelete(
@@ -257,6 +317,7 @@ class GardenStore {
   Future<void> switchAccount(String account) async {
     _syncGeneration++;
     _account = account;
+    experienceChanges.value++;
   }
 
   void requireSyncSession(String account, int generation) {
@@ -267,7 +328,83 @@ class GardenStore {
     }
   }
 
-  Future<void> close() => _db.close();
+  Future<void> close() async {
+    experienceChanges.dispose();
+    await _db.close();
+  }
+
+  Future<int> copyDeviceGardenFrom(
+    GardenStore device, {
+    required bool Function() authorized,
+  }) async {
+    final owner = _account;
+    final generation = _syncGeneration;
+    final deviceGeneration = device.syncGeneration;
+    void requireCopyAuthority() {
+      requireSyncSession(owner, generation);
+      device.requireSyncSession('device-guest', deviceGeneration);
+      if (owner == 'device-guest' || !authorized()) {
+        throw StateError(
+          'Garden copy authorization ended. Nothing was copied; retry from the account garden.',
+        );
+      }
+    }
+
+    requireCopyAuthority();
+    final snapshot = await device._db.transaction((txn) async {
+      final rows = <String, List<Map<String, Object?>>>{};
+      for (final table in ['habits', 'checkins', 'reflections']) {
+        rows[table] = await txn.query(
+          table,
+          where: 'account = ?',
+          whereArgs: ['device-guest'],
+        );
+      }
+      return rows;
+    });
+    String copyId(String table, String id) => _uuid.v5(
+      Namespace.url.value,
+      'budlark/device-garden-copy/v1/$owner/$table/$id',
+    );
+    return _db.transaction((txn) async {
+      requireCopyAuthority();
+      var copied = 0;
+      for (final habit in snapshot['habits']!) {
+        final originalId = habit['id'] as String;
+        final id = copyId('habits', originalId);
+        final existing = await txn.query(
+          'habits',
+          columns: ['id'],
+          where: 'id = ?',
+          whereArgs: [id],
+        );
+        final deleted = await txn.query(
+          'deletions',
+          columns: ['id'],
+          where: 'account = ? AND type = ? AND recordId = ?',
+          whereArgs: [owner, 'habits', id],
+        );
+        // Retries do not overwrite account edits or resurrect deleted copies.
+        if (existing.isNotEmpty || deleted.isNotEmpty) continue;
+        await txn.insert('habits', {...habit, 'id': id, 'account': owner});
+        for (final table in ['checkins', 'reflections']) {
+          for (final row in snapshot[table]!.where(
+            (row) => row['habitId'] == originalId,
+          )) {
+            await txn.insert(table, {
+              ...row,
+              'id': copyId(table, row['id'] as String),
+              'account': owner,
+              'habitId': id,
+            });
+          }
+        }
+        copied++;
+      }
+      requireCopyAuthority();
+      return copied;
+    });
+  }
 
   Future<bool> claimFirstHabitInvitation() => _db.transaction((txn) async {
     if (_account != 'device-guest' ||
@@ -329,6 +466,7 @@ class GardenStore {
     });
     await recordInteraction();
     await track('recipe_created', properties: properties);
+    await experienceTaskSaved();
     if (celebrationPracticed) {
       await track(
         'celebration_practiced',
@@ -367,24 +505,43 @@ class GardenStore {
     ].any((s) => s.trim().isEmpty || s.length > 200)) {
       throw ArgumentError('Recipe fields must contain 1-200 characters.');
     }
-    await _owned(habit.id, _db);
-    await _db.update(
-      'habits',
-      {
-        'anchor': anchor.trim(),
-        'behavior': behavior.trim(),
-        'celebration': celebration.trim(),
-        'updated': _clock().toUtc().toIso8601String(),
-      },
-      where: 'id = ? AND account = ?',
-      whereArgs: [habit.id, _account],
-    );
+    final owner = _account;
+    final generation = _syncGeneration;
+    await _db.transaction((txn) async {
+      requireSyncSession(owner, generation);
+      final current = await _owned(habit.id, txn);
+      final material =
+          _recipeMeaning(anchor) !=
+              _recipeMeaning(current['anchor'] as String) ||
+          _recipeMeaning(behavior) !=
+              _recipeMeaning(current['behavior'] as String);
+      var timestamp = _clock().toUtc();
+      final previous = DateTime.parse(current['updated'] as String);
+      if (!timestamp.isAfter(previous)) {
+        timestamp = previous.add(const Duration(microseconds: 1));
+      }
+      await txn.update(
+        'habits',
+        {
+          'anchor': anchor.trim(),
+          'behavior': behavior.trim(),
+          'celebration': celebration.trim(),
+          'updated': timestamp.toIso8601String(),
+          if (material) 'recipeRevision': _uuid.v4(),
+          if (material) 'status': 'active',
+        },
+        where: 'id = ? AND account = ?',
+        whereArgs: [habit.id, owner],
+      );
+      requireSyncSession(owner, generation);
+    });
   }
 
   Future<List<Map<String, Object?>>> _current(
     DatabaseExecutor db,
     String habitId, {
     String? account,
+    String? recipeRevision,
   }) async {
     final rows = await db.query(
       'checkins',
@@ -394,6 +551,9 @@ class GardenStore {
     );
     final byDay = <String, Map<String, Object?>>{};
     for (final row in rows) {
+      if (recipeRevision != null && row['recipeRevision'] != recipeRevision) {
+        continue;
+      }
       byDay[row['day'] as String] = row;
     }
     return byDay.values.where((r) => r['result'] != null).toList();
@@ -431,6 +591,7 @@ class GardenStore {
         limit: 1,
       );
       if (previous.isNotEmpty &&
+          previous.first['recipeRevision'] == habit['recipeRevision'] &&
           previous.first['result'] == result &&
           previous.first['reason'] == reason) {
         return false;
@@ -447,6 +608,10 @@ class GardenStore {
           )).isEmpty;
       // Monotonic event timestamps resolve fast edits even with a frozen clock.
       var timestamp = now.toUtc();
+      final recipeUpdated = DateTime.parse(habit['updated'] as String);
+      if (habit['recipeRevision'] != '' && !timestamp.isAfter(recipeUpdated)) {
+        timestamp = recipeUpdated.add(const Duration(microseconds: 1));
+      }
       if (previous.isNotEmpty) {
         final last = DateTime.parse(previous.first['ts'] as String);
         if (!timestamp.isAfter(last)) {
@@ -464,6 +629,7 @@ class GardenStore {
         'result': result,
         'reason': reason,
         'ts': fixedTimestamp,
+        'recipeRevision': habit['recipeRevision'],
       });
       final current = await _current(txn, habitId);
       final practiced = current.where((r) => r['result'] != 'notToday').length;
@@ -501,9 +667,21 @@ class GardenStore {
         'localDay': day,
         'platform': telemetryPlatform,
       };
-      await _trackWith(txn, account, 'checkin', properties: properties);
+      await _trackWith(
+        txn,
+        account,
+        'checkin',
+        properties: properties,
+        at: timestamp,
+      );
       if (first) {
-        await _trackWith(txn, account, 'first_checkin', properties: properties);
+        await _trackWith(
+          txn,
+          account,
+          'first_checkin',
+          properties: properties,
+          at: timestamp,
+        );
       }
       return true;
     });
@@ -593,8 +771,13 @@ class GardenStore {
     final result = <Habit>[];
     for (final row in rows) {
       final current = await _current(_db, row['id'] as String);
+      final currentRecipe = await _current(
+        _db,
+        row['id'] as String,
+        recipeRevision: row['recipeRevision'] as String,
+      );
       final practiced = current.where((r) => r['result'] != 'notToday');
-      final today = current.where((r) => r['day'] == localDate(date));
+      final today = currentRecipe.where((r) => r['day'] == localDate(date));
       final reasons = current.where((r) => r['reason'] != null).toList();
       result.add(
         Habit(
@@ -606,10 +789,12 @@ class GardenStore {
           species: row['species'] as String,
           stage: GrowthStage.values[row['stage'] as int],
           status: row['status'] as String,
+          recipeRevision: row['recipeRevision'] as String,
           practiceCount: practiced.length,
-          recentPractice: practiced
+          recentPractice: currentRecipe
               .where(
                 (r) =>
+                    r['result'] != 'notToday' &&
                     (r['day'] as String).compareTo(cutoff) >= 0 &&
                     (r['day'] as String).compareTo(localDate(date)) <= 0,
               )
@@ -638,8 +823,8 @@ class GardenStore {
       final habit = await _owned(habitId, txn);
       final previous = await txn.query(
         'reflections',
-        where: 'account = ? AND habitId = ?',
-        whereArgs: [_account, habitId],
+        where: 'account = ? AND habitId = ? AND recipeRevision = ?',
+        whereArgs: [_account, habitId, habit['recipeRevision']],
         orderBy: 'ts DESC',
         limit: 1,
       );
@@ -661,17 +846,19 @@ class GardenStore {
         'items': jsonEncode(items),
         'score': score,
         'ts': date.toUtc().toIso8601String(),
+        'recipeRevision': habit['recipeRevision'],
       });
       final scores = await txn.query(
         'reflections',
-        where: 'account = ? AND habitId = ?',
-        whereArgs: [_account, habitId],
+        where: 'account = ? AND habitId = ? AND recipeRevision = ?',
+        whereArgs: [_account, habitId, habit['recipeRevision']],
         orderBy: 'ts DESC',
         limit: 2,
       );
       final practiced = (await _current(
         txn,
         habitId,
+        recipeRevision: habit['recipeRevision'] as String,
       )).where((row) => row['result'] != 'notToday').toList();
       final cutoff = localDate(
         DateTime(
@@ -737,11 +924,11 @@ class GardenStore {
   }
 
   Future<DateTime?> naturalnessAvailableAt(String habitId) async {
-    await _owned(habitId, _db);
+    final habit = await _owned(habitId, _db);
     final rows = await _db.query(
       'reflections',
-      where: 'account = ? AND habitId = ?',
-      whereArgs: [_account, habitId],
+      where: 'account = ? AND habitId = ? AND recipeRevision = ?',
+      whereArgs: [_account, habitId, habit['recipeRevision']],
       orderBy: 'ts DESC',
       limit: 1,
     );
@@ -895,6 +1082,26 @@ class GardenStore {
         'updated': _clock().toUtc().toIso8601String(),
       }, conflictAlgorithm: ConflictAlgorithm.replace);
       if (key == 'analytics' && value != 'true') {
+        final scope = await _valueWith(
+          txn,
+          account,
+          'experienceExperimentState',
+        );
+        if (scope != null) {
+          final state = jsonDecode(scope) as Map;
+          await txn.insert('deletions', {
+            'id': _uuid.v4(),
+            'account': account,
+            'type': 'experienceEvents',
+            'recordId': state['consentEpoch'],
+            'ts': _clock().toUtc().toIso8601String(),
+          }, conflictAlgorithm: ConflictAlgorithm.ignore);
+        }
+        await txn.delete(
+          'settings',
+          where: 'account = ? AND key = ?',
+          whereArgs: [account, 'experienceExperimentState'],
+        );
         await _purgeReminderObservation(txn, account);
         await txn.delete('events', where: 'account = ?', whereArgs: [account]);
         await txn.delete(
@@ -913,6 +1120,7 @@ class GardenStore {
         );
       }
     });
+    if (key == 'analytics') experienceChanges.value++;
   }
 
   static Future<String?> _valueWith(
@@ -1186,6 +1394,11 @@ class GardenStore {
         'Authentication observations require a guarded account-consent scope.',
       );
     }
+    if (name == 'experience_observation') {
+      throw StateError(
+        'Experience observations require a rendered consent-scoped assignment.',
+      );
+    }
 
     final copy = properties == null
         ? null
@@ -1320,8 +1533,9 @@ class GardenStore {
     });
   }
 
-  Future<void> submitVoice(String kind, String body, {int? rating}) async {
+  Future<String> submitVoice(String kind, String body, {int? rating}) async {
     if (![
+          'General',
           'Idea',
           'Bug',
           'Question',
@@ -1329,7 +1543,9 @@ class GardenStore {
           'This felt wrong',
           'Rating',
         ].contains(kind) ||
-        (body.trim().isEmpty && kind != 'Rating') ||
+        (body.trim().isEmpty &&
+            kind != 'Rating' &&
+            !(kind == 'General' && rating != null)) ||
         body.length > 2000 ||
         (kind == 'Rating' && rating == null) ||
         (rating != null && (rating < 1 || rating > 5))) {
@@ -1356,7 +1572,7 @@ class GardenStore {
         'platform': telemetryPlatform,
       },
     );
-    if (kind == 'Rating') {
+    if (kind == 'Rating' || (kind == 'General' && rating != null)) {
       await track(
         'rated',
         properties: {
@@ -1366,6 +1582,7 @@ class GardenStore {
         },
       );
     }
+    return id;
   }
 
   Future<List<Map<String, Object?>>> voice() => _db.query(
@@ -1473,6 +1690,9 @@ class GardenStore {
 
   static Map<String, Object?> _wireRow(String table, Map<String, Object?> raw) {
     final row = Map<String, Object?>.from(raw)..remove('account');
+    if (['habits', 'checkins', 'reflections'].contains(table)) {
+      row['recipeRevision'] ??= '';
+    }
     if (table == 'voice') {
       row.remove('status');
       row.remove('replies');
@@ -1672,7 +1892,7 @@ class GardenStore {
       }
       for (final raw in removals) {
         if (raw is! Map ||
-            !['habits', 'voice'].contains(raw['type']) ||
+            !['habits', 'voice', 'experienceEvents'].contains(raw['type']) ||
             raw.keys.toSet().difference({
               'id',
               'type',
@@ -1754,6 +1974,17 @@ class GardenStore {
             }
             row[key] = value;
           }
+          if (['habits', 'checkins', 'reflections'].contains(entry.key)) {
+            final revision = raw['recipeRevision'] ?? '';
+            if (revision is! String ||
+                (revision.isNotEmpty &&
+                    !RegExp(
+                      r'^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}$',
+                    ).hasMatch(revision))) {
+              throw const FormatException('Invalid recipe revision.');
+            }
+            row['recipeRevision'] = revision;
+          }
           final received = Map<String, Object?>.from(row);
           final existing = await txn.query(
             entry.key,
@@ -1774,6 +2005,7 @@ class GardenStore {
               'celebration',
               'species',
               'status',
+              'recipeRevision',
             ])) {
               row['stage'] = stage;
               await txn.update(

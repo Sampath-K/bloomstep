@@ -3,7 +3,7 @@ import 'dart:convert';
 import 'package:flutter/services.dart';
 
 class WindowsToastHistory {
-  static const _channel = MethodChannel('bloomstep/toast_history');
+  static const _channel = MethodChannel('budlark/toast_history');
 
   static Future<int> notificationSetting() async {
     final value = await _channel.invokeMethod<Object?>('getSetting');

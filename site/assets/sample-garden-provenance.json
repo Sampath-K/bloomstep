@@ -6,7 +6,7 @@
   "captureSource": "tool/preview.dart",
   "sourceRevision": "121a8f6747e0ff2a11fa3e9026838c3d1a7d2f0d",
   "workflowRun": 37450083076,
-  "workflowArtifact": "bloomstep-synthetic-preview-arm64-NOT-FOR-RELEASE",
+  "workflowArtifact": "budlark-synthetic-preview-arm64-NOT-FOR-RELEASE",
   "architecture": "windows-arm64",
   "syntheticContent": true,
   "customerData": false,

@@ -1,5 +1,5 @@
-import 'package:bloomstep/features/garden/profile_section.dart';
-import 'package:bloomstep/services/identity.dart';
+import 'package:budlark/features/garden/profile_section.dart';
+import 'package:budlark/services/identity.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
@@ -16,6 +16,32 @@ void main() {
     final absent = IdentityProfile.fromClaims({'sub': 'private-subject'});
     expect(absent.displayName, isNull);
     expect(absent.photoUrl, isNull);
+    expect(
+      IdentityProfile.fromClaims({'name': ' Unknown '}).displayName,
+      isNull,
+    );
+    expect(
+      IdentityProfile.fromClaims({
+        'name': 'Unknown',
+        'given_name': 'Ada',
+        'family_name': 'Lovelace',
+      }).displayName,
+      'Ada Lovelace',
+    );
+    expect(
+      IdentityProfile.fromClaims({
+        'given_name': 'Ada',
+        'family_name': 'Lovelace',
+      }).displayName,
+      'Ada Lovelace',
+    );
+    expect(
+      IdentityProfile.fromClaims({
+        'email': 'private@example.invalid',
+        'sub': 'private-subject',
+      }).displayName,
+      isNull,
+    );
     for (final picture in [
       'http://images.example.invalid/profile.png',
       'javascript:alert(1)',
@@ -98,7 +124,7 @@ void main() {
       ),
     );
     expect(find.text('Signed in'), findsNothing);
-    expect(find.text('Synthetic Garden Tester'), findsNothing);
+    expect(find.text('Synthetic Garden Tester'), findsOneWidget);
     expect(find.textContaining('synthetic@example.invalid'), findsNothing);
     expect(find.textContaining('Google'), findsNothing);
     expect(find.textContaining('login.live.com'), findsNothing);
@@ -127,12 +153,60 @@ void main() {
         ),
       ),
     );
-    expect(find.text('Ada Lovelace'), findsNothing);
+    expect(find.text('Ada Lovelace'), findsOneWidget);
     expect(find.text('AL'), findsOneWidget);
     expect(find.text('Signed in'), findsNothing);
     expect(find.text('Sign out'), findsOneWidget);
     expect(find.byType(Image), findsNothing);
   });
+
+  testWidgets('placeholder provider name does not appear as an Unknown badge', (
+    tester,
+  ) async {
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: ProfileSection(
+            signedIn: true,
+            compactSummary: true,
+            profile: IdentityProfile.fromClaims({'name': 'Unknown'}),
+            configured: true,
+            busy: false,
+            onSignIn: () async {},
+            onSignOut: () async {},
+          ),
+        ),
+      ),
+    );
+    expect(find.text('Signed-in account'), findsOneWidget);
+    expect(find.text('Unknown'), findsNothing);
+    expect(find.text('U'), findsNothing);
+  });
+
+  testWidgets(
+    'absent name explains the provider gap without invented initials',
+    (tester) async {
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: ProfileSection(
+              signedIn: true,
+              profile: IdentityProfile.fromClaims({'sub': 'private-subject'}),
+              configured: true,
+              busy: false,
+              onSignIn: () async {},
+              onSignOut: () async {},
+            ),
+          ),
+        ),
+      );
+      expect(find.text('Signed-in account'), findsOneWidget);
+      expect(find.text("Your account doesn't include a name."), findsOneWidget);
+      expect(find.text('U'), findsNothing);
+      expect(find.text('private-subject'), findsNothing);
+      expect(find.text('Sign out'), findsOneWidget);
+    },
+  );
 
   testWidgets('unavailable claimed photo leaves the initials fallback', (
     tester,
@@ -161,6 +235,64 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
+  testWidgets('compact large-text profile keeps name and actions readable', (
+    tester,
+  ) async {
+    await tester.binding.setSurfaceSize(const Size(360, 600));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+    await tester.pumpWidget(
+      MaterialApp(
+        builder: (context, child) => MediaQuery(
+          data: MediaQuery.of(context)
+              .copyWith(textScaler: const TextScaler.linear(2)),
+          child: child!,
+        ),
+        home: Scaffold(
+          body: SingleChildScrollView(
+            child: Column(
+              children: [
+                ProfileSection(
+                  signedIn: true,
+                  profile: const IdentityProfile(
+                    displayName: 'Synthetic Garden Tester',
+                  ),
+                  configured: true,
+                  busy: false,
+                  notice: 'Viewing your account garden. Device habits stay separate.',
+                  onSignIn: () async {},
+                  onSignOut: () async {},
+                  onCopyDeviceGarden: () async {},
+                  onSwitchGarden: () async {},
+                  compactSummary: true,
+                ),
+                ProfileSection(
+                  signedIn: true,
+                  profile: const IdentityProfile(
+                    displayName: 'Synthetic Garden Tester',
+                  ),
+                  configured: true,
+                  busy: false,
+                  onSignIn: () async {},
+                  onSignOut: () async {},
+                  onCopyDeviceGarden: () async {},
+                  onSwitchGarden: () async {},
+                  detailsOnly: true,
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+    expect(find.text('Synthetic Garden Tester'), findsOneWidget);
+    final details = find.text('Profile and garden details');
+    await tester.ensureVisible(details);
+    await tester.tap(details);
+    await tester.pumpAndSettle();
+    await tester.ensureVisible(find.text('View device garden'));
+    expect(tester.takeException(), isNull);
+  });
+
   for (final message in [
     'Sign-in was cancelled. Your device garden is unchanged.',
     'Sign-in could not reach the identity service.',
@@ -181,6 +313,13 @@ void main() {
           ),
         ),
       );
+      expect(
+        find.text('Your account needs attention. Try signing in again.'),
+        findsOneWidget,
+      );
+      expect(find.text(message), findsNothing);
+      await tester.tap(find.text('Details'));
+      await tester.pumpAndSettle();
       expect(find.text(message), findsOneWidget);
       expect(find.text('Signed in'), findsNothing);
       expect(find.text('Sign in with Microsoft or Google'), findsOneWidget);

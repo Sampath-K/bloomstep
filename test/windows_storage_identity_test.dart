@@ -1,6 +1,6 @@
 import 'dart:io';
 
-import 'package:bloomstep/services/windows_storage_identity.dart';
+import 'package:budlark/services/windows_storage_identity.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
@@ -13,7 +13,7 @@ import 'package:path_provider_platform_interface/path_provider_platform_interfac
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
   test('actual Windows DPAPI v4 record survives branded upgrade without legacy migration', () async {
-    final root = await Directory.systemTemp.createTemp('bloomstep-dpapi-test-');
+    final root = await Directory.systemTemp.createTemp('budlark-dpapi-test-');
     addTearDown(() => root.delete(recursive: true));
     final paths = PathProviderPlatform.instance;
     final secure = FlutterSecureStoragePlatform.instance;
@@ -24,7 +24,7 @@ void main() {
       FlutterSecureStoragePlatform.instance = secure;
       debugDefaultTargetPlatformOverride = targetPlatform;
     });
-    final legacy = p.join(root.path, 'com.bloomstep', 'bloomstep');
+    final legacy = p.join(root.path, 'Budlark');
     PathProviderPlatform.instance = _Preview3Paths(legacy);
     FlutterSecureStorageWindows.registerWith();
     const storage = FlutterSecureStorage(
@@ -40,7 +40,7 @@ void main() {
         .toList();
     expect(files, hasLength(1));
     final before = await File(files.single.path).readAsBytes();
-    PathProviderPlatform.instance = BloomstepWindowsPaths(
+    PathProviderPlatform.instance = BudlarkWindowsPaths(
       knownFolder: (_) async => root.path,
     );
     FlutterSecureStorageWindows.registerWith();
@@ -50,7 +50,7 @@ void main() {
     );
     expect(await File(files.single.path).readAsBytes(), before);
     expect(
-      await Directory(p.join(root.path, 'Bloomstep contributors')).exists(),
+      await Directory(p.join(root.path, 'Budlark contributors')).exists(),
       false,
     );
   }, skip: !Platform.isWindows);
@@ -58,18 +58,18 @@ void main() {
     'branding cannot relocate garden, credential or instance storage',
     () async {
       final root = await Directory.systemTemp.createTemp(
-        'bloomstep-storage-test-',
+        'budlark-storage-test-',
       );
       addTearDown(() => root.delete(recursive: true));
-      final legacy = Directory(p.join(root.path, 'com.bloomstep', 'bloomstep'));
+      final legacy = Directory(p.join(root.path, 'Budlark'));
       await legacy.create(recursive: true);
       final saved = File(p.join(legacy.path, 'synthetic-record'));
       await saved.writeAsString('synthetic, not credentials');
       final original = PathProviderPlatform.instance;
       addTearDown(() => PathProviderPlatform.instance = original);
-      PathProviderPlatform.instance = BloomstepWindowsPaths(
+      PathProviderPlatform.instance = BudlarkWindowsPaths(
         knownFolder: (folder) async {
-          expect(folder, '{3EB685DB-65F9-4CF6-A03A-E3EF65729F3D}');
+          expect(folder, '{F1B32785-6FBA-4FCF-9D55-7B8E7F157091}');
           return root.path;
         },
       );
@@ -80,10 +80,10 @@ void main() {
     },
   );
 
-  test('cache uses its existing independent local machine namespace', () async {
-    final root = await Directory.systemTemp.createTemp('bloomstep-cache-test-');
+  test('cache shares the local machine product namespace', () async {
+    final root = await Directory.systemTemp.createTemp('budlark-cache-test-');
     addTearDown(() => root.delete(recursive: true));
-    final provider = BloomstepWindowsPaths(
+    final provider = BudlarkWindowsPaths(
       knownFolder: (folder) async {
         expect(folder, '{F1B32785-6FBA-4FCF-9D55-7B8E7F157091}');
         return root.path;
@@ -91,14 +91,14 @@ void main() {
     );
     expect(
       await provider.getApplicationCachePath(),
-      p.join(root.path, 'com.bloomstep', 'bloomstep'),
+      p.join(root.path, 'Budlark'),
     );
   });
 
   test(
     'missing Windows known folder is explicit, not temporary storage',
     () async {
-      final provider = BloomstepWindowsPaths(knownFolder: (_) async => null);
+      final provider = BudlarkWindowsPaths(knownFolder: (_) async => null);
       await expectLater(provider.getApplicationSupportPath(), throwsStateError);
     },
   );

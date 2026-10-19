@@ -12,16 +12,16 @@ test('worker verifier pins separate issuer/audience/keys/role and leaves primary
   const { createLocalJWKSet } = await import('jose');
   const primary = async () => { throw new ServiceError(401, 'Primary token rejected.'); };
   const authenticate = createAggregateAuthenticator(config, primary, createLocalJWKSet({ keys: [jwk] }));
-  const token = (overrides = {}) => new SignJWT({ roles: ['Bloomstep.AggregateWriter'], ...overrides })
+  const token = (overrides = {}) => new SignJWT({ roles: ['Budlark.AggregateWriter'], ...overrides })
     .setProtectedHeader({ alg: 'RS256', kid: 'test-key' }).setIssuer(config.issuer).setAudience(config.audience)
     .setSubject('worker-subject').setIssuedAt().setExpirationTime('5m').sign(privateKey);
-  const request = value => ({ headers: new Headers({ 'X-Bloomstep-Authorization': `Bearer ${value}` }) });
+  const request = value => ({ headers: new Headers({ 'X-Budlark-Authorization': `Bearer ${value}` }) });
     const actor = await authenticate(request(await token()));
-    assert.deepEqual(actor.roles, ['Bloomstep.AggregateWriter']);
+    assert.deepEqual(actor.roles, ['Budlark.AggregateWriter']);
     assert.equal(actor.userId.length, 64);
-    for (const overrides of [{ roles: ['Owner'] }, { roles: ['Bloomstep.Admin'] }, { iss: 'https://other.invalid' }, { aud: 'wrong' }]) {
+    for (const overrides of [{ roles: ['Owner'] }, { roles: ['Budlark.Admin'] }, { iss: 'https://other.invalid' }, { aud: 'wrong' }]) {
       // Explicit setters below avoid overriding reserved claims before defaults.
-      const builder = new SignJWT({ roles: overrides.roles ?? ['Bloomstep.AggregateWriter'] })
+      const builder = new SignJWT({ roles: overrides.roles ?? ['Budlark.AggregateWriter'] })
         .setProtectedHeader({ alg: 'RS256', kid: 'test-key' }).setIssuer(overrides.iss ?? config.issuer)
         .setAudience(overrides.aud ?? config.audience).setSubject('worker').setIssuedAt().setExpirationTime('5m');
       await assert.rejects(authenticate(request(await builder.sign(privateKey))), error => [401,403].includes(error.status));
@@ -29,9 +29,9 @@ test('worker verifier pins separate issuer/audience/keys/role and leaves primary
 });
 
 test('missing worker settings fail closed while real primary Admin can run manually', async () => {
-  const request = { headers: new Headers({ 'X-Bloomstep-Authorization': 'Bearer token' }) };
-  const admin = createAggregateAuthenticator({}, async () => ({ userId: 'a'.repeat(64), roles: ['Bloomstep.Admin'] }));
-  assert.equal((await admin(request)).roles[0], 'Bloomstep.Admin');
+  const request = { headers: new Headers({ 'X-Budlark-Authorization': 'Bearer token' }) };
+  const admin = createAggregateAuthenticator({}, async () => ({ userId: 'a'.repeat(64), roles: ['Budlark.Admin'] }));
+  assert.equal((await admin(request)).roles[0], 'Budlark.Admin');
   const customer = createAggregateAuthenticator({}, async () => ({ userId: 'a'.repeat(64), roles: ['User'] }));
   await assert.rejects(customer(request), error => error.status === 403);
   const unavailable = createAggregateAuthenticator({}, async () => { throw new ServiceError(401, 'Primary rejected'); });

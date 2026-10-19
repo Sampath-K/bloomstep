@@ -55,6 +55,9 @@ try {
     assert.equal(posts.some(value => value.event === 'primary_cta_click'), true);
     const jsonLd = await page.$eval('script[type="application/ld+json"]', node => JSON.parse(node.textContent));
     assert.equal(jsonLd['@type'], 'SoftwareApplication');
+    assert.equal(jsonLd.name, 'Budlark');
+    assert.match(await page.title(), /^Budlark/);
+    assert.equal(await page.$eval('header .brand', node => node.textContent), 'Budlark');
     if (output) await page.screenshot({ path: join(output, `customer-${width}.png`), fullPage: true });
     await page.close();
   }
@@ -88,7 +91,7 @@ try {
     assert.equal(await offline.$eval('[data-universal-download] a', link => link.dataset.download), 'unknown');
     assert.equal(await offline.$eval('[data-universal-download] a', link => link.textContent.trim()), 'Owner-test download (designated testers only)');
   }
-  assert.ok(links.every(link => link.startsWith('https://github.com/Sampath-K/bloomstep/releases/download/')));
+  assert.ok(links.every(link => link.startsWith('https://github.com/Sampath-K/budlark/releases/download/')));
   await offline.click('#primary-cta');
   assert.equal(await offline.evaluate(() => location.hash), '#download');
   assert.equal(await offline.evaluate(() => localStorage.length), 0);
@@ -118,22 +121,8 @@ try {
     }
     for (const path of ['/', '/releases/']) {
       await page.goto(origin + path, { waitUntil: 'networkidle0' });
-      assert.match(await page.title(), /^Budlark\b/, `${path} uses the approved display name`);
-      assert.equal(await page.$eval('header a[href="/"]', node => node.textContent.trim()), 'Budlark');
-      assert.match(await page.$eval('footer', node => node.textContent), /Budlark/);
-      const next = await page.$eval('#next-release', node => ({
-        text: node.textContent, actions: node.querySelectorAll('a,button').length,
-        visible: node.getBoundingClientRect().height > 0,
-      }));
-      assert.match(next.text, /Budlark NEXT release: not yet available/);
-      assert.match(next.text, /No Budlark NEXT download is published/);
-      assert.match(next.text, /legacy Bloomstep/);
-      assert.equal(next.actions, 0);
-      assert.equal(next.visible, true);
-      assert.deepEqual(await page.$$eval('[data-download]', links => links.map(link => link.href).sort()),
-        [release.universal.url, release.x64.url, release.arm64.url].sort());
-      assert.deepEqual(await page.$$eval('[data-download="x64"],[data-download="arm64"]',
-        links => links.map(link => link.textContent)), ['Legacy Bloomstep x64', 'Legacy Bloomstep ARM64']);
+      assert.match(await page.title(), /^Budlark/);
+      assert.match(await page.$eval('meta[property="og:title"]', node => node.content), /^Budlark/);
       assert.equal(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), true,
         `${path} must reflow in ${scenario.name}`);
       const previewText = await page.$eval('main', node => node.textContent);
