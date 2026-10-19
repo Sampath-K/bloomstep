@@ -17,6 +17,10 @@ The owner failed the installer built from `2d762c4` and separately approved
 publishing those unchanged bytes as internal dogfood. That permission is not a
 manual PASS or general-release approval. Follow-up fixes remain subject to both
 native architectures, a new exact-head universal artifact, and owner re-test.
+Upgrade acceptance is explicitly owner-only on the machine with the previous
+installation: [three-check upgrade checklist](owner-upgrade-checklist.md).
+Its status stays UNVERIFIED until owner PASS. Existing VM/security checks remain
+unchanged; no VM or automated protected-installer execution is requested.
 
 The previous feedback test injected Flutter framework keyboard events and
 checked paste only. It did not send Win32 keyboard input to the installed app,
