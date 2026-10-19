@@ -27,6 +27,7 @@ import 'analytics_sandbox_controls.dart';
 import 'package:launch_at_startup/launch_at_startup.dart';
 
 import 'plant_art.dart';
+import 'garden_moment.dart';
 import 'recipe_builder.dart';
 import 'invitation_dialog.dart';
 import 'garden_canopy.dart';
@@ -100,12 +101,28 @@ class GardenScreen extends StatefulWidget {
   State<GardenScreen> createState() => _GardenScreenState();
 }
 
-class _GardenScreenState extends State<GardenScreen> {
+class _GardenScreenState extends State<GardenScreen>
+    with WidgetsBindingObserver {
   DateTime _now() => widget.clock?.call() ?? DateTime.now();
   List<Habit> habits = [];
   bool loading = true;
   bool working = false;
   bool reducedMotion = false;
+  bool moreOpen = false;
+  String? selectedHabitId;
+  String? returnHabitId;
+  String? returnDay;
+  bool momentAnimating = false;
+  final GlobalKey momentKey = GlobalKey();
+  int? checkInMinute;
+  bool remindersRequested = false;
+  GrowthStage? previousStage;
+  final Map<String, GrowthStage> pendingGrowth = {};
+  final Set<String> completedMoments = {};
+  String? loadedAccount;
+  GardenStore? loadedStore;
+  String? loadedDay;
+  Timer? dayTimer;
   bool weeklyDue = false;
   bool ratingInvitation = false;
   int ratingMoment = 0;
@@ -136,6 +153,7 @@ class _GardenScreenState extends State<GardenScreen> {
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     if (!_testBuild &&
         (widget.clock != null ||
             widget.testExportPathSelector != null ||
@@ -196,6 +214,8 @@ class _GardenScreenState extends State<GardenScreen> {
 
   @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    dayTimer?.cancel();
     syncTimer?.cancel();
     widget.invitationInbox?.removeListener(_inboxChanged);
     configExpiryTimer?.cancel();
@@ -206,9 +226,34 @@ class _GardenScreenState extends State<GardenScreen> {
   }
 
   @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed && !closing) {
+      unawaited(_load());
+    }
+  }
+
+  void _scheduleDayRefresh() {
+    dayTimer?.cancel();
+    final now = _now();
+    final next = now.isUtc
+        ? DateTime.utc(now.year, now.month, now.day + 1)
+        : DateTime(now.year, now.month, now.day + 1);
+    dayTimer = Timer(next.difference(now), () {
+      if (mounted && !closing) unawaited(_load());
+    });
+  }
+
+  @override
   void didUpdateWidget(GardenScreen oldWidget) {
     super.didUpdateWidget(oldWidget);
-    if (oldWidget.contentRevision != widget.contentRevision) {
+    final changedGarden = oldWidget.store != widget.store ||
+        loadedAccount != widget.store.account;
+    if (changedGarden) {
+      loading = true;
+      momentAnimating = false;
+    }
+    if (changedGarden ||
+        oldWidget.contentRevision != widget.contentRevision) {
       unawaited(_load());
       if (widget.identity != null && !widget.testDisableServices) {
         unawaited(_sync());
@@ -351,9 +396,16 @@ class _GardenScreenState extends State<GardenScreen> {
   }
 
   Future<void> _load() async {
+    final store = widget.store;
+    final account = store.account;
+    final now = _now();
     try {
-      final data = await widget.store.habits();
+      final data = await store.habits(now: now);
       final reduce = await widget.store.setting('reducedMotion') == 'true';
+      final minute = int.tryParse(
+        await store.setting('reminderMinute') ?? '',
+      );
+      final requested = await store.setting('reminders') == 'true';
       final weekly = await widget.store.weeklyReflectionDue();
       final dates = <String, DateTime?>{};
       final paused = <String>{};
@@ -367,21 +419,56 @@ class _GardenScreenState extends State<GardenScreen> {
           paused.add(habit.id);
         }
       }
-      if (mounted) {
+      if (mounted && identical(widget.store, store) && store.account == account) {
         setState(() {
+          if (loadedDay != localDate(now)) pendingGrowth.clear();
+          if (loadedAccount == account && loadedStore == store) {
+            for (final habit in data) {
+              final previous =
+                  habits.where((old) => old.id == habit.id).firstOrNull;
+              if (previous != null && previous.stage != habit.stage) {
+                pendingGrowth[habit.id] = previous.stage;
+              }
+            }
+          }
+          if (loadedAccount != account || loadedStore != store) {
+            selectedHabitId = null;
+            returnHabitId = null;
+            returnDay = null;
+            momentAnimating = false;
+            previousStage = null;
+            pendingGrowth.clear();
+            completedMoments.clear();
+            for (final habit in data) {
+              if (habit.today == CheckInResult.did ||
+                  habit.today == CheckInResult.didMore) {
+                completedMoments.add(_completionKey(habit, day: localDate(now)));
+              }
+            }
+            moreOpen = false;
+          }
+          loadedAccount = account;
+          loadedStore = store;
+          loadedDay = localDate(now);
           habits = data;
           reducedMotion = reduce;
+          checkInMinute = minute != null && minute >= 0 && minute < 1440
+              ? minute
+              : null;
+          remindersRequested = requested;
           weeklyDue = weekly;
           naturalnessDates = dates;
           pausedReminders = paused;
           loading = false;
         });
+        _scheduleDayRefresh();
         _scheduleFirstHabit();
       }
     } catch (e) {
-      if (mounted) {
+      if (mounted && identical(widget.store, store) && store.account == account) {
         setState(() {
-          error = "Couldn't open your garden. Try again.";
+          error =
+              "Couldn't read local garden storage. Reload your garden to try again.";
           loading = false;
         });
       }
@@ -403,7 +490,8 @@ class _GardenScreenState extends State<GardenScreen> {
     } catch (e) {
       debugPrint('Garden action failed: ${e.runtimeType}');
       if (mounted) {
-        setState(() => error = "Couldn't complete that action. Try again.");
+        setState(() => error =
+            "Couldn't save the change to local storage. Try the action again.");
       }
     } finally {
       if (mounted) setState(() => working = false);
@@ -546,18 +634,39 @@ class _GardenScreenState extends State<GardenScreen> {
 
   Future<void> _acknowledgeSavedPractice(String habitId) async {
     if (!mounted || closing) return;
-    final matches = habits.where((candidate) => candidate.id == habitId);
-    if (matches.isEmpty) return;
-    final habit = matches.first;
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(
-          'Saved. That tiny step counts! Now ${habit.celebration}.',
-        ),
-        duration: const Duration(seconds: 3),
-      ),
-    );
+    final account = widget.store.account;
+    final before = habits.where((habit) => habit.id == habitId).firstOrNull;
+    await _load();
+    if (!mounted || closing || account != widget.store.account) return;
+    _showSavedMoment(habitId, before?.stage);
   }
+
+  void _showSavedMoment(String habitId, GrowthStage? before) {
+    final saved = habits.where((habit) => habit.id == habitId).firstOrNull;
+    if (loadedDay != localDate(_now()) ||
+        saved == null ||
+        (saved.today != CheckInResult.did &&
+            saved.today != CheckInResult.didMore)) {
+      return;
+    }
+    final key = _completionKey(saved);
+    if (!completedMoments.add(key)) return;
+    setState(() {
+      selectedHabitId = habitId;
+      returnHabitId = habitId;
+      returnDay = localDate(_now());
+      previousStage = pendingGrowth.remove(habitId) ?? before ?? saved.stage;
+      momentAnimating = true;
+      moreOpen = false;
+    });
+  }
+
+  String _completionKey(Habit habit, {String? day}) => jsonEncode([
+    widget.store.account,
+    habit.id,
+    day ?? localDate(_now()),
+    habit.recipeRevision,
+  ]);
 
   Future<void> _plant({Habit? prefill}) async {
     if (habits.where((h) => h.status == 'active').length >= 3) {
@@ -592,6 +701,14 @@ class _GardenScreenState extends State<GardenScreen> {
       builder: (_) =>
           PlantedRecipeDialog(habit: planted!, reducedMotion: reducedMotion),
     );
+    if (mounted && !closing) {
+      setState(() {
+        selectedHabitId = planted!.id;
+        returnHabitId = planted!.id;
+        returnDay = localDate(_now());
+        moreOpen = false;
+      });
+    }
   }
 
   Future<bool> _confirm(String title, String message, String action) async =>
@@ -634,7 +751,11 @@ class _GardenScreenState extends State<GardenScreen> {
   }
 
   Future<void> _check(Habit habit, CheckInResult result) async {
-    final messenger = ScaffoldMessenger.of(context);
+    if (working || closing) return;
+    final account = widget.store.account;
+    final alreadyDone = loadedDay == localDate(_now()) &&
+        (habit.today == CheckInResult.did ||
+            habit.today == CheckInResult.didMore);
     String? reason;
     if (result == CheckInResult.notToday) {
       reason = await showDialog<String>(
@@ -664,23 +785,28 @@ class _GardenScreenState extends State<GardenScreen> {
       await widget.store.checkIn(habit.id, result, reason: reason, now: _now());
       saved = true;
     });
-    if (saved) await reminders?.practiced(habit.id);
-    if (!mounted || !saved || result == CheckInResult.notToday) return;
-    final celebration = messenger.showSnackBar(
-      SnackBar(
-        content: Text(
-          '${result == CheckInResult.didMore ? 'A little extra! ' : 'That tiny step counts! '}Now ${habit.celebration}.',
-        ),
-        duration: const Duration(seconds: 5),
-      ),
-    );
-    if (saved) {
-      unawaited(_offerRatingAfterCelebration(celebration.closed, ratingMoment));
+    if (!mounted || !saved || account != widget.store.account) return;
+    if (result != CheckInResult.notToday &&
+        !alreadyDone) {
+      _showSavedMoment(habit.id, habit.stage);
     }
+    try {
+      await reminders?.practiced(habit.id);
+    } catch (failure) {
+      if (mounted) {
+        setState(() => error =
+            'Practice saved, but reminder cleanup failed. Open More → Settings and privacy to retry reminders.');
+      }
+    }
+    if (!mounted || result == CheckInResult.notToday) return;
+    unawaited(_offerRatingAfterCelebration(
+      Future<void>.delayed(GardenMoment.duration),
+      ratingMoment,
+    ));
   }
 
   Future<void> _offerRatingAfterCelebration(
-    Future<SnackBarClosedReason> closed,
+    Future<void> closed,
     int moment,
   ) async {
     await closed;
@@ -1983,6 +2109,208 @@ class _GardenScreenState extends State<GardenScreen> {
 
   @override
   Widget build(BuildContext context) {
+    if (moreOpen) return _buildMore(context);
+    final active = habits.where((habit) => habit.status == 'active').toList();
+    final habit = active
+            .where((habit) => habit.id == selectedHabitId)
+            .firstOrNull ??
+        active.where((habit) => habit.today == null).firstOrNull ??
+        active.firstOrNull;
+    final done = loadedDay == localDate(_now()) &&
+        (habit?.today == CheckInResult.did ||
+            habit?.today == CheckInResult.didMore);
+    final returning = habit != null &&
+        (done ||
+            (returnHabitId == habit.id && returnDay == localDate(_now())));
+    final theme = Theme.of(context);
+    final viewport = MediaQuery.sizeOf(context);
+    final compact = viewport.height <= 600 ||
+        MediaQuery.textScalerOf(context).scale(1) >= 1.5;
+    final minute = checkInMinute;
+    final delivery = !remindersRequested
+        ? 'reminders off'
+        : pausedReminders.contains(habit?.id)
+            ? 'reminders paused'
+            : reminders?.enabled == true
+                ? 'reminders enabled'
+                : 'Windows delivery inactive';
+    final time = minute == null
+        ? 'Check-in time not set · choose in More'
+        : 'Check-in ${_minuteLabel(minute)} · $delivery';
+    final warnings = <String>{
+      if (error != null) error!,
+      if (reminderSetupError != null) reminderSetupError!,
+      if (configWarning != null) configWarning!,
+      if (startupWarning != null) startupWarning!,
+      if (invitationWarning != null) invitationWarning!,
+    };
+    return Scaffold(
+      appBar: AppBar(
+        automaticallyImplyLeading: false,
+        toolbarHeight: MediaQuery.textScalerOf(context).scale(48) + 24,
+        actions: [
+          if (widget.profileSummaryBuilder != null &&
+              (ModalRoute.of(context)?.isCurrent ?? true))
+            SizedBox(
+              width: (viewport.width / 2).clamp(0, 320).toDouble(),
+              child: widget.profileSummaryBuilder!(_signOut, _profile),
+            ),
+        ],
+      ),
+      body: loading
+          ? const Center(child: CircularProgressIndicator())
+          : SingleChildScrollView(
+              padding: EdgeInsets.fromLTRB(16, compact ? 0 : 24, 16, 24),
+              child: Center(
+                child: ConstrainedBox(
+                  constraints: const BoxConstraints(maxWidth: 560),
+                  child: Column(
+                    children: [
+                      if (compact)
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            SizedBox(
+                              width: 100,
+                              height: 80,
+                              child: _momentFor(habit),
+                            ),
+                            Flexible(
+                              child: Semantics(
+                                header: true,
+                                child: Text(
+                                  habit?.aspiration ?? 'Your garden',
+                                  style: theme.textTheme.headlineMedium,
+                                  textAlign: TextAlign.center,
+                                ),
+                              ),
+                            ),
+                          ],
+                        )
+                      else
+                        Semantics(
+                          header: true,
+                          child: Text(
+                            habit?.aspiration ?? 'Your garden',
+                            style: theme.textTheme.headlineMedium,
+                            textAlign: TextAlign.center,
+                          ),
+                        ),
+                      if (!compact)
+                        SizedBox(
+                          width: 300,
+                          height: 200,
+                          child: _momentFor(habit),
+                        ),
+                      if (habit == null)
+                        const Text('Choose one tiny habit to begin.')
+                      else
+                        Column(
+                          children: [
+                            Text(
+                              done ? 'Done today' : 'After I ${habit.anchor}',
+                              textAlign: TextAlign.center,
+                            ),
+                            if (!done)
+                              Text(
+                                habit.behavior,
+                                textAlign: TextAlign.center,
+                              )
+                            else
+                              Text(
+                                'Now ${habit.celebration}.',
+                                textAlign: TextAlign.center,
+                              ),
+                          ],
+                        ),
+                      const SizedBox(height: 8),
+                      FilledButton(
+                        onPressed: working
+                            ? null
+                            : habit == null
+                                ? _plant
+                                : () => _check(habit, CheckInResult.did),
+                        child: Text(habit == null ? 'Plant a habit' : 'I did it'),
+                      ),
+                      if (returning) ...[
+                        const SizedBox(height: 8),
+                        Text(
+                          'See you tomorrow after I ${habit.anchor}.',
+                          textAlign: TextAlign.center,
+                        ),
+                        Text(time, textAlign: TextAlign.center),
+                      ],
+                      if (ModalRoute.of(context)?.isCurrent ?? true)
+                        TextButton(
+                          key: const ValueKey('garden-more'),
+                          onPressed: working
+                              ? null
+                              : () => setState(() {
+                                  momentAnimating = false;
+                                  moreOpen = true;
+                                }),
+                          child: Text(
+                            pendingInvitation != null || acceptedCard != null
+                                ? 'More · invitation'
+                                : 'More',
+                          ),
+                        ),
+                      for (final warning in warnings)
+                        Card(
+                          child: Padding(
+                            padding: const EdgeInsets.all(12),
+                            child: Column(
+                              children: [
+                                Text(warning),
+                                TextButton(
+                                  onPressed: working
+                                      ? null
+                                      : () async {
+                                          setState(() => error = null);
+                                          await _load();
+                                        },
+                                  child: const Text('Reload garden'),
+                                ),
+                                TextButton(
+                                  onPressed: working ? null : _settings,
+                                  child: const Text('Settings and privacy'),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+    );
+  }
+
+  String _minuteLabel(int minute) =>
+      '${(minute ~/ 60).toString().padLeft(2, '0')}:${(minute % 60).toString().padLeft(2, '0')}';
+
+  Widget _momentFor(Habit? habit) => GardenMoment(
+    key: momentKey,
+    stage: habit?.stage ?? GrowthStage.seed,
+    species: habit?.species ?? 'Cosmos',
+    reducedMotion: reducedMotion,
+    previousStage: previousStage,
+    animate: momentAnimating && selectedHabitId == habit?.id,
+    onFinished: () {
+      if (mounted && momentAnimating) {
+        setState(() => momentAnimating = false);
+      }
+    },
+    completion: loadedDay == localDate(_now()) &&
+            habit != null &&
+            (habit.today == CheckInResult.did ||
+                habit.today == CheckInResult.didMore)
+        ? _completionKey(habit)
+        : null,
+  );
+
+  Widget _buildMore(BuildContext context) {
     final theme = Theme.of(context);
     final viewport = MediaQuery.sizeOf(context);
     final textScale = MediaQuery.textScalerOf(context).scale(1);
@@ -1996,6 +2324,11 @@ class _GardenScreenState extends State<GardenScreen> {
     return Scaffold(
       appBar: AppBar(
         automaticallyImplyLeading: false,
+        leading: IconButton(
+          tooltip: 'Back to your habit',
+          onPressed: () => setState(() => moreOpen = false),
+          icon: const Icon(Icons.arrow_back),
+        ),
         toolbarHeight: MediaQuery.textScalerOf(context).scale(48) + 24,
         title: widget.profileSummaryBuilder == null ? const Text('Budlark') : null,
         actions: [
@@ -2017,7 +2350,7 @@ class _GardenScreenState extends State<GardenScreen> {
           if (widget.profileSummaryBuilder != null &&
               (ModalRoute.of(context)?.isCurrent ?? true))
             SizedBox(
-              width: (viewport.width / 2).clamp(0, 320).toDouble(),
+              width: (viewport.width - 232).clamp(0, 320).toDouble(),
               child: widget.profileSummaryBuilder!(_signOut, _profile),
             ),
         ],
@@ -2107,9 +2440,16 @@ class _GardenScreenState extends State<GardenScreen> {
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
-                                _statusDetails(
-                                  'Something needs your attention.',
-                                  error!,
+                                const Text('Something needs your attention.'),
+                                SelectableText(error!),
+                                TextButton(
+                                  onPressed: working
+                                      ? null
+                                      : () async {
+                                          setState(() => error = null);
+                                          await _load();
+                                        },
+                                  child: const Text('Reload garden'),
                                 ),
                                 if (reminderSetupError != null &&
                                     error == reminderSetupError) ...[

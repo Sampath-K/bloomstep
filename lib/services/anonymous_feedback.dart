@@ -135,7 +135,7 @@ class AnonymousFeedback {
         }
         if (utf8.encode(jsonEncode({
           'consent': true, 'deviceId': _uuid.v4(), 'requestId': _uuid.v4(),
-          if (text != null) 'text': text, if (rating != null) 'rating': rating,
+          'text': ?text, 'rating': ?rating,
         })).length > 8192) {
           throw ArgumentError('Encoded feedback exceeds 8192 bytes.');
         }
@@ -146,8 +146,8 @@ class AnonymousFeedback {
         pending.add({
           'requestId': key,
           'queuedAt': _clock().toUtc().toIso8601String(),
-          if (text != null) 'text': text,
-          if (rating != null) 'rating': rating,
+          'text': ?text,
+          'rating': ?rating,
         });
         await _save(state);
         return key;
