@@ -40,23 +40,31 @@ connected: agent activity is never shown or inferred.
 The page is a single executive slide about the **next release**, not an
 engineering board. It shows only:
 
-- **Release headline and readiness**: `narrative.headline` and the readiness
-  label from `sources.json`. Readiness stays the configured candidate label
-  (currently "Candidate preparation; owner installation validation pending")
-  until every milestone has observed done evidence; `Not ready: <milestones>
-  needs attention; <pendingNote>` naming every milestone that needs attention; `Unknown` when collection failed, evidence is
-  stale (older than five minutes), the latest polling attempt failed or the
-  snapshot cannot be read. It never shows shipped, launched or accepted claims.
-- **Product taking shape**: reviewed customer-value statements in the release
-  candidate, labelled not yet owner-validated or customer-proven.
-- **Verified progress**: plain-language milestones mapped from the gating
-  launch sequence (hosted checks -> installer candidate -> owner accepted
-  installation -> release approved, plus download hosting prepared -> live download
-  verified). A milestone is *Done* only for its configured observed states;
-  steps without a live source show *Waiting* or *Not yet evidenced*; read errors
-  and stale data show *Unknown*. The latest observed milestone state change is
-  shown; polling heartbeats are never progress.
-- **System improving**: reviewed quality/delivery improvements in the candidate.
+- **Release headline and readiness**: `narrative.headline` and an overall
+  readiness label. It is *Ready* only when **every** customer-facing resource
+  is live and verified; otherwise `Not ready: <resources> need(s) attention;
+  <pendingNote>`, `Readiness unknown: <resources> could not be verified`, or
+  the configured candidate label. It is Unknown when collection failed,
+  evidence is stale (older than five minutes), the latest polling attempt
+  failed or the snapshot cannot be read. It never claims shipped or accepted.
+- **Launch readiness by customer-facing resource**: one card per distinct
+  customer touchpoint in `narrative.resources`: Website (brand/content and
+  support/privacy pages, read back live from https://budlark.com/), Windows app
+  (internal APIs, storage, sync, insights, telemetry and experiments are bundled
+  here; it is ready only when installation and signed-in journeys are verified,
+  not when it compiles), Download (needs the app), Microsoft Store listing
+  (needs the app) and Sign-in (Microsoft account, Google and email code shown
+  separately). Each card shows its state and the one remaining outcome. States:
+  *Ready* (all live verification steps observed), *Prepared; live check
+  pending*, *In preparation*, *Needs attention*, *No evidence yet* (no live
+  source: never counted as ready) and *Unknown* (read error or stale).
+  Dependencies are only where real (website branding does not wait for the
+  app). `notInRelease` lists later platforms (Apple/Google/Mac stores) that are
+  not counted.
+- **Product taking shape** and **System improving**: reviewed customer-value
+  and quality statements, labelled not yet owner-validated or customer-proven.
+  The latest observed resource step change is shown; polling heartbeats are
+  never progress.
 
 No PR numbers, commits, jobs, links, commands, dependency layers or historical
 VM gates appear on the slide. The collector still computes the full evidence,
@@ -64,7 +72,7 @@ change history, blockers and next actions in the git-ignored
 `.project-status\snapshot.json` (`workstreams`, `changes`, `executive`) for
 agents; the slide reads only `narrative`. Narrative text lives in
 `sources.json` (`narrative`) and is validated: 1-4 short statements per
-dimension and milestones that reference configured gating sources. Update it
+dimension and resources whose steps reference configured sources. Update it
 only from release/website owner review; do not add percent complete or dates.
 
 The owner-trial launch sequence in `sources.json` is: PR52 hosted checks ->
@@ -73,7 +81,7 @@ plus PR54 hosting -> live budlark.com download verification -> owner-trial
 launch decision. PR52/PR54 are read live; the other steps have no live source and
 stay unknown/waiting until evidence exists. Abandoned VM native acceptance, the
 combined candidate, PR48/49, visual, preview and hosted GrowthBook rows are
-non-gating context in the snapshot only. This tool changes no CI, protections or PRs.
+non-gating context in the snapshot only. This tool changes no CI, protections or PRs. The site readback is a fixed read-only GET of https://budlark.com/ (redirects only within budlark.com, 20s timeout, 4MB cap) that checks configured expected text; a failed read shows Unknown, missing text shows not yet live.
 
 ## Source of truth and integration
 

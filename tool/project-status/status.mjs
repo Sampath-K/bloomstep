@@ -26,7 +26,11 @@ export function validateConfig(config) {
   for (const row of config.workstreams) {
     need(/^[a-z][a-z0-9-]*$/.test(row.id) && !ids.has(row.id));
     ids.add(row.id);
-    need(['pull', 'branch', 'release', 'workflow', 'gate', 'manual'].includes(row.kind));
+    need(['pull', 'branch', 'release', 'workflow', 'gate', 'manual', 'site'].includes(row.kind));
+    if (row.kind === 'site') {
+      need(typeof row.url === 'string' && /^https:\/\/budlark\.com\/[\w./-]*$/.test(row.url));
+      need(Array.isArray(row.expect) && row.expect.length > 0 && row.expect.every(text => typeof text === 'string' && text.length > 0 && text.length <= 80));
+    }
     need(['title', 'owner', 'nextAction'].every(key => typeof row[key] === 'string' && row[key].length > 0));
     need(['agentNext', 'ownerNext'].every(key => row[key] === undefined || (typeof row[key] === 'string' && row[key].length > 0)));
     need(Array.isArray(row.dependencies));
@@ -42,8 +46,21 @@ export function validateConfig(config) {
     const n = config.narrative, text = value => typeof value === 'string' && value.length > 0 && value.length <= 160;
     need(['release', 'headline', 'candidateReadiness', 'readyReadiness'].every(key => text(n[key])) && (n.pendingNote === undefined || text(n.pendingNote)));
     need(['product', 'system'].every(key => Array.isArray(n[key]) && n[key].length > 0 && n[key].length <= 4 && n[key].every(text)));
-    need(Array.isArray(n.milestones) && n.milestones.length > 0 && n.milestones.length <= 8);
-    for (const m of n.milestones) need(text(m.label) && (m.attentionLabel === undefined || text(m.attentionLabel)) && ids.has(m.source) && Array.isArray(m.done) && m.done.length > 0 && m.done.every(state => states.includes(state)));
+    need(n.milestones === undefined && Array.isArray(n.resources) && n.resources.length > 0 && n.resources.length <= 8);
+    need(n.notInRelease === undefined || (Array.isArray(n.notInRelease) && n.notInRelease.length <= 3 && n.notInRelease.every(text)));
+    const resourceIds = new Set(n.resources.map(r => r.id));
+    need(resourceIds.size === n.resources.length);
+    const step = s => text(s?.label) && (s.attentionLabel === undefined || text(s.attentionLabel)) &&
+      (s.source === undefined ? s.done === undefined : ids.has(s.source) && Array.isArray(s.done) && s.done.length > 0 && s.done.every(state => states.includes(state)));
+    for (const r of n.resources) {
+      need(/^[a-z][a-z0-9-]*$/.test(r.id) && text(r.name) && text(r.scope));
+      need(Array.isArray(r.dependsOn) && r.dependsOn.every(dep => dep !== r.id && resourceIds.has(dep)));
+      need(Array.isArray(r.parts) && r.parts.length > 0 && r.parts.length <= 4);
+      for (const p of r.parts) need(text(p.label) && Array.isArray(p.prepare) && Array.isArray(p.verify) && p.verify.length > 0 &&
+        p.prepare.length + p.verify.length <= 6 && [...p.prepare, ...p.verify].every(step));
+    }
+    const resources = new Map(n.resources.map(r => [r.id, r])), seen = new Set(), active = new Set();
+    (function acyclic(ids) { for (const id of ids) { need(!active.has(id)); if (seen.has(id)) continue; active.add(id); acyclic(resources.get(id).dependsOn); active.delete(id); seen.add(id); } })(resourceIds);
   }
   const visiting = new Set();
   const visited = new Set();
@@ -149,6 +166,28 @@ async function authenticate(signal) {
   });
 }
 
+export async function readSite(url, signal) {
+  if (!/^https:\/\/budlark\.com\/[\w./-]*$/.test(url)) throw new ReadError('Unsupported live site read.');
+  const timeout = AbortSignal.timeout(20000);
+  const response = await fetch(url, { method: 'GET', redirect: 'follow', signal: signal ? AbortSignal.any([signal, timeout]) : timeout,
+    headers: { 'user-agent': 'budlark-private-status/1 (read-only)' } });
+  if (!/^https:\/\/(www\.)?budlark\.com\//.test(response.url || url)) throw new ReadError('Live site redirected outside budlark.com.');
+  const body = await response.text();
+  return { status: response.status, body: body.slice(0, 4 * 1024 * 1024) };
+}
+
+async function siteEvidence(definition, fetchSite) {
+  let page;
+  try { page = await fetchSite(definition.url); } catch { throw new ReadError('Live site read failed (DNS, TLS, timeout or transport).'); }
+  if (page?.status !== 200 || typeof page.body !== 'string') throw new ReadError(`Live site read failed (HTTP ${Number(page?.status) || 'unknown'}).`);
+  const shown = definition.expect.every(text => page.body.includes(text));
+  return {
+    state: shown ? 'verified' : 'planned',
+    evidence: [{ title: `Live page ${definition.url}`, url: definition.url }],
+    detail: shown ? 'Live public page read back with the expected content.' : 'Live public page does not yet show the expected content.',
+  };
+}
+
 function listPages(pages, key) {
   need(Array.isArray(pages) && pages.length > 0);
   if (!key) {
@@ -243,7 +282,7 @@ async function observe(definition, read, releaseRows) {
   throw new ReadError('No live source configured.');
 }
 
-export async function collect(config, { now = new Date().toISOString(), previous = null, auth = authenticate, read = ghRead } = {}) {
+export async function collect(config, { now = new Date().toISOString(), previous = null, auth = authenticate, read = ghRead, fetchSite = readSite } = {}) {
   validateConfig(config);
   need(Number.isFinite(Date.parse(now)));
   const rows = new Map();
@@ -264,6 +303,10 @@ export async function collect(config, { now = new Date().toISOString(), previous
   async function capture(definition) {
     if (['gate', 'manual'].includes(definition.kind)) return;
     try {
+      if (definition.kind === 'site') {
+        rows.set(definition.id, { id: definition.id, ...await siteEvidence(definition, fetchSite), observedAt: now, lastKnown: null, error: null });
+        return;
+      }
       if (authError) throw new ReadError('GitHub authentication unavailable. Run gh auth status locally.');
       const result = await observe(definition, read, rows);
       rows.set(definition.id, { id: definition.id, ...result, observedAt: now, lastKnown: null, error: null });
@@ -395,23 +438,57 @@ export function releaseNarrative(config, snapshot) {
   const definitions = new Map(config.workstreams.map(row => [row.id, row]));
   const rows = new Map(snapshot.workstreams.map(row => [row.id, row]));
   const failed = snapshot.collectionState === 'failed';
-  const milestones = n.milestones.map(m => {
-    const row = rows.get(m.source), manual = ['manual', 'gate'].includes(definitions.get(m.source).kind);
+  const stepStatus = step => {
+    if (failed) return 'unknown';
+    if (!step.source) return 'not-evidenced';
+    const row = rows.get(step.source), manual = ['manual', 'gate'].includes(definitions.get(step.source).kind);
     const fresh = row?.observedAt && freshness(row.observedAt, snapshot.collectedAt, config.maxAgeSeconds) === 'fresh';
-    const status = failed || !row || (row.error && !manual) || (!manual && !fresh) ? 'unknown' :
-      m.done.includes(row.state) ? 'done' : (snapshot.graph.blockers[m.source] ?? []).length ? 'waiting' :
+    return !row || (row.error && !manual) || (!manual && !fresh) ? 'unknown' :
+      step.done.includes(row.state) ? 'done' : (snapshot.graph.blockers[step.source] ?? []).length ? 'waiting' :
       row.state === 'unknown' ? 'not-evidenced' : row.state === 'blocked' ? 'attention' : row.state === 'planned' ? 'next' : 'in-progress';
-    return { label: m.label, attentionLabel: m.attentionLabel ?? m.label.toLowerCase(), status };
+  };
+  // Live verification supersedes preparation; a part is done only when every verify step is evidenced.
+  const evaluate = parts => parts.map(p => {
+    const prepare = p.prepare.map(s => ({ ...s, status: stepStatus(s) })), verify = p.verify.map(s => ({ ...s, status: stepStatus(s) }));
+    const done = verify.every(s => s.status === 'done'), prepared = done || (prepare.length > 0 && prepare.every(s => s.status === 'done'));
+    return { label: p.label, steps: [...prepare, ...verify], prepare, verify, done, prepared };
   });
-  const labels = new Map(n.milestones.map(m => [m.source, m.label]));
+  const summarize = parts => {
+    const steps = parts.flatMap(p => p.steps);
+    return steps.some(s => s.status === 'unknown') ? { tone: 'unknown', label: 'Unknown' } :
+      parts.every(p => p.done) ? { tone: 'ready', label: 'Ready' } :
+      steps.some(s => s.status === 'attention') ? { tone: 'attention', label: 'Needs attention' } :
+      parts.every(p => p.prepared) ? { tone: 'prepared', label: 'Prepared; live check pending' } :
+      steps.some(s => ['done', 'in-progress', 'next'].includes(s.status)) ? { tone: 'in-progress', label: 'In preparation' } :
+      { tone: 'none', label: 'No evidence yet' };
+  };
+  const evaluated = new Map(n.resources.map(r => [r.id, { resource: r, parts: evaluate(r.parts) }]));
+  const ready = new Map([...evaluated].map(([id, e]) => [id, summarize(e.parts).tone === 'ready']));
+  const resources = n.resources.map(r => {
+    const { parts } = evaluated.get(r.id), status = summarize(parts);
+    const waitingOn = r.dependsOn.filter(dep => !ready.get(dep)).map(dep => evaluated.get(dep).resource.name);
+    if (status.tone === 'prepared' && waitingOn.length) status.label = `Prepared; waits for ${waitingOn.join(', ')}`;
+    const open = parts.find(p => !p.done), step = open && (open.prepared ? open.verify : open.steps).find(s => s.status !== 'done');
+    const next = status.tone === 'unknown' ? 'Evidence could not be read' : !open ? null :
+      `${parts.length > 1 ? `${open.label}: ` : ''}${step.label}`;
+    return { id: r.id, name: r.name, scope: r.scope, ...status, next, waitingOn,
+      parts: parts.map(p => { const part = summarize([p]); return { label: p.label, tone: part.tone, status: part.label }; }) };
+  });
+  const allSteps = [...evaluated.values()].flatMap(e => e.parts.flatMap(p => p.steps));
+  const labels = new Map();
+  for (const s of allSteps) if (s.source && !labels.has(s.source)) labels.set(s.source, s.label);
   const recent = (snapshot.changes ?? []).filter(change => change.kind === 'state' && change.progress && labels.has(change.id))
     .slice(0, 3).map(change => ({ text: `${labels.get(change.id)}: ${plainState[change.from] ?? 'unknown'} → ${plainState[change.to] ?? 'unknown'}`, observedAt: change.observedAt }));
+  const attention = [...new Set(allSteps.filter(s => s.status === 'attention').map(s => s.attentionLabel ?? s.label.toLowerCase()))];
+  const unknown = resources.filter(r => r.tone === 'unknown').map(r => r.name);
   const readiness = failed ? { tone: 'unknown', label: 'Readiness unknown: sources could not be read' } :
-    milestones.every(m => m.status === 'done') ? { tone: 'ready', label: n.readyReadiness } :
-    milestones.some(m => m.status === 'attention') ? { tone: 'not-ready', label: `Not ready: ${milestones.filter(m => m.status === 'attention')
-      .map(m => m.attentionLabel).join(', ')} needs attention${n.pendingNote ? `; ${n.pendingNote}` : ''}` } :
+    resources.every(r => r.tone === 'ready') ? { tone: 'ready', label: n.readyReadiness } :
+    attention.length ? { tone: 'not-ready', label: `Not ready: ${attention.join(', ')} ${attention.length > 1 ? 'need' : 'needs'} attention${n.pendingNote ? `; ${n.pendingNote}` : ''}` } :
+    unknown.length ? { tone: 'unknown', label: `Readiness unknown: ${unknown.join(', ')} could not be verified` } :
     { tone: 'in-progress', label: n.candidateReadiness };
-  return { release: n.release, headline: n.headline, readiness, product: n.product, system: n.system, milestones, recent,
+  return { release: n.release, headline: n.headline, readiness, product: n.product, system: n.system, resources,
+    resourcesReady: { ready: resources.filter(r => r.tone === 'ready').length, total: resources.length },
+    notInRelease: n.notInRelease ?? [], recent,
     lastSourceSuccessAt: snapshot.lastSourceSuccessAt, collectionState: snapshot.collectionState, collectedAt: snapshot.collectedAt };
 }
 

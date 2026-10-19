@@ -478,73 +478,152 @@ test('contract: live config reads PR52 and PR54 as gating sources; executive cou
   assert.equal(result.executive.nonGating.blocked, 1);
 });
 
+const siteRow = { id: 'site', title: 'Live site brand', owner: 'Website', nextAction: 'Read back live site', kind: 'site', url: 'https://budlark.com/', expect: ['<title>Budlark'], dependencies: [] };
+const supportRow = { id: 'support', title: 'Live support and privacy', owner: 'Website', nextAction: 'Read back live site', kind: 'site', url: 'https://budlark.com/', expect: ['id="privacy"', 'mailto:'], dependencies: [] };
 const narrative = {
   release: 'Next release', headline: 'Simpler product, validation in progress.',
   candidateReadiness: 'Candidate preparation; owner validation pending', readyReadiness: 'Ready for owner decision', pendingNote: 'owner validation pending',
   product: ['Clearer product identity.'], system: ['Checks cover both architectures.'],
-  milestones: [
-    { label: 'Quality checks', source: 'code', done: ['review-ready', 'merged'] },
-    { label: 'Candidate composed', source: 'candidate', done: ['verified'] },
+  resources: [
+    { id: 'app', name: 'Windows app', scope: 'Includes the services it relies on.', dependsOn: [], parts: [{ label: 'Windows app',
+      prepare: [{ label: 'Quality checks', attentionLabel: 'quality checks', source: 'code', done: ['review-ready', 'merged'] }],
+      verify: [{ label: 'Candidate composed', source: 'candidate', done: ['verified'] }, { label: 'Signed-in journeys work end to end' }] }] },
+    { id: 'web', name: 'Website', scope: 'Brand, support and privacy pages.', dependsOn: [], parts: [
+      { label: 'Brand and content', prepare: [{ label: 'Brand content prepared' }], verify: [{ label: 'Live site shows the brand', source: 'site', done: ['verified'] }] },
+      { label: 'Support and privacy', prepare: [], verify: [{ label: 'Support and privacy reachable', source: 'support', done: ['verified'] }] }] },
+    { id: 'store', name: 'Microsoft Store', scope: 'Store listing.', dependsOn: ['app'], parts: [{ label: 'Microsoft Store',
+      prepare: [{ label: 'Listing prepared' }], verify: [{ label: 'Listing live' }] }] },
+    { id: 'signin', name: 'Sign-in', scope: 'Provider pages.', dependsOn: [], parts: [
+      { label: 'Microsoft account', prepare: [], verify: [{ label: 'Microsoft account sign-in observed' }] },
+      { label: 'Google', prepare: [], verify: [{ label: 'Google sign-in observed' }] }] },
   ],
+  notInRelease: ['Later platform stores'],
 };
-const narrConfig = { ...execConfig, narrative };
+const narrConfig = { ...execConfig, workstreams: [...execConfig.workstreams, siteRow, supportRow], narrative };
 const lowLevel = /github\.com|\bPR\s?\d|#\d|\b[0-9a-f]{7,40}\b|\bjobs?\b|\bVM\b|self-hosted|\bnode\b|status\.mjs|%/i;
+const page = (body, status = 200) => async url => { assert.equal(url, 'https://budlark.com/'); return { status, body }; };
+const liveSite = page('<title>Budlark - habits</title><section id="privacy"></section><a href="mailto:x">');
 
-test('contract: next-release narrative config is exec-level, anchored to the gating launch path', () => {
+test('contract: launch resources are distinct customer-facing touchpoints; internal services are bundled with the app', () => {
   validateConfig(sourceConfig);
   const n = sourceConfig.narrative;
+  assert.equal(n.milestones, undefined);
+  const names = n.resources.map(r => r.name);
+  assert.deepEqual(names, ['Website', 'Download', 'Windows app', 'Microsoft Store', 'Sign-in']);
+  assert.doesNotMatch(names.join(' '), /API|storage|telemetry|experiment|GrowthBook|Cosmos|pipeline|\bCI\b|Azure|Cloudflare/i);
+  const byId = Object.fromEntries(n.resources.map(r => [r.id, r]));
+  assert.match(byId.app.scope, /services/i);
+  assert.ok(byId.app.parts[0].verify.some(s => /end to end/i.test(s.label)), 'app ready needs working journeys, not just a build');
+  assert.ok(byId.app.parts[0].verify.some(s => s.source === 'owner-check'));
+  assert.deepEqual(byId.download.dependsOn, ['app']);
+  assert.deepEqual(byId.website.dependsOn, [], 'site branding publishes independently of the binary');
+  assert.deepEqual(byId.store.dependsOn, ['app']);
+  assert.deepEqual(byId.signin.parts.map(p => p.label), ['Microsoft account', 'Google', 'Email code']);
+  assert.deepEqual(byId.website.parts.map(p => p.label), ['Brand and content', 'Support and privacy']);
+  const sources = new Map(sourceConfig.workstreams.map(row => [row.id, row]));
+  assert.equal(sources.get(byId.website.parts[0].verify[0].source).kind, 'site');
+  assert.equal(byId.download.parts[0].prepare[0].label, 'Download hosting prepared');
+  assert.equal(byId.download.parts[0].prepare[0].attentionLabel, 'download hosting');
+  assert.ok(n.notInRelease.some(text => /Apple|iPhone/.test(text) && /Android|Google Play/.test(text)));
   assert.match(n.headline, /Budlark: simpler personal habit garden, release validation in progress/);
-  assert.equal(n.candidateReadiness, 'Candidate preparation; owner installation validation pending');
-  assert.ok(n.product.length >= 2 && n.product.length <= 4 && n.system.length >= 1 && n.system.length <= 3);
+  assert.equal(n.pendingNote, 'owner installation pending');
   assert.doesNotMatch(JSON.stringify(n), lowLevel);
   assert.doesNotMatch(JSON.stringify(n), /\b(launched|shipped|available now|customer-proven|accepted by)\b/i);
-  const ids = Object.fromEntries(sourceConfig.workstreams.map(row => [row.id, row]));
-  const closure = new Set([sourceConfig.target]);
-  (function walk(id) { for (const dep of ids[id].dependencies) { closure.add(dep.id); walk(dep.id); } })(sourceConfig.target);
-  assert.deepEqual(n.milestones.map(m => m.source), ['release', 'installer', 'owner-check', 'integration', 'website', 'download']);
-  for (const m of n.milestones) assert.ok(closure.has(m.source), m.source);
-  assert.ok(n.milestones.some(m => /owner/i.test(m.label) && /accept/i.test(m.label)));
-  assert.ok(n.milestones.some(m => /live download/i.test(m.label)));
-  assert.equal(n.milestones.find(m => m.source === 'website').label, 'Download hosting prepared');
-  assert.equal(n.pendingNote, 'owner installation pending');
-  assert.equal(n.milestones.find(m => m.source === 'website').attentionLabel, 'download hosting');
-  const attention = { ...narrative, milestones: [{ ...narrative.milestones[0], attentionLabel: 'checks' }, narrative.milestones[1]] };
-  assert.doesNotThrow(() => validateConfig({ ...narrConfig, narrative: attention }));
-  assert.throws(() => validateConfig({ ...narrConfig, narrative: { ...attention, milestones: [{ ...attention.milestones[0], attentionLabel: '' }] } }));
   assert.doesNotMatch(JSON.stringify(n.product), /work with assistive technology/i);
-  assert.throws(() => validateConfig({ ...narrConfig, narrative: { ...narrative, milestones: [{ label: 'X', source: 'missing', done: ['merged'] }] } }));
-  assert.throws(() => validateConfig({ ...narrConfig, narrative: { ...narrative, product: [] } }));
 });
 
-test('contract: narrative maps observed states to plain milestones and never exposes engineering detail', async () => {
+test('contract: resource and site config are validated narrowly', () => {
+  assert.doesNotThrow(() => validateConfig(narrConfig));
+  const bad = changes => ({ ...narrConfig, narrative: { ...narrative, ...changes } });
+  assert.throws(() => validateConfig(bad({ resources: [] })));
+  assert.throws(() => validateConfig(bad({ resources: [{ ...narrative.resources[0], dependsOn: ['missing'] }] })));
+  assert.throws(() => validateConfig(bad({ resources: [{ ...narrative.resources[0], dependsOn: ['app'] }] })));
+  assert.throws(() => validateConfig(bad({ resources: [{ ...narrative.resources[0], parts: [] }] })));
+  assert.throws(() => validateConfig(bad({ resources: [{ ...narrative.resources[0], parts: [{ label: 'X', prepare: [], verify: [] }] }] })));
+  assert.throws(() => validateConfig(bad({ resources: [{ ...narrative.resources[0], parts: [{ label: 'X', prepare: [], verify: [{ label: 'Y', source: 'missing', done: ['verified'] }] }] }] })));
+  const withRow = row => ({ ...narrConfig, workstreams: [...execConfig.workstreams, row, supportRow] });
+  assert.throws(() => validateConfig(withRow({ ...siteRow, url: 'https://example.com/' })));
+  assert.throws(() => validateConfig(withRow({ ...siteRow, url: 'http://budlark.com/' })));
+  assert.throws(() => validateConfig(withRow({ ...siteRow, expect: [] })));
+});
+
+test('contract: live site readback is fixed, read-only and fails closed', async () => {
+  const ok = await collect(narrConfig, { now, auth: async () => {}, read: async path => reader(path), fetchSite: liveSite });
+  const site = ok.workstreams.find(row => row.id === 'site');
+  assert.equal(site.state, 'verified');
+  assert.equal(site.observedAt, now);
+  assert.deepEqual(site.evidence, [{ title: 'Live page https://budlark.com/', url: 'https://budlark.com/' }]);
+  const old = await collect(narrConfig, { now, auth: async () => {}, read: async path => reader(path), fetchSite: page('<title>Old name</title>') });
+  assert.equal(old.workstreams.find(row => row.id === 'site').state, 'planned');
+  assert.match(old.workstreams.find(row => row.id === 'site').detail, /does not yet show/i);
+  const down = await collect(narrConfig, { now, auth: async () => {}, read: async path => reader(path), fetchSite: async () => { throw Error('ENOTFOUND'); } });
+  const failedSite = down.workstreams.find(row => row.id === 'site');
+  assert.equal(failedSite.state, 'unknown');
+  assert.match(failedSite.error, /live site read failed/i);
+  assert.equal(down.collectionState, 'partial');
+  const http500 = await collect(narrConfig, { now, auth: async () => {}, read: async path => reader(path), fetchSite: page('', 500) });
+  assert.equal(http500.workstreams.find(row => row.id === 'site').state, 'unknown');
+  const noAuth = await collect(narrConfig, { now, auth: async () => { throw Error('auth'); }, read: async () => {}, fetchSite: liveSite });
+  assert.equal(noAuth.workstreams.find(row => row.id === 'site').state, 'verified', 'site readback does not need GitHub auth');
+});
+
+test('contract: each resource gets plain readiness and a decisive next outcome; dependencies only where declared', async () => {
   const failing = path => path.includes('/jobs?') ? [{ total_count: 2, jobs: [job('api'), job('native', 'failure')] }] : reader(path);
-  const result = await collect(narrConfig, { now, auth: async () => {}, read: async path => failing(path) });
+  const result = await collect(narrConfig, { now, auth: async () => {}, read: async path => failing(path), fetchSite: liveSite });
   const n = result.narrative;
+  const r = Object.fromEntries(n.resources.map(x => [x.id, x]));
+  assert.equal(r.app.tone, 'attention');
+  assert.equal(r.app.label, 'Needs attention');
+  assert.equal(r.app.next, 'Quality checks');
+  assert.equal(r.web.tone, 'ready', 'live readback supersedes unevidenced preparation');
+  assert.equal(r.web.next, null);
+  assert.equal(r.store.tone, 'none');
+  assert.equal(r.store.label, 'No evidence yet');
+  assert.equal(r.store.next, 'Listing prepared');
+  assert.deepEqual(r.store.waitingOn, ['Windows app']);
+  assert.deepEqual(r.web.waitingOn, []);
+  assert.deepEqual(r.signin.parts.map(p => [p.label, p.tone]), [['Microsoft account', 'none'], ['Google', 'none']]);
+  assert.equal(r.signin.next, 'Microsoft account: Microsoft account sign-in observed');
+  assert.deepEqual(n.resourcesReady, { ready: 1, total: 4 });
   assert.equal(n.readiness.tone, 'not-ready');
   assert.equal(n.readiness.label, 'Not ready: quality checks needs attention; owner validation pending');
-  assert.deepEqual(n.milestones.map(m => m.status), ['attention', 'waiting']);
-  assert.equal(n.lastSourceSuccessAt, now);
   assert.doesNotMatch(JSON.stringify(n), lowLevel);
 });
 
-test('contract: narrative fails closed to unknown and only says ready when every milestone is evidenced', async () => {
-  const failed = await collect(narrConfig, { now, auth: async () => { throw Error('auth'); }, read: async () => {} });
-  assert.equal(failed.narrative.readiness.tone, 'unknown');
-  assert.match(failed.narrative.readiness.label, /unknown/i);
-  assert.ok(failed.narrative.milestones.every(m => m.status === 'unknown'));
-  const ready = await collect(narrConfig, { now, auth: async () => {}, read: async path => reader(path) });
-  assert.equal(ready.narrative.milestones[0].status, 'done');
-  assert.notEqual(ready.narrative.readiness.label, narrative.readyReadiness, 'gate without verification is not ready');
-  assert.equal(ready.narrative.readiness.label, narrative.candidateReadiness);
+test('contract: brand not yet live keeps website in preparation, never ready', async () => {
+  const result = await collect(narrConfig, { now, auth: async () => {}, read: async path => reader(path), fetchSite: page('<title>Old</title><i id="privacy"></i>mailto:') });
+  const web = result.narrative.resources.find(x => x.id === 'web');
+  assert.equal(web.tone, 'in-progress');
+  assert.equal(web.label, 'In preparation');
+  assert.equal(web.next, 'Brand and content: Brand content prepared');
+  assert.deepEqual(web.parts.map(p => p.tone), ['in-progress', 'ready']);
+  assert.equal(result.narrative.resourcesReady.ready, 0);
+  assert.equal(result.narrative.readiness.label, narrative.candidateReadiness);
 });
 
-test('contract: narrative recent progress is plain-language milestone movement only', async () => {
+test('contract: overall readiness fails closed and is ready only when every in-scope resource is ready', async () => {
+  const failed = await collect(narrConfig, { now, auth: async () => { throw Error('auth'); }, read: async () => {}, fetchSite: async () => { throw Error('dns'); } });
+  assert.equal(failed.narrative.readiness.tone, 'unknown');
+  assert.match(failed.narrative.readiness.label, /unknown/i);
+  assert.ok(failed.narrative.resources.every(x => x.tone === 'unknown'));
+  const siteDown = await collect(narrConfig, { now, auth: async () => {}, read: async path => reader(path), fetchSite: async () => { throw Error('dns'); } });
+  assert.equal(siteDown.narrative.resources.find(x => x.id === 'web').tone, 'unknown');
+  assert.equal(siteDown.narrative.readiness.tone, 'unknown');
+  assert.match(siteDown.narrative.readiness.label, /Website/);
+  const webOnly = { ...narrConfig, narrative: { ...narrative, resources: [narrative.resources[1]] } };
+  const ready = await collect(webOnly, { now, auth: async () => {}, read: async path => reader(path), fetchSite: liveSite });
+  assert.equal(ready.narrative.readiness.tone, 'ready');
+  assert.equal(ready.narrative.readiness.label, narrative.readyReadiness);
+  const most = await collect(narrConfig, { now, auth: async () => {}, read: async path => reader(path), fetchSite: liveSite });
+  assert.notEqual(most.narrative.readiness.tone, 'ready', 'unevidenced Store and sign-in block done');
+  assert.deepEqual(most.narrative.notInRelease, ['Later platform stores']);
+});
+
+test('contract: narrative recent progress is plain-language step movement only', async () => {
   const failing = path => path.includes('/jobs?') ? [{ total_count: 2, jobs: [job('api'), job('native', 'failure')] }] : reader(path);
-  const first = await collect(narrConfig, { now, auth: async () => {}, read: async path => failing(path) });
+  const first = await collect(narrConfig, { now, auth: async () => {}, read: async path => failing(path), fetchSite: liveSite });
   assert.deepEqual(first.narrative.recent, []);
-  const second = await collect(narrConfig, { now: later, previous: first, auth: async () => {}, read: async path => reader(path) });
+  const second = await collect(narrConfig, { now: later, previous: first, auth: async () => {}, read: async path => reader(path), fetchSite: liveSite });
   assert.deepEqual(second.narrative.recent, [{ text: 'Quality checks: needs attention → passing', observedAt: later }]);
-  const errored = await collect(narrConfig, { now: '2026-10-16T00:02:00.000Z', previous: second, auth: async () => {}, read: async () => { throw Error('timeout'); } });
-  assert.equal(errored.narrative.recent.length, 1);
-  assert.doesNotMatch(JSON.stringify(errored.narrative), lowLevel);
+  assert.doesNotMatch(JSON.stringify(second.narrative), lowLevel);
 });

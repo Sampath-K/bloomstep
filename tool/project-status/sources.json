@@ -276,6 +276,33 @@
         }
       ],
       "note": "Separate optional gate, not an owner-trial prerequisite: experiments may remain default OFF. Coordinator reported not connected / OFF on 2026-10-16. No hosted API is configured, so current hosted state is UNKNOWN. Context only: not in the current owner-trial launch sequence (PR52 hosted checks -> installer -> owner manual check -> integration/release + PR54 hosting -> live download)."
+    },
+    {
+      "id": "site-brand",
+      "title": "Live budlark.com shows Budlark branding",
+      "owner": "Website session 29688352 (site-only Budlark correction in session 6e73472b)",
+      "nextAction": "Publish the site-only Budlark correction through the permitted main deploy; this readback turns verified only when the live page title says Budlark.",
+      "kind": "site",
+      "url": "https://budlark.com/",
+      "expect": [
+        "<title>Budlark"
+      ],
+      "dependencies": [],
+      "note": "Context only: live public-page readback for the executive resource view; not in the owner-trial dependency map."
+    },
+    {
+      "id": "site-support",
+      "title": "Live support and privacy on budlark.com",
+      "owner": "Website session 29688352",
+      "nextAction": "Keep the public privacy notice and support contact reachable on the live site.",
+      "kind": "site",
+      "url": "https://budlark.com/",
+      "expect": [
+        "id=\"privacy\"",
+        "mailto:"
+      ],
+      "dependencies": [],
+      "note": "Context only: live public-page readback for the executive resource view; not in the owner-trial dependency map."
     }
   ],
   "narrative": {
@@ -293,57 +320,193 @@
       "Expired sessions now close outdated profile dialogs instead of leaving them open.",
       "Hosted verification checks both Windows architectures before an installer is packaged."
     ],
-    "milestones": [
+    "resources": [
       {
-        "label": "Hosted quality checks",
-        "attentionLabel": "hosted quality checks",
-        "source": "release",
-        "done": [
-          "review-ready",
-          "merged"
+        "id": "website",
+        "name": "Website",
+        "scope": "budlark.com brand, support and privacy pages.",
+        "dependsOn": [],
+        "parts": [
+          {
+            "label": "Brand and content",
+            "prepare": [
+              {
+                "label": "Budlark site content prepared"
+              }
+            ],
+            "verify": [
+              {
+                "label": "Live site shows Budlark",
+                "attentionLabel": "website brand",
+                "source": "site-brand",
+                "done": [
+                  "verified"
+                ]
+              }
+            ]
+          },
+          {
+            "label": "Support and privacy",
+            "prepare": [],
+            "verify": [
+              {
+                "label": "Support and privacy pages live",
+                "attentionLabel": "support and privacy pages",
+                "source": "site-support",
+                "done": [
+                  "verified"
+                ]
+              }
+            ]
+          }
         ]
       },
       {
-        "label": "Installer candidate built",
-        "attentionLabel": "installer candidate",
-        "source": "installer",
-        "done": [
-          "verified"
+        "id": "download",
+        "name": "Download",
+        "scope": "Windows installers offered from budlark.com.",
+        "dependsOn": [
+          "app"
+        ],
+        "parts": [
+          {
+            "label": "Download",
+            "prepare": [
+              {
+                "label": "Download hosting prepared",
+                "attentionLabel": "download hosting",
+                "source": "website",
+                "done": [
+                  "review-ready",
+                  "merged"
+                ]
+              }
+            ],
+            "verify": [
+              {
+                "label": "Live download verified",
+                "attentionLabel": "live download",
+                "source": "download",
+                "done": [
+                  "verified"
+                ]
+              }
+            ]
+          }
         ]
       },
       {
-        "label": "Owner accepted installation",
-        "attentionLabel": "owner installation",
-        "source": "owner-check",
-        "done": [
-          "verified"
+        "id": "app",
+        "name": "Windows app",
+        "scope": "The installed app, including the services it relies on: account, sync, insights and experiments.",
+        "dependsOn": [],
+        "parts": [
+          {
+            "label": "Windows app",
+            "prepare": [
+              {
+                "label": "Hosted quality checks",
+                "attentionLabel": "hosted quality checks",
+                "source": "release",
+                "done": [
+                  "review-ready",
+                  "merged"
+                ]
+              },
+              {
+                "label": "Installer candidate built",
+                "attentionLabel": "installer candidate",
+                "source": "installer",
+                "done": [
+                  "verified"
+                ]
+              }
+            ],
+            "verify": [
+              {
+                "label": "Owner accepted installation",
+                "attentionLabel": "owner installation",
+                "source": "owner-check",
+                "done": [
+                  "verified"
+                ]
+              },
+              {
+                "label": "Signed-in journeys work end to end"
+              },
+              {
+                "label": "Release approved",
+                "attentionLabel": "release approval",
+                "source": "integration",
+                "done": [
+                  "verified"
+                ]
+              }
+            ]
+          }
         ]
       },
       {
-        "label": "Release approved",
-        "attentionLabel": "release approval",
-        "source": "integration",
-        "done": [
-          "verified"
+        "id": "store",
+        "name": "Microsoft Store",
+        "scope": "Store listing, review and install.",
+        "dependsOn": [
+          "app"
+        ],
+        "parts": [
+          {
+            "label": "Microsoft Store",
+            "prepare": [
+              {
+                "label": "Store listing prepared"
+              }
+            ],
+            "verify": [
+              {
+                "label": "Listing live and installable"
+              }
+            ]
+          }
         ]
       },
       {
-        "label": "Download hosting prepared",
-        "attentionLabel": "download hosting",
-        "source": "website",
-        "done": [
-          "review-ready",
-          "merged"
-        ]
-      },
-      {
-        "label": "Live download verified",
-        "attentionLabel": "live download",
-        "source": "download",
-        "done": [
-          "verified"
+        "id": "signin",
+        "name": "Sign-in",
+        "scope": "Microsoft account, Google and email-code sign-in and consent pages.",
+        "dependsOn": [],
+        "parts": [
+          {
+            "label": "Microsoft account",
+            "prepare": [],
+            "verify": [
+              {
+                "label": "Microsoft account sign-in verified"
+              }
+            ]
+          },
+          {
+            "label": "Google",
+            "prepare": [],
+            "verify": [
+              {
+                "label": "Google sign-in and consent screen verified"
+              }
+            ]
+          },
+          {
+            "label": "Email code",
+            "prepare": [],
+            "verify": [
+              {
+                "label": "Email-code sign-in verified"
+              }
+            ]
+          }
         ]
       }
+    ],
+    "notInRelease": [
+      "Apple App Store, Google Play and Mac App Store listings: later platforms, not counted for this release."
     ],
     "pendingNote": "owner installation pending"
   }
