@@ -1,0 +1,387 @@
+From c2ef2216a47918af16aa7e08ffaa732b0e509c26 Mon Sep 17 00:00:00 2001
+From: Sampath-K <72682617+Sampath-K@users.noreply.github.com>
+Date: Mon, 19 Oct 2026 01:34:34 +0000
+Subject: [PATCH] Stage authorized immutable internal dogfood installer on
+ normal deploy
+
+Bind Actions artifact 12140076664 from run 39134443648 to source commit and exact installer bytes. Keep manual acceptance FAIL and existing release pointers/gates unchanged.
+
+Co-authored-by: Copilot <223556219+Copilot@users.noreply.github.com>
+---
+ .github/workflows/azure.yml         |  31 ++++++++
+ docs/deployment.md                  |  43 +++++++++++
+ site/downloads.json                 |  19 +++++
+ site/stage-downloads.mjs            |  90 +++++++++++++++++++++
+ site/staticwebapp.config.json       |   4 +-
+ site/test/hosted-downloads.test.mjs | 116 ++++++++++++++++++++++++++++
+ 6 files changed, 302 insertions(+), 1 deletion(-)
+ create mode 100644 site/downloads.json
+ create mode 100644 site/stage-downloads.mjs
+ create mode 100644 site/test/hosted-downloads.test.mjs
+
+diff --git a/.github/workflows/azure.yml b/.github/workflows/azure.yml
+index a09d58b..4458969 100644
+--- a/.github/workflows/azure.yml
++++ b/.github/workflows/azure.yml
+@@ -6,6 +6,7 @@ on:
+   workflow_dispatch:
+ permissions:
+   contents: read
++  actions: read
+ concurrency:
+   group: budlark-production-deployment
+   cancel-in-progress: false
+@@ -39,6 +40,21 @@ jobs:
+           cp site/index.html site/console.html site/robots.txt site/sitemap.xml site/config.json site/staticwebapp.config.json site/operator-callback.html site/operator-config.json deploy-site/
+           cp -R site/assets deploy-site/assets
+           cp -R site/releases deploy-site/releases
++      - name: Verify authorized internal dogfood artifact provenance
++        env:
++          GH_TOKEN: ${{ github.token }}
++        run: node site/stage-downloads.mjs --verify-source
++      - name: Download immutable internal dogfood artifact
++        uses: actions/download-artifact@v4
++        with:
++          github-token: ${{ github.token }}
++          repository: Sampath-K/bloomstep
++          run-id: 39134443648
++          artifact-ids: 12140076664
++          merge-multiple: true
++          path: dogfood-artifact
++      - name: Stage only hash-verified internal dogfood installer
++        run: node site/stage-downloads.mjs dogfood-artifact deploy-site/downloads
+       - name: Deploy approved Free SWA
+         uses: Azure/static-web-apps-deploy@v1
+         with:
+@@ -69,3 +85,18 @@ jobs:
+               exit 1
+             fi
+           done
++      - name: Verify direct hosted dogfood bytes
++        run: |
++          node -e "for (const f of require('./site/downloads.json').files) console.log(f.publicName, f.bytes, f.sha256)" |
++          while read -r name bytes sha; do
++            url="https://budlark.com/downloads/$name"
++            matched=false
++            for attempt in $(seq 1 12); do
++              status=$(curl --silent --show-error --proto '=https' --max-time 120 --output hosted-download.bin --dump-header hosted-download.headers --write-out '%{http_code}' "$url") || status=000
++              if [ "$status" = 200 ] && ! grep -qi '^location:' hosted-download.headers \
++                && [ "$(stat -c %s hosted-download.bin)" = "$bytes" ] \
++                && [ "$(sha256sum hosted-download.bin | cut -d' ' -f1)" = "$sha" ]; then matched=true; break; fi
++              sleep 10
++            done
++            if [ "$matched" != true ]; then echo "::error::Dogfood download failed direct-200 integrity verification: $url (HTTP $status)"; exit 1; fi
++          done
+diff --git a/docs/deployment.md b/docs/deployment.md
+index b957fd8..2328d13 100644
+--- a/docs/deployment.md
++++ b/docs/deployment.md
+@@ -553,3 +553,46 @@ The API suite checks an actual isolated `core.autocrlf=true` Git checkout of
+ all three generated files, not just the author's local settings. This prevents
+ Windows CRLF conversion from causing a false generator-drift failure without
+ weakening exact generated-content checks or changing global Git preferences.
++## Authorized internal dogfood download staging
++
++The normal `azure.yml` main-branch deployment stages the explicitly authorized
++internal dogfood candidate from `site/downloads.json`. This is **not** general
++release acceptance: manual acceptance remains **FAIL**, and no owner PASS,
++release gate override, new tag, or new workflow dispatch is implied. Public
++release pointers and download-page acceptance labels are not changed.
++
++The source is Actions run `39134443648`, artifact `12140076664`
++(`budlark-universal-installer`), commit
++`2d762c487e496ca2d856e8b160390fe3e9a7b2b7`. Before download, the deployment
++checks GitHub metadata for the exact artifact, run, repository, commit,
++non-expiration, and completed successful CI. Successful CI is not manual
++acceptance. Only the installer is copied, after checking its exact 22,392,273
++bytes and SHA-256
++`b53767c405fa9b704fb828d221f883b81d14231e3ebf65dd8820d3812fd42a2c`.
++The existing protected-route checks remain mandatory.
++
++The reserved URL is
++`https://budlark.com/downloads/Budlark-0.1.0-windows-universal-setup.exe`.
++Its version-only basename does not indicate acceptance. It is unindexed and
++`no-store`, not a promise of immutable URL contents or access control.
++Anyone with the URL can download it after successful deployment; share only
++as an unsigned internal dogfood preview with known manual failures. The
++deployment verifies a direct HTTP 200 (no redirect), byte count, and hash
++before reporting success. A merge or successful upload alone is not proof
++of publication.
++
++An expired, deleted, inaccessible, or mismatched source fails deployment
++closed. Do not substitute another artifact, regenerate a tag, broaden
++credentials, or bypass gates. Ask the owner for a new authorized candidate.
++The only additional workflow token scope is repository `actions: read`.
++No settings, secrets, or deployment permissions are changed.
++
++Local staging verification (run from the repository root):
++
++```sh
++node --test site/test/hosted-downloads.test.mjs
++GH_TOKEN="$(gh auth token)" node site/stage-downloads.mjs --verify-source
++gh run download 39134443648 --repo Sampath-K/bloomstep \
++  --name budlark-universal-installer --dir release-output/dogfood-source
++node site/stage-downloads.mjs release-output/dogfood-source release-output/dogfood-staged
++```
+diff --git a/site/downloads.json b/site/downloads.json
+new file mode 100644
+index 0000000..2ac760d
+--- /dev/null
++++ b/site/downloads.json
+@@ -0,0 +1,19 @@
++{
++  "channel": "internal-dogfood",
++  "acceptance": "manual-FAIL-not-an-accepted-release",
++  "source": {
++    "repository": "Sampath-K/bloomstep",
++    "runId": 39134443648,
++    "artifactId": 12140076664,
++    "artifactName": "budlark-universal-installer",
++    "headSha": "2d762c487e496ca2d856e8b160390fe3e9a7b2b7"
++  },
++  "files": [
++    {
++      "sourceName": "Budlark-0.1.0-preview-windows-universal-setup.exe",
++      "publicName": "Budlark-0.1.0-windows-universal-setup.exe",
++      "bytes": 22392273,
++      "sha256": "b53767c405fa9b704fb828d221f883b81d14231e3ebf65dd8820d3812fd42a2c"
++    }
++  ]
++}
+diff --git a/site/stage-downloads.mjs b/site/stage-downloads.mjs
+new file mode 100644
+index 0000000..4f71c92
+--- /dev/null
++++ b/site/stage-downloads.mjs
+@@ -0,0 +1,90 @@
++import { createHash } from 'node:crypto';
++import { mkdir, readFile, writeFile } from 'node:fs/promises';
++import { join } from 'node:path';
++import { pathToFileURL } from 'node:url';
++
++export function validateManifest(manifest) {
++  if (manifest?.channel !== 'internal-dogfood' ||
++      manifest.acceptance !== 'manual-FAIL-not-an-accepted-release') {
++    throw Error('Only explicitly unaccepted internal dogfood downloads may be staged.');
++  }
++  const source = manifest.source;
++  if (source?.repository !== 'Sampath-K/bloomstep' ||
++      !Number.isSafeInteger(source.runId) || source.runId <= 0 ||
++      !Number.isSafeInteger(source.artifactId) || source.artifactId <= 0 ||
++      source.artifactName !== 'budlark-universal-installer' ||
++      !/^[a-f0-9]{40}$/.test(source.headSha ?? '')) {
++    throw Error('Immutable Actions source binding required.');
++  }
++  if (!Array.isArray(manifest.files) || !manifest.files.length) throw Error('Download files required.');
++  const names = new Set();
++  let total = 0;
++  for (const file of manifest.files) {
++    for (const name of [file.sourceName, file.publicName]) {
++      if (!/^Budlark-[0-9A-Za-z.-]+-windows-universal-setup\.exe$/.test(name ?? '')) {
++        throw Error('Invalid installer filename.');
++      }
++    }
++    if (names.has(file.publicName)) throw Error('Duplicate public filename.');
++    names.add(file.publicName);
++    if (!Number.isSafeInteger(file.bytes) || file.bytes <= 0 || file.bytes > 30 * 1024 * 1024 ||
++        !/^[a-f0-9]{64}$/.test(file.sha256 ?? '')) throw Error('Invalid size or SHA-256.');
++    total += file.bytes;
++  }
++  if (total > 150 * 1024 * 1024) throw Error('Free SWA download budget exceeded.');
++  return manifest;
++}
++
++export async function verifySource(manifest, token, fetchImpl = fetch) {
++  const { source } = validateManifest(manifest);
++  if (!token) throw Error('Actions read token required.');
++  const get = async path => {
++    const response = await fetchImpl(`https://api.github.com/repos/${source.repository}/${path}`, {
++      headers: { Authorization: `Bearer ${token}`, Accept: 'application/vnd.github+json',
++        'X-GitHub-Api-Version': '2022-11-28' },
++      redirect: 'error',
++    });
++    if (!response.ok) throw Error(`Actions metadata request failed: HTTP ${response.status}`);
++    return response.json();
++  };
++  const [artifact, run] = await Promise.all([
++    get(`actions/artifacts/${source.artifactId}`),
++    get(`actions/runs/${source.runId}`),
++  ]);
++  if (artifact.id !== source.artifactId || artifact.name !== source.artifactName ||
++      artifact.expired !== false || artifact.workflow_run?.id !== source.runId ||
++      artifact.workflow_run?.head_sha !== source.headSha ||
++      artifact.workflow_run?.repository_id !== run.repository?.id ||
++      artifact.workflow_run?.head_repository_id !== run.repository?.id ||
++      run.repository?.full_name !== source.repository ||
++      run.id !== source.runId || run.head_sha !== source.headSha ||
++      run.path !== '.github/workflows/ci.yml' ||
++      run.status !== 'completed' || run.conclusion !== 'success') {
++    throw Error('Actions artifact/run provenance mismatch or expired artifact.');
++  }
++}
++
++export async function stageDownloads(manifest, inputDir, outputDir) {
++  validateManifest(manifest);
++  const verified = [];
++  for (const file of manifest.files) {
++    const body = await readFile(join(inputDir, file.sourceName));
++    const sha256 = createHash('sha256').update(body).digest('hex');
++    if (body.length !== file.bytes || sha256 !== file.sha256) {
++      throw Error(`Integrity mismatch: ${file.publicName}`);
++    }
++    verified.push({ file, body });
++  }
++  await mkdir(outputDir, { recursive: true });
++  for (const { file, body } of verified) await writeFile(join(outputDir, file.publicName), body);
++}
++
++if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
++  const manifest = JSON.parse(await readFile('site/downloads.json', 'utf8'));
++  if (process.argv[2] === '--verify-source') {
++    await verifySource(manifest, process.env.GH_TOKEN);
++  } else {
++    if (process.argv.length !== 4) throw Error('Usage: stage-downloads.mjs INPUT_DIR OUTPUT_DIR');
++    await stageDownloads(manifest, process.argv[2], process.argv[3]);
++  }
++}
+diff --git a/site/staticwebapp.config.json b/site/staticwebapp.config.json
+index ba5688d..9e31bfe 100644
+--- a/site/staticwebapp.config.json
++++ b/site/staticwebapp.config.json
+@@ -2,8 +2,10 @@
+   "platform": { "apiRuntime": "node:22" },
+   "routes": [
+     { "route": "/console.html", "headers": { "X-Robots-Tag": "noindex, nofollow" } },
+-    { "route": "/operator-callback.html", "headers": { "X-Robots-Tag": "noindex, nofollow" } }
++    { "route": "/operator-callback.html", "headers": { "X-Robots-Tag": "noindex, nofollow" } },
++    { "route": "/downloads/*", "headers": { "Cache-Control": "no-store", "X-Robots-Tag": "noindex, nofollow" } }
+   ],
++  "mimeTypes": { ".exe": "application/octet-stream" },
+   "globalHeaders": {
+     "X-Content-Type-Options": "nosniff",
+     "Referrer-Policy": "no-referrer",
+diff --git a/site/test/hosted-downloads.test.mjs b/site/test/hosted-downloads.test.mjs
+new file mode 100644
+index 0000000..5885f58
+--- /dev/null
++++ b/site/test/hosted-downloads.test.mjs
+@@ -0,0 +1,116 @@
++import test from 'node:test';
++import assert from 'node:assert/strict';
++import { createHash } from 'node:crypto';
++import { mkdtemp, readFile, writeFile, rm, access } from 'node:fs/promises';
++import { readFileSync } from 'node:fs';
++import { join } from 'node:path';
++import { stageDownloads, validateManifest, verifySource } from '../stage-downloads.mjs';
++
++const manifest = JSON.parse(readFileSync(new URL('../downloads.json', import.meta.url)));
++const workflow = readFileSync(new URL('../../.github/workflows/azure.yml', import.meta.url), 'utf8');
++const config = JSON.parse(readFileSync(new URL('../staticwebapp.config.json', import.meta.url)));
++const copy = () => structuredClone(manifest);
++
++test('dogfood manifest pins the authorized source and exact installer', () => {
++  validateManifest(manifest);
++  assert.deepEqual(manifest.source, {
++    repository: 'Sampath-K/bloomstep', runId: 39134443648, artifactId: 12140076664,
++    artifactName: 'budlark-universal-installer',
++    headSha: '2d762c487e496ca2d856e8b160390fe3e9a7b2b7',
++  });
++  assert.equal(manifest.files[0].bytes, 22392273);
++  assert.equal(manifest.files[0].sha256, 'b53767c405fa9b704fb828d221f883b81d14231e3ebf65dd8820d3812fd42a2c');
++  assert.equal(manifest.files[0].publicName, 'Budlark-0.1.0-windows-universal-setup.exe');
++  assert.match(workflow, new RegExp(`run-id: ${manifest.source.runId}`));
++  assert.match(workflow, new RegExp(`artifact-ids: ${manifest.source.artifactId}`));
++  assert.ok(workflow.indexOf('--verify-source') < workflow.indexOf('uses: actions/download-artifact'));
++  assert.ok(workflow.indexOf('deploy-site/downloads') < workflow.indexOf('uses: Azure/static-web-apps-deploy'));
++});
++
++test('manifest rejects release promotion, traversal, duplicates, invalid hashes and sizes', () => {
++  for (const mutate of [
++    m => { m.channel = 'stable'; },
++    m => { m.acceptance = 'PASS'; },
++    m => { m.source.repository = 'other/repository'; },
++    m => { m.source.runId = 'latest'; },
++    m => { m.source.artifactId = 0; },
++    m => { m.source.headSha = 'main'; },
++    m => { m.files = []; },
++    m => { m.files[0].publicName = '../Budlark-1-windows-universal-setup.exe'; },
++    m => { m.files[0].sourceName = '../source.exe'; },
++    m => { m.files[0].sha256 = 'abc'; },
++    m => { m.files[0].bytes = 31 * 1024 * 1024; },
++    m => { m.files.push(m.files[0]); },
++  ]) {
++    const bad = copy();
++    mutate(bad);
++    assert.throws(() => validateManifest(bad));
++  }
++});
++
++function metadata() {
++  const source = manifest.source;
++  return {
++    artifact: { id: source.artifactId, name: source.artifactName, expired: false,
++      workflow_run: { id: source.runId, head_sha: source.headSha,
++        repository_id: 1404357574, head_repository_id: 1404357574 } },
++    run: { id: source.runId, head_sha: source.headSha, status: 'completed', conclusion: 'success',
++      path: '.github/workflows/ci.yml', repository: { id: 1404357574, full_name: source.repository } },
++  };
++}
++
++test('source verification binds artifact ID, run, repository, commit and successful CI', async () => {
++  const fetchMetadata = data => async (url, options) => {
++    assert.equal(options.redirect, 'error');
++    assert.equal(options.headers.Authorization, 'Bearer test-token');
++    return Response.json(url.includes('/artifacts/') ? data.artifact : data.run);
++  };
++  await verifySource(manifest, 'test-token', fetchMetadata(metadata()));
++  for (const mutate of [
++    d => { d.artifact.id++; },
++    d => { d.artifact.name = 'replacement'; },
++    d => { d.artifact.expired = true; },
++    d => { d.artifact.workflow_run.id++; },
++    d => { d.artifact.workflow_run.head_sha = '0'.repeat(40); },
++    d => { d.artifact.workflow_run.head_repository_id++; },
++    d => { d.run.id++; },
++    d => { d.run.head_sha = '0'.repeat(40); },
++    d => { d.run.repository.full_name = 'other/repository'; },
++    d => { d.run.path = '.github/workflows/other.yml'; },
++    d => { d.run.status = 'in_progress'; },
++    d => { d.run.conclusion = 'failure'; },
++  ]) {
++    const data = metadata();
++    mutate(data);
++    await assert.rejects(verifySource(manifest, 'test-token', fetchMetadata(data)), /provenance/);
++  }
++  await assert.rejects(verifySource(manifest, ''), /token/);
++  await assert.rejects(verifySource(manifest, 'test-token', async () => new Response('', { status: 403 })), /HTTP 403/);
++});
++
++test('staging publishes only exact bytes and fails before writing mismatches', async () => {
++  const dir = await mkdtemp(join(process.cwd(), '.dogfood-test-'));
++  try {
++    const body = Buffer.from('verified installer fixture');
++    const fixture = copy();
++    fixture.files[0].bytes = body.length;
++    fixture.files[0].sha256 = createHash('sha256').update(body).digest('hex');
++    await writeFile(join(dir, fixture.files[0].sourceName), body);
++    await stageDownloads(fixture, dir, join(dir, 'out'));
++    assert.deepEqual(await readFile(join(dir, 'out', fixture.files[0].publicName)), body);
++    await writeFile(join(dir, fixture.files[0].sourceName), Buffer.alloc(body.length));
++    await assert.rejects(stageDownloads(fixture, dir, join(dir, 'bad')), /Integrity/);
++    await assert.rejects(access(join(dir, 'bad')));
++    await writeFile(join(dir, fixture.files[0].sourceName), body.subarray(1));
++    await assert.rejects(stageDownloads(fixture, dir, join(dir, 'bad')), /Integrity/);
++  } finally {
++    await rm(dir, { recursive: true, force: true });
++  }
++});
++
++test('reserved URL is binary, unindexed, and not cached as an immutable general release', () => {
++  assert.equal(config.mimeTypes['.exe'], 'application/octet-stream');
++  const route = config.routes.find(r => r.route === '/downloads/*');
++  assert.equal(route.headers['Cache-Control'], 'no-store');
++  assert.match(route.headers['X-Robots-Tag'], /noindex/);
++});
+-- 
+2.51.1
+
