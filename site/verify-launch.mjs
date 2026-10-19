@@ -81,7 +81,10 @@ try {
       assert.equal(await page.evaluate(() => localStorage.length + sessionStorage.length), 0);
       await page.keyboard.press('Tab');
       assert.equal(await page.evaluate(() => document.activeElement.className), 'skip');
+      assert.equal(await page.$eval('.skip', node => node.getAttribute('href')), '#main');
+      assert.equal(await page.$eval('#main', node => node.tagName), 'MAIN');
       await page.keyboard.press('Enter');
+      await page.waitForFunction(() => location.hash === '#main');
       assert.equal(new URL(page.url()).hash, '#main');
       await page.$eval('#feedback-help summary', node => node.focus());
       await page.keyboard.press('Space');
