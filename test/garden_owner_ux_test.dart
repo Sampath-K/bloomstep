@@ -162,12 +162,17 @@ void main() {
 
   testWidgets('device feedback accepts text without sign-in', (tester) async {
     final (store, _) = await fixture(tester);
+    var transportCalls = 0;
     await tester.pumpWidget(
       MaterialApp(
         home: GardenScreen(
           store: store,
           deviceGuest: true,
           testDisableServices: true,
+          feedbackSender: (_) async {
+            transportCalls++;
+            return true;
+          },
         ),
       ),
     );
@@ -184,6 +189,19 @@ void main() {
           .onPressed,
       isNotNull,
     );
+    await tester.tap(find.widgetWithText(FilledButton, 'Send feedback'));
+    await settleDatabase(tester);
+    expect(
+      find.text('Saved on this device — not sent to the team.'),
+      findsOneWidget,
+    );
+    expect(find.text('Received by the team.'), findsNothing);
+    expect(find.text('Retry sending'), findsNothing);
+    expect(transportCalls, 0);
+    final rows = await store.voice();
+    expect(rows, hasLength(1));
+    expect(rows.single['body'], 'Signed-out feedback');
+    expect(rows.single['status'], isNot('received'));
   });
 
   testWidgets('feedback controller survives the closing route transition', (
