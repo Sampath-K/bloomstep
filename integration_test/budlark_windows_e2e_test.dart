@@ -16,6 +16,7 @@ import 'package:budlark/services/sync_service.dart';
 
 import 'support/local_test_api.dart';
 import 'support/test_only_app.dart';
+import 'support/windows_keyboard.dart';
 
 DateTime syntheticJourneyStart(DateTime runStartedAt) {
   final utc = runStartedAt.toUtc();
@@ -29,12 +30,17 @@ DateTime syntheticJourneyStart(DateTime runStartedAt) {
 void main() {
   IntegrationTestWidgetsFlutterBinding.ensureInitialized();
 
-  testWidgets('Windows clipboard paste reaches the feedback field', (tester) async {
+  for (final deviceGuest in [false, true]) {
+  testWidgets('Win32 feedback editing works ${deviceGuest ? "signed out" : "in an account garden"}', (tester) async {
     final store = await GardenStore.open(':memory:', 'clipboard-test');
     addTearDown(store.close);
     addTearDown(() => Clipboard.setData(const ClipboardData(text: '')));
     await tester.pumpWidget(
-      MaterialApp(home: GardenScreen(store: store, testDisableServices: true)),
+      MaterialApp(home: GardenScreen(
+        store: store,
+        deviceGuest: deviceGuest,
+        testDisableServices: true,
+      )),
     );
     for (var i = 0; i < 3; i++) {
       await tester.runAsync(
@@ -42,21 +48,50 @@ void main() {
       );
       await tester.pumpAndSettle();
     }
-    await Clipboard.setData(const ClipboardData(text: 'Synthetic paste check'));
+    await Clipboard.setData(const ClipboardData(text: 'abcd'));
     await tester.tap(find.byTooltip('Help us grow'));
     await tester.pumpAndSettle();
     final field = find.widgetWithText(TextField, 'Your feedback');
     await tester.tap(field);
     await tester.pump();
-    await tester.sendKeyDownEvent(LogicalKeyboardKey.controlLeft);
-    await tester.sendKeyEvent(LogicalKeyboardKey.keyV);
-    await tester.sendKeyUpEvent(LogicalKeyboardKey.controlLeft);
-    await tester.pumpAndSettle();
-    expect(tester.widget<TextField>(field).controller!.text, 'Synthetic paste check');
+    Future<void> keys(List<int> codes, {bool control = false, bool shift = false}) async {
+      await tester.runAsync(() => windowsKeys(codes, control: control, shift: shift));
+      await tester.pumpAndSettle();
+    }
+    TextEditingController controller() => tester.widget<TextField>(field).controller!;
+    await keys([0x56], control: true);
+    expect(controller().text, 'abcd');
+    await keys([0x08]);
+    expect(controller().text, 'abc');
+    await keys([0x24, 0x2e]);
+    expect(controller().text, 'bc');
+    await keys([0x23, 0x25, 0x08]);
+    expect(controller().text, 'c');
+    await keys([0x24, 0x27]);
+    expect(controller().selection, const TextSelection.collapsed(offset: 1));
+    await keys([0x41], control: true);
+    expect(controller().selection.textInside(controller().text), 'c');
+    await keys([0x43], control: true);
+    expect((await Clipboard.getData(Clipboard.kTextPlain))!.text, 'c');
+    await keys([0x58], control: true);
+    expect(controller().text, isEmpty);
+    await keys([0x56], control: true);
+    expect(controller().text, 'c');
+    await keys([0x24], shift: true);
+    expect(controller().selection.textInside(controller().text), 'c');
+    await keys([0x5a]);
+    expect(controller().text.toLowerCase(), 'z');
+    expect(
+      tester.widget<FilledButton>(
+        find.widgetWithText(FilledButton, 'Send feedback'),
+      ).onPressed,
+      isNotNull,
+    );
     await tester.tap(find.widgetWithText(TextButton, 'Close'));
     await tester.pumpAndSettle();
     await tester.pumpWidget(const SizedBox.shrink());
   });
+  }
 
   testWidgets(
     'synthetic sign-in, real desktop UI, production sync handlers, isolation, export, restart and cleanup',
