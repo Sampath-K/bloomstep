@@ -145,6 +145,12 @@ void main() {
       );
       expect(tester.widget<SwitchListTile>(counts).value, isFalse);
       expect(
+        find.textContaining('Turning off stops future sharing and clears unsent counts'),
+        findsNothing,
+      );
+      await tester.tap(find.text('What these counts include'));
+      await tester.pumpAndSettle();
+      expect(
         find.textContaining(
           'Turning off stops future sharing and clears unsent counts',
         ),
