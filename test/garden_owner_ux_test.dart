@@ -1,6 +1,7 @@
 import 'package:budlark/app/theme.dart';
 import 'package:budlark/features/garden/garden_screen.dart';
 import 'package:budlark/features/garden/profile_section.dart';
+import 'package:budlark/services/identity.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
@@ -8,6 +9,37 @@ import 'garden_learning_test.dart' show fixture, settleDatabase;
 import 'support/visual_capture.dart';
 
 void main() {
+  for (final signedIn in [false, true]) {
+    testWidgets('main window exposes ${signedIn ? "profile" : "sign-in"}', (
+      tester,
+    ) async {
+      final (store, _) = await fixture(tester);
+      var actions = 0;
+      await tester.pumpWidget(MaterialApp(
+        home: GardenScreen(
+          store: store,
+          testDisableServices: true,
+          profileSummaryBuilder: (_, __) => ProfileSection(
+            signedIn: signedIn,
+            configured: true,
+            busy: false,
+            compactSummary: true,
+            profile: signedIn
+                ? const IdentityProfile(displayName: 'Alex Rivera')
+                : null,
+            onSignIn: () async { actions++; },
+            onSignOut: () async { actions++; },
+          ),
+        ),
+      ));
+      await settleDatabase(tester);
+      expect(find.text(signedIn ? 'Alex Rivera' : 'Not signed in'), findsOneWidget);
+      expect(find.text("Your account doesn't include a name."), findsNothing);
+      await tester.tap(find.widgetWithText(TextButton, signedIn ? 'Sign out' : 'Sign in'));
+      expect(actions, 1);
+      expect(tester.takeException(), isNull);
+    });
+  }
   for (final dark in [false, true]) {
     testWidgets('owner garden surfaces render in ${dark ? "dark" : "light"}', (
       tester,
