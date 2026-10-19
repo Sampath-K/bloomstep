@@ -5,16 +5,26 @@ import { execFileSync } from 'node:child_process';
 
 const read = name => readFileSync(new URL(`../${name}`, import.meta.url), 'utf8');
 test('integration keyboard parameters bind in Windows PowerShell without C# type aliases', () => {
-  const keyboard = read('integration_test/support/windows_keyboard.dart');
+  const keyboard = read('integration_test/support/windows_keyboard.dart').replaceAll('\r\n', '\n');
   const parameters = keyboard.match(/function Key\(([^)]+)\)/)[1].replaceAll('\\$', '$');
   const owner = keyboard.match(/  (\[[^\]]+\])\\\$owner = 0/)[1];
   assert.equal(parameters, '[uint16]$vk, [uint32]$flags');
   assert.equal(owner, '[uint32]');
+  const nativeTypes = keyboard.split("Add-Type @'\n")[1].split("\n'@")[0];
+  const input = keyboard.split('  \\$input =')[1].split('  if ([OwnedInput]::SendInput')[0];
+  assert.ok(input, 'Construct the native INPUT payload before sending it.');
   if (process.platform === 'win32') {
     execFileSync('powershell.exe', ['-NoProfile', '-NonInteractive', '-Command',
-      `function Key(${parameters}) {
+      `Add-Type @'
+${nativeTypes}
+'@
+      function Key(${parameters}) {
         ${owner}$owner = 0
         if ($vk -ne 65 -or $flags -ne 2 -or $owner -ne 0) { throw 'Incorrect typed input' }
+        $input =${input.replaceAll('\\$', '$')}
+        if ($input.type -ne 1 -or $input.keyboard.vk -ne 65 -or $input.keyboard.flags -ne 2) {
+          throw 'Native INPUT discarded its keyboard fields'
+        }
       }; Key 65 2`],
     { stdio: 'pipe', timeout: 20000 });
   }

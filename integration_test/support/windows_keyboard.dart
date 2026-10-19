@@ -50,8 +50,10 @@ function Key([uint16]\$vk, [uint32]\$flags) {
   if (\$owner -ne $pid) { throw 'Owned test window is not foreground; no keys sent.' }
   \$input = New-Object OwnedInput+Input
   \$input.type = 1
-  \$input.keyboard.vk = \$vk
-  \$input.keyboard.flags = \$flags
+  \$keyboard = New-Object OwnedInput+Keyboard
+  \$keyboard.vk = \$vk
+  \$keyboard.flags = \$flags
+  \$input.keyboard = \$keyboard
   if ([OwnedInput]::SendInput(1, @(\$input), 40) -ne 1) { throw 'Win32 rejected native keyboard input.' }
   Start-Sleep -Milliseconds 60
 }
