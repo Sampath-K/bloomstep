@@ -114,10 +114,10 @@ test('celebration and audio preferences are separate, finite and strictly typed'
   }
 });
 
-test('all 18 committed SVGs match deterministic renders and have accessible descriptions', () => {
+test('all 24 committed SVGs match deterministic renders and have accessible descriptions', () => {
   const expected = [];
   for (const theme of themes) {
-    for (const state of ['main', 'completion', 'icon']) {
+    for (const state of ['main', 'completion', 'return', 'icon']) {
       const name = `${theme.id}-${state}.svg`;
       expected.push(name);
       const actual = readFileSync(new URL(name, directory), 'utf8');
@@ -128,21 +128,42 @@ test('all 18 committed SVGs match deterministic renders and have accessible desc
       assert.ok(actual.includes(`data-bird="${theme.bird}"`));
       assert.doesNotMatch(actual, /<script|<animate|<image|https?:\/\/(?!www\.w3\.org)/);
       if (state === 'main') assert.ok(actual.includes('Mark complete'));
-      if (state === 'completion') assert.ok(actual.includes('A little practice, a little growth.'));
+      if (state === 'completion') assert.ok(actual.includes('Nicely done'));
+      if (state === 'return') assert.ok(actual.includes('See you tomorrow after coffee'));
     }
   }
   assert.deepEqual(readdirSync(directory).filter(name => name.endsWith('.svg')).sort(), expected.sort());
   assert.throws(() => renderSvg(themes[0], 'missing-state'), /Unknown render state/);
 });
 
+test('P14 frames have one heading, one action, at most twelve words and an honest growth transition', () => {
+  for (const theme of themes) {
+    for (const state of ['main', 'completion', 'return']) {
+      const svg = renderSvg(theme, state);
+      const visible = [...svg.matchAll(/<text\b[^>]*>([^<]*)<\/text>/g)].map(match => match[1]);
+      const wordCount = visible.join(' ').trim().split(/\s+/).length;
+      assert.equal(visible.length, 4, `${theme.id}/${state}: wordmark, heading, sentence, action only`);
+      assert.equal((svg.match(/data-role="heading"/g) || []).length, 1);
+      assert.equal((svg.match(/data-role="primary-action"/g) || []).length, 1);
+      assert.equal(wordCount, state === 'main' ? 9 : 11);
+      assert.ok(wordCount <= 12);
+      if (state !== 'main') assert.ok(visible.includes('See you tomorrow after coffee'));
+    }
+    assert.match(renderSvg(theme, 'main'), /data-growth="bud"/);
+    assert.doesNotMatch(renderSvg(theme, 'completion'), /data-growth="bud"/);
+    assert.match(renderSvg(theme, 'completion'), /habit bud has grown to bloom/);
+    assert.match(renderSvg(theme, 'return'), /coffee cup recall the next anchor/);
+  }
+});
+
 test('self-contained contact sheet includes every state and a small icon study', () => {
   const actual = readFileSync(new URL('contact-sheet.html', directory), 'utf8');
   assert.equal(actual, renderContactSheet(), 'Regenerate stale contact sheet');
   assert.equal((actual.match(/<section /g) || []).length, 6);
-  assert.equal((actual.match(/data:image\/svg\+xml;base64,/g) || []).length, 24);
+  assert.equal((actual.match(/data:image\/svg\+xml;base64,/g) || []).length, 30);
   for (const theme of themes) {
     assert.ok(actual.includes(`id="${theme.id}"`));
-    for (const state of ['main', 'completion', 'icon']) {
+    for (const state of ['main', 'completion', 'return', 'icon']) {
       assert.ok(actual.includes(Buffer.from(renderSvg(theme, state)).toString('base64')));
     }
   }

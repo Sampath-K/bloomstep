@@ -5,10 +5,7 @@
   <g font-family="Segoe UI, Aptos, Calibri, sans-serif"><rect width="960" height="640" rx="16" fill="#F7F4EF"/>
        <rect x="0" y="0" width="960" height="48" rx="16" fill="#FFFFFF"/>
        <text x="24" y="31" font-size="18" fill="#242424" font-weight="650">Budlark</text>
-       <text x="734" y="30" font-size="14" fill="#5C5C5C" font-weight="400">Account   Settings</text>
-       <text x="904" y="30" font-size="18" fill="#5C5C5C" font-weight="400">x</text>
-       <text x="64" y="99" font-size="30" fill="#242424" font-weight="650">Your garden</text>
-       <text x="64" y="126" font-size="16" fill="#5C5C5C" font-weight="400">Your plants keep their growth. Rest days belong here.</text>
+       <g data-role="heading"><text x="64" y="107" font-size="32" fill="#242424" font-weight="650">Your garden</text></g>
        <rect x="64" y="144" width="832" height="252" rx="16" fill="#E8EEE0"/>
     <ellipse cx="480" cy="370" rx="392" ry="30" fill="#D3DFC3"/>
     <circle cx="763" cy="205" r="44" fill="#EDC995"/>
@@ -50,13 +47,9 @@
     <path d="M-4 27 L-3 40 L5 40 M11 27 L12 40 L20 40" fill="none" stroke="#775334" stroke-width="4" stroke-linecap="round"/>
 
   </g>
+
        <rect x="64" y="420" width="832" height="137" rx="16" fill="#FFFFFF"/>
-       <text x="88" y="452" font-size="14" fill="#2F6F4E" font-weight="700">YOUR TINY HABIT</text>
-       <text x="88" y="483" font-size="22" fill="#242424" font-weight="600">After I pour my morning coffee,</text>
-       <text x="88" y="514" font-size="22" fill="#242424" font-weight="600">I will stretch for one breath.</text>
-       <text x="88" y="540" font-size="14" fill="#5C5C5C" font-weight="400">Then I celebrate: smile</text>
-       <rect x="696" y="463" width="176" height="48" rx="10" fill="#2F6F4E"/>
-       <text x="719" y="493" font-size="17" fill="#FFFFFF" font-weight="600">Mark complete</text>
-       <text x="64" y="594" font-size="14" fill="#5C5C5C" font-weight="400">Meadow Dawn / Skylark</text>
-       <text x="64" y="619" font-size="12" fill="#5C5C5C" font-weight="400">Design proposal / static companion / not an app capture</text></g>
+       <text x="88" y="494" font-size="26" fill="#242424" font-weight="600">After coffee, stretch once.</text>
+       <g data-role="primary-action"><rect x="696" y="463" width="176" height="48" rx="10" fill="#2F6F4E"/>
+       <text x="716" y="493" font-size="17" fill="#FFFFFF" font-weight="600">Mark complete</text></g></g>
 </svg>

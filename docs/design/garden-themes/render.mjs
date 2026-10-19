@@ -40,7 +40,7 @@ function plant(theme, x, y, scale = 1, stage = 'bloom') {
   </g>`;
 }
 
-function scenery(theme, celebration) {
+function scenery(theme, state) {
   const p = theme.palette;
   let motifs = '';
   switch (theme.id) {
@@ -86,15 +86,19 @@ function scenery(theme, celebration) {
     <ellipse cx="480" cy="370" rx="392" ry="30" fill="${p.ground}"/>
     ${motifs}
     ${plant(theme, 365, 364, 0.66, 'sprout')}
-    ${plant(theme, 493, 365, 1, celebration ? 'bloom' : 'bud')}
+    ${plant(theme, 493, 365, 1, state === 'main' ? 'bud' : 'bloom')}
     ${plant(theme, 628, 367, 0.7, 'bloom')}
     <path d="M564 292 Q629 284 689 292" stroke="${p.bird}" stroke-width="6" fill="none" stroke-linecap="round"/>
-    ${bird(theme, 624, 252, 0.9, celebration)}`;
+    ${bird(theme, 624, 252, 0.9, state === 'completion')}
+    ${state === 'return' ? `<g transform="translate(754 304)">
+      <path d="M0 0 H42 V28 Q21 42 0 28 Z M42 6 Q66 4 60 22 Q55 31 42 25" fill="${p.surface}" stroke="${p.bird}" stroke-width="4"/>
+      <path d="M-8 44 H56" stroke="${p.bird}" stroke-width="4" stroke-linecap="round"/>
+    </g>` : ''}`;
 }
 
 export function renderSvg(theme, state) {
   const p = theme.palette;
-  if (!['main', 'completion', 'icon'].includes(state)) throw new Error(`Unknown render state: ${state}`);
+  if (!['main', 'completion', 'return', 'icon'].includes(state)) throw new Error(`Unknown render state: ${state}`);
   const icon = state === 'icon';
   const completion = state === 'completion';
   const title = `Budlark - ${theme.name} - ${state === 'main' ? 'main window' : state}`;
@@ -106,23 +110,15 @@ export function renderSvg(theme, state) {
     : `<rect width="960" height="640" rx="16" fill="${p.canvas}"/>
        <rect x="0" y="0" width="960" height="48" rx="16" fill="${p.surface}"/>
        ${text(24, 31, 18, 'Budlark', p.text, 650)}
-       ${text(734, 30, 14, 'Account   Settings', p.muted)}
-       ${text(904, 30, 18, 'x', p.muted)}
-       ${text(64, 99, 30, completion ? 'A little practice, a little growth.' : 'Your garden', p.text, 650)}
-       ${text(64, 126, 16, completion ? 'You did your tiny habit. Let yourself feel good.' : 'Your plants keep their growth. Rest days belong here.', p.muted)}
-       ${scenery(theme, completion)}
+       <g data-role="heading">${text(64, 107, 32, completion ? 'Nicely done' : state === 'return' ? 'Rest belongs here' : 'Your garden', p.text, 650)}</g>
+       ${scenery(theme, state)}
        <rect x="64" y="420" width="832" height="137" rx="16" fill="${p.surface}"/>
-       ${text(88, 452, 14, completion ? 'COMPLETED' : 'YOUR TINY HABIT', p.accent, 700)}
-       ${text(88, 483, 22, 'After I pour my morning coffee,', p.text, 600)}
-       ${text(88, 514, 22, 'I will stretch for one breath.', p.text, 600)}
-       ${text(88, 540, 14, 'Then I celebrate: smile', p.muted)}
-       <rect x="696" y="463" width="176" height="48" rx="10" fill="${p.accent}"/>
-       ${text(719, 493, 17, completion ? 'Done for today' : 'Mark complete', p.onAccent, 600)}
-       ${text(64, 594, 14, `${theme.name} / ${theme.bird}${theme.id === 'seasonal' ? ' / Autumn' : ''}`, p.muted)}
-       ${text(64, 619, 12, completion ? 'Design proposal / singing keyframe / 1 second, then still' : 'Design proposal / static companion / not an app capture', p.muted)}`;
+       ${text(88, 494, state === 'main' ? 26 : 23, state === 'main' ? 'After coffee, stretch once.' : 'See you tomorrow after coffee', p.text, 600)}
+       <g data-role="primary-action"><rect x="696" y="463" width="176" height="48" rx="10" fill="${p.accent}"/>
+       ${text(716, 493, 17, completion ? 'Back to garden' : state === 'return' ? 'Close garden' : 'Mark complete', p.onAccent, 600)}</g>`;
   return `<svg xmlns="http://www.w3.org/2000/svg" width="${icon ? 256 : 960}" height="${icon ? 256 : 640}" viewBox="0 0 ${icon ? '256 256' : '960 640'}" role="img" aria-labelledby="title description">
   <title id="title">${escape(title)}</title>
-  <desc id="description">${escape(icon ? `Visible ${theme.bird.toLowerCase()} perched above a bud. Original vector concept.` : `${theme.background}. ${completion ? 'A perched bird sings beside a blooming habit.' : 'A calm companion accompanies the main habit action.'} Original vector concept, not a running app.`)}</desc>
+  <desc id="description">${escape(icon ? `Visible ${theme.bird.toLowerCase()} perched above a bud. Original vector concept.` : `${theme.background}. ${completion ? 'The habit bud has grown to bloom; a perched bird sings.' : state === 'return' ? 'A still bird, a grown habit and a coffee cup recall the next anchor.' : 'A calm companion accompanies the main habit action.'} Original vector concept, not a running app.`)}</desc>
   <metadata>Original deterministic Budlark proposal artwork. No third-party assets.</metadata>
   <g font-family="Segoe UI, Aptos, Calibri, sans-serif">${content}</g>
 </svg>
@@ -195,7 +191,9 @@ header { max-width: 960px; margin-bottom: 32px; }
 .note, figcaption { color: var(--cp-text-muted); }
 nav { display: flex; flex-wrap: wrap; gap: 16px; margin: 24px 0; }
 section { border: 1px solid var(--cp-border); border-radius: 16px; background: var(--cp-surface); padding: 24px; margin: 24px 0; }
-.grid { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) 168px; gap: 20px; align-items: start; }
+.grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 20px; align-items: start; }
+.theme-heading { display: flex; gap: 24px; justify-content: space-between; align-items: start; margin-bottom: 20px; }
+.icon { width: 96px; flex-shrink: 0; }
 figure { margin: 0; min-width: 0; }
 img { display: block; width: 100%; height: auto; border: 1px solid var(--cp-border); border-radius: 10px; }
 figcaption { margin-top: 8px; font-size: 14px; }
@@ -207,7 +205,7 @@ footer { color: var(--cp-text-muted); padding: 16px 0; }
 `;
 
 export function renderContactSheet() {
-  const image = (theme, state, className = '') => `<img ${className ? `class="${className}" ` : ''}width="${state === 'icon' ? 256 : 960}" height="${state === 'icon' ? 256 : 640}" src="data:image/svg+xml;base64,${Buffer.from(renderSvg(theme, state)).toString('base64')}" alt="${escape(`${theme.name}: ${state === 'completion' ? 'completion singing keyframe' : state === 'icon' ? 'bird and bud icon' : 'main garden window'}`)}">`;
+  const image = (theme, state, className = '') => `<img ${className ? `class="${className}" ` : ''}width="${state === 'icon' ? 256 : 960}" height="${state === 'icon' ? 256 : 640}" src="data:image/svg+xml;base64,${Buffer.from(renderSvg(theme, state)).toString('base64')}" alt="${escape(`${theme.name}: ${state === 'completion' ? 'completion singing keyframe' : state === 'return' ? 'return cue with coffee cup' : state === 'icon' ? 'bird and bud icon' : 'minimal main garden window'}`)}">`;
   return `<!doctype html>
 <html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Budlark garden themes - design review</title>
@@ -223,16 +221,17 @@ export function renderContactSheet() {
 <body><main><header><div class="badge">Owner review / design only / not in dogfood</div>
 <h1>A bud to grow. A bird to celebrate.</h1>
 <p>The habit grows from seed to bloom. Your companion lands, sings for one second and rests. No lost growth, no streak pressure, no shopping.</p>
-<p class="note">18 original SVG concepts, not app screenshots. Compare the same habit across six settings. Theme colors belong to the artwork; the review shell follows your light/dark preference.</p>
+<p class="note">24 original SVG concepts, not app screenshots. Each main frame has one heading, one action and nine visible words. Compare completion growth, the one-second song and a calm return cue across six settings.</p>
 <nav aria-label="Theme families">${themes.map(t => `<a href="#${t.id}">${t.name}</a>`).join('')}</nav>
 <p class="legend">Motion equivalent: with app or OS reduced motion, use a still perched bird and the same success text. Sound is off by default. All fireflies, rain and leaves are static.</p></header>
 ${themes.map(t => `<section id="${t.id}" aria-labelledby="${t.id}-title">
-<h2 id="${t.id}-title">${t.name}</h2>
+<div class="theme-heading"><div><h2 id="${t.id}-title">${t.name}</h2>
 <p class="note">${t.bird} / ${t.unlockDays === 0 ? 'Included from the start' : `${t.unlockDays} lifetime practice days; need not be consecutive; never revoked or sold`}<br>${escape(t.background)}</p>
+</div><figure class="icon">${image(t, 'icon')}<figcaption>${t.id === 'meadow-dawn' ? 'App mark proposal' : 'Theme badge'}</figcaption>${image(t, 'icon', 'small')}<figcaption>32px study</figcaption></figure></div>
 <div class="grid">
-<figure>${image(t, 'main')}<figcaption>Main window / companion stays out of the core action</figcaption></figure>
-<figure>${image(t, 'completion')}<figcaption>Completion / singing keyframe, then still; no blocking overlay</figcaption></figure>
-<figure class="icon">${image(t, 'icon')}<figcaption>${t.id === 'meadow-dawn' ? 'Proposed stable app mark' : 'Theme badge, not an OS icon change'}</figcaption>${image(t, 'icon', 'small')}<figcaption>32px silhouette study</figcaption></figure>
+<figure>${image(t, 'main')}<figcaption>Main / nine words, one heading, one action</figcaption></figure>
+<figure>${image(t, 'completion')}<figcaption>Complete / bud to bloom, lark lands and sings for 1s; reduced motion uses this still frame</figcaption></figure>
+<figure>${image(t, 'return')}<figcaption>Return / a still coffee-cup cue for the next anchor, not another task</figcaption></figure>
 </div></section>`).join('\n')}
 <footer>Proposed unlock thresholds: 7 / 21 / 45 distinct practice days. Rest does not reset them. Seasonal shows autumn; all four seasons remain selectable after unlock. Native accessibility, reduced-motion behavior and small-icon legibility still require implementation review.</footer>
 </main></body></html>
@@ -241,7 +240,7 @@ ${themes.map(t => `<section id="${t.id}" aria-labelledby="${t.id}-title">
 
 export function generate() {
   for (const theme of themes) {
-    for (const state of ['main', 'completion', 'icon']) {
+    for (const state of ['main', 'completion', 'return', 'icon']) {
       writeFileSync(new URL(`./${theme.id}-${state}.svg`, import.meta.url), renderSvg(theme, state));
     }
   }
