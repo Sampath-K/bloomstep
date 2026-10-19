@@ -2,13 +2,66 @@ import 'package:budlark/app/theme.dart';
 import 'package:budlark/features/garden/garden_screen.dart';
 import 'package:budlark/features/garden/profile_section.dart';
 import 'package:budlark/services/identity.dart';
+import 'package:budlark/services/anonymous_feedback.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:http/http.dart' as http;
+import 'package:http/testing.dart';
 
 import 'garden_learning_test.dart' show fixture, settleDatabase;
 import 'support/visual_capture.dart';
 
 void main() {
+  for (final guest in [false, true]) {
+    for (final accepted in [false, true]) {
+      testWidgets('anonymous feedback ${accepted ? "receipt" : "queue"} is honest, guest=$guest', (tester) async {
+        final (store, _) = await fixture(tester);
+        final directory = await Directory.systemTemp.createTemp('feedback-ui-');
+        addTearDown(() => directory.delete(recursive: true));
+        var requests = 0;
+        final feedback = AnonymousFeedback(
+          directory.path,
+          origin: 'https://api.example.invalid/api',
+          client: MockClient((request) async {
+            requests++;
+            expect(request.headers.keys.map((key) => key.toLowerCase()), isNot(contains('authorization')));
+            final payload = jsonDecode(request.body) as Map<String, dynamic>;
+            expect(payload.keys.toSet(), {'consent', 'deviceId', 'requestId', 'text'});
+            expect(payload['consent'], isTrue);
+            return accepted
+                ? http.Response(jsonEncode({
+                    'status': 'received',
+                    'receiptId': '11111111-1111-4111-8111-111111111111',
+                    'receivedAt': DateTime.now().toUtc().toIso8601String(),
+                  }), 201)
+                : http.Response('', 503);
+          }),
+        );
+        await tester.pumpWidget(MaterialApp(
+          home: GardenScreen(
+            store: store,
+            deviceGuest: guest,
+            testDisableServices: true,
+            anonymousFeedback: feedback,
+          ),
+        ));
+        await settleDatabase(tester);
+        await tester.tap(find.byTooltip('Help us grow'));
+        await tester.pumpAndSettle();
+        await tester.enterText(find.byType(TextField), 'Synthetic feedback only');
+        await tester.tap(find.widgetWithText(FilledButton, 'Send feedback'));
+        await settleDatabase(tester);
+        expect(requests, 1);
+        expect(find.text('Received by the team.'), accepted ? findsOneWidget : findsNothing);
+        expect(await tester.runAsync(feedback.pendingCount), accepted ? 0 : 1);
+        if (!accepted) {
+          expect(find.textContaining('Saved on this device — not received.'), findsOneWidget);
+        }
+        await tester.tap(find.widgetWithText(TextButton, accepted ? 'Done' : 'Close'));
+        await tester.pumpAndSettle();
+      });
+    }
+  }
   for (final signedIn in [false, true]) {
     testWidgets('main window exposes ${signedIn ? "profile" : "sign-in"}', (
       tester,
@@ -29,13 +82,16 @@ void main() {
                 : null,
             onSignIn: () async { actions++; },
             onSignOut: () async { actions++; },
+            onManage: () { actions++; },
           ),
         ),
       ));
       await settleDatabase(tester);
       expect(find.text(signedIn ? 'Alex Rivera' : 'Not signed in'), findsOneWidget);
       expect(find.text("Your account doesn't include a name."), findsNothing);
-      await tester.tap(find.widgetWithText(TextButton, signedIn ? 'Sign out' : 'Sign in'));
+      final card = find.byTooltip('Profile and account');
+      expect(tester.getCenter(card).dx, greaterThan(tester.view.physicalSize.width / 2));
+      await tester.tap(card);
       expect(actions, 1);
       expect(tester.takeException(), isNull);
     });
@@ -268,3 +324,5 @@ void main() {
     }
   });
 }
+import 'dart:convert';
+import 'dart:io';

@@ -1,7 +1,209 @@
 import 'package:budlark/services/identity.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:http/http.dart' as http;
+import 'package:http/testing.dart';
 
 void main() {
+  group('verified current sign-in provider, not linked-provider inventory', () {
+    test('recognizes standard upstream identity-provider claims only', () {
+      for (final idp in ['google.com', 'https://accounts.google.com']) {
+        expect(
+          IdentityProfile.fromClaims({'idp': idp}).signInProvider,
+          'Google',
+        );
+      }
+      for (final idp in ['live.com', 'https://login.live.com']) {
+        expect(
+          IdentityProfile.fromClaims({'idp': idp}).signInProvider,
+          'Microsoft',
+        );
+      }
+    });
+
+    test('does not infer provider from email, userinfo or unknown CIAM issuer', () {
+      for (final claims in [
+        {'email': 'person@gmail.com'},
+        {'preferred_username': 'person@outlook.com'},
+        {'iss': 'https://example.ciamlogin.com/tenant/v2.0'},
+        {'idp': 'https://accounts.google.com.attacker.invalid'},
+        {'idp': ['google.com']},
+      ]) {
+        expect(IdentityProfile.fromClaims(claims).signInProvider, isNull);
+      }
+      expect(
+        IdentityProfile.fromClaims(
+          {'sub': 'subject'},
+          userInfo: {'sub': 'subject', 'idp': 'google.com'},
+        ).signInProvider,
+        isNull,
+      );
+    });
+
+    test('recognizes direct Google issuer without claiming linked accounts', () {
+      expect(
+        IdentityProfile.fromClaims({
+          'iss': 'https://accounts.google.com',
+        }).signInProvider,
+        'Google',
+      );
+    });
+
+    test('a generic workforce issuer does not prove the upstream method', () {
+      expect(
+        IdentityProfile.fromClaims({
+          'tid': '11111111-2222-4333-8444-555555555555',
+          'iss':
+              'https://login.microsoftonline.com/'
+              '11111111-2222-4333-8444-555555555555/v2.0',
+        }).signInProvider,
+        isNull,
+      );
+    });
+  });
+
+  group('already-authorized Microsoft Graph profile fallback', () {
+    const claims = {
+      'iss':
+          'https://login.microsoftonline.com/'
+          '9188040d-6c67-4c5b-b112-36a304b66dad/v2.0',
+      'tid': '9188040d-6c67-4c5b-b112-36a304b66dad',
+      'oid': '11111111-2222-4333-8444-555555555555',
+      'sub': 'signed-in-subject',
+    };
+    const tokenResponse = {
+      'access_token': 'synthetic-opaque-graph-token',
+      'token_type': 'Bearer',
+      'scope': 'https://graph.microsoft.com/User.Read',
+    };
+
+    test('requests only fixed /me endpoint with existing delegated token', () async {
+      final client = MockClient((request) async {
+        expect(
+          request.url.toString(),
+          'https://graph.microsoft.com/v1.0/me'
+          '?\$select=id,displayName,givenName,surname',
+        );
+        expect(request.followRedirects, isFalse);
+        expect(
+          request.headers['Authorization'],
+          'Bearer synthetic-opaque-graph-token',
+        );
+        return http.Response(
+          '{"id":"${claims['oid']}","displayName":"Graph Name",'
+          '"givenName":"Ada","surname":"Lovelace"}',
+          200,
+        );
+      });
+      final info = await IdentityProfile.microsoftGraphUserInfo(
+        verifiedClaims: claims,
+        tokenResponse: tokenResponse,
+        client: client,
+      );
+      expect(info, {
+        'sub': 'signed-in-subject',
+        'name': 'Graph Name',
+        'given_name': 'Ada',
+        'family_name': 'Lovelace',
+      });
+      expect(
+        IdentityProfile.fromClaims(claims, userInfo: info).displayName,
+        'Graph Name',
+      );
+      expect(
+        IdentityProfile.fromClaims({
+          ...claims,
+          'name': 'Token Name',
+        }, userInfo: info).displayName,
+        'Token Name',
+      );
+      expect(IdentityProfile.fromClaims(claims).signInProvider, 'Microsoft');
+    });
+
+    test('Graph givenName/surname work without displayName', () async {
+      final info = await IdentityProfile.microsoftGraphUserInfo(
+        verifiedClaims: claims,
+        tokenResponse: tokenResponse,
+        client: MockClient(
+          (_) async => http.Response(
+            '{"id":"${claims['oid']}","givenName":"Ada","surname":"Lovelace"}',
+            200,
+          ),
+        ),
+      );
+      expect(
+        IdentityProfile.fromClaims(claims, userInfo: info).displayName,
+        'Ada Lovelace',
+      );
+    });
+
+    test('CIAM identity and non-Graph tokens never cause a Graph request', () async {
+      var requests = 0;
+      final client = MockClient((_) async {
+        requests++;
+        return http.Response('', 401);
+      });
+      for (final token in [
+        {...tokenResponse, 'scope': 'api://budlark/sync'},
+        {...tokenResponse, 'scope': 'User.Read'},
+        {...tokenResponse, 'scope': 'https://graph.microsoft.com/User.Read.All'},
+        {...tokenResponse, 'token_type': 'not-bearer'},
+        {...tokenResponse, 'access_token': ''},
+      ]) {
+        expect(
+          await IdentityProfile.microsoftGraphUserInfo(
+            verifiedClaims: claims,
+            tokenResponse: token,
+            client: client,
+          ),
+          isEmpty,
+        );
+      }
+      expect(
+        await IdentityProfile.microsoftGraphUserInfo(
+          verifiedClaims: {
+            ...claims,
+            'iss': 'https://example.ciamlogin.com/tenant/v2.0',
+          },
+          tokenResponse: tokenResponse,
+          client: client,
+        ),
+        isEmpty,
+      );
+      expect(requests, 0);
+    });
+
+    test('wrong account, redirects, errors and malformed responses are optional', () async {
+      for (final response in [
+        http.Response('{"id":"another-account","displayName":"Wrong"}', 200),
+        http.Response('{"displayName":"Missing account"}', 200),
+        http.Response('not json', 200),
+        http.Response('[]', 200),
+        http.Response('', 302, headers: {'location': 'https://other.invalid'}),
+        http.Response('', 401),
+        http.Response('', 403),
+        http.Response('', 404),
+        http.Response('x' * (64 * 1024 + 1), 200),
+      ]) {
+        expect(
+          await IdentityProfile.microsoftGraphUserInfo(
+            verifiedClaims: claims,
+            tokenResponse: tokenResponse,
+            client: MockClient((_) async => response),
+          ),
+          isEmpty,
+        );
+      }
+      expect(
+        await IdentityProfile.microsoftGraphUserInfo(
+          verifiedClaims: claims,
+          tokenResponse: tokenResponse,
+          client: MockClient((_) async => throw http.ClientException('offline')),
+        ),
+        isEmpty,
+      );
+    });
+  });
+
   group('identity display names', () {
     test('verified token name wins over component and account claims', () {
       expect(

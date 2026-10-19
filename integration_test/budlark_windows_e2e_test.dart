@@ -275,7 +275,9 @@ void main() {
       );
       var recipes = await activeStore!.habits();
       final firstRecipe = recipes.single;
-      expect(firstRecipe.behavior, 'take one slow breath');
+      expect(firstRecipe.anchor, 'drink coffee');
+      expect(firstRecipe.behavior, 'take one breath');
+      expect(firstRecipe.celebration, 'smile');
       await syncService().sync();
       expect((await activeStore!.habits()).single.id, firstRecipe.id);
       expect((await activeStore!.syncPayload())['habits'], isEmpty);
@@ -751,37 +753,25 @@ Future<void> _plant(
   String? behavior,
   GlobalKey? captureBoundary,
 }) async {
+  final plantingTime = Stopwatch()..start();
   await tester.tap(find.text('Plant a habit'));
   await tester.pumpAndSettle();
+  expect(find.text('Plant a Seed').hitTestable(), findsOneWidget);
+  expect(find.text('coffee'), findsOneWidget);
+  expect(find.text('take one breath'), findsOneWidget);
+  expect(find.byType(TextFormField), findsNothing);
   if (captureBoundary != null) {
-    await _captureBuilderFrame(tester, captureBoundary, 'picker-1-anchor');
+    await _captureBuilderFrame(tester, captureBoundary, 'P14-quick-plant');
   }
-  await tester.ensureVisible(find.text('pour my morning drink'));
-  await tester.tap(find.text('pour my morning drink'));
-  await tester.pumpAndSettle();
-  if (captureBoundary != null) {
-    await _captureBuilderFrame(tester, captureBoundary, 'picker-2-action');
-  }
-  if (behavior == null) {
-    await tester.ensureVisible(find.text('take one slow breath'));
-    await tester.tap(find.text('take one slow breath'));
-  } else {
+  if (behavior != null) {
+    await tester.tap(find.text('More'));
+    await tester.pumpAndSettle();
     await tester.ensureVisible(find.widgetWithText(TextFormField, 'I will...'));
     await tester.enterText(
       find.widgetWithText(TextFormField, 'I will...'),
       behavior,
     );
     await tester.pumpAndSettle();
-    await tester.tap(find.text('Choose a celebration'));
-  }
-  await tester.pumpAndSettle();
-  if (captureBoundary != null) {
-    await _captureBuilderFrame(tester, captureBoundary, 'picker-3-celebration');
-  }
-  await tester.ensureVisible(find.text('relax my shoulders and smile'));
-  await tester.tap(find.text('relax my shoulders and smile'));
-  await tester.pumpAndSettle();
-  if (behavior != null) {
     await tester.ensureVisible(find.text('I practiced my celebration'));
     await tester.tap(find.text('I practiced my celebration'));
     await tester.pumpAndSettle();
@@ -790,16 +780,21 @@ Future<void> _plant(
     await _captureBuilderFrame(
       tester,
       captureBoundary,
-      'picker-complete-optional-practice-off',
+      'P14-before-plant',
     );
   }
-  await tester.tap(find.text('Plant this seed'));
+  await tester.tap(find.text('Plant a Seed'));
   await _waitFor(tester, find.text('See my garden'));
   if (captureBoundary != null) {
     await _captureBuilderFrame(tester, captureBoundary, 'planted-next-step');
   }
   await tester.tap(find.text('See my garden'));
   await tester.pumpAndSettle();
+  plantingTime.stop();
+  if (behavior == null) {
+    expect(plantingTime.elapsed, lessThan(const Duration(seconds: 10)),
+        reason: 'P14 native UI default plant and confirmation wallclock time.');
+  }
 }
 
 Future<void> _captureBuilderFrame(

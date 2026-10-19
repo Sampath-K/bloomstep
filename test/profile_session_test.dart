@@ -199,20 +199,14 @@ void main() {
     await tester.tap(find.text('Plant a habit'));
     await tester.pumpAndSettle();
     expect(find.text('Sign in securely'), findsNothing);
-    expect(find.text('pour my morning drink'), findsOneWidget);
-    await tester.ensureVisible(find.text('pour my morning drink'));
-    await tester.tap(find.text('pour my morning drink'));
-    await tester.pumpAndSettle();
-    await tester.ensureVisible(find.text('take one slow breath'));
-    await tester.tap(find.text('take one slow breath'));
-    await tester.pumpAndSettle();
-    await tester.ensureVisible(find.text('relax my shoulders and smile'));
-    await tester.tap(find.text('relax my shoulders and smile'));
+    expect(find.text('Plant a Seed').hitTestable(), findsOneWidget);
+    expect(find.text('coffee'), findsOneWidget);
+    await tester.tap(find.text('More'));
     await tester.pumpAndSettle();
     await tester.ensureVisible(find.text('I practiced my celebration'));
     await tester.tap(find.text('I practiced my celebration'));
     await tester.pumpAndSettle();
-    await tester.tap(find.text('Plant this seed'));
+    await tester.tap(find.text('Plant a Seed'));
     await _ready(tester, find.text('See my garden'));
     await tester.tap(find.text('See my garden'));
     await _ready(tester, find.text('Did it'));
@@ -554,7 +548,8 @@ void main() {
       await tester.pumpAndSettle();
       await tester.tap(find.text('Plant a habit'));
       await tester.pumpAndSettle();
-      expect(find.text('pour my morning drink'), findsOneWidget);
+      expect(find.text('Plant a Seed').hitTestable(), findsOneWidget);
+      expect(find.text('coffee'), findsOneWidget);
       await tester.pumpWidget(const SizedBox());
       await tester.runAsync(
         () => Future<void>.delayed(const Duration(milliseconds: 150)),

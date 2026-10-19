@@ -91,9 +91,19 @@ Future<void> ready(
       () => Future<void>.delayed(const Duration(milliseconds: 20)),
     );
     await tester.pump(const Duration(milliseconds: 350));
+    if (find.text('Sign in to grow').evaluate().isNotEmpty &&
+        find.byType(GardenScreen).evaluate().isEmpty) {
+      await tester.tap(find.byTooltip('Settings and privacy'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Advanced'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Use a device-only garden'));
+      await settleUi();
+      continue;
+    }
     if (dismissRecipeBuilder &&
         find.byType(RecipeBuilder).evaluate().isNotEmpty &&
-        (find.text('Choose a moment').evaluate().isNotEmpty ||
+        (find.text('Plant a Seed').evaluate().isNotEmpty ||
             find.text('Plant one tiny step').evaluate().isNotEmpty ||
             find.text('Adjust your recipe').evaluate().isNotEmpty)) {
       final cancel = find.descendant(
@@ -244,7 +254,8 @@ void main() {
       ))!,
     );
     await ready(tester, find.byType(RecipeBuilder));
-    expect(find.text('Choose a moment'), findsOneWidget);
+    expect(find.text('Plant a Seed').hitTestable(), findsOneWidget);
+    expect(find.text('More'), findsOneWidget);
     await captureFirstHabitScreen(tester, screenshotKey);
     await tester.tap(find.widgetWithText(TextButton, 'Cancel'));
     await tester.pumpAndSettle();
