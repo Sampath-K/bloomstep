@@ -75,7 +75,10 @@ try {
     assert.equal(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), true, `reflow ${width} JS=${js}`);
     assert.equal(await page.$eval('#website-consent', node => node.checked), false);
     assert.match(await page.$eval('#download-prerequisites', node => node.textContent), /unsigned/);
-    assert.equal(await page.$eval('[data-universal-download] a', node => new URL(node.href).hostname), 'github.com');
+    assert.equal(await page.$eval('[data-universal-download] a', node => node.href),
+      'https://budlark.com/downloads/Budlark-0.1.0-windows-universal-setup.exe');
+    assert.equal(await page.$eval('[data-universal-download] a', node => node.textContent.trim()),
+      'Internal dogfood preview (unsigned; designated testers only)');
     assert.equal((await page.cookies()).length, 0);
     if (js) {
       assert.equal(await page.evaluate(() => localStorage.length + sessionStorage.length), 0);

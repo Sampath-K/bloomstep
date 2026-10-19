@@ -81,7 +81,7 @@ test('Grove graduation is an app milestone, not a claim of automaticity or perma
   assert.match(releases, /This is an app milestone, not proof that the habit became automatic or permanent/);
   assert.doesNotMatch(releases, /automatic habits graduate/);
 });
-test('launch documentation matches the configured preview14 pointer and keeps contact facts bounded', () => {
+test('launch documentation matches the hosted dogfood pointer and keeps contact facts bounded', () => {
   const config = JSON.parse(readFileSync(new URL('../customer-config.json', import.meta.url), 'utf8'));
   const launch = readFileSync(new URL('../../docs/website-launch.md', import.meta.url), 'utf8');
   const funnel = readFileSync(new URL('../../docs/website-funnel.md', import.meta.url), 'utf8');
@@ -91,13 +91,12 @@ test('launch documentation matches the configured preview14 pointer and keeps co
     assert.ok(documentation.includes(config.release.tag));
     assert.ok(documentation.includes(universal.url));
     assert.ok(documentation.includes(universal.sha256));
-    assert.ok(documentation.includes('22,261,590 bytes'));
+    assert.ok(documentation.includes('22,392,273 bytes'));
     assert.doesNotMatch(documentation, /current(?: website)? download(?: pointer)?[^\n]*preview\.12|21,542,145/);
   }
   assert.match(normalizedFunnel, /Preview\.8 warning screenshots are historical evidence only/);
-  assert.match(normalizedFunnel, /not a newer owner-test candidate or approval to upgrade the website pointer/);
-  assert.match(launch, /not a general release or an upgrade to the newer owner-test candidate/);
-  assert.match(launch, /owner manual verification of that newer exact installer is pending/);
+  assert.match(normalizedFunnel, /Legacy `v0\.1\.0-preview\.14` ARM64\/x64 GitHub links remain collapsed troubleshooting options/);
+  assert.match(launch, /Owner manual installation and first-launch verification remain pending/);
   assert.match(normalizedFunnel, /owner-approved public support\/privacy contact/);
   assert.match(normalizedFunnel, /Mailbox delivery has not been tested/);
   assert.match(normalizedFunnel, /does not resolve the formal controller\/legal identity, applicable jurisdiction-specific legal bases, provider logging or identity retention, or processor and backup deletion\/recovery behavior/);

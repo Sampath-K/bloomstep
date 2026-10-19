@@ -43,7 +43,7 @@ test('stable Windows storage is installed before instance, invitations and crede
 
 test('site, operator popup and download labels are product-branded', () => {
   const site = read('site/index.html');
-  assert.match(site, /Owner-test download \(designated testers only\)/);
+  assert.match(site, /Internal dogfood preview \(unsigned; designated testers only\)/);
   assert.match(site, /Budlark ARM64/);
   assert.match(site, /Budlark x64/);
   assert.doesNotMatch(site, /Sign in to Budlark operator console/);
@@ -54,12 +54,12 @@ test('site, operator popup and download labels are product-branded', () => {
 
 test('customer release page makes the owner-test restriction clear and excludes operator evidence', () => {
   const site = read('site/releases/index.html');
-  for (const arch of ['arm64', 'x64', 'universal']) {
+  for (const arch of ['arm64', 'x64']) {
     assert.ok(site.includes(`releases/download/v0.1.0-preview.14/Budlark-0.1.0-preview.14-windows-${arch}-setup.exe`));
   }
-  assert.ok(site.includes('7ad56cc3c71a40d78dd7cb043b43aa42ea884cb0484da982cffa386c9384b094'));
-  assert.match(site, /Early preview — not yet verified for general use/);
-  assert.match(site, /The files are publicly reachable, but download them only if you are the designated tester/);
+  assert.ok(site.includes('https://budlark.com/downloads/Budlark-0.1.0-windows-universal-setup.exe'));
+  assert.ok(site.includes('b53767c405fa9b704fb828d221f883b81d14231e3ebf65dd8820d3812fd42a2c'));
+  assert.match(site, /Internal dogfood preview — not verified for general use/);
   assert.match(site, /Launch after installation and the complete app journey have not been verified/);
   assert.match(site, /Recent preview changes/);
   assert.doesNotMatch(site, /owner-trial-checklist|docs\/status\.md|\bCI\b|elevated worker|launch gates|support receipts|stale-device|API audit/i);
@@ -119,7 +119,7 @@ test('public metadata and download labels use Budlark', () => {
     assert.match(html, /<title>Budlark/);
     assert.match(html, /property="og:title" content="Budlark/);
     assert.match(html, /name="twitter:title" content="Budlark/);
-    assert.match(html, /Budlark-0\.1\.0-preview\.14-windows-universal-setup\.exe/);
+    assert.match(html, /Budlark-0\.1\.0-windows-universal-setup\.exe/);
   }
   assert.match(read('site/index.html'), /"name":"Budlark"/);
   assert.match(read('site/release-downloads.mjs'), />Budlark x64</);
