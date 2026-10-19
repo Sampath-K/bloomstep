@@ -200,6 +200,7 @@ void main() {
             ),
             home: GardenScreen(
               store: store,
+              testDisableServices: true,
               deviceGuest: variant.device,
               profileBuilder: profile,
               profileSummaryBuilder: (signOut, manage) =>

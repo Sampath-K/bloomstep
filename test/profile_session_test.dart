@@ -296,7 +296,7 @@ void main() {
     await _screenshot(tester, boundaryKey, 'profile-signed-out.png');
     await _ready(tester, find.text('Sign in with Microsoft or Google'));
     await _tapTextButton(tester, 'Sign in with Microsoft or Google');
-    await _ready(tester, find.text('ST'));
+    await _ready(tester, find.widgetWithText(TextButton, 'Sign out'));
     expect(find.text('Signed in'), findsNothing);
     expect(find.text('Synthetic Garden Tester'), findsOneWidget);
     expect(find.textContaining('synthetic@example.invalid'), findsNothing);
