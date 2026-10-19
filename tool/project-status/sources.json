@@ -1,0 +1,528 @@
+{
+  "repo": "Sampath-K/bloomstep",
+  "maxAgeSeconds": 300,
+  "target": "launch",
+  "sources": [
+    "docs/status.md",
+    "docs/mvp-exit-matrix.md",
+    "docs/experiments.md"
+  ],
+  "workstreams": [
+    {
+      "id": "release",
+      "title": "Budlark release PR52: hosted-only installer CI",
+      "owner": "Release session b4bec15c",
+      "nextAction": "Await PR52 exact-head required jobs; investigate only observed failures or cancellations. Dashboard does not change CI or protections.",
+      "agentNext": "Release session b4bec15c: finish PR52 exact-head hosted checks and produce the installer artifact for owner testing.",
+      "kind": "pull",
+      "number": 52,
+      "workflow": "ci.yml",
+      "requiredJobs": [
+        "api",
+        "test-and-build-windows (windows-latest, x64)",
+        "test-and-build-windows (windows-11-arm, arm64)"
+      ],
+      "dependencies": [],
+      "note": "Owned by the release session; observed read-only. First step of the current owner-trial launch sequence."
+    },
+    {
+      "id": "installer",
+      "title": "Installer artifact for owner test",
+      "owner": "Release session b4bec15c",
+      "nextAction": "Publish the exact installer artifact built from passing PR52 checks and record its version and checksum.",
+      "kind": "manual",
+      "dependencies": [
+        {
+          "id": "release",
+          "accept": [
+            "review-ready",
+            "merged"
+          ]
+        }
+      ],
+      "agentNext": "Release session: attach the exact installer artifact (version + checksum) from passing PR52 checks.",
+      "note": "No live artifact source is configured, so state stays UNKNOWN until evidence exists; never inferred from CI passing."
+    },
+    {
+      "id": "owner-check",
+      "title": "Owner manual installer check",
+      "owner": "Owner",
+      "nextAction": "Owner installs and launches the exact installer artifact on Windows and records the result.",
+      "kind": "manual",
+      "dependencies": [
+        {
+          "id": "installer",
+          "accept": [
+            "verified"
+          ]
+        }
+      ],
+      "ownerNext": "Manually install and launch the exact installer artifact on Windows and record pass/fail with the version tested.",
+      "note": "Replaces abandoned VM acceptance. No live source; remains UNKNOWN until the owner records a result."
+    },
+    {
+      "id": "integration",
+      "title": "Approved integration / release",
+      "owner": "Release session b4bec15c + owner approval",
+      "nextAction": "Integrate and publish only the owner-checked revision after approval.",
+      "kind": "manual",
+      "dependencies": [
+        {
+          "id": "release",
+          "accept": [
+            "merged"
+          ]
+        },
+        {
+          "id": "owner-check",
+          "accept": [
+            "verified"
+          ]
+        }
+      ],
+      "agentNext": "Release session: integrate and publish only the owner-checked revision once approved.",
+      "ownerNext": "Approve integration/release of the owner-checked revision.",
+      "note": "No live source; merged PR52 alone is not an approved release."
+    },
+    {
+      "id": "website",
+      "title": "Website PR54: host versioned installers on budlark.com",
+      "owner": "Website session 29688352",
+      "nextAction": "Observed read-only. Inspect exact-head job outcomes; investigate only observed failures or cancellations.",
+      "agentNext": "Website session 29688352: address observed PR54 exact-head failures and keep hosting tied to the approved release.",
+      "kind": "pull",
+      "number": 54,
+      "workflow": "ci.yml",
+      "requiredJobs": [
+        "api",
+        "test-and-build-windows (windows-latest, x64)",
+        "test-and-build-windows (windows-11-arm, arm64)"
+      ],
+      "dependencies": [],
+      "note": "Owned by the website session; observed read-only. Required before live download verification. No deployment is performed here."
+    },
+    {
+      "id": "download",
+      "title": "Live download verification on budlark.com",
+      "owner": "Website session 29688352",
+      "nextAction": "Verify the live budlark.com download serves the approved release (version + checksum).",
+      "kind": "manual",
+      "dependencies": [
+        {
+          "id": "integration",
+          "accept": [
+            "verified"
+          ]
+        },
+        {
+          "id": "website",
+          "accept": [
+            "merged"
+          ]
+        }
+      ],
+      "agentNext": "Website session: verify the live download serves the approved installer version and checksum.",
+      "ownerNext": "Confirm the live download from budlark.com installs the approved version.",
+      "note": "No live source; merged PR54 is hosting code only, not a verified live download."
+    },
+    {
+      "id": "launch",
+      "title": "Owner-trial launch decision",
+      "owner": "Product / release owner",
+      "nextAction": "Decide owner-trial launch once live download verification is recorded. Public-MVP acceptance is a separate decision.",
+      "kind": "manual",
+      "dependencies": [
+        {
+          "id": "download",
+          "accept": [
+            "verified"
+          ]
+        }
+      ],
+      "note": "Owner-trial only, not public-MVP readiness. Current sequence: PR52 hosted checks -> installer artifact -> owner manual check -> approved integration/release + PR54 hosting -> live download verification. A dependency map, not a dated Gantt.",
+      "ownerNext": "Make the owner-trial launch decision after live download verification."
+    },
+    {
+      "id": "continuity",
+      "title": "Device-garden continuity",
+      "owner": "Continuity engineering / PR author",
+      "nextAction": "Inspect exact-head job outcomes: await pending jobs, investigate reported failures or cancellation separately, then review PR48. Do not infer native acceptance.",
+      "kind": "pull",
+      "number": 48,
+      "workflow": "ci.yml",
+      "requiredJobs": [
+        "api",
+        "test-and-build-windows (windows-latest, x64)",
+        "test-and-build-windows (windows-11-arm, arm64)"
+      ],
+      "dependencies": [],
+      "agentNext": "Keep PR48 exact-head CI current; report observed failures or cancellations, not assumed ones.",
+      "note": "Context only: not in the current owner-trial launch sequence (PR52 hosted checks -> installer -> owner manual check -> integration/release + PR54 hosting -> live download)."
+    },
+    {
+      "id": "growthbook",
+      "title": "Default-off GrowthBook adapter",
+      "owner": "Experiment engineering / PR author",
+      "nextAction": "Inspect exact-head job outcomes: await pending jobs and investigate only observed failures or cancellation before reviewing PR49; hosted activation is separate.",
+      "kind": "pull",
+      "number": 49,
+      "workflow": "ci.yml",
+      "requiredJobs": [
+        "api",
+        "test-and-build-windows (windows-latest, x64)",
+        "test-and-build-windows (windows-11-arm, arm64)"
+      ],
+      "dependencies": [],
+      "agentNext": "Take PR49 out of draft only after exact-head required jobs pass with experiments default OFF.",
+      "note": "Context only: not in the current owner-trial launch sequence (PR52 hosted checks -> installer -> owner manual check -> integration/release + PR54 hosting -> live download)."
+    },
+    {
+      "id": "visual",
+      "title": "Visual invitation dialog",
+      "owner": "Visual engineering",
+      "nextAction": "Publish exact-head review evidence and hand off to the candidate integrator.",
+      "kind": "branch",
+      "branch": "sampath-k-visual-invitation-dialog",
+      "workflow": "ci.yml",
+      "requiredJobs": [
+        "api",
+        "test-and-build-windows (windows-latest, x64)",
+        "test-and-build-windows (windows-11-arm, arm64)"
+      ],
+      "dependencies": [],
+      "note": "Reported finalizing by the coordinator on 2026-10-16. Agent activity is not observable by this collector. Context only: not in the current owner-trial launch sequence (PR52 hosted checks -> installer -> owner manual check -> integration/release + PR54 hosting -> live download).",
+      "agentNext": "Open or update the visual invitation PR with exact-head evidence and hand off to the candidate integrator."
+    },
+    {
+      "id": "candidate",
+      "title": "Combined owner-trial candidate",
+      "owner": "Candidate integrator",
+      "nextAction": "After visual handoff, compose the reviewed exact revisions and supply independent combined-head evidence.",
+      "kind": "gate",
+      "dependencies": [
+        {
+          "id": "continuity",
+          "accept": [
+            "review-ready",
+            "merged"
+          ]
+        },
+        {
+          "id": "growthbook",
+          "accept": [
+            "review-ready",
+            "merged"
+          ]
+        },
+        {
+          "id": "visual",
+          "accept": [
+            "review-ready",
+            "merged"
+          ]
+        }
+      ],
+      "note": "Planning gate only, not the combined agent's live state. No candidate PR/ref has been configured. Context only: not in the current owner-trial launch sequence (PR52 hosted checks -> installer -> owner manual check -> integration/release + PR54 hosting -> live download).",
+      "agentNext": "Compose the reviewed exact revisions into one candidate and publish combined-head evidence."
+    },
+    {
+      "id": "preview",
+      "title": "Published preview (independent of candidate)",
+      "owner": "Release maintainer",
+      "nextAction": "Compare the published immutable tag SHA with the intended candidate before any new release decision.",
+      "kind": "release",
+      "dependencies": [],
+      "note": "Latest published GitHub release including prereleases. Publication does not prove installation, security or launch. Context only: not in the current owner-trial launch sequence (PR52 hosted checks -> installer -> owner manual check -> integration/release + PR54 hosting -> live download).",
+      "agentNext": "Confirm the published tag SHA matches the intended candidate before any new release."
+    },
+    {
+      "id": "native",
+      "title": "Historical: protected VM native acceptance",
+      "owner": "None (VM work abandoned)",
+      "nextAction": "None. VM/protected-runner work was abandoned by the owner; cancelled jobs are retained as historical observations only.",
+      "kind": "workflow",
+      "release": "preview",
+      "workflow": "ci.yml",
+      "requiredJobs": [
+        "protected-installer-lifecycle (x64)",
+        "protected-installer-lifecycle (arm64)",
+        "universal-native-proof (x64)",
+        "universal-native-proof (arm64)",
+        "protected genuine app checked/unchecked launch (x64)",
+        "protected genuine app checked/unchecked launch (arm64)"
+      ],
+      "dependencies": [
+        {
+          "id": "preview",
+          "accept": [
+            "released"
+          ]
+        }
+      ],
+      "note": "Historical, non-gating. Cancelled protected VM jobs are shown for context and never gate the owner-trial decision; they do not imply install, security or launch verification. Context only: not in the current owner-trial launch sequence (PR52 hosted checks -> installer -> owner manual check -> integration/release + PR54 hosting -> live download)."
+    },
+    {
+      "id": "hosted",
+      "title": "Optional hosted GrowthBook connection / activation",
+      "owner": "Experiment operator",
+      "nextAction": "Supply reviewed hosted connection and consented acceptance evidence before any activation; no account or flag mutation is authorized.",
+      "kind": "manual",
+      "dependencies": [
+        {
+          "id": "growthbook",
+          "accept": [
+            "merged"
+          ]
+        }
+      ],
+      "note": "Separate optional gate, not an owner-trial prerequisite: experiments may remain default OFF. Coordinator reported not connected / OFF on 2026-10-16. No hosted API is configured, so current hosted state is UNKNOWN. Context only: not in the current owner-trial launch sequence (PR52 hosted checks -> installer -> owner manual check -> integration/release + PR54 hosting -> live download)."
+    },
+    {
+      "id": "installer-build",
+      "title": "PR52 exact-head universal installer built",
+      "owner": "Release session b4bec15c",
+      "nextAction": "Read only: the exact-head universal-installer job must succeed; owner manual installation check follows.",
+      "kind": "pull",
+      "number": 52,
+      "workflow": "ci.yml",
+      "requiredJobs": [
+        "universal-installer"
+      ],
+      "dependencies": [],
+      "note": "Context only: evidences that an installer candidate was built for the executive resource view; not owner acceptance, signing or release approval."
+    },
+    {
+      "id": "site-brand",
+      "title": "Live budlark.com shows Budlark branding",
+      "owner": "Website session 29688352 (site-only Budlark correction in session 6e73472b)",
+      "nextAction": "Publish the site-only Budlark correction through the permitted main deploy; this readback turns verified only when the live page title says Budlark.",
+      "kind": "site",
+      "url": "https://budlark.com/",
+      "expect": [
+        "<title>Budlark"
+      ],
+      "dependencies": [],
+      "note": "Context only: live public-page readback for the executive resource view; not in the owner-trial dependency map."
+    },
+    {
+      "id": "site-support",
+      "title": "Live support and privacy on budlark.com",
+      "owner": "Website session 29688352",
+      "nextAction": "Keep the public privacy notice and support contact reachable on the live site.",
+      "kind": "site",
+      "url": "https://budlark.com/",
+      "expect": [
+        "id=\"privacy\"",
+        "mailto:"
+      ],
+      "dependencies": [],
+      "note": "Context only: live public-page readback for the executive resource view; not in the owner-trial dependency map."
+    }
+  ],
+  "narrative": {
+    "release": "Next release: Budlark owner trial",
+    "headline": "Budlark: simpler personal habit garden, release validation in progress.",
+    "candidateReadiness": "Candidate preparation; owner installation validation pending",
+    "readyReadiness": "Ready for owner launch decision",
+    "product": [
+      "One consistent Budlark identity, from installer artwork to the app.",
+      "Clearer separation between the garden on this device and the garden in your account.",
+      "Plain disclosures before copying a garden or signing out.",
+      "Profile and settings accessibility improvements prepared."
+    ],
+    "system": [
+      "Expired sessions now close outdated profile dialogs instead of leaving them open.",
+      "Hosted verification checks both Windows architectures before an installer is packaged."
+    ],
+    "resources": [
+      {
+        "id": "website",
+        "name": "Website",
+        "scope": "budlark.com brand, support and privacy pages.",
+        "dependsOn": [],
+        "parts": [
+          {
+            "label": "Brand and content",
+            "prepare": [
+              {
+                "label": "Budlark site content prepared"
+              }
+            ],
+            "verify": [
+              {
+                "label": "Live site shows Budlark",
+                "attentionLabel": "website brand",
+                "source": "site-brand",
+                "done": [
+                  "verified"
+                ]
+              }
+            ]
+          },
+          {
+            "label": "Support and privacy",
+            "prepare": [],
+            "verify": [
+              {
+                "label": "Support and privacy pages live",
+                "attentionLabel": "support and privacy pages",
+                "source": "site-support",
+                "done": [
+                  "verified"
+                ]
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "id": "download",
+        "name": "Download",
+        "scope": "Windows installers offered from budlark.com.",
+        "dependsOn": [
+          "app"
+        ],
+        "parts": [
+          {
+            "label": "Download",
+            "prepare": [
+              {
+                "label": "Download hosting prepared",
+                "attentionLabel": "download hosting",
+                "source": "website",
+                "done": [
+                  "review-ready",
+                  "merged"
+                ]
+              }
+            ],
+            "verify": [
+              {
+                "label": "Live download verified",
+                "attentionLabel": "live download",
+                "source": "download",
+                "done": [
+                  "verified"
+                ]
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "id": "app",
+        "name": "Windows app",
+        "scope": "The installed app, including the services it relies on: account, sync, insights and experiments.",
+        "dependsOn": [],
+        "parts": [
+          {
+            "label": "Windows app",
+            "prepare": [
+              {
+                "label": "Hosted quality checks",
+                "attentionLabel": "hosted quality checks",
+                "source": "release",
+                "done": [
+                  "review-ready",
+                  "merged"
+                ]
+              },
+              {
+                "label": "Installer candidate built",
+                "attentionLabel": "installer candidate",
+                "source": "installer-build",
+                "done": [
+                  "review-ready",
+                  "merged"
+                ]
+              }
+            ],
+            "verify": [
+              {
+                "label": "Owner accepted installation",
+                "attentionLabel": "owner installation",
+                "source": "owner-check",
+                "done": [
+                  "verified"
+                ]
+              },
+              {
+                "label": "Signed-in journeys work end to end"
+              },
+              {
+                "label": "Release approved",
+                "attentionLabel": "release approval",
+                "source": "integration",
+                "done": [
+                  "verified"
+                ]
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "id": "store",
+        "name": "Microsoft Store",
+        "scope": "Store listing, review and install.",
+        "dependsOn": [
+          "app"
+        ],
+        "parts": [
+          {
+            "label": "Microsoft Store",
+            "prepare": [
+              {
+                "label": "Store listing prepared"
+              }
+            ],
+            "verify": [
+              {
+                "label": "Listing live and installable"
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "id": "signin",
+        "name": "Sign-in",
+        "scope": "Microsoft account, Google and email-code sign-in and consent pages.",
+        "dependsOn": [],
+        "parts": [
+          {
+            "label": "Microsoft account",
+            "prepare": [],
+            "verify": [
+              {
+                "label": "Microsoft account sign-in verified"
+              }
+            ]
+          },
+          {
+            "label": "Google",
+            "prepare": [],
+            "verify": [
+              {
+                "label": "Google sign-in and consent screen verified"
+              }
+            ]
+          },
+          {
+            "label": "Email code",
+            "prepare": [],
+            "verify": [
+              {
+                "label": "Email-code sign-in verified"
+              }
+            ]
+          }
+        ]
+      }
+    ],
+    "notInRelease": [
+      "Apple App Store, Google Play and Mac App Store listings: later platforms, not counted for this release."
+    ],
+    "pendingNote": "owner installation pending"
+  }
+}

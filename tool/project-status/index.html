@@ -1,0 +1,262 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Budlark next release</title>
+<script>
+  (() => {
+    const param = new URLSearchParams(window.location.search).get("scoutTheme");
+    const theme =
+      param || (window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light");
+    document.documentElement.setAttribute("data-theme", theme);
+  })();
+</script>
+<style>
+:root {
+  color-scheme: light;
+  --cp-bg: #f7f4ef;
+  --cp-bg-elevated: #fcfbf8;
+  --cp-surface: #ffffff;
+  --cp-surface-soft: #f5f5f5;
+  --cp-border: #dedede;
+  --cp-border-strong: #919191;
+  --cp-text: #242424;
+  --cp-text-muted: #5c5c5c;
+  --cp-text-soft: #6f6f6f;
+  --cp-accent: #b11f4b;
+  --cp-accent-hover: #9a1a41;
+  --cp-accent-soft: rgba(177, 31, 75, 0.08);
+  --cp-accent-fg: #ffffff;
+  --cp-success: #16a34a;
+  --cp-danger: #dc2626;
+  --cp-warning: #f59e0b;
+  --cp-link: #0078d4;
+  --cp-shadow: 0 18px 48px rgba(0, 0, 0, 0.12);
+  --cp-overlay: rgba(255, 255, 255, 0.8);
+  --cp-panel: rgba(255, 255, 255, 0.86);
+  --cp-panel-strong: rgba(255, 255, 255, 0.96);
+  --cp-sheen: rgba(255, 255, 255, 0.55);
+  --cp-highlight: rgba(177, 31, 75, 0.12);
+}
+html[data-theme="dark"] {
+  color-scheme: dark;
+  --cp-bg: #3d3b3a;
+  --cp-bg-elevated: #343231;
+  --cp-surface: #292929;
+  --cp-surface-soft: #2e2e2e;
+  --cp-border: #474747;
+  --cp-border-strong: #5f5f5f;
+  --cp-text: #dedede;
+  --cp-text-muted: #919191;
+  --cp-text-soft: #b0b0b0;
+  --cp-accent: #fd8ea1;
+  --cp-accent-hover: #fb7b91;
+  --cp-accent-soft: rgba(253, 142, 161, 0.14);
+  --cp-accent-fg: #1a1a1a;
+  --cp-success: #4ade80;
+  --cp-danger: #f87171;
+  --cp-warning: #fbbf24;
+  --cp-link: #4da6ff;
+  --cp-shadow: 0 18px 48px rgba(0, 0, 0, 0.32);
+  --cp-overlay: rgba(41, 41, 41, 0.88);
+  --cp-panel: rgba(41, 41, 41, 0.72);
+  --cp-panel-strong: rgba(41, 41, 41, 0.96);
+  --cp-sheen: rgba(255, 255, 255, 0.04);
+  --cp-highlight: rgba(253, 142, 161, 0.12);
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; }
+body {
+  background: var(--cp-bg); color: var(--cp-text);
+  font-family: "Segoe UI", Aptos, Calibri, -apple-system, BlinkMacSystemFont, sans-serif;
+  line-height: 1.4;
+}
+main { max-width: 1280px; margin: 0 auto; padding: 20px 28px; min-height: 100vh; display: flex; flex-direction: column; gap: 14px; }
+header { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: start; gap: 24px; }
+.eyebrow { margin: 0; color: var(--cp-accent); font-weight: 600; letter-spacing: 0.04em; text-transform: uppercase; font-size: 0.8rem; }
+h1 { margin: 4px 0 0; font-size: clamp(1.4rem, 2.6vw, 2rem); line-height: 1.2; max-width: 40ch; }
+.status { text-align: right; min-width: 260px; max-width: 460px; }
+.pill { display: inline-block; padding: 6px 14px; border-radius: 0.625rem; font-weight: 600; border: 1px solid var(--cp-border-strong); background: var(--cp-surface); }
+.pill[data-tone="not-ready"] { border-color: var(--cp-danger); color: var(--cp-danger); }
+.pill[data-tone="in-progress"] { border-color: var(--cp-warning); }
+.pill[data-tone="ready"] { border-color: var(--cp-success); color: var(--cp-success); }
+.pill[data-tone="unknown"] { border-style: dashed; color: var(--cp-text-muted); }
+.readiness { margin: 8px 0 0; font-size: 1.02rem; font-weight: 600; }
+.fresh { margin: 6px 0 0; color: var(--cp-text-muted); font-size: 0.85rem; }
+.fresh[data-stale="true"] { color: var(--cp-danger); font-weight: 600; }
+section { background: var(--cp-surface); border: 1px solid var(--cp-border); border-radius: 16px; padding: 16px 20px;
+  box-shadow: 0 0 2px rgba(0,0,0,0.12), 0 1px 2px rgba(0,0,0,0.14); }
+h2 { margin: 0 0 4px; font-size: 1.1rem; }
+.basis { margin: 0 0 10px; color: var(--cp-text-soft); font-size: 0.8rem; }
+.section-head { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; flex-wrap: wrap; }
+.count { font-weight: 600; font-size: 0.9rem; }
+.resources { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 10px; list-style: none; padding: 0; margin: 0; }
+.resource { border: 1px solid var(--cp-border); border-radius: 0.625rem; padding: 10px 12px; margin: 0; background: var(--cp-bg-elevated); display: flex; flex-direction: column; gap: 6px; }
+.resource[data-tone="attention"] { border-color: var(--cp-danger); }
+.resource[data-tone="ready"] { border-color: var(--cp-success); }
+.resource h3 { margin: 0; font-size: 1rem; }
+.scope { margin: 0; color: var(--cp-text-soft); font-size: 0.75rem; }
+.parts { list-style: none; padding: 0; margin: 0; font-size: 0.78rem; }
+.parts li { display: flex; justify-content: space-between; align-items: center; gap: 8px; margin: 0 0 3px; }
+.next { margin: 0; font-size: 0.8rem; }
+.next b { font-weight: 600; }
+.grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 14px; align-items: start; }
+ul.points { margin: 0; padding-left: 18px; }
+ul.points li { margin: 0 0 6px; }
+.chip { align-self: flex-start; white-space: nowrap; font-size: 0.76rem; font-weight: 600; padding: 2px 10px; border-radius: 0.625rem; background: var(--cp-surface-soft); color: var(--cp-text-muted); border: 1px solid transparent; }
+.chip[data-status="ready"] { color: var(--cp-success); border-color: var(--cp-success); }
+.chip[data-status="prepared"] { color: var(--cp-text); border-color: var(--cp-border-strong); }
+.chip[data-status="attention"] { color: var(--cp-danger); background: var(--cp-accent-soft); }
+.chip[data-status="in-progress"] { color: var(--cp-text); }
+.chip[data-status="unknown"] { border-style: dashed; border-color: var(--cp-border-strong); }
+.recent, .deferred { margin: 10px 0 0; font-size: 0.8rem; color: var(--cp-text-muted); }
+.deferred { margin-top: 4px; color: var(--cp-text-soft); }
+footer { display: flex; justify-content: space-between; align-items: center; gap: 12px; color: var(--cp-text-soft); font-size: 0.78rem; flex-wrap: wrap; }
+button { font: inherit; font-size: 0.8rem; color: var(--cp-text); background: var(--cp-surface); border: 1px solid var(--cp-border-strong); border-radius: 0.625rem; padding: 4px 12px; cursor: pointer; }
+button:hover { border-color: var(--cp-accent); }
+button:focus-visible { outline: 2px solid var(--cp-accent); outline-offset: 2px; }
+@media (max-width: 860px) {
+  main { padding: 16px; min-height: 0; }
+  .grid, header { grid-template-columns: 1fr; }
+  .status { text-align: left; min-width: 0; }
+}
+</style>
+</head>
+<body>
+<main>
+  <header>
+    <div>
+      <p class="eyebrow" id="release">Next release</p>
+      <h1 id="headline">Loading release narrative…</h1>
+    </div>
+    <div class="status" role="status" aria-live="polite">
+      <span class="pill" id="pill" data-tone="unknown">Unknown</span>
+      <p class="readiness" id="readiness">Readiness unknown</p>
+      <p class="fresh" id="fresh" data-stale="true">No evidence loaded yet.</p>
+    </div>
+  </header>
+  <section aria-labelledby="h-progress">
+    <div class="section-head">
+      <h2 id="h-progress">Launch readiness by customer-facing resource</h2>
+      <span class="count" id="count"></span>
+    </div>
+    <p class="basis">Done only when every resource is live and verified. Preparation is not readiness; anything without evidence stays not ready.</p>
+    <ul class="resources" id="resources"></ul>
+    <p class="recent" id="recent"></p>
+    <p class="deferred" id="deferred"></p>
+  </section>
+  <div class="grid">
+    <section aria-labelledby="h-product">
+      <h2 id="h-product">Product taking shape</h2>
+      <p class="basis">What customers get in this release candidate. Not yet owner-validated or customer-proven.</p>
+      <ul class="points" id="product"></ul>
+    </section>
+    <section aria-labelledby="h-system">
+      <h2 id="h-system">System improving</h2>
+      <p class="basis">Quality and delivery improvements in the current release candidate.</p>
+      <ul class="points" id="system"></ul>
+    </section>
+  </div>
+  <footer>
+    <span id="note">Private local view. Refreshes automatically.</span>
+    <button type="button" id="reload">Refresh view</button>
+  </footer>
+</main>
+<script>
+(() => {
+  const $ = id => document.getElementById(id);
+  const toneText = { 'not-ready': 'Not ready', 'in-progress': 'In progress', ready: 'Ready for decision', unknown: 'Unknown' };
+  let snapshot = null, polling = null, loadError = '', loading = false;
+  const item = (tag, text, className) => { const node = document.createElement(tag); node.textContent = text; if (className) node.className = className; return node; };
+  const chip = (status, text) => { const node = item('span', text, 'chip'); node.dataset.status = status; return node; };
+  const ago = value => {
+    const ms = Date.now() - Date.parse(value);
+    if (!Number.isFinite(ms) || ms < 0) return null;
+    const min = Math.floor(ms / 60000);
+    return min < 1 ? 'under a minute ago' : min < 120 ? `${min} min ago` : `${Math.round(min / 60)} h ago`;
+  };
+  function resourceCard(r, stale) {
+    const tone = stale ? 'unknown' : r.tone;
+    const li = item('li', '', 'resource');
+    li.dataset.tone = tone;
+    li.append(item('h3', r.name), chip(tone, stale ? 'Unknown' : r.label), item('p', r.scope, 'scope'));
+    if (r.parts.length > 1) {
+      const parts = item('ul', '', 'parts');
+      for (const part of r.parts) {
+        const row = item('li', part.label);
+        row.append(chip(stale ? 'unknown' : part.tone, stale ? 'Unknown' : part.status));
+        parts.append(row);
+      }
+      li.append(parts);
+    }
+    const next = item('p', '', 'next');
+    if (stale) next.textContent = 'Evidence is out of date.';
+    else if (r.next) {
+      next.append(item('b', 'Remaining: '), document.createTextNode(r.next));
+      if (r.waitingOn.length) next.append(document.createTextNode(` (needs ${r.waitingOn.join(', ')} ready first)`));
+    } else next.textContent = 'Live and verified.';
+    li.append(next);
+    return li;
+  }
+  function render() {
+    const n = snapshot?.narrative;
+    if (!n) {
+      $('headline').textContent = 'Release narrative unavailable';
+      $('fresh').textContent = loadError || 'No release evidence has been collected yet.';
+      return;
+    }
+    const age = Date.now() - Date.parse(snapshot.collectedAt);
+    const pollFailed = polling?.mode === 'polling' && polling.status === 'failed' && Date.parse(polling.lastAttemptAt) > Date.parse(snapshot.collectedAt);
+    const stale = Boolean(loadError) || pollFailed || !Number.isFinite(age) || age < 0 || age > snapshot.config.maxAgeSeconds * 1000;
+    $('release').textContent = n.release;
+    $('headline').textContent = n.headline;
+    const tone = stale ? 'unknown' : n.readiness.tone;
+    $('pill').dataset.tone = tone;
+    $('pill').textContent = toneText[tone] ?? 'Unknown';
+    $('readiness').textContent = stale ? 'Readiness unknown: evidence is out of date' : n.readiness.label;
+    const success = ago(n.lastSourceSuccessAt);
+    $('fresh').dataset.stale = String(stale || snapshot.collectionState !== 'complete');
+    $('fresh').textContent = loadError ? `${loadError} Last successful refresh ${success ?? 'unknown'}; showing nothing as current.` :
+      pollFailed ? `Latest evidence refresh failed. Last successful refresh ${success ?? 'unknown'}; showing nothing as current.` :
+      stale ? `Evidence is stale${success ? `; last successful refresh ${success}` : ''}. Showing nothing as current.` :
+      snapshot.collectionState !== 'complete' ? `Some evidence could not be read; affected resources show Unknown. Last refreshed ${success ?? 'unknown'}.` :
+      `Evidence refreshed ${success}${polling?.mode === 'polling' ? `, every ${polling.intervalSeconds}s` : ''}.`;
+    $('count').textContent = stale ? 'Ready resources unknown' : `${n.resourcesReady.ready} of ${n.resourcesReady.total} ready`;
+    $('resources').replaceChildren(...n.resources.map(r => resourceCard(r, stale)));
+    $('product').replaceChildren(...n.product.map(text => item('li', text)));
+    $('system').replaceChildren(...n.system.map(text => item('li', text)));
+    const latest = n.recent[0];
+    $('recent').textContent = stale ? '' : latest ? `Latest change (${ago(latest.observedAt) ?? 'time unknown'}): ${latest.text}.` : 'No resource step has changed in the recent tracking window.';
+    $('deferred').textContent = n.notInRelease.length ? `Not in this release: ${n.notInRelease.join(' ')}` : '';
+    $('note').textContent = polling?.mode === 'polling' ? 'Private local view. Evidence is re-read automatically; agent activity is not shown.' :
+      'Private local view. Automatic evidence refresh is off; this page only rereads the saved snapshot.';
+  }
+  async function load() {
+    if (loading) return;
+    loading = true;
+    try {
+      const response = await fetch('/polling.json', { cache: 'no-store', signal: AbortSignal.timeout(5000) });
+      polling = response.ok ? await response.json() : null;
+    } catch { polling = null; }
+    try {
+      const response = await fetch('/snapshot.json', { cache: 'no-store', signal: AbortSignal.timeout(5000) });
+      if (!response.ok) throw Error(`evidence unavailable (HTTP ${response.status})`);
+      const data = await response.json();
+      if (!data?.narrative || !Array.isArray(data.narrative.resources) || !data.config?.maxAgeSeconds) throw Error('evidence is incomplete');
+      snapshot = data; loadError = '';
+    } catch (error) {
+      loadError = `Could not read evidence: ${error.message}.`;
+    } finally {
+      loading = false;
+      render();
+    }
+  }
+  $('reload').addEventListener('click', load);
+  setInterval(load, 15000);
+  setInterval(render, 1000);
+  load();
+})();
+</script>
+</body>
+</html>
