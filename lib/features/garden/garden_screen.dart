@@ -10,6 +10,7 @@ import '../../core/garden_store.dart';
 import '../../core/models.dart';
 import '../../core/rules.dart';
 import '../../services/identity.dart';
+import '../../services/anonymous_feedback.dart';
 import '../../services/sync_service.dart';
 import '../../services/desktop_reminders.dart';
 import '../../services/remote_config.dart';
@@ -39,6 +40,8 @@ class GardenScreen extends StatefulWidget {
     super.key,
     required this.store,
     this.identity,
+    this.anonymousFeedback,
+    this.onOpenDeviceGarden,
     this.updateService,
     this.reminderGateway,
     this.configLoader,
@@ -65,6 +68,8 @@ class GardenScreen extends StatefulWidget {
   });
   final GardenStore store;
   final IdentityService? identity;
+  final AnonymousFeedback? anonymousFeedback;
+  final VoidCallback? onOpenDeviceGarden;
   final UpdateService? updateService;
   final ReminderGateway? reminderGateway;
   final Future<RemoteConfigResult> Function(GardenStore)? configLoader;
@@ -153,7 +158,9 @@ class _GardenScreenState extends State<GardenScreen> {
     });
     _load();
     if (!widget.testDisableServices &&
-        (widget.identity != null || widget.reminderGateway != null)) {
+        (Platform.isWindows ||
+            widget.identity != null ||
+            widget.reminderGateway != null)) {
       reminders = DesktopReminders(
         widget.store,
         _load,
@@ -417,6 +424,20 @@ class _GardenScreenState extends State<GardenScreen> {
       }
     }
     return 'Windows reminders couldn’t be started. Check Windows Settings > System > Notifications, then try again.';
+  }
+
+  Future<void> _openNotificationSettings() async {
+    try {
+      if (reminders == null) {
+        throw StateError('Reminder setup is not available in this build.');
+      }
+      await reminders!.openNotificationSettings();
+    } catch (failure) {
+      if (mounted) {
+        setState(() => error =
+            'Could not open notification settings: $failure. Open Windows Settings > System > Notifications.');
+      }
+    }
   }
 
   Future<void> _initializeStartup() async {
@@ -1051,6 +1072,7 @@ class _GardenScreenState extends State<GardenScreen> {
     final body = TextEditingController();
     int? rating;
     String? feedbackId;
+    String? anonymousRequestId;
     String? status;
     bool sending = false;
     bool received = false;
@@ -1095,8 +1117,10 @@ class _GardenScreenState extends State<GardenScreen> {
                     ),
                   ),
                   Text(
-                    widget.deviceGuest
-                        ? 'This device garden cannot send feedback. Sign in to send it to the team.'
+                    widget.anonymousFeedback != null
+                        ? 'Send only this feedback; never your account or habits.'
+                        : widget.deviceGuest
+                        ? 'Saved on this device only; no team delivery is connected.'
                         : 'Sent only when you choose Send feedback. Unsent feedback stays on this device until it can sync.',
                   ),
                   if (status != null)
@@ -1109,9 +1133,12 @@ class _GardenScreenState extends State<GardenScreen> {
                 onPressed: sending ? null : () => Navigator.pop(context),
                 child: Text(received ? 'Done' : 'Close'),
               ),
-              if (!received)
+              if (!received &&
+                  !(widget.deviceGuest &&
+                      widget.anonymousFeedback == null &&
+                      feedbackId != null))
                 FilledButton(
-                  onPressed: sending || widget.deviceGuest
+                  onPressed: sending
                       ? null
                       : () async {
                           if (body.text.trim().isEmpty && rating == null) {
@@ -1122,17 +1149,40 @@ class _GardenScreenState extends State<GardenScreen> {
                           }
                           update(() {
                             sending = true;
-                            status = 'Sending…';
+                            status = widget.deviceGuest ? 'Saving…' : 'Sending…';
                           });
                           try {
                             widget.store.requireSyncSession(owner, generation);
+                            final anonymous = widget.anonymousFeedback;
+                            if (anonymous != null) {
+                              anonymousRequestId ??= await anonymous.enqueue(
+                                consent: true,
+                                text: body.text.trim().isEmpty ? null : body.text,
+                                rating: rating,
+                              );
+                              feedbackId = anonymousRequestId;
+                              final receipt = await anonymous.submitNext(
+                                requestId: anonymousRequestId,
+                              );
+                              if (context.mounted) {
+                                update(() {
+                                  received = receipt?.requestId == anonymousRequestId;
+                                  status = received
+                                      ? 'Received by the team.'
+                                      : 'Saved on this device — not sent to the team.';
+                                });
+                              }
+                              return;
+                            }
                             feedbackId ??= await widget.store.submitVoice(
                               'General',
                               body.text,
                               rating: rating,
                             );
                             bool acknowledged = false;
-                            if (widget.feedbackSender != null) {
+                            if (widget.deviceGuest) {
+                              acknowledged = false;
+                            } else if (widget.feedbackSender != null) {
                               acknowledged = await widget.feedbackSender!(
                                 feedbackId!,
                               );
@@ -1152,16 +1202,21 @@ class _GardenScreenState extends State<GardenScreen> {
                             if (context.mounted) {
                               update(() {
                                 received = acknowledged;
-                                status = acknowledged
+                                status = widget.deviceGuest
+                                    ? 'Saved on this device — not sent to the team.'
+                                    : acknowledged
                                     ? 'Received by the team.'
                                     : 'Not sent — retry when you are connected.';
                               });
                             }
-                          } catch (_) {
+                          } catch (failure) {
                             if (context.mounted) {
                               update(
-                                () => status =
-                                    'Not sent — retry when you are connected.',
+                                () => status = anonymousRequestId != null
+                                    ? 'Saved on this device — not received. $failure'
+                                    : widget.deviceGuest
+                                    ? 'Could not save feedback: $failure'
+                                    : 'Not sent — retry when you are connected.',
                               );
                             }
                           } finally {
@@ -1238,12 +1293,22 @@ class _GardenScreenState extends State<GardenScreen> {
                     ],
                   ),
                   ExpansionTile(
+                    title: const Text('Advanced'),
+                    children: [
+                      if (widget.onOpenDeviceGarden != null)
+                        TextButton(
+                          onPressed: working ? null : widget.onOpenDeviceGarden,
+                          child: const Text('Use a device-only garden'),
+                        ),
+                    ],
+                  ),
+                  ExpansionTile(
                     title: const Text('Privacy & measurement'),
                     children: [
                       SwitchListTile(
                         title: const Text('Share product event counts'),
                         subtitle: const Text(
-                          'Optional, off by default. Shares up to 10 error types and 10 sign-in or session attempts per session, plus basic counts. No error messages or stacks, passwords or credentials, private account details, sensitive habit details, email or feedback. Device-only gardens send nothing. Turning off stops future sharing and clears unsent counts; sent counts follow account deletion and retention rules.',
+                          'Optional counts only; off by default. Never your private text.',
                         ),
                         value: analytics,
                         onChanged: widget.deviceGuest
@@ -1277,7 +1342,7 @@ class _GardenScreenState extends State<GardenScreen> {
                           Padding(
                             padding: EdgeInsets.fromLTRB(16, 0, 16, 16),
                             child: Text(
-                              'Counts use set categories, app stages and elapsed time for errors Budlark sees while open, plus sign-in and session attempts after sign-in. We do not collect error messages or stacks, what you type, passwords or credentials, private account details, sensitive habit details, email, feedback or which sign-in provider you use. Device-only gardens send no counts. App closures Budlark cannot observe are not included, so this is not a crash-free measure.',
+                              'Shares up to 10 error types and 10 sign-in or session attempts per session, plus basic counts. Turning off stops future sharing and clears unsent counts; sent counts follow account deletion and retention rules. Counts use set categories, app stages and elapsed time for errors Budlark sees while open, plus sign-in and session attempts after sign-in. We do not collect error messages or stacks, what you type, passwords or credentials, private account details, sensitive habit details, email, feedback or which sign-in provider you use. Device-only gardens send no counts. App closures Budlark cannot observe are not included, so this is not a crash-free measure.',
                             ),
                           ),
                         ],
@@ -1318,9 +1383,12 @@ class _GardenScreenState extends State<GardenScreen> {
                     title: const Text('Reminders'),
                     children: [
                       if (reminders == null)
-                        const ListTile(
-                          title: Text(
-                            'Windows reminders are unavailable here.',
+                        ListTile(
+                          title: const Text('Reminders need the Windows app.'),
+                          subtitle: Text(
+                            widget.testDisableServices
+                                ? 'This test build disables reminder services.'
+                                : 'Open the installed Budlark app on Windows to set up reminders.',
                           ),
                         ),
                       if (reminders != null)
@@ -1349,8 +1417,21 @@ class _GardenScreenState extends State<GardenScreen> {
                               Text(
                                 reminderSetupInProgress
                                     ? 'Windows reminders are starting.'
-                                    : 'Your reminder preference is on, but Windows delivery is not active.',
+                                    : reminders!.unavailableReason ??
+                                          'Your reminder preference is on, but Windows delivery is not active.',
                               ),
+                              if (!reminderSetupInProgress)
+                                const Text(
+                                  'If Budlark is missing from the app list, reinstall the latest installer, open Budlark, then retry reminders.',
+                                ),
+                              if (!reminderSetupInProgress && Platform.isWindows)
+                                TextButton(
+                                  onPressed: () async {
+                                    await _openNotificationSettings();
+                                    if (context.mounted) update(() {});
+                                  },
+                                  child: const Text('Open Windows notification settings'),
+                                ),
                               if (!reminderSetupInProgress)
                                 TextButton(
                                   onPressed: working
@@ -1666,6 +1747,49 @@ class _GardenScreenState extends State<GardenScreen> {
     );
   }
 
+  Future<void> _profile() async {
+    final builder = widget.profileBuilder;
+    if (builder == null) {
+      await _settings();
+      return;
+    }
+    await showDialog<void>(
+      context: context,
+      builder: (context) => AlertDialog(
+        scrollable: true,
+        content: SizedBox(
+          width: 460,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              builder(_signOut, _settings),
+              ExpansionTile(
+                title: const Text('Linked providers'),
+                children: [
+                  Text('Current sign-in: ${widget.identity?.profile?.signInProvider ?? "Not available"}'),
+                  const Text('Linked-provider management is not available in this build.'),
+                ],
+              ),
+            ],
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () {
+              Navigator.pop(context);
+              _settings();
+            },
+            child: const Text('Account settings'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Close'),
+          ),
+        ],
+      ),
+    );
+  }
+
   Future<void> _signOut() async {
     if (working || closing || widget.identity == null) return;
     if (!await _confirm(
@@ -1748,11 +1872,12 @@ class _GardenScreenState extends State<GardenScreen> {
                       const SizedBox(height: 12),
                       if (snapshot.connectionState != ConnectionState.done)
                         const Text('Checking GitHub Releases…')
-                      else if (failure != null)
-                        _statusDetails(
-                          'Couldn’t check for updates. Please try again.',
-                          'Check your connection and retry from App & support. No installer was downloaded or started.',
-                        )
+                      else if (failure != null) ...[
+                        const Text('Couldn’t check for updates. Please try again.'),
+                        Text(
+                          '$failure\nCheck your connection and retry. No installer was downloaded.',
+                        ),
+                      ]
                       else if (release == null)
                         const Text('No newer published release found')
                       else ...[
@@ -1871,7 +1996,8 @@ class _GardenScreenState extends State<GardenScreen> {
     return Scaffold(
       appBar: AppBar(
         automaticallyImplyLeading: false,
-        title: const Text('Budlark'),
+        toolbarHeight: MediaQuery.textScalerOf(context).scale(48) + 24,
+        title: widget.profileSummaryBuilder == null ? const Text('Budlark') : null,
         actions: [
           IconButton(
             tooltip: 'Invite a friend',
@@ -1888,6 +2014,12 @@ class _GardenScreenState extends State<GardenScreen> {
             onPressed: working ? null : _settings,
             icon: const Icon(Icons.settings_outlined),
           ),
+          if (widget.profileSummaryBuilder != null &&
+              (ModalRoute.of(context)?.isCurrent ?? true))
+            SizedBox(
+              width: (viewport.width / 2).clamp(0, 320).toDouble(),
+              child: widget.profileSummaryBuilder!(_signOut, _profile),
+            ),
         ],
       ),
       body: loading
@@ -1972,9 +2104,27 @@ class _GardenScreenState extends State<GardenScreen> {
                         Card(
                           child: Padding(
                             padding: const EdgeInsets.all(16),
-                            child: _statusDetails(
-                              'Something needs your attention.',
-                              error!,
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                _statusDetails(
+                                  'Something needs your attention.',
+                                  error!,
+                                ),
+                                if (reminderSetupError != null &&
+                                    error == reminderSetupError) ...[
+                                  Text(reminders?.unavailableReason ?? reminderSetupError!),
+                                  TextButton(
+                                    onPressed: _settings,
+                                    child: const Text('Set up reminders'),
+                                  ),
+                                  if (Platform.isWindows && reminders != null)
+                                    TextButton(
+                                      onPressed: _openNotificationSettings,
+                                      child: const Text('Open Windows notification settings'),
+                                    ),
+                                ],
+                              ],
                             ),
                           ),
                         ),

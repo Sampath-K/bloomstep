@@ -8,6 +8,8 @@ import 'package:path_provider/path_provider.dart';
 import '../core/garden_store.dart';
 import '../features/garden/garden_screen.dart';
 import '../features/garden/profile_section.dart';
+import '../features/garden/sign_in_welcome.dart';
+import '../services/anonymous_feedback.dart';
 import '../services/auth_observations.dart';
 import '../services/identity.dart';
 import '../services/installer_measurement.dart';
@@ -70,6 +72,8 @@ class _HabitHomeState extends State<HabitHome> {
   AnalyticsSandbox? sandbox;
   bool busy = true;
   bool accountGarden = false;
+  bool localOnly = false;
+  AnonymousFeedback? anonymousFeedback;
   bool autoInviteFirstHabit = false;
   final Set<String> invitedGardens = {};
   bool pendingAuthCleanup = false;
@@ -95,6 +99,10 @@ class _HabitHomeState extends State<HabitHome> {
   Future<GardenStore> _open(String account) async {
     if (widget.testOpenStore != null) return widget.testOpenStore!(account);
     final directory = await getApplicationSupportDirectory();
+    anonymousFeedback ??= AnonymousFeedback(
+      directory.path,
+      origin: '${IdentityService.apiOrigin}/api',
+    );
     return GardenStore.open(p.join(directory.path, '$account.sqlite'), account);
   }
 
@@ -204,6 +212,7 @@ class _HabitHomeState extends State<HabitHome> {
       store = next;
       accountGarden = authenticated;
       autoInviteFirstHabit =
+          (authenticated || localOnly) &&
           !invitedGardens.contains(next.account) &&
           !(authenticated && deviceHabitCount > 0);
       diagnostics = nextDiagnostics;
@@ -267,6 +276,7 @@ class _HabitHomeState extends State<HabitHome> {
       error = null;
     });
     try {
+      localOnly = accountGarden;
       await _showGarden(authenticated: !accountGarden);
     } catch (e) {
       _writeError("Couldn't switch gardens. Try again.");
@@ -353,6 +363,7 @@ class _HabitHomeState extends State<HabitHome> {
     required bool authCleanupFailed,
   }) async {
     notice = null;
+    localOnly = false;
     error = warning;
     pendingAuthCleanup = authCleanupFailed;
     if (mounted) setState(() => busy = true);
@@ -426,6 +437,15 @@ class _HabitHomeState extends State<HabitHome> {
         ),
       );
     }
+    if (!accountGarden && !localOnly) {
+      return SignInWelcome(
+        busy: busy,
+        configured: identity.configured,
+        onSignIn: _signIn,
+        onSettings: _welcomeSettings,
+        error: error,
+      );
+    }
     Widget buildProfileSection(
       Future<void> Function() signOut,
       VoidCallback manage, {
@@ -453,6 +473,8 @@ class _HabitHomeState extends State<HabitHome> {
     final garden = GardenScreen(
       key: ObjectKey(current),
       store: current,
+      anonymousFeedback: anonymousFeedback,
+      onOpenDeviceGarden: _openDeviceGarden,
       identity: accountGarden ? identity : null,
       deviceGuest: !accountGarden,
       autoInviteFirstHabit: autoInviteFirstHabit,
@@ -486,4 +508,36 @@ class _HabitHomeState extends State<HabitHome> {
           )
         : garden;
   }
+
+  Future<void> _openDeviceGarden() async {
+    if (busy) return;
+    if (accountGarden) {
+      await _switchGarden();
+    } else {
+      Navigator.of(context).popUntil((route) => route.isFirst);
+      setState(() {
+        localOnly = true;
+        autoInviteFirstHabit = !invitedGardens.contains(HabitHome.guestAccount);
+      });
+    }
+  }
+
+  Future<void> _welcomeSettings() => showDialog<void>(
+    context: context,
+    builder: (context) => AlertDialog(
+      title: const Text('Settings'),
+      content: ExpansionTile(
+        title: const Text('Advanced'),
+        children: [
+          TextButton(
+            onPressed: busy ? null : _openDeviceGarden,
+            child: const Text('Use a device-only garden'),
+          ),
+        ],
+      ),
+      actions: [
+        TextButton(onPressed: () => Navigator.pop(context), child: const Text('Done')),
+      ],
+    ),
+  );
 }

@@ -11,6 +11,37 @@ claimed customer-facing history or deletion control. Existing widget contracts
 cover acknowledged receipt separately. This aligns acceptance with the approved
 surface; it does not establish owner-installed or real-provider acceptance.
 
+## Owner dogfood follow-up acceptance
+
+The owner failed the installer built from `2d762c4` and separately approved
+publishing those unchanged bytes as internal dogfood. That permission is not a
+manual PASS or general-release approval. Follow-up fixes remain subject to both
+native architectures, a new exact-head universal artifact, and owner re-test.
+
+The previous feedback test injected Flutter framework keyboard events and
+checked paste only. It did not send Win32 keyboard input to the installed app,
+or test Backspace, Delete, navigation, selection, copy and cut. The replacement
+native regression uses `SendInput` and the OS clipboard, guarded by the current
+test process's actual foreground ownership. Lack of foreground is a failure,
+not a successful fallback. It still does not substitute for owner-installed
+release verification.
+
+Signed-out feedback is permitted. Without a connected intake, submission is
+explicitly a local queue, never "Received". The bounded anonymous intake and
+its account-independent outbox require explicit submission, durable receipt
+validation, bounded retention and quotas; deployment/configuration and a live
+receipt must be verified separately. See
+[the intake contract](../api/ANONYMOUS_FEEDBACK.md).
+
+The later approved sign-in-first storyboard supersedes the former local-first
+and Settings-only profile acceptance. Device-only use is an explicit Settings >
+Advanced choice; legacy device-garden tests must select that path. New planting
+uses safe defaults and at most three interactions without typing. Timed widget
+and native-window tests measure that synthetic flow's wallclock time, not
+population usability or installed-app performance. Main-window calmness,
+completion animation, return expectations and all-six-theme acceptance must be
+verified before declaring the expanded follow-up complete.
+
 **Historical preview.5/preview.6 record; superseded 2026-10-06.** Current
 state is the [MVP exit matrix](mvp-exit-matrix.md): unsigned preview.8 is
 published and installed as ARM64, the pre-upgrade support-file bytes were

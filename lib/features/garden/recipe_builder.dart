@@ -189,25 +189,20 @@ class _RecipeBuilderState extends State<RecipeBuilder> {
   var species = 'Cosmos';
   bool practiced = false;
   bool celebrationObserved = false;
-  int step = 0;
-  final customFocus = List.generate(3, (_) => FocusNode());
   @override
   void initState() {
     super.initState();
     final h = widget.habit;
     aspiration = TextEditingController(text: h?.aspiration ?? 'Calm');
-    anchor = TextEditingController(text: h?.anchor);
-    behavior = TextEditingController(text: h?.behavior);
-    celebration = TextEditingController(text: h?.celebration);
+    anchor = TextEditingController(text: h?.anchor ?? 'drink coffee');
+    behavior = TextEditingController(text: h?.behavior ?? 'take one breath');
+    celebration = TextEditingController(text: h?.celebration ?? 'smile');
     species = h?.species ?? 'Cosmos';
   }
 
   @override
   void dispose() {
     scroll.dispose();
-    for (final focus in customFocus) {
-      focus.dispose();
-    }
     for (final controller in [aspiration, anchor, behavior, celebration]) {
       controller.dispose();
     }
@@ -248,69 +243,11 @@ class _RecipeBuilderState extends State<RecipeBuilder> {
     );
   }
 
-  void _next() {
-    final current = [anchor, behavior, celebration][step];
-    if (current.text.trim().isEmpty || current.text.trim().length > 200) return;
-    if (step == 2) {
-      save();
-      return;
-    }
-    if (scroll.hasClients) scroll.jumpTo(0);
-    setState(() => step++);
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (mounted) customFocus[step].requestFocus();
-    });
-  }
-
   Widget _pickerDialog(BuildContext context) {
-    final colors = Theme.of(context).colorScheme;
-    final fields = [anchor, behavior, celebration];
-    final current = fields[step];
-    final labels = ['After I...', 'I will...', 'Then I celebrate by...'];
-    final choices = [
-      for (final recipe in starterRecipes)
-        [recipe.anchor, recipe.behavior, recipe.celebration][step],
-    ];
-    final recommendedCelebration = starterRecipes
-        .firstWhere(
-          (recipe) => recipe.aspiration == aspiration.text.trim(),
-          orElse: () => starterRecipes.first,
-        )
-        .celebration;
-    final icons = [
-      Icons.wb_sunny_outlined,
-      Icons.laptop_outlined,
-      Icons.spa_outlined,
-      Icons.menu_book_outlined,
-      Icons.favorite_outline,
-    ];
-    final canContinue =
-        current.text.trim().isNotEmpty && current.text.trim().length <= 200;
-    final preview =
-        'After I ${anchor.text.isEmpty ? '[moment]' : anchor.text}, '
-        'I will ${behavior.text.isEmpty ? '[tiny action]' : behavior.text}. '
-        'Then I celebrate: ${celebration.text.isEmpty ? '[celebration]' : celebration.text}.';
     return AlertDialog(
-      title: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            'Step ${step + 1} of 3',
-            style: Theme.of(context).textTheme.labelLarge,
-          ),
-          const SizedBox(height: 4),
-          Semantics(
-            header: true,
-            liveRegion: true,
-            child: Text(
-              [
-                'Choose a moment',
-                'Choose a tiny action',
-                'Choose a celebration',
-              ][step],
-            ),
-          ),
-        ],
+      title: Semantics(
+        header: true,
+        child: const Text('Plant a habit'),
       ),
       content: SizedBox(
         width: 560,
@@ -320,201 +257,19 @@ class _RecipeBuilderState extends State<RecipeBuilder> {
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              LinearProgressIndicator(value: (step + 1) / 3),
-              const SizedBox(height: 12),
-              Text(
-                [
-                  'Pick a daily routine, or write your own.',
-                  'Pick one small action, or write your own.',
-                  'Pick a gesture or phrase. Practicing is optional.',
-                ][step],
+              _sentenceChoices('After I', anchor, const [
+                ('coffee', 'drink coffee'),
+                ('tea', 'drink tea'),
+              ]),
+              _sentenceChoices('I will', behavior, const [
+                ('take one breath', 'take one breath'),
+                ('stretch', 'stretch once'),
+              ]),
+              ExpansionTile(
+                title: const Text('More'),
+                tilePadding: EdgeInsets.zero,
+                children: [_recipeFields()],
               ),
-              const SizedBox(height: 12),
-              Text(
-                'Write my own',
-                style: Theme.of(context).textTheme.titleSmall,
-              ),
-              const SizedBox(height: 8),
-              TextFormField(
-                key: ValueKey(
-                  [
-                    'custom-anchor',
-                    'custom-action',
-                    'custom-celebration',
-                  ][step],
-                ),
-                controller: current,
-                focusNode: customFocus[step],
-                maxLength: 200,
-                textInputAction: step < 2
-                    ? TextInputAction.next
-                    : TextInputAction.done,
-                decoration: InputDecoration(
-                  labelText: labels[step],
-                  floatingLabelBehavior: FloatingLabelBehavior.always,
-                  hintText: [
-                    'put my cup away',
-                    'stretch one finger',
-                    'whisper well done',
-                  ][step],
-                ),
-                onFieldSubmitted: (_) => _next(),
-                onChanged: (_) => setState(() {
-                  practiced = false;
-                  celebrationObserved = false;
-                }),
-              ),
-              if (current.text.trim().length > 200 ||
-                  (step == 2 && canContinue && !complete))
-                Semantics(
-                  liveRegion: true,
-                  child: Text(
-                    current.text.trim().length > 200
-                        ? 'Keep this choice to 200 characters or fewer.'
-                        : 'Add every part of your recipe before planting.',
-                  ),
-                ),
-              const SizedBox(height: 12),
-              LayoutBuilder(
-                builder: (context, constraints) {
-                  final width = constraints.maxWidth >= 480
-                      ? (constraints.maxWidth - 12) / 2
-                      : constraints.maxWidth;
-                  return Wrap(
-                    spacing: 12,
-                    runSpacing: 10,
-                    children: [
-                      for (var i = 0; i < choices.length; i++)
-                        SizedBox(
-                          width: width,
-                          child: Semantics(
-                            selected: current.text == choices[i],
-                            child: OutlinedButton(
-                              style: OutlinedButton.styleFrom(
-                                alignment: Alignment.centerLeft,
-                                padding: const EdgeInsets.all(14),
-                                minimumSize: const Size(0, 68),
-                                shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(16),
-                                ),
-                                backgroundColor: current.text == choices[i]
-                                    ? colors.primaryContainer
-                                    : null,
-                              ),
-                              onPressed: () => setState(() {
-                                FocusScope.of(context).unfocus();
-                                current.text = choices[i];
-                                if (step == 0) {
-                                  aspiration.text =
-                                      starterRecipes[i].aspiration;
-                                }
-                                celebrationObserved = false;
-                                practiced = false;
-                                if (scroll.hasClients) scroll.jumpTo(0);
-                                if (step < 2) step++;
-                              }),
-                              child: Row(
-                                children: [
-                                  Icon(icons[i], size: 24),
-                                  const SizedBox(width: 10),
-                                  Expanded(
-                                    child: Column(
-                                      crossAxisAlignment:
-                                          CrossAxisAlignment.start,
-                                      children: [
-                                        Text(choices[i]),
-                                        if (step == 2 &&
-                                            choices[i] ==
-                                                recommendedCelebration)
-                                          Text(
-                                            'Suggested · a short way to mark your step.',
-                                            style: Theme.of(context)
-                                                .textTheme
-                                                .bodySmall,
-                                          ),
-                                      ],
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
-                          ),
-                        ),
-                    ],
-                  );
-                },
-              ),
-              const SizedBox(height: 12),
-              Card(
-                color: colors.secondaryContainer,
-                child: Padding(
-                  padding: const EdgeInsets.all(12),
-                  child: Row(
-                    children: [
-                      SizedBox(
-                        width: 48,
-                        height: 64,
-                        child: PlantArt(
-                          stage: GrowthStage.seed,
-                          species: species,
-                        ),
-                      ),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        child: Semantics(
-                          liveRegion: true,
-                          child: Text(preview),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-              const SizedBox(height: 8),
-              if (step == 2)
-                ExpansionTile(
-                  key: ValueKey('custom-$step'),
-                  tilePadding: EdgeInsets.zero,
-                  title: const Text('Plant details (optional)'),
-                  children: [
-                    if (step == 2) ...[
-                      TextFormField(
-                        controller: aspiration,
-                        maxLength: 200,
-                        decoration: const InputDecoration(
-                          labelText: 'I want more...',
-                        ),
-                        onChanged: (_) => setState(() {}),
-                      ),
-                      DropdownButtonFormField<String>(
-                        initialValue: species,
-                        decoration: const InputDecoration(
-                          labelText: 'Your plant',
-                        ),
-                        items: [
-                          for (final value in ['Cosmos', 'Sunflower', 'Fern'])
-                            DropdownMenuItem(value: value, child: Text(value)),
-                        ],
-                        onChanged: (value) {
-                          if (value != null) setState(() => species = value);
-                        },
-                      ),
-                    ],
-                  ],
-                ),
-              if (step == 2)
-                CheckboxListTile(
-                  contentPadding: EdgeInsets.zero,
-                  title: const Text('I practiced my celebration'),
-                  subtitle: const Text('Optional. You can try it later.'),
-                  value: practiced,
-                  onChanged: celebration.text.trim().isEmpty
-                      ? null
-                      : (value) => setState(() {
-                          practiced = value ?? false;
-                          celebrationObserved = practiced;
-                        }),
-                ),
             ],
           ),
         ),
@@ -524,36 +279,40 @@ class _RecipeBuilderState extends State<RecipeBuilder> {
           onPressed: () => Navigator.pop(context),
           child: const Text('Cancel'),
         ),
-        if (step > 0)
-          TextButton(
-            onPressed: () {
-              if (scroll.hasClients) scroll.jumpTo(0);
-              setState(() => step--);
-            },
-            child: const Text('Back'),
-          ),
         FilledButton(
-          onPressed: canContinue && (step < 2 || complete)
-              ? () {
-                  if (step < 2) {
-                    if (scroll.hasClients) scroll.jumpTo(0);
-                    setState(() => step++);
-                  } else {
-                    save();
-                  }
-                }
-              : null,
-          child: Text(
-            [
-              'Choose a tiny action',
-              'Choose a celebration',
-              'Plant this seed',
-            ][step],
-          ),
+          onPressed: complete ? save : null,
+          child: const Text('Plant a Seed'),
         ),
       ],
     );
   }
+
+  Widget _sentenceChoices(
+    String label,
+    TextEditingController controller,
+    List<(String, String)> choices,
+  ) => Wrap(
+    spacing: 8,
+    crossAxisAlignment: WrapCrossAlignment.center,
+    children: [
+      Text(label),
+      for (final choice in choices)
+        ChoiceChip(
+          label: Text(choice.$1),
+          selected: controller.text == choice.$2,
+          onSelected: (_) => setState(() {
+            controller.text = choice.$2;
+            practiced = false;
+            celebrationObserved = false;
+          }),
+        ),
+      if (!choices.any((choice) => choice.$2 == controller.text))
+        InputChip(
+          label: Text(controller.text),
+          isEnabled: false,
+        ),
+    ],
+  );
 
   Widget _editingDialog(BuildContext context) => AlertDialog(
     title: Text(
@@ -561,77 +320,7 @@ class _RecipeBuilderState extends State<RecipeBuilder> {
     ),
     content: SizedBox(
       width: 560,
-      child: SingleChildScrollView(
-        child: Form(
-          key: form,
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              const Text(
-                'Start with less than 30 seconds. Pick a starter, or make it your own.',
-              ),
-              const SizedBox(height: 16),
-              for (final field in [
-                (aspiration, 'I want more...', 'Calm, focus, connection...'),
-                (
-                  anchor,
-                  'After I...',
-                  'A specific routine that already happens',
-                ),
-                (behavior, 'I will...', 'One breath, one word, one movement'),
-                (
-                  celebration,
-                  'Then I celebrate by...',
-                  'A smile, gesture, or encouraging phrase',
-                ),
-              ])
-                Padding(
-                  padding: const EdgeInsets.only(top: 12),
-                  child: TextFormField(
-                    controller: field.$1,
-                    maxLength: 200,
-                    decoration: InputDecoration(
-                      labelText: field.$2,
-                      hintText: field.$3,
-                    ),
-                    validator: (v) => v == null || v.trim().isEmpty
-                        ? 'Add this part of your recipe.'
-                        : null,
-                    onChanged: (_) => setState(() {
-                      practiced = false;
-                      celebrationObserved = false;
-                    }),
-                  ),
-                ),
-              DropdownButtonFormField<String>(
-                initialValue: species,
-                decoration: const InputDecoration(labelText: 'Your plant'),
-                items: [
-                  for (final s in ['Cosmos', 'Sunflower', 'Fern'])
-                    DropdownMenuItem(value: s, child: Text(s)),
-                ],
-                onChanged: (v) => setState(() => species = v!),
-              ),
-              const SizedBox(height: 12),
-              CheckboxListTile(
-                contentPadding: EdgeInsets.zero,
-                title: const Text('I practiced my celebration'),
-                subtitle: const Text('Optional. You can try it later.'),
-                value: practiced,
-                onChanged: (v) => setState(() {
-                  practiced = v!;
-                  celebrationObserved = v;
-                }),
-              ),
-              if (!complete)
-                const Text(
-                  'Add every part of your recipe, up to 200 characters each, before saving.',
-                ),
-            ],
-          ),
-        ),
-      ),
+      child: SingleChildScrollView(child: _recipeFields()),
     ),
     actions: [
       TextButton(
@@ -640,8 +329,110 @@ class _RecipeBuilderState extends State<RecipeBuilder> {
       ),
       FilledButton(
         onPressed: complete ? save : null,
-        child: Text(widget.habit == null ? 'Plant this seed' : 'Save recipe'),
+        child: const Text('Save recipe'),
       ),
     ],
+  );
+
+  Widget _recipeFields() => Form(
+    key: form,
+    child: Column(
+      mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Text(
+          'Start with less than 30 seconds. Pick a starter, or make it your own.',
+        ),
+        const SizedBox(height: 16),
+        for (final field in [
+          (aspiration, 'I want more...', 'Calm, focus, connection...'),
+          (anchor, 'After I...', 'A specific routine that already happens'),
+          (behavior, 'I will...', 'One breath, one word, one movement'),
+          (
+            celebration,
+            'Then I celebrate by...',
+            'A smile, gesture, or encouraging phrase',
+          ),
+        ])
+          Padding(
+            padding: const EdgeInsets.only(top: 12),
+            child: TextFormField(
+              key: field.$1 == anchor
+                  ? const ValueKey('custom-anchor')
+                  : field.$1 == behavior
+                  ? const ValueKey('custom-action')
+                  : field.$1 == celebration
+                  ? const ValueKey('custom-celebration')
+                  : const ValueKey('custom-aspiration'),
+              controller: field.$1,
+              maxLength: 200,
+              textInputAction: field.$1 == celebration
+                  ? TextInputAction.done
+                  : TextInputAction.next,
+              decoration: InputDecoration(
+                labelText: field.$2,
+                hintText: field.$3,
+                floatingLabelBehavior: FloatingLabelBehavior.always,
+              ),
+              validator: (value) {
+                final text = value?.trim() ?? '';
+                if (text.isEmpty) return 'Add this part of your recipe.';
+                if (text.length > 200) {
+                  return 'Keep this choice to 200 characters or fewer.';
+                }
+                return null;
+              },
+              onChanged: (_) => setState(() {
+                practiced = false;
+                celebrationObserved = false;
+              }),
+            ),
+          ),
+        if (widget.habit == null)
+          for (final recipe in starterRecipes)
+            OutlinedButton(
+              key: ValueKey('starter-${recipe.aspiration}'),
+              onPressed: () => setState(() {
+                FocusScope.of(context).unfocus();
+                aspiration.text = recipe.aspiration;
+                anchor.text = recipe.anchor;
+                behavior.text = recipe.behavior;
+                celebration.text = recipe.celebration;
+                practiced = false;
+                celebrationObserved = false;
+              }),
+              child: Text(
+                'After I ${recipe.anchor}, I will ${recipe.behavior}. '
+                'Then I celebrate: ${recipe.celebration}.',
+              ),
+            ),
+        DropdownButtonFormField<String>(
+          initialValue: species,
+          decoration: const InputDecoration(labelText: 'Your plant'),
+          items: [
+            for (final s in ['Cosmos', 'Sunflower', 'Fern'])
+              DropdownMenuItem(value: s, child: Text(s)),
+          ],
+          onChanged: (v) => setState(() => species = v!),
+        ),
+        const SizedBox(height: 12),
+        CheckboxListTile(
+          contentPadding: EdgeInsets.zero,
+          title: const Text('I practiced my celebration'),
+          subtitle: const Text('Optional. You can try it later.'),
+          value: practiced,
+          onChanged: celebration.text.trim().isEmpty
+              ? null
+              : (v) => setState(() {
+                  practiced = v ?? false;
+                  celebrationObserved = practiced;
+                }),
+        ),
+        if (!complete)
+          const Text(
+            'Add every part of your recipe, up to 200 characters each, before saving.',
+          ),
+      ],
+    ),
   );
 }
