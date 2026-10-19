@@ -9,6 +9,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:crypto/crypto.dart';
 import 'package:integration_test/integration_test.dart';
 import 'package:path/path.dart' as p;
+import 'package:window_manager/window_manager.dart';
 import 'package:budlark/core/garden_store.dart';
 import 'package:budlark/core/models.dart';
 import 'package:budlark/features/garden/garden_screen.dart';
@@ -90,6 +91,8 @@ void main() {
     await tester.tap(find.byTooltip('Help us grow'));
     await tester.pumpAndSettle();
     final field = find.widgetWithText(TextField, 'Your feedback');
+    await windowManager.ensureInitialized();
+    await windowManager.focus();
     await tester.tap(field);
     await tester.showKeyboard(field);
     await tester.pumpAndSettle();
@@ -109,6 +112,8 @@ void main() {
       bool Function()? applied,
     }) async {
       nativeEvents.clear();
+      await windowManager.focus();
+      await tester.pumpAndSettle();
       await tester.runAsync(() => windowsKeys(codes, control: control, shift: shift));
       await tester.pumpAndSettle();
       if (applied != null) {
