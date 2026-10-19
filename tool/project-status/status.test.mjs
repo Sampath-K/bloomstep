@@ -504,6 +504,23 @@ const lowLevel = /github\.com|\bPR\s?\d|#\d|\b[0-9a-f]{7,40}\b|\bjobs?\b|\bVM\b|
 const page = (body, status = 200) => async url => { assert.equal(url, 'https://budlark.com/'); return { status, body }; };
 const liveSite = page('<title>Budlark - habits</title><section id="privacy"></section><a href="mailto:x">');
 
+test('contract: installer candidate is evidenced by the exact-head universal-installer job, not inferred from native checks', () => {
+  const app = sourceConfig.narrative.resources.find(r => r.id === 'app');
+  const step = app.parts[0].prepare.find(s => /Installer candidate built/.test(s.label));
+  const row = sourceConfig.workstreams.find(w => w.id === step.source);
+  assert.equal(row.kind, 'pull');
+  assert.equal(row.number, 52);
+  assert.deepEqual(row.requiredJobs, ['universal-installer']);
+  assert.deepEqual(step.done, ['review-ready', 'merged']);
+  assert.match(row.note, /Context only/);
+  const job = (name, conclusion) => ({ name, status: 'completed', conclusion });
+  assert.equal(mapJobs([job('universal-installer', 'success'), job('api', 'success')], row.requiredJobs, false), 'review-ready');
+  assert.equal(mapJobs([job('universal-installer', 'skipped'), job('api', 'success')], row.requiredJobs, false), 'blocked');
+  assert.equal(mapJobs([job('api', 'success')], row.requiredJobs, false), 'unknown');
+  const owner = app.parts[0].verify[0];
+  assert.equal(owner.source, 'owner-check');
+});
+
 test('contract: launch resources are distinct customer-facing touchpoints; internal services are bundled with the app', () => {
   validateConfig(sourceConfig);
   const n = sourceConfig.narrative;

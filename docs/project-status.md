@@ -52,7 +52,8 @@ engineering board. It shows only:
   support/privacy pages, read back live from https://budlark.com/), Windows app
   (internal APIs, storage, sync, insights, telemetry and experiments are bundled
   here; it is ready only when installation and signed-in journeys are verified,
-  not when it compiles), Download (needs the app), Microsoft Store listing
+  not when it compiles; "Installer candidate built" comes only from the exact-head
+  `universal-installer` job), Download (needs the app), Microsoft Store listing
   (needs the app) and Sign-in (Microsoft account, Google and email code shown
   separately). Each card shows its state and the one remaining outcome. States:
   *Ready* (all live verification steps observed), *Prepared; live check

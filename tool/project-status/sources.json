@@ -278,6 +278,20 @@
       "note": "Separate optional gate, not an owner-trial prerequisite: experiments may remain default OFF. Coordinator reported not connected / OFF on 2026-10-16. No hosted API is configured, so current hosted state is UNKNOWN. Context only: not in the current owner-trial launch sequence (PR52 hosted checks -> installer -> owner manual check -> integration/release + PR54 hosting -> live download)."
     },
     {
+      "id": "installer-build",
+      "title": "PR52 exact-head universal installer built",
+      "owner": "Release session b4bec15c",
+      "nextAction": "Read only: the exact-head universal-installer job must succeed; owner manual installation check follows.",
+      "kind": "pull",
+      "number": 52,
+      "workflow": "ci.yml",
+      "requiredJobs": [
+        "universal-installer"
+      ],
+      "dependencies": [],
+      "note": "Context only: evidences that an installer candidate was built for the executive resource view; not owner acceptance, signing or release approval."
+    },
+    {
       "id": "site-brand",
       "title": "Live budlark.com shows Budlark branding",
       "owner": "Website session 29688352 (site-only Budlark correction in session 6e73472b)",
@@ -416,9 +430,10 @@
               {
                 "label": "Installer candidate built",
                 "attentionLabel": "installer candidate",
-                "source": "installer",
+                "source": "installer-build",
                 "done": [
-                  "verified"
+                  "review-ready",
+                  "merged"
                 ]
               }
             ],
