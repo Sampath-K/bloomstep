@@ -1,0 +1,171 @@
+From e71d5b481207f0e6a4416f456f3fec4f1387c101 Mon Sep 17 00:00:00 2001
+From: Sampath-K <72682617+Sampath-K@users.noreply.github.com>
+Date: Mon, 19 Oct 2026 01:53:57 +0000
+Subject: [PATCH] Bind dogfood provenance to immutable repository ID and await
+ skip navigation
+
+Fix exact PR55 branding contract failures without exceptions or artifact substitution. Preserve the #main skip-link assertion and validate its actual target while awaiting native fragment navigation.
+
+Co-authored-by: Copilot <223556219+Copilot@users.noreply.github.com>
+---
+ .github/workflows/azure.yml         |  2 +-
+ docs/deployment.md                  |  5 +++--
+ site/downloads.json                 |  2 +-
+ site/stage-downloads.mjs            |  6 +++---
+ site/test/hosted-downloads.test.mjs | 11 +++++++----
+ site/verify-launch.mjs              |  3 +++
+ 6 files changed, 18 insertions(+), 11 deletions(-)
+
+diff --git a/.github/workflows/azure.yml b/.github/workflows/azure.yml
+index 4458969..c0b1886 100644
+--- a/.github/workflows/azure.yml
++++ b/.github/workflows/azure.yml
+@@ -48,7 +48,7 @@ jobs:
+         uses: actions/download-artifact@v4
+         with:
+           github-token: ${{ github.token }}
+-          repository: Sampath-K/bloomstep
++          repository: ${{ github.repository }}
+           run-id: 39134443648
+           artifact-ids: 12140076664
+           merge-multiple: true
+diff --git a/docs/deployment.md b/docs/deployment.md
+index 2328d13..a8a96b8 100644
+--- a/docs/deployment.md
++++ b/docs/deployment.md
+@@ -561,7 +561,8 @@ release acceptance: manual acceptance remains **FAIL**, and no owner PASS,
+ release gate override, new tag, or new workflow dispatch is implied. Public
+ release pointers and download-page acceptance labels are not changed.
+ 
+-The source is Actions run `39134443648`, artifact `12140076664`
++The source is immutable GitHub repository ID `1404357574`,
++Actions run `39134443648`, artifact `12140076664`
+ (`budlark-universal-installer`), commit
+ `2d762c487e496ca2d856e8b160390fe3e9a7b2b7`. Before download, the deployment
+ checks GitHub metadata for the exact artifact, run, repository, commit,
+@@ -592,7 +593,7 @@ Local staging verification (run from the repository root):
+ ```sh
+ node --test site/test/hosted-downloads.test.mjs
+ GH_TOKEN="$(gh auth token)" node site/stage-downloads.mjs --verify-source
+-gh run download 39134443648 --repo Sampath-K/bloomstep \
++gh run download 39134443648 \
+   --name budlark-universal-installer --dir release-output/dogfood-source
+ node site/stage-downloads.mjs release-output/dogfood-source release-output/dogfood-staged
+ ```
+diff --git a/site/downloads.json b/site/downloads.json
+index 2ac760d..3035332 100644
+--- a/site/downloads.json
++++ b/site/downloads.json
+@@ -2,7 +2,7 @@
+   "channel": "internal-dogfood",
+   "acceptance": "manual-FAIL-not-an-accepted-release",
+   "source": {
+-    "repository": "Sampath-K/bloomstep",
++    "repositoryId": 1404357574,
+     "runId": 39134443648,
+     "artifactId": 12140076664,
+     "artifactName": "budlark-universal-installer",
+diff --git a/site/stage-downloads.mjs b/site/stage-downloads.mjs
+index 4f71c92..85d83cb 100644
+--- a/site/stage-downloads.mjs
++++ b/site/stage-downloads.mjs
+@@ -9,7 +9,7 @@ export function validateManifest(manifest) {
+     throw Error('Only explicitly unaccepted internal dogfood downloads may be staged.');
+   }
+   const source = manifest.source;
+-  if (source?.repository !== 'Sampath-K/bloomstep' ||
++  if (source?.repositoryId !== 1404357574 ||
+       !Number.isSafeInteger(source.runId) || source.runId <= 0 ||
+       !Number.isSafeInteger(source.artifactId) || source.artifactId <= 0 ||
+       source.artifactName !== 'budlark-universal-installer' ||
+@@ -39,7 +39,7 @@ export async function verifySource(manifest, token, fetchImpl = fetch) {
+   const { source } = validateManifest(manifest);
+   if (!token) throw Error('Actions read token required.');
+   const get = async path => {
+-    const response = await fetchImpl(`https://api.github.com/repos/${source.repository}/${path}`, {
++    const response = await fetchImpl(`https://api.github.com/repositories/${source.repositoryId}/${path}`, {
+       headers: { Authorization: `Bearer ${token}`, Accept: 'application/vnd.github+json',
+         'X-GitHub-Api-Version': '2022-11-28' },
+       redirect: 'error',
+@@ -56,7 +56,7 @@ export async function verifySource(manifest, token, fetchImpl = fetch) {
+       artifact.workflow_run?.head_sha !== source.headSha ||
+       artifact.workflow_run?.repository_id !== run.repository?.id ||
+       artifact.workflow_run?.head_repository_id !== run.repository?.id ||
+-      run.repository?.full_name !== source.repository ||
++      run.repository?.id !== source.repositoryId ||
+       run.id !== source.runId || run.head_sha !== source.headSha ||
+       run.path !== '.github/workflows/ci.yml' ||
+       run.status !== 'completed' || run.conclusion !== 'success') {
+diff --git a/site/test/hosted-downloads.test.mjs b/site/test/hosted-downloads.test.mjs
+index 5885f58..937d910 100644
+--- a/site/test/hosted-downloads.test.mjs
++++ b/site/test/hosted-downloads.test.mjs
+@@ -14,7 +14,7 @@ const copy = () => structuredClone(manifest);
+ test('dogfood manifest pins the authorized source and exact installer', () => {
+   validateManifest(manifest);
+   assert.deepEqual(manifest.source, {
+-    repository: 'Sampath-K/bloomstep', runId: 39134443648, artifactId: 12140076664,
++    repositoryId: 1404357574, runId: 39134443648, artifactId: 12140076664,
+     artifactName: 'budlark-universal-installer',
+     headSha: '2d762c487e496ca2d856e8b160390fe3e9a7b2b7',
+   });
+@@ -23,6 +23,7 @@ test('dogfood manifest pins the authorized source and exact installer', () => {
+   assert.equal(manifest.files[0].publicName, 'Budlark-0.1.0-windows-universal-setup.exe');
+   assert.match(workflow, new RegExp(`run-id: ${manifest.source.runId}`));
+   assert.match(workflow, new RegExp(`artifact-ids: ${manifest.source.artifactId}`));
++  assert.match(workflow, /repository: \$\{\{ github\.repository \}\}/);
+   assert.ok(workflow.indexOf('--verify-source') < workflow.indexOf('uses: actions/download-artifact'));
+   assert.ok(workflow.indexOf('deploy-site/downloads') < workflow.indexOf('uses: Azure/static-web-apps-deploy'));
+ });
+@@ -31,7 +32,8 @@ test('manifest rejects release promotion, traversal, duplicates, invalid hashes
+   for (const mutate of [
+     m => { m.channel = 'stable'; },
+     m => { m.acceptance = 'PASS'; },
+-    m => { m.source.repository = 'other/repository'; },
++    m => { m.source.repositoryId = '1404357574'; },
++    m => { m.source.repositoryId = 1; },
+     m => { m.source.runId = 'latest'; },
+     m => { m.source.artifactId = 0; },
+     m => { m.source.headSha = 'main'; },
+@@ -55,12 +57,13 @@ function metadata() {
+       workflow_run: { id: source.runId, head_sha: source.headSha,
+         repository_id: 1404357574, head_repository_id: 1404357574 } },
+     run: { id: source.runId, head_sha: source.headSha, status: 'completed', conclusion: 'success',
+-      path: '.github/workflows/ci.yml', repository: { id: 1404357574, full_name: source.repository } },
++      path: '.github/workflows/ci.yml', repository: { id: 1404357574 } },
+   };
+ }
+ 
+ test('source verification binds artifact ID, run, repository, commit and successful CI', async () => {
+   const fetchMetadata = data => async (url, options) => {
++    assert.ok(url.startsWith('https://api.github.com/repositories/1404357574/actions/'));
+     assert.equal(options.redirect, 'error');
+     assert.equal(options.headers.Authorization, 'Bearer test-token');
+     return Response.json(url.includes('/artifacts/') ? data.artifact : data.run);
+@@ -75,7 +78,7 @@ test('source verification binds artifact ID, run, repository, commit and success
+     d => { d.artifact.workflow_run.head_repository_id++; },
+     d => { d.run.id++; },
+     d => { d.run.head_sha = '0'.repeat(40); },
+-    d => { d.run.repository.full_name = 'other/repository'; },
++    d => { d.run.repository.id++; },
+     d => { d.run.path = '.github/workflows/other.yml'; },
+     d => { d.run.status = 'in_progress'; },
+     d => { d.run.conclusion = 'failure'; },
+diff --git a/site/verify-launch.mjs b/site/verify-launch.mjs
+index 7f232be..3fa7300 100644
+--- a/site/verify-launch.mjs
++++ b/site/verify-launch.mjs
+@@ -81,7 +81,10 @@ try {
+       assert.equal(await page.evaluate(() => localStorage.length + sessionStorage.length), 0);
+       await page.keyboard.press('Tab');
+       assert.equal(await page.evaluate(() => document.activeElement.className), 'skip');
++      assert.equal(await page.$eval('.skip', node => node.getAttribute('href')), '#main');
++      assert.equal(await page.$eval('#main', node => node.tagName), 'MAIN');
+       await page.keyboard.press('Enter');
++      await page.waitForFunction(() => location.hash === '#main');
+       assert.equal(new URL(page.url()).hash, '#main');
+       await page.$eval('#feedback-help summary', node => node.focus());
+       await page.keyboard.press('Space');
+-- 
+2.51.1
+
