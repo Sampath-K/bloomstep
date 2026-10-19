@@ -553,3 +553,46 @@ The API suite checks an actual isolated `core.autocrlf=true` Git checkout of
 all three generated files, not just the author's local settings. This prevents
 Windows CRLF conversion from causing a false generator-drift failure without
 weakening exact generated-content checks or changing global Git preferences.
+## Authorized internal dogfood download staging
+
+The normal `azure.yml` main-branch deployment stages the explicitly authorized
+internal dogfood candidate from `site/downloads.json`. This is **not** general
+release acceptance: manual acceptance remains **FAIL**, and no owner PASS,
+release gate override, new tag, or new workflow dispatch is implied. Public
+release pointers and download-page acceptance labels are not changed.
+
+The source is Actions run `39134443648`, artifact `12140076664`
+(`budlark-universal-installer`), commit
+`2d762c487e496ca2d856e8b160390fe3e9a7b2b7`. Before download, the deployment
+checks GitHub metadata for the exact artifact, run, repository, commit,
+non-expiration, and completed successful CI. Successful CI is not manual
+acceptance. Only the installer is copied, after checking its exact 22,392,273
+bytes and SHA-256
+`b53767c405fa9b704fb828d221f883b81d14231e3ebf65dd8820d3812fd42a2c`.
+The existing protected-route checks remain mandatory.
+
+The reserved URL is
+`https://budlark.com/downloads/Budlark-0.1.0-windows-universal-setup.exe`.
+Its version-only basename does not indicate acceptance. It is unindexed and
+`no-store`, not a promise of immutable URL contents or access control.
+Anyone with the URL can download it after successful deployment; share only
+as an unsigned internal dogfood preview with known manual failures. The
+deployment verifies a direct HTTP 200 (no redirect), byte count, and hash
+before reporting success. A merge or successful upload alone is not proof
+of publication.
+
+An expired, deleted, inaccessible, or mismatched source fails deployment
+closed. Do not substitute another artifact, regenerate a tag, broaden
+credentials, or bypass gates. Ask the owner for a new authorized candidate.
+The only additional workflow token scope is repository `actions: read`.
+No settings, secrets, or deployment permissions are changed.
+
+Local staging verification (run from the repository root):
+
+```sh
+node --test site/test/hosted-downloads.test.mjs
+GH_TOKEN="$(gh auth token)" node site/stage-downloads.mjs --verify-source
+gh run download 39134443648 --repo Sampath-K/bloomstep \
+  --name budlark-universal-installer --dir release-output/dogfood-source
+node site/stage-downloads.mjs release-output/dogfood-source release-output/dogfood-staged
+```
