@@ -1,0 +1,63 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="960" height="640" viewBox="0 0 960 640" role="img" aria-labelledby="title description">
+  <title id="title">Budlark - Rain Forest - completion</title>
+  <desc id="description">Broad leaves, layered canopy and still raindrops. A perched bird sings beside a blooming habit. Original vector concept, not a running app.</desc>
+  <metadata>Original deterministic Budlark proposal artwork. No third-party assets.</metadata>
+  <g font-family="Segoe UI, Aptos, Calibri, sans-serif"><rect width="960" height="640" rx="16" fill="#EEF4EC"/>
+       <rect x="0" y="0" width="960" height="48" rx="16" fill="#FFFFFF"/>
+       <text x="24" y="31" font-size="18" fill="#203329" font-weight="650">Budlark</text>
+       <text x="734" y="30" font-size="14" fill="#4D6053" font-weight="400">Account   Settings</text>
+       <text x="904" y="30" font-size="18" fill="#4D6053" font-weight="400">x</text>
+       <text x="64" y="99" font-size="30" fill="#203329" font-weight="650">A little practice, a little growth.</text>
+       <text x="64" y="126" font-size="16" fill="#4D6053" font-weight="400">You did your tiny habit. Let yourself feel good.</text>
+       <rect x="64" y="144" width="832" height="252" rx="16" fill="#D8EADD"/>
+    <ellipse cx="480" cy="370" rx="392" ry="30" fill="#BBD4BD"/>
+    <g fill="#256044"><path d="M92 310 Q80 167 214 206 Q179 306 92 310 Z" fill="#256044" />
+        <path d="M825 302 Q738 186 862 171 Q899 266 825 302 Z" fill="#256044" /></g>
+        <path d="M103 294 L184 220 M834 280 L855 197" stroke="#BBD4BD" stroke-width="3"/>
+        <g fill="#256044"><path d="M250 218 q-12 20 0 22 q12-2 0-22" fill="#256044" /><path d="M710 224 q-12 20 0 22 q12-2 0-22" fill="#256044" /><path d="M779 274 q-12 20 0 22 q12-2 0-22" fill="#256044" /></g>
+    <g data-growth="sprout" transform="translate(365 364) scale(0.66)">
+    <ellipse cy="6" rx="43" ry="10" fill="#BBD4BD"/>
+    <path d="M0 0 Q-5-45 0 -70" stroke="#256044" stroke-width="7" fill="none" stroke-linecap="round"/>
+    <path d="M-2-33 Q-52-75-51-36 Q-34-7-2-22 Z" fill="#256044" />
+    <path d="M1-55 Q47-92 48-56 Q33-31 1-44 Z" fill="#256044" />
+
+
+  </g>
+    <g data-growth="bloom" transform="translate(493 365) scale(1)">
+    <ellipse cy="6" rx="43" ry="10" fill="#BBD4BD"/>
+    <path d="M0 0 Q-5-45 0 -115" stroke="#256044" stroke-width="7" fill="none" stroke-linecap="round"/>
+    <path d="M-2-33 Q-52-75-51-36 Q-34-7-2-22 Z" fill="#256044" />
+    <path d="M1-55 Q47-92 48-56 Q33-31 1-44 Z" fill="#256044" />
+    <g fill="#A63B50"><ellipse cy="-115" rx="21" ry="31"/><ellipse cx="-21" cy="-101" rx="22" ry="18"/><ellipse cx="21" cy="-101" rx="22" ry="18"/><ellipse cy="-86" rx="23" ry="18"/></g><circle cy="-104" r="12" fill="#9CBF6D"/>
+
+  </g>
+    <g data-growth="bloom" transform="translate(628 367) scale(0.7)">
+    <ellipse cy="6" rx="43" ry="10" fill="#BBD4BD"/>
+    <path d="M0 0 Q-5-45 0 -115" stroke="#256044" stroke-width="7" fill="none" stroke-linecap="round"/>
+    <path d="M-2-33 Q-52-75-51-36 Q-34-7-2-22 Z" fill="#256044" />
+    <path d="M1-55 Q47-92 48-56 Q33-31 1-44 Z" fill="#256044" />
+    <g fill="#A63B50"><ellipse cy="-115" rx="21" ry="31"/><ellipse cx="-21" cy="-101" rx="22" ry="18"/><ellipse cx="21" cy="-101" rx="22" ry="18"/><ellipse cy="-86" rx="23" ry="18"/></g><circle cy="-104" r="12" fill="#9CBF6D"/>
+
+  </g>
+    <path d="M564 292 Q629 284 689 292" stroke="#256044" stroke-width="6" fill="none" stroke-linecap="round"/>
+    <g data-bird="Hummingbird" transform="translate(624 252) scale(0.9)">
+    <path d="M-18 8 L-53 25 L-46 38 L-10 25 Z" fill="#256044" />
+    <ellipse cx="0" cy="8" rx="30" ry="22" fill="#256044"/>
+    <circle cx="24" cy="-13" r="19" fill="#256044"/>
+    <path d="M40-17 L74-13 L40-10 Z" fill="#256044" />
+    <path d="M-18 6 Q-50-48-7-28 L15 7 Z" fill="#9CBF6D" />
+
+    <circle cx="29" cy="-17" r="3" fill="#203329"/>
+    <path d="M-4 27 L-3 40 L5 40 M11 27 L12 40 L20 40" fill="none" stroke="#256044" stroke-width="4" stroke-linecap="round"/>
+    <g fill="#256044"><path d="M68-45 v-24 l16-4 v24 h-4 v-18 l-8 2 v20 Z"/><ellipse cx="65" cy="-44" rx="7" ry="5"/><ellipse cx="77" cy="-48" rx="7" ry="5"/></g>
+  </g>
+       <rect x="64" y="420" width="832" height="137" rx="16" fill="#FFFFFF"/>
+       <text x="88" y="452" font-size="14" fill="#256044" font-weight="700">COMPLETED</text>
+       <text x="88" y="483" font-size="22" fill="#203329" font-weight="600">After I pour my morning coffee,</text>
+       <text x="88" y="514" font-size="22" fill="#203329" font-weight="600">I will stretch for one breath.</text>
+       <text x="88" y="540" font-size="14" fill="#4D6053" font-weight="400">Then I celebrate: smile</text>
+       <rect x="696" y="463" width="176" height="48" rx="10" fill="#256044"/>
+       <text x="719" y="493" font-size="17" fill="#FFFFFF" font-weight="600">Done for today</text>
+       <text x="64" y="594" font-size="14" fill="#4D6053" font-weight="400">Rain Forest / Hummingbird</text>
+       <text x="64" y="619" font-size="12" fill="#4D6053" font-weight="400">Design proposal / singing keyframe / 1 second, then still</text></g>
+</svg>
