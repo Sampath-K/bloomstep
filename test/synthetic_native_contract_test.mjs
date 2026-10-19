@@ -20,6 +20,10 @@ test('owned keyboard activation stays bounded and checks exact foreground before
   assert.match(keyboard, /if \(-not \\\$ready\) \{[\s\S]*AttachThreadInput/);
   assert.match(keyboard, /finally \{[\s\S]*AttachThreadInput\(\\\$currentThread, \\\$targetThread, \\\$false\)/);
   assert.match(keyboard, /ElapsedMilliseconds -lt 2000/);
+  assert.match(keyboard, /debugPrint\(permission\)/);
+  assert.match(keyboard, /debugPrint\(diagnostic\)/);
+  assert.ok(keyboard.includes('Native keyboard input failed:\\n$permission\\n$diagnostic$error'),
+    'GUI-process stdout diagnostics must also reach captured Flutter failure output.');
   assert.doesNotMatch(keyboard, /SwitchDesktop|SetThreadDesktop|ASFW_ANY/);
   if (process.platform === 'win32') {
     const script = keyboardScript(keyboard);

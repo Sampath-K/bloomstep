@@ -3,6 +3,8 @@ import 'dart:convert';
 import 'dart:ffi';
 import 'dart:io';
 
+import 'package:flutter/foundation.dart';
+
 /// Sends Win32 keyboard input only to this integration-test process.
 Future<void> windowsKeys(
   List<int> keys, {
@@ -179,10 +181,10 @@ $sequence
         'AllowSetForegroundWindow',
       );
   final allowed = permit(helper.pid) != 0;
-  stdout.writeln(
-    'owned_activation appPid=$pid helperPid=${helper.pid} '
-    'AllowSetForegroundWindow=$allowed',
-  );
+  final permission =
+      'owned_activation appPid=$pid helperPid=${helper.pid} '
+      'AllowSetForegroundWindow=$allowed';
+  debugPrint(permission);
   helper.stdin.writeln('activate-owned-window');
   await helper.stdin.close();
   int exitCode;
@@ -191,14 +193,17 @@ $sequence
   } on TimeoutException {
     helper.kill();
     await helper.exitCode;
-    stdout.write(await output);
     throw StateError(
-      'Native keyboard helper timed out; no further keys sent. ${await errors}',
+      'Native keyboard helper timed out; no further keys sent.\n'
+      '$permission\n${await output}${await errors}',
     );
   }
-  stdout.write(await output);
+  final diagnostic = await output;
   final error = await errors;
   if (exitCode != 0) {
-    throw StateError('Native keyboard input failed: $error');
+    throw StateError(
+      'Native keyboard input failed:\n$permission\n$diagnostic$error',
+    );
   }
+  debugPrint(diagnostic);
 }
