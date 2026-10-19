@@ -34,6 +34,8 @@ DateTime syntheticJourneyStart(DateTime runStartedAt) {
 
 void main() {
   IntegrationTestWidgetsFlutterBinding.ensureInitialized();
+  final hostedArm64Feedback = hostedArm64FeedbackInputEnabled();
+  final feedbackInputLabel = hostedArm64Feedback ? 'Hosted ARM64 Flutter-key' : 'Win32';
   moment_acceptance.main();
   planting_acceptance.main();
 
@@ -69,7 +71,11 @@ void main() {
   });
 
   for (final deviceGuest in [false, true]) {
-  testWidgets('Win32 feedback editing works ${deviceGuest ? "signed out" : "in an account garden"}', (tester) async {
+  testWidgets('$feedbackInputLabel feedback editing works ${deviceGuest ? "signed out" : "in an account garden"}', (tester) async {
+    if (hostedArm64Feedback) {
+      tester.testTextInput.register();
+      addTearDown(tester.testTextInput.unregister);
+    }
     final store = await GardenStore.open(':memory:', 'clipboard-test');
     addTearDown(store.close);
     addTearDown(() => Clipboard.setData(const ClipboardData(text: '')));
@@ -112,9 +118,13 @@ void main() {
       bool Function()? applied,
     }) async {
       nativeEvents.clear();
-      await windowManager.focus();
-      await tester.pumpAndSettle();
-      await tester.runAsync(() => windowsKeys(codes, control: control, shift: shift));
+      if (hostedArm64Feedback) {
+        await hostedArm64FeedbackKeys(tester, field, codes, control: control, shift: shift);
+      } else {
+        await windowManager.focus();
+        await tester.pumpAndSettle();
+        await tester.runAsync(() => windowsKeys(codes, control: control, shift: shift));
+      }
       await tester.pumpAndSettle();
       if (applied != null) {
         final elapsed = Stopwatch()..start();

@@ -7,6 +7,23 @@ const read = name => readFileSync(new URL(`../${name}`, import.meta.url), 'utf8'
 const keyboardScript = keyboard => keyboard.match(/final script =\s*'''\n([\s\S]*?)\n''';/)[1]
   .replace(/\$\{(?:control|shift).*?\}/g, '$false').replaceAll('\\$', '$');
 
+test('hosted ARM64 feedback mode is explicit and leaves x64 native input intact', () => {
+  const keyboard = read('integration_test/support/windows_keyboard.dart');
+  const acceptance = read('integration_test/budlark_windows_e2e_test.dart');
+  const workflow = read('.github/workflows/ci.yml');
+  assert.match(keyboard, /BUDLARK_HOSTED_ARM64_FOREGROUND_RESTRICTED/);
+  assert.match(keyboard, /Abi\.current\(\) != Abi\.windowsArm64/);
+  assert.match(keyboard, /HOSTED ARM64 FOREGROUND RESTRICTION/);
+  assert.match(keyboard, /sendKeyDownEvent\(LogicalKeyboardKey\.controlLeft\)/);
+  assert.match(keyboard, /sendKeyUpEvent\(LogicalKeyboardKey\.controlLeft\)/);
+  assert.match(acceptance, /hostedArm64Feedback \? 'Hosted ARM64 Flutter-key' : 'Win32'/);
+  assert.match(acceptance, /if \(hostedArm64Feedback\) \{[\s\S]*hostedArm64FeedbackKeys[\s\S]*\} else \{[\s\S]*windowsKeys/);
+  assert.match(workflow, /if \('\$\{\{ matrix\.runner \}\}' -eq 'windows-11-arm'\)/);
+  assert.match(workflow, /BUDLARK_HOSTED_ARM64_FOREGROUND_RESTRICTED=false/);
+  assert.match(workflow, /BUDLARK_HOSTED_ARM64_FOREGROUND_RESTRICTED=true/);
+  assert.match(workflow, /foreground lock timeout=2147483647/);
+});
+
 test('owned keyboard activation stays bounded and checks exact foreground before every key', () => {
   const keyboard = read('integration_test/support/windows_keyboard.dart').replaceAll('\r\n', '\n');
   assert.match(keyboard, /'AllowSetForegroundWindow'/);

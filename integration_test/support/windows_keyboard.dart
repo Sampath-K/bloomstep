@@ -4,6 +4,76 @@ import 'dart:ffi';
 import 'dart:io';
 
 import 'package:flutter/foundation.dart';
+import 'package:flutter/services.dart';
+import 'package:flutter_test/flutter_test.dart';
+
+bool hostedArm64FeedbackInputEnabled() {
+  const restricted = bool.fromEnvironment(
+    'BUDLARK_HOSTED_ARM64_FOREGROUND_RESTRICTED',
+  );
+  if (!restricted) return false;
+  if (!Platform.isWindows ||
+      Abi.current() != Abi.windowsArm64 ||
+      !const bool.fromEnvironment('BUDLARK_TEST_BUILD')) {
+    throw StateError(
+      'The hosted ARM64 feedback mode requires an ARM64 Windows test build.',
+    );
+  }
+  debugPrint(
+    'HOSTED ARM64 FOREGROUND RESTRICTION: feedback editing uses Flutter key '
+    'events, not native SendInput. Hosted-image evidence: foreground lock '
+    'timeout=2147483647; SetForegroundWindow and foreground-thread '
+    'AttachThreadInput denied. x64 retains the native-input gate.',
+  );
+  return true;
+}
+
+Future<void> hostedArm64FeedbackKeys(
+  WidgetTester tester,
+  Finder field,
+  List<int> codes, {
+  bool control = false,
+  bool shift = false,
+}) async {
+  if (codes.isEmpty) {
+    throw ArgumentError.value(codes, 'codes', 'Expected feedback keys.');
+  }
+  const logicalKeys = {
+    0x08: LogicalKeyboardKey.backspace,
+    0x23: LogicalKeyboardKey.end,
+    0x24: LogicalKeyboardKey.home,
+    0x25: LogicalKeyboardKey.arrowLeft,
+    0x27: LogicalKeyboardKey.arrowRight,
+    0x2e: LogicalKeyboardKey.delete,
+    0x41: LogicalKeyboardKey.keyA,
+    0x43: LogicalKeyboardKey.keyC,
+    0x56: LogicalKeyboardKey.keyV,
+    0x58: LogicalKeyboardKey.keyX,
+    0x5a: LogicalKeyboardKey.keyZ,
+  };
+  final keys = codes.map((code) {
+    final key = logicalKeys[code];
+    if (key == null) {
+      throw ArgumentError.value(code, 'codes', 'Unsupported feedback key.');
+    }
+    return key;
+  }).toList();
+  if (control) await tester.sendKeyDownEvent(LogicalKeyboardKey.controlLeft);
+  if (shift) await tester.sendKeyDownEvent(LogicalKeyboardKey.shiftLeft);
+  try {
+    for (final key in keys) {
+      final typing = key == LogicalKeyboardKey.keyZ && !control && !shift;
+      await tester.sendKeyEvent(key, character: typing ? 'z' : null);
+      if (typing) {
+        // Printable text arrives through the IME channel, not HardwareKeyboard.
+        await tester.enterText(field, 'z');
+      }
+    }
+  } finally {
+    if (shift) await tester.sendKeyUpEvent(LogicalKeyboardKey.shiftLeft);
+    if (control) await tester.sendKeyUpEvent(LogicalKeyboardKey.controlLeft);
+  }
+}
 
 /// Sends Win32 keyboard input only to this integration-test process.
 Future<void> windowsKeys(
