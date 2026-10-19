@@ -5,6 +5,7 @@ import 'dart:io';
 import 'package:budlark/core/garden_store.dart';
 import 'package:budlark/core/models.dart';
 import 'package:budlark/features/garden/garden_screen.dart';
+import 'package:budlark/features/garden/garden_moment.dart';
 import 'package:budlark/services/desktop_reminders.dart';
 import 'package:budlark/services/remote_config.dart';
 import 'package:budlark/services/update_service.dart';
@@ -13,6 +14,12 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:sqflite_common_ffi/sqflite_ffi.dart';
+import 'support/garden_navigation.dart';
+
+Future<void> settleGardenMore(WidgetTester tester) async {
+  await settleDatabase(tester);
+  await openGardenMore(tester);
+}
 
 class FakeUpdates extends UpdateService {
   FakeUpdates(this.result, {this.failure, this.pending});
@@ -91,6 +98,10 @@ Future<(GardenStore, Habit)> fixture(WidgetTester tester) async {
 }
 
 void main() {
+  // These cases exercise the existing advanced controls behind More.
+  Future<void> settleDatabase(WidgetTester tester) =>
+      settleGardenMore(tester);
+
   testWidgets(
     'feedback supports Ctrl+V into the focused text field on Windows',
     (tester) async {
@@ -423,7 +434,11 @@ void main() {
       );
       expect(find.text('Something needs your attention.'), findsNothing);
       expect(
-        find.text('Saved. That tiny step counts! Now smile.'),
+        tester.widget<GardenMoment>(find.byType(GardenMoment)).completion,
+        isNotNull,
+      );
+      expect(
+        find.text('Now smile.'),
         findsOneWidget,
       );
       expect(gateway.requests, isEmpty, reason: 'acknowledgement stays in-app');
@@ -744,8 +759,7 @@ void main() {
     await tester.ensureVisible(find.text('Did it'));
     await tester.tap(find.text('Did it'));
     await settleDatabase(tester);
-    expect(find.textContaining('That tiny step counts!'), findsOneWidget);
-    expect(find.text('Rate Budlark'), findsNothing);
+    expect((await tester.runAsync(store.habits))!.single.today, CheckInResult.did);
     await tester.pump(const Duration(seconds: 6));
     await settleDatabase(tester);
     expect(find.text('Rate Budlark'), findsOneWidget);

@@ -14,6 +14,7 @@ import 'package:flutter/rendering.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:path/path.dart' as p;
+import 'support/garden_navigation.dart';
 
 class _RestoringIdentity extends IdentityService {
   final restored = Completer<bool>();
@@ -120,6 +121,7 @@ Future<void> ready(
       }
     }
     final profile = find.byType(ProfileSection);
+    await openGardenMore(tester);
     if (finder.evaluate().isNotEmpty) {
       missingBeforeSettings = 0;
       if (needsProfile) {

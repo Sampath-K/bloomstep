@@ -1,3 +1,6 @@
+import 'dart:convert';
+import 'dart:io';
+
 import 'package:budlark/app/theme.dart';
 import 'package:budlark/features/garden/garden_screen.dart';
 import 'package:budlark/features/garden/profile_section.dart';
@@ -10,6 +13,7 @@ import 'package:http/testing.dart';
 
 import 'garden_learning_test.dart' show fixture, settleDatabase;
 import 'support/visual_capture.dart';
+import 'support/garden_navigation.dart';
 
 void main() {
   for (final guest in [false, true]) {
@@ -46,6 +50,7 @@ void main() {
           ),
         ));
         await settleDatabase(tester);
+        await openGardenMore(tester);
         await tester.tap(find.byTooltip('Help us grow'));
         await tester.pumpAndSettle();
         await tester.enterText(find.byType(TextField), 'Synthetic feedback only');
@@ -72,7 +77,7 @@ void main() {
         home: GardenScreen(
           store: store,
           testDisableServices: true,
-          profileSummaryBuilder: (_, __) => ProfileSection(
+          profileSummaryBuilder: (_, _) => ProfileSection(
             signedIn: signedIn,
             configured: true,
             busy: false,
@@ -134,6 +139,7 @@ void main() {
       await settleDatabase(tester);
       expect(find.text('Signed-in account'), findsNothing);
       expect(find.text('Sync now'), findsNothing);
+      await openGardenMore(tester);
       final actions = ['Did it', 'Did more', 'Not today'];
       for (final action in actions) {
         expect(find.widgetWithText(OutlinedButton, action), findsOneWidget);
@@ -271,6 +277,7 @@ void main() {
       ),
     );
     await settleDatabase(tester);
+    await openGardenMore(tester);
     await tester.tap(find.byTooltip('Help us grow'));
     await tester.pumpAndSettle();
     await tester.enterText(find.byType(TextField), 'Signed-out feedback');
@@ -309,6 +316,7 @@ void main() {
     );
     await settleDatabase(tester);
     for (var i = 0; i < 2; i++) {
+      await openGardenMore(tester);
       await tester.tap(find.byTooltip('Help us grow'));
       await tester.pumpAndSettle();
       final field = find.widgetWithText(TextField, 'Your feedback');
@@ -324,5 +332,3 @@ void main() {
     }
   });
 }
-import 'dart:convert';
-import 'dart:io';

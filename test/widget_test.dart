@@ -2,6 +2,7 @@ import 'package:budlark/core/garden_store.dart';
 import 'package:budlark/features/garden/garden_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'support/garden_navigation.dart';
 
 void main() {
   testWidgets('plant, celebrate, edit today and undo through the real UI', (
@@ -27,6 +28,7 @@ void main() {
           () => Future<void>.delayed(const Duration(milliseconds: 50)),
         );
         await tester.pump(const Duration(milliseconds: 50));
+        await openGardenMore(tester);
         final matches = finder.evaluate().toList();
         final enabled =
             matches.isNotEmpty &&

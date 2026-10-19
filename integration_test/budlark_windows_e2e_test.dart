@@ -18,6 +18,9 @@ import 'package:budlark/services/remote_config.dart';
 import 'support/local_test_api.dart';
 import 'support/test_only_app.dart';
 import 'support/windows_keyboard.dart';
+import 'garden_moment_native_test.dart' as moment_acceptance;
+import 'recipe_builder_quick_plant_test.dart' as planting_acceptance;
+import '../test/support/garden_navigation.dart';
 
 DateTime syntheticJourneyStart(DateTime runStartedAt) {
   final utc = runStartedAt.toUtc();
@@ -30,6 +33,8 @@ DateTime syntheticJourneyStart(DateTime runStartedAt) {
 
 void main() {
   IntegrationTestWidgetsFlutterBinding.ensureInitialized();
+  moment_acceptance.main();
+  planting_acceptance.main();
 
   testWidgets('signed-out Windows garden offers reminder setup', (tester) async {
     final store = await GardenStore.open(':memory:', 'signed-out-reminders');
@@ -47,6 +52,7 @@ void main() {
       );
       await tester.pump();
     }
+    await openGardenMore(tester);
     await tester.tap(find.byTooltip('Settings and privacy'));
     for (var i = 0; i < 3; i++) {
       await tester.runAsync(
@@ -80,6 +86,7 @@ void main() {
       await tester.pumpAndSettle();
     }
     await Clipboard.setData(const ClipboardData(text: 'abcd'));
+    await openGardenMore(tester);
     await tester.tap(find.byTooltip('Help us grow'));
     await tester.pumpAndSettle();
     final field = find.widgetWithText(TextField, 'Your feedback');
@@ -861,6 +868,7 @@ Future<void> _naturalnessReflection(
 }
 
 Future<void> _openRecipeMenu(WidgetTester tester) async {
+  await openGardenMore(tester);
   final menu = find.byType(PopupMenuButton<String>);
   await tester.ensureVisible(menu);
   await tester.tap(menu);
@@ -898,6 +906,7 @@ Future<void> _waitFor(
       () => Future<void>.delayed(const Duration(milliseconds: 50)),
     );
     await tester.pump(const Duration(milliseconds: 50));
+    await openGardenMore(tester);
     modelReady = ready == null || await tester.runAsync(ready) == true;
     if (finder.evaluate().isNotEmpty && modelReady) {
       // SQLite may finish before _load has rebuilt and re-enabled UI actions.

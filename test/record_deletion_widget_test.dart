@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import 'support/dialog_copy_contract.dart';
+import 'support/garden_navigation.dart';
 
 Future<void> _settle(WidgetTester tester) async {
   for (var i = 0; i < 3; i++) {
@@ -12,6 +13,7 @@ Future<void> _settle(WidgetTester tester) async {
     );
     await tester.pumpAndSettle();
   }
+  await openGardenMore(tester);
 }
 
 void main() {
