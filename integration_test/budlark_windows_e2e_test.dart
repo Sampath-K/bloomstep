@@ -92,32 +92,60 @@ void main() {
     final field = find.widgetWithText(TextField, 'Your feedback');
     await tester.tap(field);
     await tester.pump();
-    Future<void> keys(List<int> codes, {bool control = false, bool shift = false}) async {
+    final nativeEvents = <String>[];
+    bool recordNativeKey(KeyEvent event) {
+      nativeEvents.add('${event.runtimeType}:${event.logicalKey.keyLabel}');
+      return false;
+    }
+    HardwareKeyboard.instance.addHandler(recordNativeKey);
+    addTearDown(() => HardwareKeyboard.instance.removeHandler(recordNativeKey));
+    Future<void> keys(
+      List<int> codes, {
+      bool control = false,
+      bool shift = false,
+      bool Function()? applied,
+    }) async {
+      nativeEvents.clear();
       await tester.runAsync(() => windowsKeys(codes, control: control, shift: shift));
       await tester.pumpAndSettle();
+      if (applied != null) {
+        final elapsed = Stopwatch()..start();
+        while (!applied() && elapsed.elapsed < const Duration(seconds: 5)) {
+          await tester.runAsync(
+            () => Future<void>.delayed(const Duration(milliseconds: 20)),
+          );
+          await tester.pump();
+        }
+        expect(applied(), isTrue,
+            reason: 'Native editing did not finish; events: $nativeEvents; '
+                'focus: ${FocusManager.instance.primaryFocus?.debugLabel}');
+      }
     }
     TextEditingController controller() => tester.widget<TextField>(field).controller!;
-    await keys([0x56], control: true);
+    await keys([0x56], control: true, applied: () => controller().text == 'abcd');
     expect(controller().text, 'abcd');
-    await keys([0x08]);
+    await keys([0x08], applied: () => controller().text == 'abc');
     expect(controller().text, 'abc');
-    await keys([0x24, 0x2e]);
+    await keys([0x24, 0x2e], applied: () => controller().text == 'bc');
     expect(controller().text, 'bc');
-    await keys([0x23, 0x25, 0x08]);
+    await keys([0x23, 0x25, 0x08], applied: () => controller().text == 'c');
     expect(controller().text, 'c');
-    await keys([0x24, 0x27]);
+    await keys([0x24, 0x27],
+        applied: () => controller().selection == const TextSelection.collapsed(offset: 1));
     expect(controller().selection, const TextSelection.collapsed(offset: 1));
-    await keys([0x41], control: true);
+    await keys([0x41], control: true,
+        applied: () => controller().selection.textInside(controller().text) == 'c');
     expect(controller().selection.textInside(controller().text), 'c');
     await keys([0x43], control: true);
     expect((await Clipboard.getData(Clipboard.kTextPlain))!.text, 'c');
-    await keys([0x58], control: true);
+    await keys([0x58], control: true, applied: () => controller().text.isEmpty);
     expect(controller().text, isEmpty);
-    await keys([0x56], control: true);
+    await keys([0x56], control: true, applied: () => controller().text == 'c');
     expect(controller().text, 'c');
-    await keys([0x24], shift: true);
+    await keys([0x24], shift: true,
+        applied: () => controller().selection.textInside(controller().text) == 'c');
     expect(controller().selection.textInside(controller().text), 'c');
-    await keys([0x5a]);
+    await keys([0x5a], applied: () => controller().text.toLowerCase() == 'z');
     expect(controller().text.toLowerCase(), 'z');
     expect(
       tester.widget<FilledButton>(
