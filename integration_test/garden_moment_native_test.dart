@@ -61,7 +61,8 @@ void main() {
     elapsed.stop();
     expect(elapsed.elapsedMilliseconds, inInclusiveRange(700, 1800));
     expect((await store.habits()).single.today, CheckInResult.did);
-    await tester.pump();
+    await waitUntil(() =>
+        !tester.widget<GardenMoment>(find.byType(GardenMoment)).animate);
     expect(tester.widget<GardenMoment>(find.byType(GardenMoment)).animate,
         isFalse);
     binding.reportData = {

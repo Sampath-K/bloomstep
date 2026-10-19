@@ -1,8 +1,24 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
+import { execFileSync } from 'node:child_process';
 
 const read = name => readFileSync(new URL(`../${name}`, import.meta.url), 'utf8');
+test('integration keyboard parameters bind in Windows PowerShell without C# type aliases', () => {
+  const keyboard = read('integration_test/support/windows_keyboard.dart');
+  const parameters = keyboard.match(/function Key\(([^)]+)\)/)[1].replaceAll('\\$', '$');
+  const owner = keyboard.match(/  (\[[^\]]+\])\\\$owner = 0/)[1];
+  assert.equal(parameters, '[uint16]$vk, [uint32]$flags');
+  assert.equal(owner, '[uint32]');
+  if (process.platform === 'win32') {
+    execFileSync('powershell.exe', ['-NoProfile', '-NonInteractive', '-Command',
+      `function Key(${parameters}) {
+        ${owner}$owner = 0
+        if ($vk -ne 65 -or $flags -ne 2 -or $owner -ne 0) { throw 'Incorrect typed input' }
+      }; Key 65 2`],
+    { stdio: 'pipe', timeout: 20000 });
+  }
+});
 test('compiled rendered evidence waits for dialog transitions before capturing pixels', () => {
   const capture = read('integration_test/budlark_windows_e2e_test.dart')
     .split('Future<void> _captureBuilderFrame(')[1].split('Future<void> _naturalnessReflection(')[0];

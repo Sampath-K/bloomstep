@@ -44,8 +44,8 @@ public static class OwnedInput {
 }
 '@
 if ([IntPtr]::Size -ne 8) { throw 'Only the native x64/arm64 test runners are supported.' }
-function Key([ushort]\$vk, [uint]\$flags) {
-  [uint]\$owner = 0
+function Key([uint16]\$vk, [uint32]\$flags) {
+  [uint32]\$owner = 0
   [void][OwnedInput]::GetWindowThreadProcessId([OwnedInput]::GetForegroundWindow(), [ref]\$owner)
   if (\$owner -ne $pid) { throw 'Owned test window is not foreground; no keys sent.' }
   \$input = New-Object OwnedInput+Input
