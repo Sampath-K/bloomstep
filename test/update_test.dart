@@ -1,6 +1,6 @@
 import 'dart:convert';
 
-import 'package:bloomstep/services/update_service.dart';
+import 'package:budlark/services/update_service.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
@@ -13,7 +13,7 @@ Map<String, Object?> release(
   'tag_name': tag,
   'draft': false,
   'prerelease': preview,
-  'html_url': url ?? 'https://github.com/Sampath-K/bloomstep/releases/tag/$tag',
+  'html_url': url ?? 'https://github.com/Sampath-K/budlark/releases/tag/$tag',
 };
 
 void main() {

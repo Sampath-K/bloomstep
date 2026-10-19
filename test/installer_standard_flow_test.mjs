@@ -4,13 +4,13 @@ import { readFileSync } from 'node:fs';
 const read = path => readFileSync(new URL(`../${path}`, import.meta.url), 'utf8');
 
 test('one native Install commitment replaces extra Next screens without autonomous navigation', () => {
-  const setup = read('packaging/bloomstep.iss');
+  const setup = read('packaging/budlark.iss');
   assert.match(setup, /DisableWelcomePage=yes/);
   assert.match(setup, /DisableDirPage=yes/);
   assert.match(setup, /DisableReadyPage=no/);
   assert.match(setup, /DisableReadyMemo=yes/);
   assert.match(setup, /DisableFinishedPage=no/);
-  assert.match(setup, /\[Run\][\s\S]*Description: "Launch Bloomstep"[\s\S]*postinstall[\s\S]*skipifsilent/);
+  assert.match(setup, /\[Run\][\s\S]*Description: "Launch Budlark"[\s\S]*postinstall[\s\S]*skipifsilent/);
   assert.doesNotMatch(setup, /postinstall unchecked/);
   assert.match(read('packaging/install-progress.iss'), /WizardForm\.ReadyPage/);
   assert.match(setup, /PrivilegesRequired=lowest/);
@@ -18,27 +18,17 @@ test('one native Install commitment replaces extra Next screens without autonomo
   assert.doesNotMatch(read('packaging/install-progress.iss'), /SetTimer|CreateCallback|PeekMessage|DispatchMessage|OnClick|Sleep\(/);
 });
 
-test('launch jobs require protected disposable interactive runner, never enable protection', () => {
+test('manual installer verification remains explicit; automated CI does not request a VM runner', () => {
   const workflow = read('.github/workflows/ci.yml');
-  for (const job of ['installer-launch-evidence', 'universal-app-launch-evidence']) {
-    const section = workflow.split(`  ${job}:`)[1]?.split(/\n  [a-z][a-z-]+:/)[0];
-    assert.ok(section);
-    assert.match(section, /runs-on: \[self-hosted, defender-interactive(?:, '[^']+')?\]/);
-    assert.match(section, /setup_defender_test_vm\.ps1/);
+  for (const job of ['installer-launch-evidence', 'protected-installer-lifecycle',
+    'universal-native-proof', 'universal-app-launch-evidence']) {
+    assert.doesNotMatch(workflow, new RegExp(`^  ${job}:`, 'm'));
   }
+  assert.doesNotMatch(workflow, /runs-on:\s*\[self-hosted/);
+  assert.match(workflow, /release_bundle\.mjs/);
+  assert.match(read('tool/release_bundle.mjs'), /ownerManualVerification[\s\S]*status: 'PENDING'/);
+  assert.match(workflow, /PENDING/);
   assert.doesNotMatch(workflow, /DInstallFlow=zeroclick|universal-zeroclick-output/);
-  const script = read('tool/setup_defender_test_vm.ps1');
-  for (const key of ['Get-MpComputerStatus', 'RealTimeProtectionEnabled', 'BehaviorMonitorEnabled', 'AntivirusEnabled',
-    'WindowsPrincipal', 'UserInteractive', 'BLOOMSTEP_DISPOSABLE_VM', 'Get-FileHash', 'Get-MpThreatDetection', 'Start-MpScan']) {
-    assert.ok(script.includes(key), key);
-  }
-  assert.doesNotMatch(script, /Set-MpPreference|Add-MpPreference|Remove-MpThreat|Register-ScheduledTask/);
-  const docs = read('docs/defender-test-vm.md');
-  assert.match(docs, /Hyper-V/);
-  assert.match(docs, /defender-interactive/);
-  assert.match(docs, /ephemeral/);
-  assert.match(docs, /standard user/);
-  assert.match(docs, /withdrawn/);
 });
 
 test('VM tooling cannot execute without exact authority or leave security failures success-shaped', () => {

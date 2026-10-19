@@ -46,7 +46,7 @@ export function formatMetric(value) {
 }
 
 export function tokenHeaders(token) {
-  return { 'X-Bloomstep-Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' };
+  return { 'X-Budlark-Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' };
 }
 
 export function metricPanels(data) {
@@ -399,10 +399,10 @@ function initialize() {
       if(!auth) throw new Error('Not configured');
       await cleared;
       if(generation !== sessionGeneration) return;
-      status.textContent = 'Opening secure Bloomstep operator sign-in...';
+      status.textContent = 'Opening secure Budlark operator sign-in...';
       await auth.signIn();
       if(generation !== sessionGeneration) return;
-      status.textContent = 'Signed in. My data isolation is available to customers; team tools require server-assigned Bloomstep.Admin.';
+      status.textContent = 'Signed in. My data isolation is available to customers; team tools require server-assigned Budlark.Admin.';
     } catch { if(generation === sessionGeneration) status.textContent = 'Operator sign-in failed, cancelled, or is not configured.'; }
   });
   element('admin').addEventListener('submit', event => {

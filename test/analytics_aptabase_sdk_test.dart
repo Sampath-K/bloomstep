@@ -2,7 +2,7 @@ import 'dart:async';
 import 'dart:io';
 
 import 'package:aptabase_flutter/aptabase_flutter.dart';
-import 'package:bloomstep/services/analytics_sandbox.dart';
+import 'package:budlark/services/analytics_sandbox.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 class _Headers implements HttpHeaders {

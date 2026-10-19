@@ -38,11 +38,11 @@ export function createHandlers({ container, authenticate, authenticateAggregate 
   const auditTtl = 2592000;
   const aggregatePartition = '__daily_aggregates';
   const aggregateSchema = z.object({ endDay: z.iso.date().optional(), days: z.number().int().min(1).max(30).default(1) }).strict();
-  const workerOnly = (/** @type {unknown} */ roles) => Array.isArray(roles) && roles.includes('Bloomstep.AggregateWriter') && !isAdmin(roles);
+  const workerOnly = (/** @type {unknown} */ roles) => Array.isArray(roles) && roles.includes('Budlark.AggregateWriter') && !isAdmin(roles);
   /** @param {import('@azure/functions').HttpRequest} request */
   async function gardenActor(request) {
     const actor = await authenticate(request);
-    if (workerOnly(actor.roles) || Array.isArray(actor.roles) && actor.roles.includes('Bloomstep.SpendGuard')) throw new ServiceError(403, 'Operational roles cannot access customer records.');
+    if (workerOnly(actor.roles) || Array.isArray(actor.roles) && actor.roles.includes('Budlark.SpendGuard')) throw new ServiceError(403, 'Operational roles cannot access customer records.');
     return actor;
   }
   /** @param {import('@azure/functions').HttpRequest} request */
@@ -52,17 +52,17 @@ export function createHandlers({ container, authenticate, authenticateAggregate 
     apiEnabled();
     await operationalEnabled();
     engagementEnabled();
-    if (['true', '1'].includes((environment().BLOOMSTEP_INVITATIONS_DISABLED ?? '').toLowerCase())) throw new ServiceError(503, 'Invitations are paused.');
+    if (['true', '1'].includes((environment().BUDLARK_INVITATIONS_DISABLED ?? '').toLowerCase())) throw new ServiceError(503, 'Invitations are paused.');
     return actor;
   }
   const gateBody = (/** @type {any} */ gate) => ({ ...gate, revision: randomUUID() });
   /** @param {unknown} error */
   const conflict = error => typeof error === 'object' && error && 'code' in error && [409, 412, 424].includes(Number(error.code));
   function engagementEnabled() {
-    if (['true', '1'].includes((environment().BLOOMSTEP_ENGAGEMENT_DISABLED ?? '').toLowerCase())) throw new ServiceError(503, 'Engagement is paused by the operator.');
+    if (['true', '1'].includes((environment().BUDLARK_ENGAGEMENT_DISABLED ?? '').toLowerCase())) throw new ServiceError(503, 'Engagement is paused by the operator.');
   }
   function apiEnabled() {
-    if (['true', '1'].includes((environment().BLOOMSTEP_API_DISABLED ?? '').toLowerCase())) throw new ServiceError(503, 'API is paused by the operator; account deletion remains available.');
+    if (['true', '1'].includes((environment().BUDLARK_API_DISABLED ?? '').toLowerCase())) throw new ServiceError(503, 'API is paused by the operator; account deletion remains available.');
   }
   async function operationalEnabled() {
     const gate = (await container().item('budget', budgetPartition).read()).resource;
@@ -71,7 +71,7 @@ export function createHandlers({ container, authenticate, authenticateAggregate 
   /** @param {import('@azure/functions').HttpRequest} request */
   async function operationalPause(request) {
     const actor = await authenticateSpend(request);
-    if (!Array.isArray(actor.roles) || !actor.roles.includes('Bloomstep.SpendGuard')) throw new ServiceError(403, 'Explicit SpendGuard role required.');
+    if (!Array.isArray(actor.roles) || !actor.roles.includes('Budlark.SpendGuard')) throw new ServiceError(403, 'Explicit SpendGuard role required.');
     const schema = z.strictObject({ requestId: z.uuid(), reason: z.enum(['paid_sku', 'spending_limit_off', 'positive_cost', 'configuration_unknown']) });
     const parsed = schema.safeParse(await body(request));
     if (!parsed.success) throw new ServiceError(400, 'Invalid operational pause request.');
@@ -246,6 +246,8 @@ export function createHandlers({ container, authenticate, authenticateAggregate 
   function recordDeleted(gate, type, record) {
     const ledger = gate.deletedRecords ?? {};
     return !!ledger[`${type}:${record?.id}`] ||
+      type === 'events' && record?.name === 'experience_observation' &&
+        !!ledger[`experienceEvents:${record?.properties?.consentEpoch}`] ||
       !!ledger[`habits:${record?.habitId ?? record?.properties?.habitId}`] ||
       type === 'audit' && !!ledger[`voice:${record?.targetId}`];
   }
@@ -276,7 +278,7 @@ export function createHandlers({ container, authenticate, authenticateAggregate 
     };
     for (let page = 0; page < 100; page++) {
       const { resources } = await container().items.query({
-        query: 'SELECT TOP 100 * FROM c WHERE c.userId = @u AND c.type != "account" AND ((c.type = @targetType AND c.record.id = @target) OR (@targetType = "habits" AND (c.record.habitId = @target OR c.record.properties.habitId = @target)) OR (@targetType = "voice" AND c.type = "audit" AND c.targetId = @target))',
+        query: 'SELECT TOP 100 * FROM c WHERE c.userId = @u AND c.type != "account" AND ((c.type = @targetType AND c.record.id = @target) OR (@targetType = "habits" AND (c.record.habitId = @target OR c.record.properties.habitId = @target)) OR (@targetType = "voice" AND c.type = "audit" AND c.targetId = @target) OR (@targetType = "experienceEvents" AND c.type = "events" AND c.record.name = "experience_observation" AND c.record.properties.consentEpoch = @target))',
         parameters: [{ name: '@u', value: userId }, { name: '@target', value: deletion.recordId }, { name: '@targetType', value: deletion.type }],
       }, { partitionKey: userId }).fetchAll();
       if (!resources.length) { await finished(); return; }
@@ -400,8 +402,8 @@ export function createHandlers({ container, authenticate, authenticateAggregate 
     const garden = await readGarden(userId);
     if (!deletionOnly) await invitations.observePractice(userId, garden.checkins);
     if (!deletionOnly &&
-        !['true', '1'].includes((environment().BLOOMSTEP_ENGAGEMENT_DISABLED ?? '').toLowerCase()) &&
-        !['true', '1'].includes((environment().BLOOMSTEP_INVITATIONS_DISABLED ?? '').toLowerCase())) {
+        !['true', '1'].includes((environment().BUDLARK_ENGAGEMENT_DISABLED ?? '').toLowerCase()) &&
+        !['true', '1'].includes((environment().BUDLARK_INVITATIONS_DISABLED ?? '').toLowerCase())) {
       await invitations.resume(userId);
     }
     await assertActive(userId, false);
@@ -442,7 +444,7 @@ export function createHandlers({ container, authenticate, authenticateAggregate 
   /** @param {import('@azure/functions').HttpRequest} request */
   async function team(request) {
     const actor = await authenticate(request);
-    if (!isAdmin(actor.roles) || Array.isArray(actor.roles) && actor.roles.includes('Bloomstep.SpendGuard')) throw new ServiceError(403, 'Product team role required.');
+    if (!isAdmin(actor.roles) || Array.isArray(actor.roles) && actor.roles.includes('Budlark.SpendGuard')) throw new ServiceError(403, 'Product team role required.');
     apiEnabled();
     await operationalEnabled();
     engagementEnabled();
@@ -660,10 +662,10 @@ export function createHandlers({ container, authenticate, authenticateAggregate 
   /** @param {import('@azure/functions').HttpRequest} request */
   async function aggregates(request) {
     const actor = await authenticateAggregate(request);
-    if (!isAdmin(actor.roles) && !(Array.isArray(actor.roles) && actor.roles.includes('Bloomstep.AggregateWriter'))) throw new ServiceError(403, 'Aggregate writer role required.');
+    if (!isAdmin(actor.roles) && !(Array.isArray(actor.roles) && actor.roles.includes('Budlark.AggregateWriter'))) throw new ServiceError(403, 'Aggregate writer role required.');
     apiEnabled();
     engagementEnabled();
-    if (['true','1'].includes((environment().BLOOMSTEP_AGGREGATES_DISABLED ?? '').toLowerCase())) throw new ServiceError(503, 'Aggregate worker is paused.');
+    if (['true','1'].includes((environment().BUDLARK_AGGREGATES_DISABLED ?? '').toLowerCase())) throw new ServiceError(503, 'Aggregate worker is paused.');
     const parsed = aggregateSchema.safeParse(await body(request));
     if (!parsed.success) throw new ServiceError(400, 'Invalid aggregate backfill.');
     const today = clock().toISOString().slice(0, 10);
@@ -727,7 +729,7 @@ export function createHandlers({ container, authenticate, authenticateAggregate 
     // Reuse the actual sync boundary with the caller's verified transport, never the peer's identity.
     const probe = (/** @type {string} */ method, /** @type {Record<string, unknown> | undefined} */ data = undefined,
       /** @type {string} */ query = '') => new azureFunctions.HttpRequest({
-        method, url: `https://bloomstep.invalid/api/sync${query}`,
+        method, url: `https://budlark.invalid/api/sync${query}`,
         headers: Object.fromEntries(request.headers),
         ...(data ? { body: { string: JSON.stringify(data) } } : {}),
       });

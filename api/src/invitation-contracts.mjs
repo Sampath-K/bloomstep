@@ -3,7 +3,7 @@ import { z } from 'zod';
 const text = z.string().trim().min(1).max(200);
 export const sharedRecipeSchema = z.strictObject({
   explicitChoice: z.literal(true),
-  templateCategory: z.enum(['calm', 'focus', 'health', 'learning', 'connection']),
+  templateCategory: z.enum(['calm', 'focus', 'health', 'learning', 'connection']).optional(),
   aspiration: text, anchor: text, behavior: text, celebration: text,
   species: z.enum(['Cosmos', 'Sunflower', 'Fern']),
 });

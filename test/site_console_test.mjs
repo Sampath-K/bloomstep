@@ -88,7 +88,7 @@ test('production SWA deployment follows main and serializes the one shared envir
   const workflow = readFileSync(new URL('../.github/workflows/azure.yml', import.meta.url), 'utf8');
   assert.match(workflow, /branches:\s*\[main\]/);
   assert.match(workflow, /production_branch:\s*main/);
-  assert.match(workflow, /group:\s*bloomstep-production-deployment/);
+  assert.match(workflow, /group:\s*budlark-production-deployment/);
   assert.match(workflow, /cancel-in-progress:\s*false/);
 });
 
@@ -143,7 +143,7 @@ test('operator never sends bearer tokens to a different origin', () => {
 });
 test('real broker token uses a dedicated header, not the SWA-reserved Authorization header', () => {
   const headers = tokenHeaders('synthetic.token.fixture');
-  assert.equal(headers['X-Bloomstep-Authorization'], 'Bearer synthetic.token.fixture');
+  assert.equal(headers['X-Budlark-Authorization'], 'Bearer synthetic.token.fixture');
   assert.equal(Object.hasOwn(headers, 'Authorization'), false);
 });
 test('unknown or suppressed counts are never rendered as zeros', () => {

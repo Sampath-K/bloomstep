@@ -803,6 +803,7 @@ export const eventRegistry = {
       },
       "kind": {
         "enum": [
+          "General",
           "Idea",
           "Bug",
           "Question",
@@ -1395,11 +1396,71 @@ export const eventRegistry = {
     },
     "observable": false,
     "legacy": false
+  },
+  "experience_observation": {
+    "properties": {
+      "experienceStudy": {
+        "enum": [
+          "invitation_heading_v1",
+          "garden_prompt_v1"
+        ]
+      },
+      "experienceArm": {
+        "enum": [
+          "control",
+          "candidate"
+        ]
+      },
+      "experienceOutcome": {
+        "enum": [
+          "rendered",
+          "task_completed",
+          "followup",
+          "practice",
+          "error",
+          "burden",
+          "opt_out"
+        ]
+      },
+      "experiencePolicy": {
+        "enum": [
+          "app_experience_v1"
+        ]
+      },
+      "configVersion": {
+        "type": "integer",
+        "min": 1,
+        "max": 2147483647
+      },
+      "cohortId": {
+        "type": "uuid"
+      },
+      "consentEpoch": {
+        "type": "uuid"
+      },
+      "platform": {
+        "enum": [
+          "windows"
+        ]
+      }
+    },
+    "observable": true,
+    "legacy": false,
+    "required": [
+      "experienceStudy",
+      "experienceArm",
+      "experienceOutcome",
+      "experiencePolicy",
+      "configVersion",
+      "cohortId",
+      "consentEpoch",
+      "platform"
+    ]
   }
 };
 export const eventJsonSchema = {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "title": "Bloomstep telemetry v1",
+  "title": "Budlark telemetry v1",
   "oneOf": [
     {
       "type": "object",
@@ -3067,6 +3128,7 @@ export const eventJsonSchema = {
             "kind": {
               "type": "string",
               "enum": [
+                "General",
                 "Idea",
                 "Bug",
                 "Question",
@@ -4293,6 +4355,100 @@ export const eventJsonSchema = {
                 "android",
                 "ios",
                 "web"
+              ]
+            }
+          }
+        }
+      }
+    },
+    {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "name",
+        "ts",
+        "properties"
+      ],
+      "properties": {
+        "id": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "name": {
+          "const": "experience_observation"
+        },
+        "ts": {
+          "type": "string",
+          "format": "date-time",
+          "pattern": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}(?:\\.\\d{1,6})?Z$"
+        },
+        "schemaVersion": {
+          "const": 1
+        },
+        "properties": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "experienceStudy",
+            "experienceArm",
+            "experienceOutcome",
+            "experiencePolicy",
+            "configVersion",
+            "cohortId",
+            "consentEpoch",
+            "platform"
+          ],
+          "properties": {
+            "experienceStudy": {
+              "type": "string",
+              "enum": [
+                "invitation_heading_v1",
+                "garden_prompt_v1"
+              ]
+            },
+            "experienceArm": {
+              "type": "string",
+              "enum": [
+                "control",
+                "candidate"
+              ]
+            },
+            "experienceOutcome": {
+              "type": "string",
+              "enum": [
+                "rendered",
+                "task_completed",
+                "followup",
+                "practice",
+                "error",
+                "burden",
+                "opt_out"
+              ]
+            },
+            "experiencePolicy": {
+              "type": "string",
+              "enum": [
+                "app_experience_v1"
+              ]
+            },
+            "configVersion": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 2147483647
+            },
+            "cohortId": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "consentEpoch": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "platform": {
+              "type": "string",
+              "enum": [
+                "windows"
               ]
             }
           }

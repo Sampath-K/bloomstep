@@ -1,11 +1,11 @@
 import 'dart:io';
 import 'dart:ui' as ui;
 
-import 'package:bloomstep/app/theme.dart';
-import 'package:bloomstep/core/garden_store.dart';
-import 'package:bloomstep/core/models.dart';
-import 'package:bloomstep/features/garden/garden_screen.dart';
-import 'package:bloomstep/features/garden/plant_art.dart';
+import 'package:budlark/app/theme.dart';
+import 'package:budlark/core/garden_store.dart';
+import 'package:budlark/core/models.dart';
+import 'package:budlark/features/garden/garden_screen.dart';
+import 'package:budlark/features/garden/plant_art.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
 import 'package:flutter/services.dart';
@@ -52,7 +52,7 @@ void main() {
     final boundaryKey = GlobalKey();
     await tester.pumpWidget(
       MaterialApp(
-        theme: BloomstepTheme.light(),
+        theme: BudlarkTheme.light(),
         home: RepaintBoundary(
           key: boundaryKey,
           child: GardenScreen(store: store),
@@ -66,7 +66,7 @@ void main() {
     expect(find.text('Did it'), findsNWidgets(3));
     expect(tester.takeException(), isNull);
     await expectLater(tester, meetsGuideline(labeledTapTargetGuideline));
-    final output = Platform.environment['BLOOMSTEP_SCREENSHOTS'];
+    final output = Platform.environment['BUDLARK_SCREENSHOTS'];
     if (output != null) {
       final boundary =
           boundaryKey.currentContext!.findRenderObject()!
@@ -82,7 +82,7 @@ void main() {
     }
     await tester.pumpWidget(
       MaterialApp(
-        theme: BloomstepTheme.light(),
+        theme: BudlarkTheme.light(),
         home: Scaffold(
           body: Wrap(
             children: [

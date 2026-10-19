@@ -4,9 +4,9 @@ param(
   [Parameter(Mandatory)][ValidatePattern('^[0-9a-fA-F-]{36}$')][string]$SubscriptionId,
   [Parameter(Mandatory)][ValidateNotNullOrEmpty()][string]$SwaName,
   [Parameter(Mandatory)][ValidateNotNullOrEmpty()][string]$ResourceGroup,
-  [Parameter(Mandatory)][ValidateSet('Sampath-K/bloomstep')][string]$Repository,
-  [Parameter(Mandatory)][ValidateSet('bloomstep-operations')][string]$Environment,
-  [Parameter(Mandatory)][ValidateSet('sampath-k-bloomstep-mvp-implementation')][string]$FeatureBranch,
+  [Parameter(Mandatory)][ValidateSet('Sampath-K/budlark')][string]$Repository,
+  [Parameter(Mandatory)][ValidateSet('budlark-operations')][string]$Environment,
+  [Parameter(Mandatory)][ValidateSet('sampath-k-budlark-mvp-implementation')][string]$FeatureBranch,
   [Parameter(Mandatory)][switch]$ConfirmPersonalResourceTenant
 )
 $ErrorActionPreference = 'Stop'
@@ -111,8 +111,8 @@ try {
       $null = Github "repos/$Repository/environments/$Environment/deployment-branch-policies" 'POST' @{ name = $branch; type = 'branch' }
     }
   }
-  $name = 'Bloomstep aggregate worker (personal resource directory)'
-  $tag = "Bloomstep-aggregate:$Repository`:$Environment`:$SubscriptionId`:$SwaName"
+  $name = 'Budlark aggregate worker (personal resource directory)'
+  $tag = "Budlark-aggregate:$Repository`:$Environment`:$SubscriptionId`:$SwaName"
   $matches = @(GraphList "applications?`$filter=displayName eq '$name'" )
   if ($matches.Count -gt 1) { throw 'Duplicate aggregate worker registrations; resolve manually.' }
   if ($matches.Count -eq 1) {
@@ -121,7 +121,7 @@ try {
   } else {
     $worker = Graph 'applications' 'POST' @{
       displayName = $name; signInAudience = 'AzureADMyOrg'
-      tags = @('Bloomstep-managed-free', 'Bloomstep-aggregate-worker', $tag)
+      tags = @('Budlark-managed-free', 'Budlark-aggregate-worker', $tag)
       api = @{ requestedAccessTokenVersion = 2 }
       appRoles = @()
     }
@@ -131,15 +131,15 @@ try {
     if ($credentials -and @($credentials.Value).Count) { throw 'Worker app has password/key credentials; this job requires FIC only. Review manually.' }
   }
   $roles = @($worker.appRoles)
-  if (@($roles | Where-Object value -ne 'Bloomstep.AggregateWriter').Count) { throw 'Unexpected worker application roles; review manually.' }
-  $role = @($roles | Where-Object value -eq 'Bloomstep.AggregateWriter')
+  if (@($roles | Where-Object value -ne 'Budlark.AggregateWriter').Count) { throw 'Unexpected worker application roles; review manually.' }
+  $role = @($roles | Where-Object value -eq 'Budlark.AggregateWriter')
   if ($role.Count -gt 1) { throw 'Duplicate aggregate role definitions.' }
   $roleId = if ($role.Count) { $role[0].id } else { [guid]::NewGuid().ToString() }
   $null = Graph "applications/$($worker.id)" 'PATCH' @{
     identifierUris = @("api://$($worker.appId)")
     api = @{ requestedAccessTokenVersion = 2 }
     appRoles = @(@{
-      id = $roleId; value = 'Bloomstep.AggregateWriter'; displayName = 'Bloomstep aggregate writer'
+      id = $roleId; value = 'Budlark.AggregateWriter'; displayName = 'Budlark aggregate writer'
       description = 'Write bounded internal daily aggregates only; no customer garden or feedback access.'
       allowedMemberTypes = @('Application'); isEnabled = $true
     })
@@ -147,7 +147,7 @@ try {
   $principals = @(GraphList "servicePrincipals?`$filter=appId eq '$($worker.appId)'")
   if ($principals.Count -gt 1) { throw 'Duplicate worker service principals.' }
   $principal = if ($principals.Count) { $principals[0] } else {
-    Graph 'servicePrincipals' 'POST' @{ appId = $worker.appId; tags = @('Bloomstep-aggregate-worker', $tag) }
+    Graph 'servicePrincipals' 'POST' @{ appId = $worker.appId; tags = @('Budlark-aggregate-worker', $tag) }
   }
   $assignments = @(GraphList "servicePrincipals/$($principal.id)/appRoleAssignments")
   if (@($assignments | Where-Object { $_.resourceId -ne $principal.id -or $_.appRoleId -ne $roleId }).Count) {
@@ -161,9 +161,9 @@ try {
   $subject = "repo:$($repositoryInfo.owner.login)@$($repositoryInfo.owner.id)/$($repositoryInfo.name)@$($repositoryInfo.id):environment:$Environment"
   $legacySubject = "repo:$Repository`:environment:$Environment"
   $federated = @(GraphList "applications/$($worker.id)/federatedIdentityCredentials")
-  if (@($federated | Where-Object name -ne 'bloomstep-operations-github').Count) { throw 'Unexpected worker federated credentials; review manually.' }
+  if (@($federated | Where-Object name -ne 'budlark-operations-github').Count) { throw 'Unexpected worker federated credentials; review manually.' }
   $ficBody = @{
-    name = 'bloomstep-operations-github'; description = 'Approved main/feature environment jobs only.'
+    name = 'budlark-operations-github'; description = 'Approved main/feature environment jobs only.'
     issuer = 'https://token.actions.githubusercontent.com'; subject = $subject; audiences = @('api://AzureADTokenExchange')
   }
   if ($federated.Count) {

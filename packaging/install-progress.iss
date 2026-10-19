@@ -25,7 +25,7 @@ begin
   Top := ScaleY(66);
   WelcomeVisual.Title := TNewStaticText.Create(WizardForm);
   WelcomeVisual.Title.Parent := WizardForm.ReadyPage;
-  WelcomeVisual.Title.Caption := 'Welcome to Bloomstep';
+  WelcomeVisual.Title.Caption := 'Welcome to Budlark';
   WelcomeVisual.Title.Font.Style := [fsBold];
   WelcomeVisual.Title.SetBounds(ScaleX(12), ScaleY(8), WizardForm.ReadyPage.Width - ScaleX(24), ScaleY(20));
   WelcomeVisual.Value := TNewStaticText.Create(WizardForm);
@@ -66,5 +66,5 @@ end;
 procedure ShowVisualForPage(CurPageID: Integer);
 begin
   if CurPageID = wpReady then
-    Log('Bloomstep static introduction; user selects Install to continue.');
+    Log('Budlark static introduction; user selects Install to continue.');
 end;

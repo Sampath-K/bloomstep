@@ -48,7 +48,7 @@ test('same-origin custom-header transport leaves server role authoritative and s
   let captured;
   const fetcher=async(url,options)=>{captured={url,options};return {ok:true,json:async()=>({feedback:[]})};};
   await operatorRequest(auth,'https://test.azurestaticapps.net','/api/team/feedback',{},fetcher);
-  assert.equal(captured.options.headers['X-Bloomstep-Authorization'],'Bearer actual.broker.token');
+  assert.equal(captured.options.headers['X-Budlark-Authorization'],'Bearer actual.broker.token');
   assert.equal(captured.options.headers.Authorization,undefined);
   assert.equal(captured.options.redirect,'error');
   for(const status of [401,403]) await assert.rejects(operatorRequest(auth,'https://test.azurestaticapps.net','/api/team/metrics',{},async()=>({ok:false,status,json:async()=>({error:'private'})})),new RegExp(`HTTP ${status}`));

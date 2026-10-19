@@ -3,20 +3,20 @@ param(
   [Parameter(Mandatory=$true)][string]$EvidenceDir
 )
 $ErrorActionPreference = 'Stop'
-if ($env:GITHUB_ACTIONS -ne 'true' -or $env:BLOOMSTEP_DISPOSABLE_VM -ne 'true') {
+if ($env:GITHUB_ACTIONS -ne 'true' -or $env:BUDLARK_DISPOSABLE_VM -ne 'true') {
   throw 'Actual visual proof is restricted to explicitly authorized disposable CI; never local installation.'
 }
 $manifest = Get-Content (Join-Path $PackageDir 'universal-manifest.json') -Raw | ConvertFrom-Json
 $installer = Join-Path $PackageDir $manifest.installerFile
-if ($manifest.kind -ne 'bloomstep-offline-universal-v1' -or $manifest.source -ne (git rev-parse HEAD) -or
-    $manifest.installerFile -ne "Bloomstep-$($manifest.version)-windows-universal-setup.exe" -or
+if ($manifest.kind -ne 'budlark-offline-universal-v1' -or $manifest.source -ne (git rev-parse HEAD) -or
+    $manifest.installerFile -ne "Budlark-$($manifest.version)-windows-universal-setup.exe" -or
     $manifest.installerSha256 -ne (Get-FileHash $installer).Hash.ToLower()) {
   throw 'Visual proof package source/file/hash authority mismatch.'
 }
 New-Item -ItemType Directory -Path $EvidenceDir -Force | Out-Null
-$target = Join-Path $EvidenceDir 'Bloomstep-progress-proof'
-$receipt = Join-Path $env:LOCALAPPDATA 'Bloomstep\measurement\installer-receipt.json'
-$protocol = 'Registry::HKEY_CURRENT_USER\Software\Classes\bloomstep\shell\open\command'
+$target = Join-Path $EvidenceDir 'Budlark-progress-proof'
+$receipt = Join-Path $env:LOCALAPPDATA 'Budlark\measurement\installer-receipt.json'
+$protocol = 'Registry::HKEY_CURRENT_USER\Software\Classes\budlark\shell\open\command'
 foreach ($path in @($target, $receipt, $protocol)) {
   if (Test-Path $path) { throw 'Visual proof refuses existing customer/product state.' }
 }
@@ -88,8 +88,8 @@ try {
   }
   Assert-StandardWizardJourney $journey $false $false
   if (Test-Path $receipt) { throw 'Installer observations must not exist.' }
-  if (-not (Test-Path "$target\bloomstep.exe")) { throw 'Actual install payload missing at expected path.' }
-  if (@(Get-Process bloomstep -ErrorAction SilentlyContinue | Where-Object { $_.Path -eq "$target\bloomstep.exe" }).Count -ne 0) {
+  if (-not (Test-Path "$target\budlark.exe")) { throw 'Actual install payload missing at expected path.' }
+  if (@(Get-Process budlark -ErrorAction SilentlyContinue | Where-Object { $_.Path -eq "$target\budlark.exe" }).Count -ne 0) {
     throw 'An app process started despite suppressed launch.'
   }
   $report.observationReceiptAbsent = $true
@@ -111,11 +111,11 @@ try {
     if (Test-Path "$target\unins000.exe") {
       $uninstall = Start-CaptureProcess "$target\unins000.exe" '/VERYSILENT /SUPPRESSMSGBOXES /NORESTART' 'uninstall'
       Wait-CaptureTree 'uninstall'
-      if ($uninstall.ExitCode -ne 0 -or (Test-Path "$target\bloomstep.exe") -or (Test-Path $protocol)) {
+      if ($uninstall.ExitCode -ne 0 -or (Test-Path "$target\budlark.exe") -or (Test-Path $protocol)) {
         throw 'Actual visual proof owned uninstall failed.'
       }
     }
-    $report.cleanupVerified = -not ((Test-Path "$target\bloomstep.exe") -or (Test-Path $protocol))
+    $report.cleanupVerified = -not ((Test-Path "$target\budlark.exe") -or (Test-Path $protocol))
     if (Test-Path $target) { Remove-Item -LiteralPath $target -Recurse -Force }
   } finally {
     try { Stop-CaptureTree }

@@ -1,13 +1,13 @@
 import 'dart:convert';
 
-import 'package:bloomstep/core/garden_store.dart';
-import 'package:bloomstep/core/models.dart';
+import 'package:budlark/core/garden_store.dart';
+import 'package:budlark/core/models.dart';
 import 'package:crypto/crypto.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
-import 'package:bloomstep/services/identity.dart';
-import 'package:bloomstep/services/sync_service.dart';
+import 'package:budlark/services/identity.dart';
+import 'package:budlark/services/sync_service.dart';
 import 'package:sqflite_common_ffi/sqflite_ffi.dart';
 
 Future<Habit> plant(GardenStore store) => store.plant(
@@ -30,6 +30,65 @@ class TelemetryIdentity extends IdentityService {
 }
 
 void main() {
+  for (final regress in [false, true]) {
+    test(
+      'saved operation orders telemetry and first alias (regress=$regress)',
+      () async {
+        var clock = DateTime.utc(2026, 10, 4, 12);
+        final store = await GardenStore.open(
+          ':memory:',
+          'monotonic',
+          clock: () => clock,
+        );
+        addTearDown(store.close);
+        await store.setSetting('analytics', 'true');
+        final h = await plant(store);
+        await store.checkIn(h.id, CheckInResult.notToday);
+        if (regress) clock = clock.subtract(const Duration(hours: 1));
+        await store.checkIn(h.id, CheckInResult.did);
+        await store.undo(h.id);
+        final exported = await store.export();
+        final saved = (exported['checkins'] as List).cast<Map>().toList()
+          ..sort(
+            (a, b) =>
+                DateTime.parse(a['ts'] as String)
+                    .compareTo(DateTime.parse(b['ts'] as String)),
+          );
+        final observations = await events(store);
+        final alias = observations.singleWhere(
+          (row) => row['name'] == 'first_checkin',
+        );
+        final positive = observations.singleWhere(
+          (row) =>
+              row['name'] == 'checkin' &&
+              (row['properties'] as Map)['result'] == 'did',
+        );
+        final undo = observations.singleWhere(
+          (row) =>
+              row['name'] == 'checkin' &&
+              (row['properties'] as Map)['result'] == 'undo',
+        );
+        expect(
+          DateTime.parse(alias['ts'] as String),
+          DateTime.parse(
+            saved.singleWhere((row) => row['result'] == 'did')['ts'] as String,
+          ),
+        );
+        expect(alias['ts'], positive['ts']);
+        expect(
+          DateTime.parse(undo['ts'] as String),
+          DateTime.parse(saved.last['ts'] as String),
+        );
+        expect(
+          DateTime.parse(undo['ts'] as String)
+              .isAfter(DateTime.parse(alias['ts'] as String)),
+          isTrue,
+        );
+        expect((await store.habits()).single.practiceCount, 0);
+      },
+    );
+  }
+
   test(
     'first checkin milestone requires observed practice, not a rest or undo',
     () async {

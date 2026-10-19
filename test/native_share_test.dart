@@ -1,10 +1,10 @@
-import 'package:bloomstep/services/native_share.dart';
+import 'package:budlark/services/native_share.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
-  const channel = MethodChannel('bloomstep/native_share');
+  const channel = MethodChannel('budlark/native_share');
   test(
     'native share opens the OS surface without claiming a completed send',
     () async {

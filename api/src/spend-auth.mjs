@@ -15,7 +15,7 @@ export function createSpendAuthenticator(config, trustedKeys = undefined) {
     try {
       const { payload } = await jwtVerify(token, keys, { issuer: config.issuer, audience: config.audience,
         algorithms: ['RS256'], requiredClaims: ['iss', 'sub', 'iat', 'exp'] });
-      if (payload.scp !== undefined || !Array.isArray(payload.roles) || payload.roles.length !== 1 || payload.roles[0] !== 'Bloomstep.SpendGuard') {
+      if (payload.scp !== undefined || !Array.isArray(payload.roles) || payload.roles.length !== 1 || payload.roles[0] !== 'Budlark.SpendGuard') {
         throw new ServiceError(403, 'Explicit application SpendGuard role required.');
       }
       return { userId: accountKey(String(payload.iss), String(payload.sub)), roles: payload.roles };

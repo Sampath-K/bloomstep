@@ -26,8 +26,8 @@ function global:gh {
   $global:LASTEXITCODE = 0
   if ($args[1] -match 'API_ORIGIN') { return '{"value":"https://mock.azurestaticapps.net"}' }
   if ($args[1] -match 'oidc/customization') { return '{"use_default":true}' }
-  if ($args[1] -eq 'repos/Sampath-K/bloomstep') {
-    return '{"full_name":"Sampath-K/bloomstep","name":"bloomstep","id":456,"owner":{"login":"Sampath-K","id":123}}'
+  if ($args[1] -eq 'repos/Sampath-K/budlark') {
+    return '{"full_name":"Sampath-K/budlark","name":"budlark","id":456,"owner":{"login":"Sampath-K","id":123}}'
   }
   return '{}'
 }
@@ -35,9 +35,9 @@ try {
   try {
     & $source -ResourceTenantId '22222222-2222-4222-8222-222222222222' `
       -SubscriptionId '11111111-1111-4111-8111-111111111111' `
-      -ResourceGroup 'bloomstep-free' -SwaName 'bloomstep-free' `
-      -Repository 'Sampath-K/bloomstep' -Environment 'bloomstep-operations' `
-      -FeatureBranch 'sampath-k-bloomstep-mvp-implementation' -ConfirmPersonalResourceTenant
+      -ResourceGroup 'budlark-free' -SwaName 'budlark-free' `
+      -Repository 'Sampath-K/budlark' -Environment 'budlark-operations' `
+      -FeatureBranch 'sampath-k-budlark-mvp-implementation' -ConfirmPersonalResourceTenant
     throw 'Expected simulated token acquisition failure.'
   } catch {
     if ($_.Exception.Message -notmatch '^Graph token acquisition failed') { throw }

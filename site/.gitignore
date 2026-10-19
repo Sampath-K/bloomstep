@@ -1,9 +1,9 @@
 node_modules/
 assets/*
-!assets/bloomstep-icon.png
-!assets/bloomstep-wordmark.png
-!assets/bloomstep-favicon.png
-!assets/bloomstep-social.png
+!assets/budlark-icon.png
+!assets/budlark-wordmark.png
+!assets/budlark-favicon.png
+!assets/budlark-social.png
 !assets/habit-anchor.svg
 !assets/habit-tiny.svg
 !assets/habit-celebrate.svg

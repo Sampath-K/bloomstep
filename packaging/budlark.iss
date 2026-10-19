@@ -1,0 +1,223 @@
+#ifndef AppArch
+  #define AppArch "arm64"
+#endif
+#ifdef UniversalIntegrityFixture
+  #ifndef OnboardingJourneyFixture
+    #error Integrity fault injection requires the isolated journey identity, never a public package.
+  #endif
+#endif
+#ifndef AppVersion
+  #define AppVersion "0.1.0-preview"
+#endif
+#ifndef SourceDir
+  #define SourceDir "..\build\windows\" + AppArch + "\runner\Release"
+#endif
+#if AppArch == "universal"
+  #ifndef SourceDirX64
+    #error Universal packaging requires the verified x64 Release directory.
+  #endif
+  #ifndef SourceDirArm64
+    #error Universal packaging requires the verified ARM64 Release directory.
+  #endif
+#endif
+
+[Setup]
+#ifdef OnboardingFixture
+AppId={{8E9B101B-CB3D-4C0F-B733-FC1DFFB75129}
+UsePreviousAppDir=no
+#else
+#ifdef OnboardingJourneyFixture
+AppId={{A6690692-4D92-475A-9EAC-1AD867AB0635}
+UsePreviousAppDir=no
+#else
+AppId={{99BE7E95-0565-4C72-A4DD-46D1D5B6C679}
+UsePreviousAppDir=yes
+#endif
+#endif
+#ifdef OnboardingJourneyFixture
+AppName=Budlark isolated journey proof
+VersionInfoProductName=Budlark isolated journey proof
+#else
+AppName=Budlark
+#endif
+AppVersion={#AppVersion}
+AppPublisher=Budlark contributors
+AppPublisherURL=https://budlark.com/
+AppSupportURL=https://budlark.com
+AppUpdatesURL=https://budlark.com/
+#if Pos("-", AppVersion) > 0
+  #define NumericAppVersion Copy(AppVersion, 1, Pos("-", AppVersion) - 1)
+#else
+  #define NumericAppVersion AppVersion
+#endif
+VersionInfoVersion={#NumericAppVersion}
+VersionInfoTextVersion={#AppVersion}
+VersionInfoCompany=Budlark contributors
+VersionInfoDescription=Budlark Setup
+VersionInfoCopyright=Copyright (C) Budlark contributors
+#ifndef OnboardingJourneyFixture
+VersionInfoProductName=Budlark
+#endif
+VersionInfoProductTextVersion={#AppVersion}
+DefaultDirName={localappdata}\Programs\Budlark
+DefaultGroupName=Budlark
+PrivilegesRequired=lowest
+OutputDir=..\release-output
+OutputBaseFilename=Budlark-{#AppVersion}-windows-{#AppArch}-setup
+Compression=lzma2
+SolidCompression=yes
+WizardStyle=modern
+DisableWelcomePage=yes
+DisableDirPage=yes
+DisableReadyPage=no
+DisableReadyMemo=yes
+DisableFinishedPage=no
+DisableProgramGroupPage=yes
+WizardImageFile=assets\wizard-garden.bmp
+WizardSmallImageFile=assets\wizard-seed.bmp
+UninstallDisplayIcon={app}\budlark.exe
+CloseApplications=yes
+RestartApplications=no
+#if AppArch == "universal"
+ArchitecturesAllowed=arm64 or x64os
+ArchitecturesInstallIn64BitMode=arm64 or x64os
+#elif AppArch == "arm64"
+ArchitecturesAllowed=arm64
+ArchitecturesInstallIn64BitMode=arm64
+#else
+ArchitecturesAllowed=x64compatible
+ArchitecturesInstallIn64BitMode=x64compatible
+#endif
+
+[Messages]
+SelectDirDesc=Choose where Budlark will grow.
+SelectDirLabel3=Budlark will use this folder. Select Next to review installation, Browse to choose another folder, or Cancel to leave without installing.
+SelectDirBrowseLabel=To continue, select Next. To choose a different folder, select Browse.
+
+[Files]
+#if AppArch == "universal"
+Source: "{#SourceDirX64}\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs createallsubdirs; Check: UseX64Payload
+Source: "{#SourceDirArm64}\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs createallsubdirs; Check: UseArm64Payload
+#else
+Source: "{#SourceDir}\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs createallsubdirs
+#endif
+Source: "assets\welcome-steps.bmp"; Flags: dontcopy
+Source: "assets\welcome-garden.bmp"; Flags: dontcopy
+#ifdef UniversalIntegrityFixture
+Source: "{#IntegrityMarker}"; DestDir: "{app}"; DestName: "integrity-probe.txt"; Flags: ignoreversion nocompression
+#endif
+
+[Run]
+Filename: "{app}\budlark.exe"; Description: "Launch Budlark"; Flags: postinstall skipifsilent runasoriginaluser; Check: CanLaunchBudlark
+
+[InstallDelete]
+Type: files; Name: "{app}\measurement-owner.txt"
+
+[Icons]
+Name: "{group}\Budlark"; Filename: "{app}\budlark.exe"
+Name: "{group}\Uninstall Budlark"; Filename: "{uninstallexe}"
+
+[UninstallDelete]
+Type: files; Name: "{app}\measurement-owner.txt"
+
+[Registry]
+#ifndef OnboardingJourneyFixture
+Root: HKCU; Subkey: "Software\Classes\budlark"; ValueType: string; ValueData: "URL:Budlark invitation"
+Root: HKCU; Subkey: "Software\Classes\budlark"; ValueType: string; ValueName: "URL Protocol"; ValueData: ""
+Root: HKCU; Subkey: "Software\Classes\budlark\DefaultIcon"; ValueType: string; ValueData: "{app}\budlark.exe,0"
+Root: HKCU; Subkey: "Software\Classes\budlark\shell\open\command"; ValueType: string; ValueData: """{app}\budlark.exe"" ""%1"""
+#endif
+
+[Code]
+#if AppArch == "universal"
+function UseX64Payload(): Boolean;
+begin
+  Result := ProcessorArchitecture = paX64;
+end;
+
+function UseArm64Payload(): Boolean;
+begin
+  Result := ProcessorArchitecture = paArm64;
+end;
+#endif
+#ifdef OnboardingFixture
+function PrepareToInstall(var NeedsRestart: Boolean): String;
+begin
+  Result := 'Compile-only onboarding fixture. Installation is prohibited; cancel this wizard.';
+end;
+#endif
+#ifdef OnboardingJourneyFixture
+function PrepareToInstall(var NeedsRestart: Boolean): String;
+var
+  I: Integer;
+begin
+  Result := '';
+  for I := 1 to ParamCount do
+    if CompareText(ParamStr(I), '/FORCEFIXTUREFAILURE') = 0 then
+      Result := 'Isolated fixture installation failure. No files installed.';
+end;
+#endif
+
+var
+  InstallationSucceeded: Boolean;
+
+#include "install-progress.iss"
+
+function CanLaunchBudlark(): Boolean;
+var
+  I: Integer;
+begin
+  Result := InstallationSucceeded and not WizardSilent;
+  for I := 1 to ParamCount do
+    if (CompareText(ParamStr(I), '/SUPPRESSMSGBOXES') = 0) or
+       (CompareText(ParamStr(I), '/NOCANCEL') = 0) then Result := False;
+end;
+
+procedure CurPageChanged(CurPageID: Integer);
+begin
+  ShowVisualForPage(CurPageID);
+end;
+
+function MeasurementPath(): String;
+begin
+  Result := ExpandConstant('{localappdata}\Budlark\measurement\installer-receipt.json');
+end;
+
+procedure InitializeWizard();
+begin
+  InitializeInstallMotion();
+end;
+
+procedure CurStepChanged(CurStep: TSetupStep);
+begin
+  if CurStep = ssPostInstall then
+    InstallationSucceeded := True;
+end;
+procedure CurUninstallStepChanged(CurUninstallStep: TUninstallStep);
+var
+  Command: String;
+  Owner, Receipt: AnsiString;
+  Filename: String;
+begin
+  if CurUninstallStep = usUninstall then begin
+    if LoadStringFromFile(ExpandConstant('{app}\measurement-owner.txt'), Owner) and (Length(Owner) = 36) then begin
+      Filename := MeasurementPath();
+      if LoadStringFromFile(Filename, Receipt) and
+         (Pos('"events":[{"id":"' + Owner + '","name":"installer_started"', Receipt) > 0) then
+        if not DeleteFile(Filename) then
+          MsgBox('Optional owned installer measurement receipt could not be removed. Clear the local receipt manually; no data was sent by the uninstaller.', mbError, MB_OK);
+      Filename := MeasurementPath() + '.pending';
+      if LoadStringFromFile(Filename, Receipt) and
+         (Pos('"events":[{"id":"' + Owner + '","name":"installer_started"', Receipt) > 0) then
+        if not DeleteFile(Filename) then
+          MsgBox('Optional owned pending measurement receipt could not be removed. Clear the local pending receipt manually.', mbError, MB_OK);
+    end;
+    if RegQueryStringValue(HKCU, 'Software\Classes\budlark\shell\open\command', '', Command) then
+      if CompareText(Command, ExpandConstant('"{app}\budlark.exe" "%1"')) = 0 then
+        RegDeleteKeyIncludingSubkeys(HKCU, 'Software\Classes\budlark');
+  end;
+end;
+
+#ifdef OnboardingPreprocessOutput
+#expr SaveToFile(OnboardingPreprocessOutput)
+#endif

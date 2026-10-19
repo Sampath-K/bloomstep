@@ -60,7 +60,7 @@ generation reports missing symlink support here. No OS setting was changed.
   database path, the requested ephemeral port, the fresh/reopen mode and the
   minimal OS variables needed to start Node. It does not inherit
   repository/provider credentials or production endpoints.
-- The test app requires the compile-time `BLOOMSTEP_TEST_BUILD` flag, a valid
+- The test app requires the compile-time `BUDLARK_TEST_BUILD` flag, a valid
   per-run 32-byte hexadecimal key, a `synthetic-*` username, and a newly
   created disposable temp directory. It creates no local profile for a
   missing/wrong key or a real

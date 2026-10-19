@@ -1,5 +1,5 @@
 [Setup]
-AppName=Bloomstep compiler identity probe (compile only)
+AppName=Budlark compiler identity probe (compile only)
 AppVersion=0.0.0
 CreateAppDir=no
 Uninstallable=no

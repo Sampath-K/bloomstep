@@ -40,7 +40,7 @@ async function scenario(/** @type {string} */ name, /** @type {() => Promise<Rec
 }
 
 // ---------- isolated environment ----------
-const work = await mkdtemp(join(tmpdir(), 'bloomstep-it-experiments-'));
+const work = await mkdtemp(join(tmpdir(), 'budlark-it-experiments-'));
 const storePath = join(work, 'store.json');
 let store = await FileBackedCosmosContainer.openFresh(storePath);
 const T0 = Date.parse('2026-10-01T09:00:00.000Z');
@@ -53,18 +53,18 @@ const role = (/** @type {string} */ name, /** @type {string} */ token) => async 
   return { roles: [name] };
 };
 const container = () => /** @type {any} */ (store);
-const website = createWebsiteHandlers({ container, authenticate: role('Bloomstep.Admin', tokens.admin), clock });
+const website = createWebsiteHandlers({ container, authenticate: role('Budlark.Admin', tokens.admin), clock });
 const syntheticStages = websiteStageSummary(container, '__website_synthetic', clock);
 // Foundation caps synthetic ingestion at 100 lifetime events, below the 50-per-step publication floor, so the
 // prioritization input after the insufficiency check comes from a separately labeled fixture partition.
 const fixtureStages = websiteStageSummary(container, '__website_acceptance_fixture', clock);
 let stageSource = syntheticStages;
 const isolated = createExperimentHandlers({ container, environment: 'isolated', clock, stageSummary: () => stageSource(),
-  authenticate: role('Bloomstep.Admin', tokens.admin), authenticateWorker: role('Bloomstep.AggregateWriter', tokens.worker) });
+  authenticate: role('Budlark.Admin', tokens.admin), authenticateWorker: role('Budlark.AggregateWriter', tokens.worker) });
 // A production-configured handler over the SAME store proves OFF-by-default isolation.
 const production = createExperimentHandlers({ container, environment: 'production', clock, settings: () => ({}),
   stageSummary: async () => { throw Error('production stage summary must not be read while OFF'); },
-  authenticate: role('Bloomstep.Admin', tokens.admin), authenticateWorker: role('Bloomstep.AggregateWriter', tokens.worker) });
+  authenticate: role('Budlark.Admin', tokens.admin), authenticateWorker: role('Budlark.AggregateWriter', tokens.worker) });
 
 // ---------- site bundle (temp; repository assets are not mutated) ----------
 const siteDir = join(root, 'site');
@@ -315,7 +315,7 @@ try {
       assert.ok(['control', 'candidate'].includes(String(result.arm)), String(result.arm));
       assert.equal(await assignArm(first, String(result.subjectId)), result.arm, 'independent Node recomputation of assignment');
       assert.equal(result.heading, first.arms[result.arm].value);
-      const doc = await read(`visit:${await sha256Hex(`bloomstep-visit:${result.subjectId}`)}`);
+      const doc = await read(`visit:${await sha256Hex(`budlark-visit:${result.subjectId}`)}`);
       assert.equal(doc.arm, result.arm); assert.equal(doc.applied, true);
       assert.ok(doc.outcomes.download_click && Date.parse(doc.outcomes.download_click) >= Date.parse(doc.exposedAt), 'outcome after persisted exposure');
       if (!arms.has(result.arm)) browserVisits[result.arm] = result;
@@ -330,7 +330,7 @@ try {
   await scenario('consent withdrawal: browser forget restores standard page, tombstones visit, late outcome rejected 410', async () => {
     const result = await visit('withdraw', { withdraw: true });
     assert.equal(result.afterWithdraw.heading, first.arms.control.value);
-    const doc = await read(`visit:${await sha256Hex(`bloomstep-visit:${result.subjectId}`)}`);
+    const doc = await read(`visit:${await sha256Hex(`budlark-visit:${result.subjectId}`)}`);
     assert.deepEqual([doc.forgotten, doc.arm, doc.outcomes], [true, undefined, undefined]);
     const late = await api('POST', '/api/web/experiments/outcome', { experimentId: first.experimentId, subjectId: result.subjectId, event: 'download_click' });
     assert.equal(late.status, 410);
@@ -529,7 +529,7 @@ try {
     sources[file] = createHash('sha256').update(await readFile(join(root, file))).digest('hex');
   }
   const receipt = {
-    schemaVersion: 1, kind: 'bloomstep-experiment-isolated-acceptance', result: 'passed',
+    schemaVersion: 1, kind: 'budlark-experiment-isolated-acceptance', result: 'passed',
     policyVersion: POLICY_VERSION, attributionVersion: ATTRIBUTION_VERSION, policyHash: policy, catalog: CATALOG.map(entry => entry.key),
     browser: browserVersion, simulatedClockStart: new Date(T0).toISOString(),
     segregation: { environment: 'isolated', productionDocuments: 0, syntheticOnly: true,
@@ -550,11 +550,11 @@ try {
   await writeFile(join(out, 'acceptance-receipt.json'), JSON.stringify(receipt, null, 2) + '\n');
 
   // Server-side gate verification on a fresh production-configured store (hash recomputed by server, not trusted).
-  const gateDir = await mkdtemp(join(tmpdir(), 'bloomstep-it-gate-'));
+  const gateDir = await mkdtemp(join(tmpdir(), 'budlark-it-gate-'));
   const gateStore = await FileBackedCosmosContainer.openFresh(join(gateDir, 'store.json'));
   const gated = createExperimentHandlers({ container: () => /** @type {any} */ (gateStore), environment: 'production', clock,
     settings: () => ({ production: 'enabled', acceptanceSha256: receiptHash }), stageSummary: async () => null,
-    authenticate: async () => ({ roles: ['Bloomstep.Admin'] }), authenticateWorker: async () => ({ roles: [] }) });
+    authenticate: async () => ({ roles: ['Budlark.Admin'] }), authenticateWorker: async () => ({ roles: [] }) });
   const post = (/** @type {unknown} */ body) => /** @type {any} */ ({ headers: new Headers({ 'content-type': 'application/json' }), text: async () => JSON.stringify(body) });
   const before = (await gated.config()).jsonBody.reason;
   let tampered = 0;
@@ -564,7 +564,7 @@ try {
   assert.deepEqual([before, tampered, accepted.status, after.enabled], ['acceptance_receipt_not_verified', 409, 200, true]);
   await gateStore.close(); await rm(gateDir, { recursive: true, force: true });
   const gateCheck = { receiptSha256: receiptHash, beforeVerification: before, tamperedStatus: tampered, verifiedStatus: accepted.status, enabledAfter: after.enabled,
-    note: 'Fresh isolated production-configured store only; the real deployment remains OFF until an owner sets BLOOMSTEP_EXPERIMENTS_PRODUCTION and the hash.' };
+    note: 'Fresh isolated production-configured store only; the real deployment remains OFF until an owner sets BUDLARK_EXPERIMENTS_PRODUCTION and the hash.' };
   await writeFile(join(out, 'acceptance-gate-check.json'), JSON.stringify(gateCheck, null, 2) + '\n');
   console.log(`RECEIPT ${receiptHash}`);
 } catch (error) {

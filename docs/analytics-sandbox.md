@@ -11,15 +11,15 @@ confirm the free plan still exists before signing up.
 
 Readback on 10 October 2026: the public production/engineering-preview site is
 <https://brave-plant-02c10e800.5.azurestaticapps.net/>. Azure reports resource
-`bloomstep-free`, resource group `bloomstep-free`, East Asia, **Free** SKU.
+`budlark-free`, resource group `budlark-free`, East Asia, **Free** SKU.
 `.github/workflows/azure.yml` deploys `main` only, from `deploy-site/` with
 the managed `api/`, using the production deployment token. It does not deploy
 this sandbox. Azure has now assigned the separate staging resource
-`bloomstep-analytics-staging` the hostname
+`budlark-analytics-staging` the hostname
 **`https://brave-grass-0e6c8ed00.4.azurestaticapps.net/`**.
 Resource creation is verified; deployment/live receipt is recorded separately
 below and must not be inferred just from the hostname.
-`staging.bloomstep.example` is an invalid placeholder, not a website to register
+`staging.budlark.example` is an invalid placeholder, not a website to register
 in GA4, Clarity or Cloudflare. Localhost checks are temporary local previews,
 not public staging or production.
 
@@ -39,8 +39,8 @@ visit-to-activation join or a zero substituted for unavailable data.
 Minimal public staging deployment: **one separate Azure Static Web App, Free
 SKU, static files only, no API**. Use a separate staging resource/deployment
 token, never production's token, custom domain or deployment workflow.
-The resource name is `bloomstep-analytics-staging`, in the existing
-`bloomstep-free` resource group, East Asia, on the owner's personal subscription.
+The resource name is `budlark-analytics-staging`, in the existing
+`budlark-free` resource group, East Asia, on the owner's personal subscription.
 The owner explicitly approved this isolated resource/location. Current readback of the existing
 subscription reports `FreeTrial_2014-09-01`. The general deployment guide says to
 choose a personal production-eligible subscription and avoid development-credit
@@ -75,7 +75,7 @@ those services and makes no full-stack E2E or production-promotion claim.
 ### Actual deployment, evidence and cost experiment
 
 **Current configured staging readback (10 October 2026):** the owner saved the
-existing Bloomstep site stream's real staging URL and Enhanced measurement OFF.
+existing Budlark site stream's real staging URL and Enhanced measurement OFF.
 Fresh authenticated stream details confirmed both settings. The existing ignored
 configuration contains the matching public Measurement ID and no other website
 vendor keys; no config fields were overwritten.
@@ -115,8 +115,8 @@ This fixes the staging withdrawal defect, not authenticated ingestion or the
 remaining production gates.
 
 **Authenticated API access now works (10 October 2026):** the connected read-only
-tools returned the expected `Bloomstep staging` property and stream-filtered
-standard reports. Today's only rows were `bloomstep_ingest_probe: 1` and
+tools returned the expected `Budlark staging` property and stream-filtered
+standard reports. Today's only rows were `budlark_ingest_probe: 1` and
 `page_view: 1`, matching the coordinator's earlier direct synthetic probe, not
 proof of browser-surface ingestion. A fresh consented browser check completed at
 `2026-10-10T15:44:36.479Z`; immediate filtered and unfiltered Realtime reads had no
@@ -277,7 +277,7 @@ On 10 October 2026 the separate **Free** resource was provisioned and deployed
 using Azure CLI plus Static Web Apps CLI 2.0.10. Only `build/analytics-site/` was
 uploaded, with the explicit staging configuration directory; no API was deployed.
 The CLI's `--env production` refers to the default slot of this **staging
-resource**, not promotion or deployment to `bloomstep-free`.
+resource**, not promotion or deployment to `budlark-free`.
 Deployment token was fetched for the staging resource only, passed through a
 temporary process environment and removed; no token was logged or committed.
 
@@ -358,13 +358,13 @@ vendor accepted an event or that failed collection requests are retried.
 Read-only access status on 10 October 2026:
 
 Following manual sign-in, all six vendor tabs were present in one Edge window.
-Fresh observation verified the expected Gmail identity and existing Bloomstep
-staging property in GA4, and the existing Bloomstep staging project in Clarity.
+Fresh observation verified the expected Gmail identity and existing Budlark
+staging property in GA4, and the existing Budlark staging project in Clarity.
 Clarity's profile displayed `store-developer@outlook.com` (with a hyphen).
-Cloudflare displayed the expected Gmail-named account, but no Bloomstep site was
+Cloudflare displayed the expected Gmail-named account, but no Budlark site was
 verified. PostHog EU rendered a blank organization-confirmation page; Aptabase
 EU rendered a blank Welcome page; Sentry displayed an organization onboarding
-spinner. Those three did not expose a usable Bloomstep project or verified
+spinner. Those three did not expose a usable Budlark project or verified
 account identity. These observations supersede the earlier historical-only
 session status below, but do not prove configuration rights or ingestion.
 
@@ -375,11 +375,11 @@ outside the existing GA4-only Save authorization.
 
 | Service | Evidence | Remaining prerequisite |
 | --- | --- | --- |
-| Azure | Fresh CLI read confirms `bloomstep-analytics-staging`, actual hostname, East Asia and Free SKU. Earlier staging creation/deployment succeeded. | CLI reauthentication may eventually be required; subscription trial availability is not guaranteed. |
-| GA4 | Existing Bloomstep staging property was accessible in signed-in Personal Edge; no approved Save has succeeded. | Access Personal profile normally while Edge is idle, verify existing stream and current configuration rights, then perform the retained approved action. |
-| Clarity | Existing Bloomstep staging project was previously accessible in Personal Edge. | Reverify current session/project and configuration rights; no Save approval is implied. |
-| Cloudflare | Existing account was previously accessible; Add Site contained the invalid placeholder hostname. No Bloomstep site identity was verified. | Reverify current session and existing site, if any; creation or Save requires its own authorization. |
-| PostHog, Aptabase, Sentry | No signed-in session, existing Bloomstep project or configuration rights verified. | Inspect normal existing account/project access; owner sign-in may be required. Do not create accounts or extract credentials. |
+| Azure | Fresh CLI read confirms `budlark-analytics-staging`, actual hostname, East Asia and Free SKU. Earlier staging creation/deployment succeeded. | CLI reauthentication may eventually be required; subscription trial availability is not guaranteed. |
+| GA4 | Existing Budlark staging property was accessible in signed-in Personal Edge; no approved Save has succeeded. | Access Personal profile normally while Edge is idle, verify existing stream and current configuration rights, then perform the retained approved action. |
+| Clarity | Existing Budlark staging project was previously accessible in Personal Edge. | Reverify current session/project and configuration rights; no Save approval is implied. |
+| Cloudflare | Existing account was previously accessible; Add Site contained the invalid placeholder hostname. No Budlark site identity was verified. | Reverify current session and existing site, if any; creation or Save requires its own authorization. |
+| PostHog, Aptabase, Sentry | No signed-in session, existing Budlark project or configuration rights verified. | Inspect normal existing account/project access; owner sign-in may be required. Do not create accounts or extract credentials. |
 
 After the owner closed browser windows, tool-native Edge launch reopened the
 Work profile. Profile navigation was interrupted twice by the tool's
@@ -523,12 +523,12 @@ No production HTML, telemetry, AARRR, aggregate or experiment logic is changed.
 
 | Vendor | Exact owner setup | Free choice and ID to paste |
 | --- | --- | --- |
-| Google Analytics 4 | Open <https://analytics.google.com/>; **Admin > Create > Account**, name `Bloomstep staging`; turn off account data-sharing options. Create a GA4 property, select your reporting timezone/currency, then **Data streams > Add stream > Web** with the staging origin and enhanced measurement OFF. | Standard GA4 (not Analytics 360). Copy the web stream **Measurement ID** (`G-...`) into `GA4_ID`. Do not paste a Measurement Protocol secret. |
-| Microsoft Clarity | Open <https://clarity.microsoft.com/>; sign in; **Add new project**, name `Bloomstep staging`, enter only the staging website URL. Open **Settings > Setup**. | Free Clarity. Copy the **Project ID** from the tag URL `https://www.clarity.ms/tag/PROJECT_ID` into `CLARITY_ID`. |
+| Google Analytics 4 | Open <https://analytics.google.com/>; **Admin > Create > Account**, name `Budlark staging`; turn off account data-sharing options. Create a GA4 property, select your reporting timezone/currency, then **Data streams > Add stream > Web** with the staging origin and enhanced measurement OFF. | Standard GA4 (not Analytics 360). Copy the web stream **Measurement ID** (`G-...`) into `GA4_ID`. Do not paste a Measurement Protocol secret. |
+| Microsoft Clarity | Open <https://clarity.microsoft.com/>; sign in; **Add new project**, name `Budlark staging`, enter only the staging website URL. Open **Settings > Setup**. | Free Clarity. Copy the **Project ID** from the tag URL `https://www.clarity.ms/tag/PROJECT_ID` into `CLARITY_ID`. |
 | Cloudflare Web Analytics | Open <https://dash.cloudflare.com/sign-up>; create the free account; in **Web Analytics** (sometimes under Analytics & Logs), **Add a site**, enter the staging hostname and choose manual JavaScript installation. | Free Web Analytics; do not buy a domain, proxy production or use automatic beacon injection. Copy the UUID **token** from the `data-cf-beacon` snippet into `CLOUDFLARE_TOKEN`. |
-| PostHog | Open <https://app.posthog.com/signup>; choose **EU Cloud** before creating `Bloomstep staging` (US is an explicit alternative); skip billing/card setup. Open **Project settings > Project API key**. | [Free, no-card tier](https://posthog.com/pricing). Copy only the public **Project API key** (`phc_...`) into `POSTHOG_KEY`, and set `POSTHOG_REGION=EU` or `US` to match the project. No personal API key. |
-| Aptabase | Open <https://eu.aptabase.com/auth/register> (recommended EU), or <https://us.aptabase.com/auth/register>; create an app named `Bloomstep staging`, select Flutter, then copy its App Key. | [Free plan: 20,000 events/month, no card](https://aptabase.com/pricing). Copy `A-EU-...` or `A-US-...` into `APTABASE_APP_KEY`. Exceeding the free limit pauses analytics; do not upgrade. |
-| Sentry | Open <https://sentry.io/signup/>; choose EU data storage when creating the organization if offered; select the **Developer/free plan**, skip/decline paid trial upgrades and card entry. **Projects > Create project > Flutter**, name `bloomstep-staging`; open **Settings > Projects > bloomstep-staging > Client Keys (DSN)**. | [Developer/free](https://sentry.io/pricing/). Copy the public **DSN** into `SENTRY_DSN`, not an auth token. Keep all optional paid add-ons, Seer/AI, profiling, logs and replay off; disable spend/overage upgrades. If the signup does not offer a lasting free plan, leave the DSN blank. |
+| PostHog | Open <https://app.posthog.com/signup>; choose **EU Cloud** before creating `Budlark staging` (US is an explicit alternative); skip billing/card setup. Open **Project settings > Project API key**. | [Free, no-card tier](https://posthog.com/pricing). Copy only the public **Project API key** (`phc_...`) into `POSTHOG_KEY`, and set `POSTHOG_REGION=EU` or `US` to match the project. No personal API key. |
+| Aptabase | Open <https://eu.aptabase.com/auth/register> (recommended EU), or <https://us.aptabase.com/auth/register>; create an app named `Budlark staging`, select Flutter, then copy its App Key. | [Free plan: 20,000 events/month, no card](https://aptabase.com/pricing). Copy `A-EU-...` or `A-US-...` into `APTABASE_APP_KEY`. Exceeding the free limit pauses analytics; do not upgrade. |
+| Sentry | Open <https://sentry.io/signup/>; choose EU data storage when creating the organization if offered; select the **Developer/free plan**, skip/decline paid trial upgrades and card entry. **Projects > Create project > Flutter**, name `budlark-staging`; open **Settings > Projects > budlark-staging > Client Keys (DSN)**. | [Developer/free](https://sentry.io/pricing/). Copy the public **DSN** into `SENTRY_DSN`, not an auth token. Keep all optional paid add-ons, Seer/AI, profiling, logs and replay off; disable spend/overage upgrades. If the signup does not offer a lasting free plan, leave the DSN blank. |
 
 ### Privacy and residency before inserting keys
 
@@ -593,7 +593,7 @@ node tool\analytics_app_run.mjs
 
 This reads the same local keys, writes gitignored
 `build\analytics-defines.json`, and invokes Flutter with
-`BLOOMSTEP_ANALYTICS_SANDBOX=true`, empty default app keys and debug mode.
+`BUDLARK_ANALYTICS_SANDBOX=true`, empty default app keys and debug mode.
 Flutter Windows prerequisites include Visual Studio desktop C++ tools and
 Windows Developer Mode (plugin symlink support). Do not change the production
 installer or install this sandbox over a customer app. Use a disposable test

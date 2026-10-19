@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 
 import 'package:http/http.dart' as http;
@@ -15,6 +16,73 @@ const invitationCategories = {
   'connection',
 };
 
+enum InvitationPhase { creation, redemption, status, cache, handoff }
+
+enum InvitationFailureKind {
+  backend,
+  authentication,
+  permission,
+  session,
+  cache,
+  network,
+  conflict,
+  expired,
+  limit,
+  invalidRequest,
+  invalidResponse,
+  configuration,
+  unknown,
+}
+
+class InvitationFailure implements Exception {
+  const InvitationFailure(this.kind, this.phase, {this.httpStatus});
+
+  final InvitationFailureKind kind;
+  final InvitationPhase phase;
+  final int? httpStatus;
+
+  String get message => switch (kind) {
+    InvitationFailureKind.backend =>
+      'The invitation service is unavailable. Try again later.',
+    InvitationFailureKind.authentication =>
+      'Invitation sign-in could not be verified. Reconnect or sign in again.',
+    InvitationFailureKind.permission =>
+      'This account is not authorized for invitations. Contact support.',
+    InvitationFailureKind.session => 'The signed-in garden changed. Reopen invitations in your current garden.',
+    InvitationFailureKind.cache => 'Private invitation history could not be read or saved. Do not clear it; contact support.',
+    InvitationFailureKind.network => 'The invitation service could not be reached. Check your connection and retry.',
+    InvitationFailureKind.conflict => 'The invitation request conflicts with server state. Retry the same action; if it persists, contact support.',
+    InvitationFailureKind.expired => 'This invitation or its account data is no longer available. Check its expiry before retrying.',
+    InvitationFailureKind.limit => 'An invitation or preview request limit was reached. Wait before retrying; contact support if it persists.',
+    InvitationFailureKind.invalidRequest => 'The invitation details were not accepted. Review the approved recipe card before retrying.',
+    InvitationFailureKind.invalidResponse => 'The invitation response could not be verified. Retry the same action; contact support if it persists.',
+    InvitationFailureKind.configuration =>
+      'The invitation connection is not configured. Contact support.',
+    InvitationFailureKind.unknown =>
+      phase == InvitationPhase.handoff
+          ? 'An invitation is ready, but the sharing app or clipboard could not be opened. Retry or choose another sharing method.'
+          : 'The invitation action could not be completed. Retry the same action; contact support if it persists.',
+  };
+
+  // Only bounded categories and an HTTP status are exposed, never response data.
+  String get supportCode =>
+      'invite-${phase.name}-${kind.name}${httpStatus == null ? '' : '-http$httpStatus'}';
+
+  @override
+  String toString() => '$message ($supportCode)';
+}
+
+String invitationErrorMessage(
+  Object error, {
+  InvitationPhase phase = InvitationPhase.creation,
+  bool includeSupportCode = true,
+}) {
+  final failure = error is InvitationFailure
+      ? error
+      : InvitationFailure(InvitationFailureKind.unknown, phase);
+  return includeSupportCode ? failure.toString() : failure.message;
+}
+
 void validateRecipeCard(Map<String, dynamic> card) {
   if (card.keys.toSet().difference({
         'explicitChoice',
@@ -25,9 +93,10 @@ void validateRecipeCard(Map<String, dynamic> card) {
         'celebration',
         'species',
       }).isNotEmpty ||
-      card.length != 7 ||
+      card.length != (card.containsKey('templateCategory') ? 7 : 6) ||
       card['explicitChoice'] != true ||
-      !invitationCategories.contains(card['templateCategory']) ||
+      (card.containsKey('templateCategory') &&
+          !invitationCategories.contains(card['templateCategory'])) ||
       !{'Cosmos', 'Sunflower', 'Fern'}.contains(card['species'])) {
     throw const FormatException('Approve the complete recipe card explicitly.');
   }
@@ -153,17 +222,52 @@ class InvitationService {
     queryParameters: {'invite': receipt.token, 'channel': receipt.channel},
   );
 
-  Future<T> _serial<T>(Future<T> Function(String, int) operation) {
-    final account = store.account, generation = store.syncGeneration;
-    final next = (_queues[store] ?? Future<void>.value()).then((_) {
+  void _requireSession(String account, int generation) {
+    try {
       store.requireSyncSession(account, generation);
-      return operation(account, generation);
+    } catch (_) {
+      throw const InvitationFailure(
+        InvitationFailureKind.session,
+        InvitationPhase.cache,
+      );
+    }
+  }
+
+  Future<T> _serial<T>(
+    Future<T> Function(String, int) operation, {
+    InvitationPhase phase = InvitationPhase.creation,
+  }) {
+    final account = store.account, generation = store.syncGeneration;
+    final next = (_queues[store] ?? Future<void>.value()).then((_) async {
+      _requireSession(account, generation);
+      try {
+        return await operation(account, generation);
+      } on InvitationFailure {
+        rethrow;
+      } on FormatException {
+        throw InvitationFailure(InvitationFailureKind.invalidResponse, phase);
+      } on TimeoutException {
+        throw InvitationFailure(InvitationFailureKind.network, phase);
+      } catch (_) {
+        throw InvitationFailure(InvitationFailureKind.unknown, phase);
+      }
     });
     _queues[store] = next.then<void>((_) {}, onError: (Object _) {});
     return next;
   }
 
   Future<Map<String, dynamic>> _state() async {
+    try {
+      return await _readState();
+    } catch (_) {
+      throw const InvitationFailure(
+        InvitationFailureKind.cache,
+        InvitationPhase.cache,
+      );
+    }
+  }
+
+  Future<Map<String, dynamic>> _readState() async {
     final raw = await store.setting('invitationState');
     if (raw == null) {
       return {
@@ -240,12 +344,19 @@ class InvitationService {
     String account,
     int generation, {
     String? acceptedChannel,
-  }) {
-    store.requireSyncSession(account, generation);
-    return store.saveInvitationState(
-      jsonEncode(state),
-      acceptedChannel: acceptedChannel,
-    );
+  }) async {
+    _requireSession(account, generation);
+    try {
+      await store.saveInvitationState(
+        jsonEncode(state),
+        acceptedChannel: acceptedChannel,
+      );
+    } catch (_) {
+      throw const InvitationFailure(
+        InvitationFailureKind.cache,
+        InvitationPhase.cache,
+      );
+    }
   }
 
   Future<Map<String, dynamic>> _request(
@@ -255,20 +366,32 @@ class InvitationService {
     Map<String, dynamic>? body,
     bool export = false,
   }) async {
+    final phase = path.endsWith('/status')
+        ? InvitationPhase.status
+        : path.endsWith('/redeem')
+        ? InvitationPhase.redemption
+        : InvitationPhase.creation;
     if (identity != null && identity!.account != account) {
-      throw StateError('Sign in to the garden that owns this invitation.');
+      throw InvitationFailure(InvitationFailureKind.session, phase);
     }
-    final token = await tokenProvider();
-    store.requireSyncSession(account, generation);
+    late final String token;
+    try {
+      token = await tokenProvider();
+    } catch (_) {
+      throw InvitationFailure(InvitationFailureKind.authentication, phase);
+    }
+    _requireSession(account, generation);
+    late final Uri endpoint;
+    try {
+      endpoint = _uri(path, export: export);
+    } catch (_) {
+      throw InvitationFailure(InvitationFailureKind.configuration, phase);
+    }
     final transport = client ?? http.Client();
     try {
-      final request =
-          http.Request(
-              body == null ? 'GET' : 'POST',
-              _uri(path, export: export),
-            )
-            ..followRedirects = false
-            ..headers['X-Bloomstep-Authorization'] = 'Bearer $token';
+      final request = http.Request(body == null ? 'GET' : 'POST', endpoint)
+        ..followRedirects = false
+        ..headers['X-Budlark-Authorization'] = 'Bearer $token';
       if (body != null) {
         request.headers['Content-Type'] = 'application/json';
         request.body = jsonEncode(body);
@@ -276,8 +399,18 @@ class InvitationService {
       Future<Map<String, dynamic>> download() async {
         final response = await transport.send(request);
         if (response.statusCode != 200) {
-          throw StateError(
-            'Connected invitation request failed (HTTP ${response.statusCode}). Retry uses the same request; no invitation or reward was invented.',
+          throw InvitationFailure(
+            switch (response.statusCode) {
+              401 => InvitationFailureKind.authentication,
+              403 => InvitationFailureKind.permission,
+              409 => InvitationFailureKind.conflict,
+              410 => InvitationFailureKind.expired,
+              429 => InvitationFailureKind.limit,
+              400 || 413 || 422 => InvitationFailureKind.invalidRequest,
+              _ => InvitationFailureKind.backend,
+            },
+            phase,
+            httpStatus: response.statusCode,
           );
         }
         final bytes = <int>[];
@@ -295,8 +428,14 @@ class InvitationService {
       }
 
       final value = await download().timeout(const Duration(seconds: 15));
-      store.requireSyncSession(account, generation);
+      _requireSession(account, generation);
       return value;
+    } on InvitationFailure {
+      rethrow;
+    } on FormatException {
+      throw InvitationFailure(InvitationFailureKind.invalidResponse, phase);
+    } catch (_) {
+      throw InvitationFailure(InvitationFailureKind.network, phase);
     } finally {
       if (client == null) transport.close();
     }
@@ -355,9 +494,21 @@ class InvitationService {
     Map<String, dynamic>? recipeCard,
   ) => _serial((account, generation) async {
     if (!invitationChannels.contains(channel)) {
-      throw const FormatException('Invalid sharing channel.');
+      throw const InvitationFailure(
+        InvitationFailureKind.invalidRequest,
+        InvitationPhase.creation,
+      );
     }
-    if (recipeCard != null) validateRecipeCard(recipeCard);
+    if (recipeCard != null) {
+      try {
+        validateRecipeCard(recipeCard);
+      } on FormatException {
+        throw const InvitationFailure(
+          InvitationFailureKind.invalidRequest,
+          InvitationPhase.creation,
+        );
+      }
+    }
     final state = await _state();
     final creations = state['creations'] as List;
     Map<String, dynamic>? row;
@@ -382,7 +533,10 @@ class InvitationService {
     }
     if (row == null) {
       if (creations.length >= 10) {
-        throw StateError('This preview allows ten invitations per account.');
+        throw const InvitationFailure(
+          InvitationFailureKind.limit,
+          InvitationPhase.creation,
+        );
       }
       row = {
         'payload': {
@@ -425,12 +579,20 @@ class InvitationService {
 
   Future<InvitationReceipt> redeem(String token) =>
       _serial((account, generation) async {
-        validateToken(token);
+        try {
+          validateToken(token);
+        } on FormatException {
+          throw const InvitationFailure(
+            InvitationFailureKind.invalidRequest,
+            InvitationPhase.redemption,
+          );
+        }
         final state = await _state();
         var row = state['redemption'] as Map<String, dynamic>?;
         if (row != null && row['payload']['token'] != token) {
-          throw StateError(
-            'An acceptance is already pending or recorded. Retry the original invitation.',
+          throw const InvitationFailure(
+            InvitationFailureKind.conflict,
+            InvitationPhase.redemption,
           );
         }
         if (row == null) {
@@ -472,7 +634,7 @@ class InvitationService {
           acceptedChannel: first ? response['channel'] : null,
         );
         return InvitationReceipt(response);
-      });
+      }, phase: InvitationPhase.redemption);
 
   void _status(Map<String, dynamic> value, {bool export = false}) {
     if (!_keys(value, {
@@ -557,12 +719,25 @@ class InvitationService {
         };
         await _save(state, account, generation);
         return InvitationStatus(response, clock().toUtc());
-      });
+      }, phase: InvitationPhase.status);
 
-  Future<InvitationStatus?> cachedStatus() async {
+  Future<T> _cached<T>(Future<T> Function() read) async {
+    try {
+      return await read();
+    } on InvitationFailure {
+      rethrow;
+    } catch (_) {
+      throw const InvitationFailure(
+        InvitationFailureKind.cache,
+        InvitationPhase.cache,
+      );
+    }
+  }
+
+  Future<InvitationStatus?> cachedStatus() => _cached(() async {
     final account = store.account, generation = store.syncGeneration;
     final state = await _state();
-    store.requireSyncSession(account, generation);
+    _requireSession(account, generation);
     final status = state['status'];
     if (status == null) return null;
     final response = Map<String, dynamic>.from(status['response']);
@@ -573,12 +748,12 @@ class InvitationService {
       return null;
     }
     return InvitationStatus(response, stamp, cached: true);
-  }
+  });
 
-  Future<Map<String, dynamic>?> cachedAcceptedCard() async {
+  Future<Map<String, dynamic>?> cachedAcceptedCard() => _cached(() async {
     final account = store.account, generation = store.syncGeneration;
     final state = await _state();
-    store.requireSyncSession(account, generation);
+    _requireSession(account, generation);
     final receipt = state['redemption']?['receipt'];
     if (receipt == null) return null;
     _receipt(Map<String, dynamic>.from(receipt), creation: false);
@@ -588,5 +763,5 @@ class InvitationService {
       return null;
     }
     return receipt['recipeCard'] as Map<String, dynamic>?;
-  }
+  });
 }

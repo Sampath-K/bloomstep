@@ -1,7 +1,7 @@
-import 'package:bloomstep/core/garden_store.dart';
-import 'package:bloomstep/core/models.dart';
-import 'package:bloomstep/features/garden/garden_screen.dart';
-import 'package:bloomstep/features/garden/recipe_builder.dart';
+import 'package:budlark/core/garden_store.dart';
+import 'package:budlark/core/models.dart';
+import 'package:budlark/features/garden/garden_screen.dart';
+import 'package:budlark/features/garden/recipe_builder.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
@@ -46,7 +46,7 @@ void main() {
       expect(
         tester
             .widget<FilledButton>(
-              find.widgetWithText(FilledButton, 'See my seed'),
+              find.widgetWithText(FilledButton, 'See my garden'),
             )
             .enabled,
         isTrue,
@@ -141,7 +141,7 @@ void main() {
         }
         await tester.tap(find.text('Plant this seed'));
         if (failSave) {
-          await ready(tester, find.textContaining('database_closed'));
+          await ready(tester, find.text('Something needs your attention.'));
           expect(find.byType(PlantedRecipeDialog), findsNothing);
         } else {
           await ready(tester, find.byType(PlantedRecipeDialog));

@@ -11,7 +11,7 @@ using winrt::Windows::Foundation::Uri;
 NativeShare::NativeShare(flutter::BinaryMessenger* messenger, HWND window)
     : window_(window) {
   channel_ = std::make_unique<flutter::MethodChannel<flutter::EncodableValue>>(
-      messenger, "bloomstep/native_share",
+      messenger, "budlark/native_share",
       &flutter::StandardMethodCodec::GetInstance());
   channel_->SetMethodCallHandler(
       [this](const auto& call, std::unique_ptr<flutter::MethodResult<flutter::EncodableValue>> result) {
@@ -41,7 +41,7 @@ NativeShare::NativeShare(flutter::BinaryMessenger* messenger, HWND window)
         if (!IsWindowVisible(window_) || GetForegroundWindow() != window_) {
           result->Error(
               "share_foreground_required",
-              "Bring Bloomstep to the foreground and choose Windows share again.");
+              "Bring Budlark to the foreground and choose Windows share again.");
           return;
         }
         try {
@@ -65,7 +65,7 @@ NativeShare::NativeShare(flutter::BinaryMessenger* messenger, HWND window)
                     package.SetWebLink(Uri(winrt::to_hstring(url_)));
                   } catch (const winrt::hresult_error&) {
                     request.FailWithDisplayText(
-                        L"Bloomstep could not prepare the invitation. Open the app and try again.");
+                        L"Budlark could not prepare the invitation. Open the app and try again.");
                   }
                 });
           }
@@ -87,7 +87,7 @@ NativeShare::~NativeShare() {
     try {
       manager_.DataRequested(requested_);
     } catch (const winrt::hresult_error&) {
-      OutputDebugStringW(L"Bloomstep: share event cleanup failed during shutdown.\n");
+      OutputDebugStringW(L"Budlark: share event cleanup failed during shutdown.\n");
     }
     manager_ = nullptr;
   }

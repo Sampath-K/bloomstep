@@ -1,15 +1,17 @@
 import 'dart:async';
 import 'dart:convert';
 
-import 'package:bloomstep/core/garden_store.dart';
-import 'package:bloomstep/core/models.dart';
-import 'package:bloomstep/services/desktop_reminders.dart';
+import 'package:budlark/core/garden_store.dart';
+import 'package:budlark/core/models.dart';
+import 'package:budlark/services/desktop_reminders.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:sqflite_common_ffi/sqflite_ffi.dart';
 
 class FakeReminderGateway implements ReminderGateway {
   final requests = <ReminderRequest>[];
   final operations = <String>[];
+  Future<void> Function(String)? action;
+  int initializations = 0;
   bool failShow = false;
   bool failInitialize = false;
   bool failCancelAll = false;
@@ -17,6 +19,8 @@ class FakeReminderGateway implements ReminderGateway {
   Future<void> Function(ReminderRequest)? beforeShow;
   @override
   Future<void> initialize(Future<void> Function(String) action) async {
+    initializations++;
+    this.action = action;
     await beforeInitialize?.call();
     if (failInitialize) throw StateError('Synthetic initialization failed');
   }
@@ -56,16 +60,21 @@ void main() {
   late FakeReminderGateway gateway;
   late DesktopReminders reminders;
   late DateTime now;
+  late List<String> positiveCheckIns;
+  late List<String> reminderErrors;
   setUp(() async {
-    store = await GardenStore.open(':memory:', 'account-a');
-    gateway = FakeReminderGateway();
     now = DateTime(2026, 10, 4, 18);
+    positiveCheckIns = [];
+    reminderErrors = [];
+    store = await GardenStore.open(':memory:', 'account-a', clock: () => now);
+    gateway = FakeReminderGateway();
     reminders = DesktopReminders(
       store,
       () async {},
-      (_) {},
+      reminderErrors.add,
       gateway: gateway,
       clock: () => now,
+      onPositiveCheckIn: (id) async => positiveCheckIns.add(id),
     );
     await reminders.enable();
   });
@@ -91,6 +100,120 @@ void main() {
       expect(
         DesktopReminders.notificationId('a', 'h'),
         isNot(DesktopReminders.notificationId('b', 'h')),
+      );
+    },
+  );
+
+  test(
+    'saved positive reminder and tray check-ins acknowledge once in app',
+    () async {
+      final h = await plantReminder(store);
+      await reminders.tick();
+      final request = gateway.requests.single;
+      final requestCount = gateway.requests.length;
+      await gateway.action!(request.payloadFor('did'));
+      expect(positiveCheckIns, [h.id]);
+      expect((await store.habits()).single.today, CheckInResult.did);
+
+      await gateway.action!(request.payloadFor('did'));
+      expect(
+        positiveCheckIns,
+        [h.id],
+        reason: 'a repeated toast action is ignored',
+      );
+
+      now = now.add(const Duration(days: 1));
+      await reminders.handleTrayAction('did:${h.id}');
+      expect(positiveCheckIns, [h.id, h.id]);
+      expect((await store.habits()).single.today, CheckInResult.did);
+      expect(gateway.requests, hasLength(requestCount));
+    },
+  );
+
+  test(
+    'rest, rejected, stale and duplicate reminder actions do not celebrate',
+    () async {
+      await plantReminder(store);
+      await reminders.tick();
+      final request = gateway.requests.single;
+
+      await gateway.action!(request.payloadFor('rest'));
+      expect(positiveCheckIns, isEmpty);
+      expect((await store.habits()).single.today, CheckInResult.notToday);
+      await gateway.action!(request.payloadFor('rest'));
+      expect(positiveCheckIns, isEmpty);
+
+      await gateway.action!(
+        request.payloadFor('did').replaceFirst('account-a', 'another-account'),
+      );
+      expect(positiveCheckIns, isEmpty);
+      expect(reminderErrors, hasLength(1));
+      expect(reminderErrors.single, contains('different garden'));
+
+      now = now.add(const Duration(days: 1));
+      await gateway.action!(request.payloadFor('did'));
+      expect(
+        positiveCheckIns,
+        isEmpty,
+        reason: 'old-day actions only reopen the app',
+      );
+    },
+  );
+
+  test('saved reminder opt-out remains off during startup restoration', () async {
+    await reminders.disable(explicitChoice: false);
+    gateway.operations.clear();
+    await reminders.initialize();
+
+    expect(reminders.enabled, isFalse);
+    expect(await store.setting('reminders'), 'false');
+    expect(gateway.operations, isEmpty);
+  });
+
+  test('a saved reminder opt-out can be explicitly enabled again', () async {
+    await reminders.disable();
+    expect(reminders.requestedEnabled, isFalse);
+    expect(await store.setting('reminders'), 'false');
+
+    await reminders.enable();
+
+    expect(reminders.enabled, isTrue);
+    expect(reminders.requestedEnabled, isTrue);
+    expect(await store.setting('reminders'), 'true');
+    expect(gateway.initializations, 2);
+  });
+
+  test(
+    'a fresh garden defaults reminders on and persists that preference',
+    () async {
+      await reminders.dispose();
+      await store.close();
+      store = await GardenStore.open(
+        ':memory:',
+        'fresh-reminder-choice',
+        clock: () => now,
+      );
+      await store.setSetting('analytics', 'true');
+      gateway = FakeReminderGateway();
+      reminders = DesktopReminders(
+        store,
+        () async {},
+        (_) {},
+        gateway: gateway,
+        clock: () => now,
+      );
+
+      await reminders.initialize();
+
+      expect(reminders.enabled, isTrue);
+      expect(await store.setting('reminders'), 'true');
+      expect(
+        ((await store.export())['events'] as List).where(
+          (row) =>
+              (row as Map)['name'].toString().startsWith('reminder_preference_'),
+        ),
+        isEmpty,
+        reason: 'default delivery does not grant reminder-observation consent',
       );
     },
   );
@@ -575,32 +698,69 @@ void main() {
     },
   );
 
-  test(
-    'seven actual unanswered requests pause with alternate-day backoff',
-    () async {
-      final h = await plantReminder(store);
-      for (var day = 4; day <= 20; day++) {
-        now = DateTime(2026, 10, day, 18);
-        await reminders.tick();
-      }
-      final requests = gateway.requests.where((r) => r.habitId == h.id);
-      expect(requests, hasLength(7));
-      expect(
-        gateway.requests.where((r) => r.habitId == '_reconnect'),
-        hasLength(2),
-      );
-      expect(await store.setting('ignored:${h.id}'), '7');
-      expect(requests.map((r) => r.day), [
-        '2026-10-04',
-        '2026-10-05',
-        '2026-10-06',
-        '2026-10-08',
-        '2026-10-10',
-        '2026-10-12',
-        '2026-10-14',
-      ]);
-    },
-  );
+  for (final scenario in <String, List<String>>{
+    '2026-10-04': [
+      '2026-10-04',
+      '2026-10-05',
+      '2026-10-06',
+      '2026-10-08',
+      '2026-10-10',
+      '2026-10-12',
+      '2026-10-14',
+    ],
+    '2025-12-28': [
+      '2025-12-28',
+      '2025-12-29',
+      '2025-12-30',
+      '2026-01-02',
+      '2026-01-04',
+      '2026-01-06',
+      '2026-01-08',
+    ],
+    '2027-02-26': [
+      '2027-02-26',
+      '2027-02-27',
+      '2027-02-28',
+      '2027-03-02',
+      '2027-03-04',
+      '2027-03-06',
+      '2027-03-08',
+    ],
+    '2028-02-26': [
+      '2028-02-26',
+      '2028-02-27',
+      '2028-02-28',
+      '2028-03-02',
+      '2028-03-04',
+      '2028-03-06',
+      '2028-03-08',
+    ],
+  }.entries) {
+    test(
+      'seven actual unanswered requests pause with alternate-day backoff (${scenario.key})',
+      () async {
+        final start = DateTime.parse('${scenario.key}T18:00:00');
+        now = start;
+        final h = await plantReminder(store);
+        expect(
+          await store.setting('lastInteraction'),
+          start.toUtc().toIso8601String(),
+        );
+        for (var day = 0; day <= 16; day++) {
+          now = DateTime(start.year, start.month, start.day + day, 18);
+          await reminders.tick();
+        }
+        final requests = gateway.requests.where((r) => r.habitId == h.id);
+        expect(requests, hasLength(7));
+        expect(
+          gateway.requests.where((r) => r.habitId == '_reconnect'),
+          hasLength(2),
+        );
+        expect(await store.setting('ignored:${h.id}'), '7');
+        expect(requests.map((r) => r.day), scenario.value);
+      },
+    );
+  }
 
   test(
     'account switch during plugin request cannot acknowledge new account',
@@ -610,6 +770,7 @@ void main() {
       await expectLater(reminders.tick(), throwsStateError);
       expect(await store.setting('reminderLog'), isNull);
       expect(await store.setting('ignored:${h.id}'), isNull);
+      expect(positiveCheckIns, isEmpty);
       expect(
         gateway.operations,
         contains('cancel:${gateway.requests.single.id}'),

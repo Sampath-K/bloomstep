@@ -74,8 +74,8 @@ test('owner-test downloads match the exact preview.14 release without implying g
   assert.equal(config.release.tag, 'v0.1.0-preview.14');
   assert.equal(config.release.universal.bytes, 22261590);
   for (const [architecture, asset] of Object.entries(assets)) {
-    const filename = `Bloomstep-0.1.0-preview.14-windows-${architecture}-setup.exe`;
-    const url = `https://github.com/Sampath-K/bloomstep/releases/download/v0.1.0-preview.14/${filename}`;
+    const filename = `Budlark-0.1.0-preview.14-windows-${architecture}-setup.exe`;
+    const url = `https://github.com/Sampath-K/budlark/releases/download/v0.1.0-preview.14/${filename}`;
     assert.equal(config.release[architecture].url, url);
     assert.equal(config.release[architecture].sha256, asset.sha256);
     assert.ok(home.includes(url));
@@ -93,7 +93,7 @@ test('owner-test downloads match the exact preview.14 release without implying g
     assert.match(page, /owner-test candidate, not a general customer release/);
     assert.match(page, /Owner-test download \(designated testers only\)/);
   }
-  assert.match(releases, /Launch after installation and the complete sign-in and app journey have not been verified/);
+  assert.match(releases, /Launch after installation and the complete app journey have not been verified/);
   assert.match(releases, /Recent preview changes/);
   assert.doesNotMatch(releases, /owner-trial-checklist|docs\/status\.md|launch gates|elevated worker|\bCI\b|worker/i);
 });

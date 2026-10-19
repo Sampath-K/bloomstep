@@ -19,25 +19,31 @@ the historical browser-storage receipt flow below is not its collection path.
 
 The website has no product-analytics upload endpoint. Optional local consent is
 unchecked unless a valid prior consented receipt is present. The browser-owned
-key `bloomstep.measurement-receipt.v1` stores at most32 actual post-consent page,
+key `budlark.measurement-receipt.v1` stores at most32 actual post-consent page,
 valid current invitation-view and download-click observations. No URL/referrer,
 invitation code, fingerprint, account, architecture or private text is stored.
 A click is not download completion, installation or referral redemption.
 Exports are user-requested JSON receipts, never automatic account linkage.
 
-The interactive Windows installer has a separate unchecked local observation
-choice. Silent installers collect nothing. After selection it observes the
-actual file-installation phase (`installer_started`, not earlier bootstrap)
-and post-install completion. The owned local file is
-`%LOCALAPPDATA%\Bloomstep\measurement\installer-receipt.json`. A random
+**Current installer coverage:** `packaging/budlark.iss` has no measurement
+checkbox and creates no receipt or ownership marker. Interactive and silent
+installs collect no new installation/first-launch observations. Install and
+first-launch denominators are unavailable, not zero. Upgrades remove the old
+ownership marker; this does not authorize replacement collection.
+
+**Historical receipt compatibility only:** the withdrawn installer observation
+contract used a separate unchecked local choice to observe the actual
+file-installation phase (`installer_started`, not earlier bootstrap) and
+post-install completion. Its owned local file was
+`%LOCALAPPDATA%\Budlark\measurement\installer-receipt.json`. A random
 `measurement-owner.txt` in the installed directory binds subsequent app
 observations to that installation without exporting a path/device identifier.
-Only a matching, completed, explicitly opted-in installation can add one
+The retained compatibility reader allows only a matching, completed, explicitly opted-in historical installation to add one
 first owner-process launch and one actually displayed sign-in view. Portable
 or different installs cannot append to another installation's receipt.
-Every upgrade clears the old installation marker before copying files; a
-silent/default-off upgrade cannot inherit prior installation observation
-ownership. A previously consented local receipt can still be explicitly
+Every current upgrade clears the old installation marker before copying files
+and cannot inherit prior installation observation ownership.
+A previously consented local receipt can still be explicitly
 cleared or linked by its owner, but is not automatically appended.
 An installation failure can leave only the observed start, never a fabricated
 completion. The matching installation's uninstaller removes its own receipt.
@@ -117,10 +123,11 @@ not completed merely by instrumentation/config readiness.
 
 ## Verification boundary
 
-Unit/SQLite/widget/browser/installer tests use explicitly synthetic observations,
-never actual customers or cohort results. CI checks silent/default-off install,
-the actual owned interactive checkbox, real installation and shown sign-in
-events, UUID/privacy fields and matching uninstall. Genuine account sync,
+Unit/SQLite/widget/browser tests use explicitly synthetic observations,
+never actual customers or cohort results. Current static installer tests check
+absence of new receipt collection and removal of the legacy ownership marker.
+Historical receipt tests do not establish a current checkbox, installation or
+first-launch denominator; no installer execution is implied. Genuine account sync,
 operator readback, consent revoke/delete and cohort review remain separate
 live acceptance gates; the implementation session owns component checks and
 cleanup once trusted-browser sessions are available.
@@ -132,7 +139,7 @@ console (deployment verification)** near the footer, use its real operator
 sign-in, select the bounded day window and **Load private preview measurements**.
 It is first-party static UI plus private Functions/Cosmos APIs, not an
 AppInsights/PostHog dashboard. The API requires an explicitly selected/assigned
-customer `Bloomstep.Admin`; repo/subscription ownership or asking to view metrics
+customer `Budlark.Admin`; repo/subscription ownership or asking to view metrics
 is not permission to grant that role. No current population counts are claimed
 without that separately authorized channel.
 
@@ -165,8 +172,9 @@ implementation work, not merely blocked on population; record their owner and
 sequence separately from live cohort/permission gates. No automatic all-user
 attribution or native-death coverage is inferred from a registered event name.
 
-Website/installer receipts remain local/default-off with original times/IDs and
-seven-day expiry; account linkage is explicit under independent product-event
+Website receipts and any still-valid historical installer receipts remain local
+with original times/IDs and seven-day expiry; the current installer creates none.
+Account linkage is explicit under independent product-event
 consent, never automatic visitor-to-installer-to-broker tracking. An observed
 notification request is not proof of OS delivery. Persisted daily-worker history
 and latest-completed-day panels remain distinct from on-demand rollups; absent/

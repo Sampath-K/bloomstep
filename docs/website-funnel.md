@@ -7,7 +7,7 @@ older categories-only/no-stored-campaign/transient-dedup description below.
 First/last touch still means one consented page epoch, never unique visitors or
 automatic account linkage.
 
-The customer site explains Bloomstep without presenting operator tooling as a
+The customer site explains Budlark without presenting operator tooling as a
 product feature. `/releases/` preserves the release evidence and checksums;
 `/console.html` is a separate noindex operator surface. Downloads remain ordinary
 links and work without JavaScript, analytics, authentication, or the API.
@@ -43,7 +43,7 @@ links and work without JavaScript, analytics, authentication, or the API.
   Existing authenticated ordered receipt cohorts are shown separately, never
   divided by anonymous counts. Web attribution requires a linked website
   receipt; installer-only and other app cohorts remain unknown channel.
-- Admin API and panel require the existing `Bloomstep.Admin` JWT authentication.
+- Admin API and panel require the existing `Budlark.Admin` JWT authentication.
   Linked counts and rates require 50 distinct contributing accounts in each
   relevant numerator and denominator. No anonymous-to-account matching.
 - Synthetic readback has a distinct count document, small caps, an admin-only
@@ -71,7 +71,7 @@ links and work without JavaScript, analytics, authentication, or the API.
 
 ## Free-tier limits and deployment
 
-Reuse `bloomstep/data`; no new Azure resources. A transactional lifetime budget
+Reuse `budlark/data`; no new Azure resources. A transactional lifetime budget
 and per-day count documents keep at most 90 UTC days. Daily TTL is anchored to
 the server UTC date, so expiry does not need another visitor or a timer.
 Limits: 400 accepted events/day, 10,000 lifetime accepted events, and a
@@ -89,20 +89,28 @@ current release assets/checksums and empty search verification placeholders.
 Build inserts verification meta tags only for bounded valid tokens supplied
 through deployment variables or that config. The owner must sign into Bing
 Webmaster Tools and Google Search Console to obtain/verify those values and
-submit `/sitemap.xml`. No real verification secret is committed. The current
-website download is the already-published `v0.1.0-preview.12` unsigned
-universal installer (21,542,145 bytes); ARM64/x64 links are collapsed troubleshooting
-options only. The owner explicitly authorized this website pointer update before
-manual acceptance so the complete website-to-installer journey can be tested.
-Launch after Finish and the full owner journey remain unverified; no customer-ready
-or safety claim follows from publication. `site/build.mjs` keeps the home and
-releases pages aligned. The customer-site contract test pins both exact release
-URLs and SHA-256 values. Preview.8 remains historical release evidence, not a
-current download. Customer-provided preview.8 warning images retain their explicit
-historical provenance and are not evidence of a warning on preview.12.
+submit `/sitemap.xml`. No real verification secret is committed. The configured
+website download pointer is the already-published `v0.1.0-preview.14` unsigned
+universal installer (22,261,590 bytes,
+`7ad56cc3c71a40d78dd7cb043b43aa42ea884cb0484da982cffa386c9384b094`,
+`https://github.com/Sampath-K/budlark/releases/download/v0.1.0-preview.14/Budlark-0.1.0-preview.14-windows-universal-setup.exe`);
+ARM64/x64 links are collapsed troubleshooting options only. This records the
+configured pointer, not a newer owner-test candidate or approval to upgrade the
+website pointer. The current download remains for designated owner testing;
+launch after Finish and the full owner journey remain unverified, with no
+customer-ready or safety claim following from publication. `site/build.mjs`
+keeps the home and releases pages aligned. The customer-site contract test pins
+the configured release URLs and SHA-256 values. Preview.8 warning screenshots
+are historical evidence only, not evidence about preview.14 or the current
+download.
 
-TODO(owner): supply controller identity, privacy contact, applicable legal basis
-and processor/backup retention details. These facts are not invented by code.
+The owner-approved public support/privacy contact,
+`store-developer@outlook.com`, is published on both customer pages. Mailbox
+delivery has not been tested and no response time is promised. This approval
+does not resolve the formal controller/legal identity, applicable
+jurisdiction-specific legal bases, provider logging or identity retention, or
+processor and backup deletion/recovery behavior; those remain explicit owner
+and service-provider verification gaps.
 
 CI verifies API schemas/type safety, site contracts and bundled assets; a
 separate lightweight Lighthouse job measures the public pages against 90 for
@@ -111,7 +119,7 @@ customer pages, releases, console, robots, sitemap and original social image.
 Production evidence belongs in session artifacts, not customer source.
 
 `Website live readback` is a manual main-only GitHub workflow using the existing
-`bloomstep-operations` federated aggregate-worker identity, not a new Azure
+`budlark-operations` federated aggregate-worker identity, not a new Azure
 resource or paid service. Its isolated `/api/internal/website-proof` route
 accepts only that worker role and returns lifetime accepted counters, never
 customer data or real daily cells. The worker remains rejected by all customer

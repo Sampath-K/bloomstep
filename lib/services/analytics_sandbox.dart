@@ -9,7 +9,7 @@ import 'package:http/http.dart' as http;
 import 'package:sentry_flutter/sentry_flutter.dart';
 
 const analyticsSandboxEnabled =
-    !kReleaseMode && bool.fromEnvironment('BLOOMSTEP_ANALYTICS_SANDBOX');
+    !kReleaseMode && bool.fromEnvironment('BUDLARK_ANALYTICS_SANDBOX');
 
 class SandboxConfig {
   const SandboxConfig({

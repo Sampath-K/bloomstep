@@ -4,7 +4,7 @@ on:
 permissions:
   contents: read
 concurrency:
-  group: bloomstep-production-isolation
+  group: budlark-production-isolation
   cancel-in-progress: false
 jobs:
   acceptance:
@@ -25,14 +25,14 @@ jobs:
       - name: Real hosted sign-in and partition-boundary acceptance
         run: node production-isolation.mjs
         env:
-          BLOOMSTEP_AUTOMATION_CLIENT_ID: ${{ vars.BLOOMSTEP_AUTOMATION_CLIENT_ID }}
-          BLOOMSTEP_AUTOMATION_PROVISIONING_RECEIPT: ${{ vars.BLOOMSTEP_AUTOMATION_PROVISIONING_RECEIPT }}
-          BLOOMSTEP_TEST_A_EMAIL: ${{ secrets.BLOOMSTEP_TEST_A_EMAIL }}
-          BLOOMSTEP_TEST_A_PASSWORD: ${{ secrets.BLOOMSTEP_TEST_A_PASSWORD }}
-          BLOOMSTEP_TEST_B_EMAIL: ${{ secrets.BLOOMSTEP_TEST_B_EMAIL }}
-          BLOOMSTEP_TEST_B_PASSWORD: ${{ secrets.BLOOMSTEP_TEST_B_PASSWORD }}
-          BLOOMSTEP_TEST_ADMIN_EMAIL: ${{ secrets.BLOOMSTEP_TEST_ADMIN_EMAIL }}
-          BLOOMSTEP_TEST_ADMIN_PASSWORD: ${{ secrets.BLOOMSTEP_TEST_ADMIN_PASSWORD }}
+          BUDLARK_AUTOMATION_CLIENT_ID: ${{ vars.BUDLARK_AUTOMATION_CLIENT_ID }}
+          BUDLARK_AUTOMATION_PROVISIONING_RECEIPT: ${{ vars.BUDLARK_AUTOMATION_PROVISIONING_RECEIPT }}
+          BUDLARK_TEST_A_EMAIL: ${{ secrets.BUDLARK_TEST_A_EMAIL }}
+          BUDLARK_TEST_A_PASSWORD: ${{ secrets.BUDLARK_TEST_A_PASSWORD }}
+          BUDLARK_TEST_B_EMAIL: ${{ secrets.BUDLARK_TEST_B_EMAIL }}
+          BUDLARK_TEST_B_PASSWORD: ${{ secrets.BUDLARK_TEST_B_PASSWORD }}
+          BUDLARK_TEST_ADMIN_EMAIL: ${{ secrets.BUDLARK_TEST_ADMIN_EMAIL }}
+          BUDLARK_TEST_ADMIN_PASSWORD: ${{ secrets.BUDLARK_TEST_ADMIN_PASSWORD }}
       - name: Sanitized acceptance evidence
         if: always()
         uses: actions/upload-artifact@v4

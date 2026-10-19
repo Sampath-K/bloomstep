@@ -12,7 +12,7 @@ const { default: puppeteer } = await import(pathToFileURL(require.resolve('puppe
 assert.ok(output, 'An isolated evidence directory is required.');
 await mkdir(output, { recursive: true });
 const run = await mkdtemp(join(output, 'isolated-'));
-const sampleName = 'bloomstep-download-help-sample.txt';
+const sampleName = 'budlark-download-help-sample.txt';
 const sample = 'Harmless download-help sample. Not an installer. Do not run or install anything.';
 const server = createServer((request, response) => {
   if (request.url === '/sample') {

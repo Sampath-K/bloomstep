@@ -1,14 +1,14 @@
 import 'dart:io';
 
-import 'package:bloomstep/core/garden_store.dart';
-import 'package:bloomstep/core/models.dart';
+import 'package:budlark/core/garden_store.dart';
+import 'package:budlark/core/models.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:sqflite_common_ffi/sqflite_ffi.dart';
 import 'package:uuid/uuid.dart';
 
 void main() {
   test('local1000-marker cap never silently prunes or deletes content and is per account', () async {
-    final dir = await Directory.systemTemp.createTemp('bloomstep-delete-cap-');
+    final dir = await Directory.systemTemp.createTemp('budlark-delete-cap-');
     addTearDown(() => dir.delete(recursive: true));
     final path = '${dir.path}${Platform.pathSeparator}cap.sqlite';
     final initial = await GardenStore.open(path, 'owner');
@@ -54,7 +54,7 @@ void main() {
     'independent device deletions converge to the server canonical request ID',
     () async {
       final dir = await Directory.systemTemp.createTemp(
-        'bloomstep-delete-conflict-',
+        'budlark-delete-conflict-',
       );
       addTearDown(() => dir.delete(recursive: true));
       final a = await GardenStore.open(
@@ -153,7 +153,7 @@ void main() {
     'owner deletion survives stale merge and purges dependent private rows',
     () async {
       final directory = await Directory.systemTemp.createTemp(
-        'bloomstep-delete-test-',
+        'budlark-delete-test-',
       );
       addTearDown(() => directory.delete(recursive: true));
       final a = await GardenStore.open(
@@ -235,7 +235,7 @@ void main() {
   test('v4 migration preserves existing data and deletion survives restart/foreign rows', () async {
     sqfliteFfiInit();
     final dir = await Directory.systemTemp.createTemp(
-      'bloomstep-delete-migration-',
+      'budlark-delete-migration-',
     );
     addTearDown(() => dir.delete(recursive: true));
     final path = '${dir.path}${Platform.pathSeparator}v4.sqlite';

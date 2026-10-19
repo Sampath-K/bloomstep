@@ -20,11 +20,16 @@ export function redactSignInText(text, account) {
 }
 
 export function automationAccounts(environment) {
+  let issuerDomain;
   return ['A', 'B', 'ADMIN'].map(label => {
-    const email = environment[`BLOOMSTEP_TEST_${label}_EMAIL`];
-    const password = environment[`BLOOMSTEP_TEST_${label}_PASSWORD`];
-    if (email !== `bloomstep-test-${label.toLowerCase()}@bloomstepcustomers261004.onmicrosoft.com` ||
+    const email = environment[`BUDLARK_TEST_${label}_EMAIL`];
+    const password = environment[`BUDLARK_TEST_${label}_PASSWORD`];
+    const domain = typeof email === 'string' ? email.split('@')[1] : undefined;
+    if (!domain || !/^[a-z0-9-]+\.onmicrosoft\.com$/.test(domain) ||
+        email !== `budlark-test-${label.toLowerCase()}@${domain}` ||
+        issuerDomain && issuerDomain !== domain ||
         typeof password !== 'string' || password.length < 24) throw Error('Dedicated automation credentials are missing or invalid.');
+    issuerDomain = domain;
     return { label, email, password };
   });
 }
@@ -182,26 +187,26 @@ async function main() {
   let evidence = { schemaVersion: 1, passed: false, phase: 'sign-in', cleanup: 'not-started' };
   let provisioning;
   try {
-    provisioning = JSON.parse(process.env.BLOOMSTEP_AUTOMATION_PROVISIONING_RECEIPT ?? '{}');
+    provisioning = JSON.parse(process.env.BUDLARK_AUTOMATION_PROVISIONING_RECEIPT ?? '{}');
     requireCheck(provisioning.passed === true && provisioning.temporaryCreated === true &&
       provisioning.temporaryDeleted === true && provisioning.users === 3 &&
-      provisioning.clientId === process.env.BLOOMSTEP_AUTOMATION_CLIENT_ID);
+      provisioning.clientId === process.env.BUDLARK_AUTOMATION_CLIENT_ID);
     accounts = automationAccounts(process.env);
     for (const label of ['A', 'B', 'ADMIN']) {
-      delete process.env[`BLOOMSTEP_TEST_${label}_EMAIL`];
-      delete process.env[`BLOOMSTEP_TEST_${label}_PASSWORD`];
+      delete process.env[`BUDLARK_TEST_${label}_EMAIL`];
+      delete process.env[`BUDLARK_TEST_${label}_PASSWORD`];
     }
     browser = await createAutomationBrowser();
     for (const account of accounts) {
       evidence.phase = `sign-in-${account.label}`;
-      tokens.set(account.label, await signIn(browser, account, process.env.BLOOMSTEP_AUTOMATION_CLIENT_ID));
+      tokens.set(account.label, await signIn(browser, account, process.env.BUDLARK_AUTOMATION_CLIENT_ID));
     }
     evidence = await runIsolationAcceptance(async (label, route, method = 'GET', body) => {
       if (!tokens.has(label) || !/^\/api\/(?:sync(?:\?userId=[a-f0-9]{64})?|account\/isolation|team\/(?:feedback\?limit=1|metrics\?days=1|website\?days=1|operational-status))$/.test(route)) {
         throw Error('Automation API route rejected.');
       }
       const response = await fetch(origin + route, { method, redirect: 'error', signal: AbortSignal.timeout(30000),
-        headers: { 'X-Bloomstep-Authorization': `Bearer ${tokens.get(label)}`, 'Content-Type': 'application/json' },
+        headers: { 'X-Budlark-Authorization': `Bearer ${tokens.get(label)}`, 'Content-Type': 'application/json' },
         ...(body ? { body: JSON.stringify(body) } : {}) });
       return { status: response.status, data: await response.json() };
     });
@@ -212,8 +217,8 @@ async function main() {
     tokens.clear();
     for (const account of accounts) account.password = '';
     for (const label of ['A', 'B', 'ADMIN']) {
-      delete process.env[`BLOOMSTEP_TEST_${label}_EMAIL`];
-      delete process.env[`BLOOMSTEP_TEST_${label}_PASSWORD`];
+      delete process.env[`BUDLARK_TEST_${label}_EMAIL`];
+      delete process.env[`BUDLARK_TEST_${label}_PASSWORD`];
     }
     await browser?.close();
     const receipt = provisioning?.passed === true ? {

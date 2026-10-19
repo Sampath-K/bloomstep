@@ -6,8 +6,8 @@ param(
   [Parameter(Mandatory)][string]$SwaName,
   [Parameter(Mandatory)][string]$CosmosName,
   [Parameter(Mandatory)][ValidatePattern('^[a-zA-Z0-9-]+$')][string]$CustomerDirectoryName,
-  [Parameter(Mandatory)][ValidateSet('Sampath-K/bloomstep')][string]$Repository,
-  [Parameter(Mandatory)][ValidateSet('bloomstep-operations')][string]$Environment,
+  [Parameter(Mandatory)][ValidateSet('Sampath-K/budlark')][string]$Repository,
+  [Parameter(Mandatory)][ValidateSet('budlark-operations')][string]$Environment,
   [Parameter(Mandatory)][switch]$ConfirmPersonalResourceTenant
 )
 $ErrorActionPreference='Stop'
@@ -37,11 +37,11 @@ if($directory.name -ne $CustomerDirectoryName -or $directory.sku.name -ne 'Base'
 $subscriptionMetadata=Azure @('rest','--subscription',$subscription,'--method','GET','--url',"https://management.azure.com/subscriptions/$subscription`?api-version=2022-12-01")
 if($subscriptionMetadata.subscriptionPolicies.quotaId -ne 'FreeTrial_2014-09-01' -or $subscriptionMetadata.subscriptionPolicies.spendingLimit -ne 'On'){throw 'Approved trial spending-limit policy must be ON before provisioning.'}
 try{
-  $throughput=Azure @('cosmosdb','sql','container','throughput','show','--subscription',$subscription,'--resource-group',$ResourceGroup,'--account-name',$CosmosName,'--database-name','bloomstep','--name','data')
+  $throughput=Azure @('cosmosdb','sql','container','throughput','show','--subscription',$subscription,'--resource-group',$ResourceGroup,'--account-name',$CosmosName,'--database-name','budlark','--name','data')
 }catch{
-  $throughput=Azure @('cosmosdb','sql','database','throughput','show','--subscription',$subscription,'--resource-group',$ResourceGroup,'--account-name',$CosmosName,'--name','bloomstep')
+  $throughput=Azure @('cosmosdb','sql','database','throughput','show','--subscription',$subscription,'--resource-group',$ResourceGroup,'--account-name',$CosmosName,'--name','budlark')
 }
-if($throughput.resource.throughput -ne 400 -or ($throughput.resource.PSObject.Properties['autoscaleSettings'] -and $throughput.resource.autoscaleSettings)){throw 'Existing bloomstep/data throughput must be manual400 RU, not autoscale.'}
+if($throughput.resource.throughput -ne 400 -or ($throughput.resource.PSObject.Properties['autoscaleSettings'] -and $throughput.resource.autoscaleSettings)){throw 'Existing budlark/data throughput must be manual400 RU, not autoscale.'}
 $origin="https://$($swa.defaultHostname)"
 if((Github "repos/$Repository/actions/variables/API_ORIGIN").value.TrimEnd('/') -ne $origin){throw 'Repository API_ORIGIN must match selected SWA.'}
 $repo=Github "repos/$Repository"
@@ -51,7 +51,7 @@ if(-not $policy.use_default){throw 'Custom OIDC subject policy requires owner re
 $envConfig=Github "repos/$Repository/environments/$Environment"
 if(-not $envConfig.deployment_branch_policy.custom_branch_policies){throw 'Existing operations environment must have explicit branch restrictions.'}
 $branches=Github "repos/$Repository/environments/$Environment/deployment-branch-policies?per_page=100"
-if($branches.total_count -ne 2 -or @($branches.branch_policies|Where-Object{$_.type -ne 'branch' -or $_.name -notin @('main','sampath-k-bloomstep-mvp-implementation')}).Count){throw 'Operations environment must allow exactly main and approved feature branch, never PRs/tags.'}
+if($branches.total_count -ne 2 -or @($branches.branch_policies|Where-Object{$_.type -ne 'branch' -or $_.name -notin @('main','sampath-k-budlark-mvp-implementation')}).Count){throw 'Operations environment must allow exactly main and approved feature branch, never PRs/tags.'}
 $subject="repo:$($repo.owner.login)@$($repo.owner.id)/$($repo.name)@$($repo.id):environment:$Environment"
 $token=& az account get-access-token --tenant $tenant --resource https://graph.microsoft.com --query accessToken -o tsv --only-show-errors 2>$null
 if($LASTEXITCODE -ne 0 -or -not $token){throw 'Graph token command failed; no login diagnosis or secret fallback.'}
@@ -70,20 +70,20 @@ try{
   $issuer="https://login.microsoftonline.com/$tenant/v2.0"
   $discovery=Invoke-RestMethod "$issuer/.well-known/openid-configuration"
   if($discovery.issuer -ne $issuer -or -not $discovery.jwks_uri.StartsWith('https://login.microsoftonline.com/')){throw 'Resource issuer/key discovery mismatch.'}
-  $name='Bloomstep spend guard (read-only operations)'
-  $tag="Bloomstep-spend-guard:$Repository`:$subscription`:$ResourceGroup"
+  $name='Budlark spend guard (read-only operations)'
+  $tag="Budlark-spend-guard:$Repository`:$subscription`:$ResourceGroup"
   $apps=@(GraphList "applications?`$filter=displayName eq '$name'")
   if($apps.Count -gt 1){throw 'Ambiguous guard applications.'}
   $roleId=if($apps.Count -and @($apps[0].appRoles).Count){$apps[0].appRoles[0].id}else{[guid]::NewGuid().ToString()}
-  $role=@{id=$roleId;value='Bloomstep.SpendGuard';displayName='Bloomstep Spend Guard';description='Only one-way internal application pause';isEnabled=$true;allowedMemberTypes=@('Application')}
+  $role=@{id=$roleId;value='Budlark.SpendGuard';displayName='Budlark Spend Guard';description='Only one-way internal application pause';isEnabled=$true;allowedMemberTypes=@('Application')}
   $settings=@{signInAudience='AzureADMyOrg';api=@{requestedAccessTokenVersion=2};appRoles=@($role)}
   if($apps.Count){
     $app=$apps[0]
     if($app.tags -notcontains $tag -or $app.signInAudience -ne 'AzureADMyOrg' -or @($app.passwordCredentials).Count -or @($app.keyCredentials).Count -or @($app.requiredResourceAccess).Count){throw 'Existing guard binding/credentials/permissions mismatch.'}
-    if(@($app.appRoles).Count -ne 1 -or $app.appRoles[0].value -ne 'Bloomstep.SpendGuard' -or @($app.appRoles[0].allowedMemberTypes).Count -ne 1 -or $app.appRoles[0].allowedMemberTypes[0] -ne 'Application'){throw 'Existing guard role mismatch.'}
+    if(@($app.appRoles).Count -ne 1 -or $app.appRoles[0].value -ne 'Budlark.SpendGuard' -or @($app.appRoles[0].allowedMemberTypes).Count -ne 1 -or $app.appRoles[0].allowedMemberTypes[0] -ne 'Application'){throw 'Existing guard role mismatch.'}
     $null=Graph "applications/$($app.id)" 'PATCH' $settings
   }else{
-    $settings.displayName=$name;$settings.tags=@('Bloomstep-managed-free',$tag)
+    $settings.displayName=$name;$settings.tags=@('Budlark-managed-free',$tag)
     $app=Graph 'applications' 'POST' $settings
   }
   $null=Graph "applications/$($app.id)" 'PATCH' @{identifierUris=@("api://$($app.appId)")}

@@ -1,4 +1,4 @@
-param([string]$Output = (Join-Path $PSScriptRoot '..\site\assets\bloomstep-social.png'))
+param([string]$Output = (Join-Path $PSScriptRoot '..\site\assets\budlark-social.png'))
 $ErrorActionPreference = 'Stop'
 Add-Type -AssemblyName System.Drawing
 $bitmap = [Drawing.Bitmap]::new(1200, 630)
@@ -15,7 +15,7 @@ $title = [Drawing.Font]::new('Segoe UI', 46, [Drawing.FontStyle]::Bold)
 $subtitle = [Drawing.Font]::new('Segoe UI', 26)
 try {
   $canvas.FillRectangle($background, 0, 0, 1200, 630)
-  $canvas.DrawString('Bloomstep', $title, $text, 64, 48)
+  $canvas.DrawString('Budlark', $title, $text, 64, 48)
   $canvas.DrawString('A little is enough.', $subtitle, $muted, 68, 140)
   $canvas.DrawLine($soil, 64, 544, 1136, 544)
   $plants = @(@{x=240; top=460}, @{x=560; top=360}, @{x=920; top=252})

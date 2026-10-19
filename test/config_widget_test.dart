@@ -1,7 +1,7 @@
-import 'package:bloomstep/core/garden_store.dart';
-import 'package:bloomstep/features/garden/garden_screen.dart';
-import 'package:bloomstep/services/desktop_reminders.dart';
-import 'package:bloomstep/services/remote_config.dart';
+import 'package:budlark/core/garden_store.dart';
+import 'package:budlark/features/garden/garden_screen.dart';
+import 'package:budlark/services/desktop_reminders.dart';
+import 'package:budlark/services/remote_config.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
@@ -27,9 +27,20 @@ Future<void> ready(WidgetTester tester, Finder finder) async {
       () => Future<void>.delayed(const Duration(milliseconds: 50)),
     );
     await tester.pump(const Duration(milliseconds: 50));
-    if (finder.evaluate().isNotEmpty) return;
+    if (finder.evaluate().isNotEmpty) {
+      await tester.pump(const Duration(milliseconds: 350));
+      return;
+    }
   }
   fail('Readiness timeout: $finder');
+}
+
+Future<void> openConfigStatus(WidgetTester tester) async {
+  await tester.tap(find.byTooltip('Settings and privacy'));
+  await ready(tester, find.text('App & support'));
+  await tester.ensureVisible(find.text('App & support'));
+  await tester.tap(find.text('App & support'));
+  await ready(tester, find.text('Your garden is using its usual settings.'));
 }
 
 void main() {
@@ -69,7 +80,11 @@ void main() {
     );
     await ready(tester, find.text('Plant a habit'));
     await tester.pump(const Duration(seconds: 3));
-    expect(find.textContaining('Remote configuration expired'), findsOneWidget);
+    await openConfigStatus(tester);
+    expect(
+      find.text('Your garden is using its usual settings.'),
+      findsOneWidget,
+    );
     await tester.pumpWidget(const SizedBox.shrink());
     await tester.runAsync(
       () => Future<void>.delayed(const Duration(milliseconds: 50)),
@@ -85,8 +100,6 @@ void main() {
       addTearDown(() => tester.runAsync(store.close));
       await tester.binding.setSurfaceSize(const Size(1100, 1100));
       addTearDown(() => tester.binding.setSurfaceSize(null));
-      const warning =
-          'Remote configuration download/cache invalid; using reviewed local control copy. No experiment is active.';
       await tester.pumpWidget(
         MaterialApp(
           home: GardenScreen(
@@ -94,21 +107,30 @@ void main() {
             reminderGateway: ConfigGateway(),
             configLoader: (_) async => const RemoteConfigResult(
               RemoteConfig.defaults,
-              warning: warning,
+              warning: 'private configuration parser detail',
             ),
           ),
         ),
       );
-      await ready(tester, find.text(warning));
-      expect(find.text(warning), findsOneWidget);
-      await tester.tap(find.byIcon(Icons.settings_outlined));
-      await ready(tester, find.text('Personalized reminder timing'));
+      await ready(tester, find.text('Plant a habit'));
+      await openConfigStatus(tester);
+      expect(
+        find.text('Your garden is using its usual settings.'),
+        findsOneWidget,
+      );
+      await tester.tap(find.text('Done'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byTooltip('Settings and privacy'));
+      await ready(tester, find.text('Reminders'));
+      await tester.tap(find.text('Reminders'));
+      await tester.pump(const Duration(milliseconds: 350));
       final toggle = find.widgetWithText(
         SwitchListTile,
         'Personalized reminder timing',
       );
       expect(tester.widget<SwitchListTile>(toggle).value, isFalse);
       await tester.ensureVisible(toggle);
+      await tester.pumpAndSettle();
       await tester.tap(toggle);
       final stopwatch = Stopwatch()..start();
       while (stopwatch.elapsed < const Duration(seconds: 10) &&
@@ -123,7 +145,7 @@ void main() {
         await tester.runAsync(() => store.setting('personalizedTiming')),
         'true',
       );
-      expect(await tester.runAsync(() => store.setting('reminders')), isNull);
+      expect(await tester.runAsync(() => store.setting('reminders')), 'true');
       expect(await tester.runAsync(() => store.setting('analytics')), isNull);
       final payload = (await tester.runAsync(store.syncPayload))!;
       expect(

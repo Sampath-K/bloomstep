@@ -1,27 +1,39 @@
 import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
+import 'dart:typed_data';
 
 import 'package:crypto/crypto.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
+import 'package:http/http.dart' as http;
 import 'package:openid_client/openid_client.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:uuid/uuid.dart';
 
 import 'auth_observations.dart';
+import 'microsoft_photo.dart';
+import 'microsoft_photo_auth.dart';
 
 class IdentityProfile {
-  const IdentityProfile({this.displayName, this.photoUrl});
+  const IdentityProfile({this.displayName, this.photoUrl, this.photoBytes});
   final String? displayName;
   final String? photoUrl;
+  final Uint8List? photoBytes;
 
   factory IdentityProfile.fromClaims(Map<String, dynamic> claims) {
     String? text(dynamic value) =>
         value is String && value.trim().isNotEmpty ? value.trim() : null;
     final picture = text(claims['picture']);
     final pictureUri = picture == null ? null : Uri.tryParse(picture);
+    final parts = [
+      text(claims['given_name']),
+      text(claims['family_name']),
+    ].whereType<String>().join(' ');
+    final name = text(claims['name']);
     return IdentityProfile(
-      displayName: text(claims['name']),
+      displayName: name != null && name.toLowerCase() != 'unknown'
+          ? name
+          : (parts.isEmpty ? null : parts),
       photoUrl:
           pictureUri != null &&
               pictureUri.scheme == 'https' &&
@@ -46,13 +58,54 @@ class IdentityService {
     wOptions: WindowsOptions(useBackwardCompatibility: false),
   );
   Credential? _credential;
+  final _microsoftPhoto = MicrosoftPhotoConnection(
+    authenticate: const MicrosoftPhotoAuthenticator().authenticate,
+    client: http.Client(),
+  );
+  String? _photoAttemptedAccount;
   DateTime? _validatedAt;
   DateTime? _lastObservedAt;
   Future<void> _storageTail = Future<void>.value();
   String? account;
   IdentityProfile? get profile {
     if (!hasValidSession) return null;
-    return IdentityProfile.fromClaims(_credential!.idToken.claims.toJson());
+    final claimed = IdentityProfile.fromClaims(
+      _credential!.idToken.claims.toJson(),
+    );
+    return IdentityProfile(
+      displayName: claimed.displayName,
+      photoUrl: claimed.photoUrl,
+      photoBytes: _microsoftPhoto.bytesFor(account),
+    );
+  }
+
+  // Current CIAM tokens do not prove the upstream MSA tenant/oid. Keep the
+  // direct connection disabled until a trusted, non-user-editable projection
+  // is implemented and verified; never infer it from email or CIAM sub/oid.
+  MicrosoftPhotoIdentity? get microsoftPhotoIdentity => null;
+
+  Future<MicrosoftPhotoStatus> loadMicrosoftPhoto() async {
+    if (!hasValidSession) {
+      _microsoftPhoto.clear();
+      return MicrosoftPhotoStatus.unlinked;
+    }
+    if (_photoAttemptedAccount == account) {
+      return _microsoftPhoto.bytesFor(account) == null
+          ? MicrosoftPhotoStatus.unavailable
+          : MicrosoftPhotoStatus.loaded;
+    }
+    _photoAttemptedAccount = account;
+    final proof = microsoftPhotoIdentity;
+    if (proof == null || proof.budlarkAccount != account) {
+      _microsoftPhoto.clear();
+      return MicrosoftPhotoStatus.unlinked;
+    }
+    return _microsoftPhoto.connect(proof);
+  }
+
+  void clearMicrosoftPhoto() {
+    _photoAttemptedAccount = null;
+    _microsoftPhoto.clear();
   }
 
   DateTime? get sessionExpiresAt => _validatedAt?.add(const Duration(days: 30));
@@ -113,7 +166,7 @@ class IdentityService {
 
   Future<bool> restore() async {
     if (!configured) return false;
-    final raw = await _storage.read(key: 'bloomstep-session');
+    final raw = await _storage.read(key: 'budlark-session');
     if (raw == null) return false;
     final dynamic decoded;
     try {
@@ -183,7 +236,7 @@ class IdentityService {
     } on TimeoutException {
       throw const AuthFailure(
         'timeout',
-        'Sign-in timed out. Return to Bloomstep and try again. '
+        'Sign-in timed out. Return to Budlark and try again. '
             'This does not establish cancellation.',
       );
     } on SocketException {
@@ -201,6 +254,7 @@ class IdentityService {
   }
 
   Future<void> _signIn() async {
+    clearMicrosoftPhoto();
     if (!configured) {
       throw const AuthFailure(
         'unavailable',
@@ -231,11 +285,11 @@ class IdentityService {
           parameters['state'] != flow.state) {
         request.response.statusCode = HttpStatus.badRequest;
         request.response.write(
-          'Bloomstep sign-in response is invalid. Return to Bloomstep and start sign-in again.',
+          'Budlark sign-in response is invalid. Return to Budlark and start sign-in again.',
         );
       } else {
         request.response.write(
-          'Return to Bloomstep. You may close this browser tab.',
+          'Return to Budlark. You may close this browser tab.',
         );
         if (!response.isCompleted) response.complete(parameters);
       }
@@ -313,7 +367,7 @@ class IdentityService {
       _lastObservedAt = now;
     }
     await _storage.write(
-      key: 'bloomstep-session',
+      key: 'budlark-session',
       value: jsonEncode({
         'issuer': issuerUrl,
         'clientId': clientId,
@@ -359,7 +413,7 @@ class IdentityService {
     }
     // Preserve the offline-session deadline; a refresh is not fresh user authentication.
     await guardAuthStep(AuthStep.save, () async {
-      final saved = await _storage.read(key: 'bloomstep-session');
+      final saved = await _storage.read(key: 'budlark-session');
       if (saved != null) {
         await _save((jsonDecode(saved) as Map)['validatedAt'] as String);
       }
@@ -368,10 +422,11 @@ class IdentityService {
   }
 
   Future<void> signOut() async {
+    clearMicrosoftPhoto();
     _credential = null;
     _validatedAt = null;
     _lastObservedAt = null;
     account = null;
-    await _serialized(() => _storage.delete(key: 'bloomstep-session'));
+    await _serialized(() => _storage.delete(key: 'budlark-session'));
   }
 }

@@ -19,12 +19,15 @@ class Habit {
     required this.recentPractice,
     this.today,
     this.lastReason,
+    this.recipeRevision = '',
   });
   final String id, aspiration, anchor, behavior, celebration, species, status;
   final GrowthStage stage;
   final int practiceCount, recentPractice;
   final CheckInResult? today;
   final String? lastReason;
+  /// Empty identifies the original recipe, including pre-revision history.
+  final String recipeRevision;
 
   String get recipe => 'After I $anchor, I will $behavior.';
 }

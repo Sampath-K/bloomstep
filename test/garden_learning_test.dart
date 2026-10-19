@@ -1,9 +1,17 @@
-import 'package:bloomstep/core/garden_store.dart';
-import 'package:bloomstep/core/models.dart';
-import 'package:bloomstep/features/garden/garden_screen.dart';
-import 'package:bloomstep/services/update_service.dart';
+import 'dart:convert';
+import 'dart:io';
+
+import 'package:budlark/core/garden_store.dart';
+import 'package:budlark/core/models.dart';
+import 'package:budlark/features/garden/garden_screen.dart';
+import 'package:budlark/services/desktop_reminders.dart';
+import 'package:budlark/services/remote_config.dart';
+import 'package:budlark/services/update_service.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:sqflite_common_ffi/sqflite_ffi.dart';
 
 class FakeUpdates extends UpdateService {
   FakeUpdates(this.result, {this.failure});
@@ -19,6 +27,36 @@ class FakeUpdates extends UpdateService {
     if (failure != null) throw failure!;
     return result;
   }
+}
+
+class FakeWidgetReminderGateway implements ReminderGateway {
+  Future<void> Function(String)? action;
+  Object? initializeFailure;
+  int initializations = 0;
+  final requests = <ReminderRequest>[];
+  final cancellations = <int>[];
+
+  @override
+  Future<void> initialize(Future<void> Function(String) action) async {
+    initializations++;
+    this.action = action;
+    if (initializeFailure != null) throw initializeFailure!;
+  }
+
+  @override
+  Future<void> show(ReminderRequest request) async => requests.add(request);
+
+  @override
+  Future<void> cancel(int id) async => cancellations.add(id);
+
+  @override
+  Future<void> cancelAll() async {}
+
+  @override
+  Future<void> showAndFocus() async {}
+
+  @override
+  Future<void> shutdown() async {}
 }
 
 Future<void> settleDatabase(WidgetTester tester) async {
@@ -51,6 +89,57 @@ Future<(GardenStore, Habit)> fixture(WidgetTester tester) async {
 
 void main() {
   testWidgets(
+    'feedback supports Ctrl+V into the focused text field on Windows',
+    (tester) async {
+      debugDefaultTargetPlatformOverride = TargetPlatform.windows;
+      addTearDown(() => debugDefaultTargetPlatformOverride = null);
+      tester.binding.defaultBinaryMessenger.setMockMethodCallHandler(
+        SystemChannels.platform,
+        (call) async {
+          if (call.method == 'Clipboard.getData') {
+            return {'text': 'Pasted feedback'};
+          }
+          if (call.method == 'Clipboard.hasStrings') return {'value': true};
+          return null;
+        },
+      );
+      addTearDown(
+        () => tester.binding.defaultBinaryMessenger.setMockMethodCallHandler(
+          SystemChannels.platform,
+          null,
+        ),
+      );
+      final (store, _) = await fixture(tester);
+      await tester.pumpWidget(
+        MaterialApp(
+          home: GardenScreen(store: store, testDisableServices: true),
+        ),
+      );
+      await settleDatabase(tester);
+      await tester.tap(find.byTooltip('Help us grow'));
+      await tester.pumpAndSettle();
+      final field = find.widgetWithText(TextField, 'Your feedback');
+      await tester.tap(field);
+      await tester.pump();
+      await tester.sendKeyDownEvent(LogicalKeyboardKey.controlLeft);
+      await tester.sendKeyEvent(LogicalKeyboardKey.keyV);
+      await tester.sendKeyUpEvent(LogicalKeyboardKey.controlLeft);
+      await tester.pumpAndSettle();
+      expect(
+        tester.widget<TextField>(field).controller!.text,
+        'Pasted feedback',
+      );
+      await tester.tap(find.widgetWithText(FilledButton, 'Send feedback'));
+      await settleDatabase(tester);
+      expect(
+        (await tester.runAsync(store.voice))!.single['body'],
+        'Pasted feedback',
+      );
+      debugDefaultTargetPlatformOverride = null;
+    },
+  );
+
+  testWidgets(
     'Settings mounts a fresh reminder observation choice and revokes it with product-event consent',
     (tester) async {
       final (store, _) = await fixture(tester);
@@ -59,6 +148,8 @@ void main() {
       await settleDatabase(tester);
       await tester.tap(find.byTooltip('Settings and privacy'));
       await settleDatabase(tester);
+      await tester.tap(find.text('Privacy & measurement'));
+      await tester.pumpAndSettle();
       final choice = find.widgetWithText(
         CheckboxListTile,
         'Observe my app reminder preference (optional)',
@@ -82,6 +173,322 @@ void main() {
       expect(tester.takeException(), isNull);
     },
   );
+
+  testWidgets(
+    'failed reminder enable reports an actionable error in Settings without changing the saved choice',
+    (tester) async {
+      final (store, _) = await fixture(tester);
+      await tester.runAsync(() => store.setSetting('reminders', 'false'));
+      final gateway = FakeWidgetReminderGateway()
+        ..initializeFailure = StateError('synthetic private platform detail');
+      await tester.pumpWidget(
+        MaterialApp(
+          home: GardenScreen(
+            store: store,
+            reminderGateway: gateway,
+            configLoader: (_) async =>
+                const RemoteConfigResult(RemoteConfig.defaults),
+          ),
+        ),
+      );
+      await settleDatabase(tester);
+      await tester.tap(find.byTooltip('Settings and privacy'));
+      await settleDatabase(tester);
+      await tester.tap(find.text('Reminders'));
+      await tester.pumpAndSettle();
+      final reminderSwitch = find.widgetWithText(
+        SwitchListTile,
+        'Gentle Windows reminders',
+      );
+      await tester.ensureVisible(reminderSwitch);
+      await tester.tap(reminderSwitch);
+      await settleDatabase(tester);
+      await tester.tap(find.text('Details').last);
+      await tester.pumpAndSettle();
+
+      expect(
+        find.descendant(
+          of: find.byType(AlertDialog),
+          matching: find.textContaining(
+            'Windows reminders couldn’t be started. Check Windows Settings > System > Notifications, then try again.',
+          ),
+        ),
+        findsOneWidget,
+      );
+      expect(
+        find.textContaining('synthetic private platform detail'),
+        findsNothing,
+      );
+      expect(tester.widget<SwitchListTile>(reminderSwitch).value, isFalse);
+      expect(await tester.runAsync(() => store.setting('reminders')), 'false');
+    },
+  );
+
+  testWidgets(
+    'persisted default-on reminder choice stays visible after a startup capability failure',
+    (tester) async {
+      final (store, _) = await fixture(tester);
+      await tester.runAsync(() => store.setSetting('reminders', 'true'));
+      final gateway = FakeWidgetReminderGateway()
+        ..initializeFailure = StateError('synthetic private platform detail');
+      await tester.pumpWidget(
+        MaterialApp(
+          home: GardenScreen(
+            store: store,
+            reminderGateway: gateway,
+            configLoader: (_) async =>
+                const RemoteConfigResult(RemoteConfig.defaults),
+          ),
+        ),
+      );
+      await settleDatabase(tester);
+      await tester.tap(find.byTooltip('Settings and privacy'));
+      await settleDatabase(tester);
+      await tester.tap(find.text('Reminders'));
+      await tester.pumpAndSettle();
+      final reminderSwitch = find.widgetWithText(
+        SwitchListTile,
+        'Gentle Windows reminders',
+      );
+      await tester.ensureVisible(reminderSwitch);
+      await tester.tap(find.text('Details').last);
+      await tester.pumpAndSettle();
+
+      expect(tester.widget<SwitchListTile>(reminderSwitch).value, isTrue);
+      expect(
+        find.descendant(
+          of: find.byType(AlertDialog),
+          matching: find.textContaining(
+            'Windows reminders couldn’t be started. Check Windows Settings > System > Notifications, then try again.',
+          ),
+        ),
+        findsOneWidget,
+      );
+      expect(
+        find.text(
+          'Your reminder preference is on, but Windows delivery is not active.',
+        ),
+        findsOneWidget,
+      );
+      expect(
+        find.textContaining('synthetic private platform detail'),
+        findsNothing,
+      );
+      expect(await tester.runAsync(() => store.setting('reminders')), 'true');
+      expect(gateway.initializations, 1);
+
+      await tester.tap(find.text('Retry Windows reminders'));
+      await settleDatabase(tester);
+      expect(gateway.initializations, 2);
+      expect(await tester.runAsync(() => store.setting('reminders')), 'true');
+    },
+  );
+
+  testWidgets('testDisableServices keeps reminder controls unavailable', (
+    tester,
+  ) async {
+    final (store, _) = await fixture(tester);
+    final gateway = FakeWidgetReminderGateway();
+    await tester.pumpWidget(
+      MaterialApp(
+        home: GardenScreen(
+          store: store,
+          reminderGateway: gateway,
+          testDisableServices: true,
+        ),
+      ),
+    );
+    await settleDatabase(tester);
+    await tester.tap(find.byTooltip('Settings and privacy'));
+    await settleDatabase(tester);
+
+    expect(find.text('Gentle Windows reminders'), findsNothing);
+    expect(gateway.action, isNull);
+    expect(await tester.runAsync(() => store.setting('reminders')), isNull);
+  });
+
+  testWidgets('failed check-in neither celebrates nor withdraws its reminder', (
+    tester,
+  ) async {
+    final path = File(
+      'garden-checkin-failure-${DateTime.now().microsecondsSinceEpoch}.sqlite',
+    ).absolute.path;
+    final store = (await tester.runAsync(
+      () => GardenStore.open(path, 'checkin-failure'),
+    ))!;
+    addTearDown(() async {
+      await tester.runAsync(store.close);
+      await databaseFactoryFfi.deleteDatabase(path);
+    });
+    final h = (await tester.runAsync(
+      () => store.plant(
+        aspiration: 'Calm',
+        anchor: 'coffee',
+        behavior: 'breathe',
+        celebration: 'smile',
+        species: 'Fern',
+      ),
+    ))!;
+    await tester.runAsync(() async {
+      final db = await databaseFactoryFfi.openDatabase(path);
+      await db.execute(
+        "CREATE TRIGGER reject_checkin BEFORE INSERT ON checkins "
+        "BEGIN SELECT RAISE(ABORT, 'synthetic storage failure'); END",
+      );
+      await store.setSetting('reminders', 'true');
+      await store.setSetting('ignored:${h.id}', '4');
+    });
+    final gateway = FakeWidgetReminderGateway();
+    await tester.binding.setSurfaceSize(const Size(1100, 1100));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+    await tester.pumpWidget(
+      MaterialApp(
+        home: GardenScreen(
+          store: store,
+          reminderGateway: gateway,
+          configLoader: (_) async =>
+              const RemoteConfigResult(RemoteConfig.defaults),
+        ),
+      ),
+    );
+    await settleDatabase(tester);
+    gateway.cancellations.clear();
+    await tester.ensureVisible(find.text('Did it'));
+    await tester.tap(find.text('Did it'));
+    await settleDatabase(tester);
+
+    expect(find.text('Something needs your attention.'), findsOneWidget);
+    expect(find.textContaining('That tiny step counts!'), findsNothing);
+    expect(await tester.runAsync(() => store.setting('ignored:${h.id}')), '4');
+    expect(
+      gateway.cancellations,
+      isNot(contains(DesktopReminders.notificationId(store.account, h.id))),
+    );
+    expect((await tester.runAsync(store.habits))!.single.practiceCount, 0);
+  });
+
+  testWidgets(
+    'notification positive check-in shows saved personal celebration in app',
+    (tester) async {
+      final (store, h) = await fixture(tester);
+      await tester.runAsync(() async {
+        await store.setSetting('reminders', 'true');
+        await store.setSetting(
+          'reminderLog',
+          jsonEncode([
+            {
+              'habitId': h.id,
+              'day': localDate(DateTime.now()),
+              'notificationId': '12345678-1234-4234-8234-123456789abc',
+              'handled': <String>[],
+            },
+          ]),
+        );
+      });
+      final gateway = FakeWidgetReminderGateway();
+      await tester.pumpWidget(
+        MaterialApp(
+          home: GardenScreen(
+            store: store,
+            reminderGateway: gateway,
+            configLoader: (_) async =>
+                const RemoteConfigResult(RemoteConfig.defaults),
+          ),
+        ),
+      );
+      await settleDatabase(tester);
+      expect(gateway.action, isNotNull);
+
+      await tester.runAsync(
+        () => gateway.action!(
+          jsonEncode({
+            'account': store.account,
+            'habitId': h.id,
+            'day': localDate(DateTime.now()),
+            'notificationId': '12345678-1234-4234-8234-123456789abc',
+            'action': 'did',
+          }),
+        ),
+      );
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 300));
+
+      expect(
+        (await tester.runAsync(store.habits))!.single.today,
+        CheckInResult.did,
+        reason: 'the attributed notification callback must commit its check-in',
+      );
+      expect(find.text('Something needs your attention.'), findsNothing);
+      expect(
+        find.text('Saved. That tiny step counts! Now smile.'),
+        findsOneWidget,
+      );
+      expect(gateway.requests, isEmpty, reason: 'acknowledgement stays in-app');
+    },
+  );
+
+  testWidgets('graduation is presented as a milestone, not permanent proof', (
+    tester,
+  ) async {
+    final store = (await tester.runAsync(
+      () => GardenStore.open(':memory:', 'graduation-copy'),
+    ))!;
+    addTearDown(() => tester.runAsync(store.close));
+    await tester.binding.setSurfaceSize(const Size(1100, 1100));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+    final habit = (await tester.runAsync(
+      () => store.plant(
+        aspiration: 'Focus',
+        anchor: 'coffee',
+        behavior: 'write one word',
+        celebration: 'smile',
+        species: 'Fern',
+      ),
+    ))!;
+    final now = DateTime.now();
+    await tester.runAsync(() async {
+      for (var day = 27; day >= 0; day--) {
+        await store.checkIn(
+          habit.id,
+          CheckInResult.did,
+          now: now.subtract(Duration(days: day)),
+        );
+      }
+      await store.reflect(habit.id, [
+        6,
+        6,
+        6,
+        6,
+      ], now: now.subtract(const Duration(days: 14)));
+    });
+    await tester.pumpWidget(MaterialApp(home: GardenScreen(store: store)));
+    await settleDatabase(tester);
+    await tester.tap(find.byTooltip('More for Focus'));
+    await tester.pumpAndSettle();
+    await tester.ensureVisible(find.text('Check naturalness'));
+    await tester.tap(find.text('Check naturalness'));
+    await settleDatabase(tester);
+    for (var i = 0; i < 4; i++) {
+      tester.widget<Slider>(find.byType(Slider).at(i)).onChanged!(6);
+      await tester.pump();
+    }
+    await tester.tap(find.text('Save reflection'));
+    await settleDatabase(tester);
+
+    const milestone =
+        'Your recent practice and reflections met the graduation criteria. '
+        'This is a milestone; keep adapting your habit whenever it suits you.';
+    expect(find.text(milestone), findsOneWidget);
+    expect(
+      find.text(
+        'This one is part of you now. Welcome to your evergreen Grove!',
+      ),
+      findsNothing,
+    );
+    expect(find.textContaining('Graduation milestone · Focus'), findsOneWidget);
+    expect(find.text('Evergreen Grove'), findsNothing);
+    expect((await tester.runAsync(store.habits))!.single.status, 'graduated');
+  });
   testWidgets('foreground return celebrates once and resets absence state', (
     tester,
   ) async {
@@ -144,6 +551,8 @@ void main() {
       });
       await tester.tap(find.byTooltip('Settings and privacy'));
       await settleDatabase(tester);
+      await tester.tap(find.text('App & support'));
+      await tester.pumpAndSettle();
       await tester.tap(find.text('Reduced motion'));
       await settleDatabase(tester);
       expect(
@@ -168,7 +577,7 @@ void main() {
               ? UpdateInfo(
                   '0.2.0-preview',
                   Uri.parse(
-                    'https://github.com/Sampath-K/bloomstep/releases/tag/v0.2.0-preview',
+                    'https://github.com/Sampath-K/budlark/releases/tag/v0.2.0-preview',
                   ),
                   true,
                 )
@@ -186,6 +595,8 @@ void main() {
         expect(updates.checks, 0);
         await tester.tap(find.byTooltip('Settings and privacy'));
         await settleDatabase(tester);
+        await tester.tap(find.text('App & support'));
+        await tester.pumpAndSettle();
         await tester.ensureVisible(find.text('Check for updates'));
         await tester.tap(find.text('Check for updates'));
         await tester.pumpAndSettle();
@@ -199,8 +610,12 @@ void main() {
           expect(find.text('Open release page'), findsNothing);
         } else if (scenario == 'error') {
           expect(
-            find.textContaining('Release service unavailable'),
+            find.text('Couldn’t check for updates. Please try again.'),
             findsOneWidget,
+          );
+          expect(
+            find.textContaining('Release service unavailable'),
+            findsNothing,
           );
           expect(find.text('Open release page'), findsNothing);
         } else {
@@ -284,6 +699,8 @@ void main() {
     await tester.runAsync(() => store.reflect(h.id, [6, 6, 6, 6]));
     await tester.pumpWidget(MaterialApp(home: GardenScreen(store: store)));
     await settleDatabase(tester);
+    await tester.tap(find.byTooltip('More for Calm'));
+    await tester.pumpAndSettle();
     expect(find.textContaining('Naturalness available'), findsOneWidget);
     await tester.ensureVisible(find.text('Weekly reflection / Recipe Doctor'));
     await tester.tap(find.text('Weekly reflection / Recipe Doctor'));
@@ -313,31 +730,29 @@ void main() {
     });
     await tester.pumpWidget(MaterialApp(home: GardenScreen(store: store)));
     await settleDatabase(tester);
-    expect(find.text('Rate Bloomstep'), findsNothing);
+    expect(find.text('Rate Budlark'), findsNothing);
     await tester.ensureVisible(find.text('Did it'));
     await tester.tap(find.text('Did it'));
     await settleDatabase(tester);
     expect(find.textContaining('That tiny step counts!'), findsOneWidget);
-    expect(find.text('Rate Bloomstep'), findsNothing);
+    expect(find.text('Rate Budlark'), findsNothing);
     await tester.pump(const Duration(seconds: 6));
     await settleDatabase(tester);
-    expect(find.text('Rate Bloomstep'), findsOneWidget);
+    expect(find.text('Rate Budlark'), findsOneWidget);
     await tester.tap(find.text('Snooze 120 days'));
     await settleDatabase(tester);
-    expect(find.text('Rate Bloomstep'), findsNothing);
+    expect(find.text('Rate Budlark'), findsNothing);
     await tester.ensureVisible(find.text('Did more'));
     await tester.tap(find.text('Did more'));
     await settleDatabase(tester);
     await tester.pump(const Duration(seconds: 6));
     await settleDatabase(tester);
-    expect(find.text('Rate Bloomstep'), findsNothing);
+    expect(find.text('Rate Budlark'), findsNothing);
     await tester.tap(find.byTooltip('Help us grow'));
     await tester.pumpAndSettle();
-    await tester.tap(find.byType(DropdownButtonFormField<String>));
+    await tester.tap(find.byTooltip('5 of 5 stars'));
     await tester.pumpAndSettle();
-    await tester.tap(find.text('Rating').last);
-    await tester.pumpAndSettle();
-    await tester.tap(find.text('Save feedback'));
+    await tester.tap(find.widgetWithText(FilledButton, 'Send feedback'));
     await settleDatabase(tester);
     expect((await tester.runAsync(store.voice))!.single['rating'], 5);
     expect((await tester.runAsync(store.voice))!.single['body'], '');

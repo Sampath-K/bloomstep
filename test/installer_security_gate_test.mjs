@@ -13,6 +13,17 @@ test('historical capability gate now refuses withdrawn candidate access before a
   assert.doesNotMatch(workflow, /ISCC|flutter build|release:|gh release/);
 });
 
+test('static scan binds exact bytes and reports unavailable capability without runtime acceptance', () => {
+  const script = read('tool/scan_installer_static.ps1');
+  assert.match(script, /manifest\.source -ne \(git rev-parse HEAD\)/);
+  assert.match(script, /hash -ne \$manifest\.installerSha256/);
+  assert.match(script, /-Scan -ScanType 3 -File \$installer -DisableRemediation/);
+  assert.match(script, /outcome = 'UNVERIFIED'/);
+  assert.match(script, /if \(\$LASTEXITCODE -ne 0\)[\s\S]*throw/);
+  assert.match(script, /finally[\s\S]*defender-static-scan\.json/);
+  assert.doesNotMatch(script, /Start-Process|Set-MpPreference|Add-MpPreference/);
+});
+
 test('security preflight fails closed and its static scan cannot override behavior quarantine', () => {
   const script = read('tool/verify_installer_security.ps1');
   for (const value of ['Get-MpComputerStatus', 'Start-MpScan', 'Get-MpThreatDetection',

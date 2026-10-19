@@ -136,7 +136,7 @@ export async function checkGa4Staging() {
         assert.equal(event.fields.gcs, 'G101', 'Unexpected GA4 storage-consent wire state.');
         assert.equal(event.fields.dl, origin + path);
         assert.ok(!event.fields.dr);
-        assert.equal(event.fields.dt, 'Bloomstep sandbox');
+        assert.equal(event.fields.dt, 'Budlark sandbox');
       }
       await page.screenshot({ path: join(directory, path === '/' ? 'home-on.png' : 'releases-on.png'), fullPage: true });
       // Exercise an engaged old document, not just an immediate post-load withdrawal.
@@ -157,7 +157,7 @@ export async function checkGa4Staging() {
       for (const event of events) {
         assert.equal(event.fields.dl, origin + path);
         assert.ok(!event.fields.dr);
-        assert.equal(event.fields.dt, 'Bloomstep sandbox');
+        assert.equal(event.fields.dt, 'Budlark sandbox');
       }
       reports.push({ path, requests, events: events.map(({ fields, parameterNames }) => ({ fields, parameterNames })),
         collectionResponses, consentOff: true, revoked: true });

@@ -76,7 +76,7 @@ def main():
         "appAcceptanceEstablished": False, "safetyEstablished": False,
         "universalWarningsEstablished": False,
         "authorization": "User authorized warning-region cropping and privacy redaction for this walkthrough.",
-        "observedFilename": "Bloomstep-0.1.0-preview.8-windows-arm64-setup (1).exe",
+        "observedFilename": "Budlark-0.1.0-preview.8-windows-arm64-setup (1).exe",
         "filenameNote": "(1) is the displayed duplicate-download suffix, not evidence of a different version or hash.",
         "transformationTool": "tool/prepare_customer_warnings.py",
         "transformationLibrary": "Pillow; lossless PNG, pixel-only RGB copy, no scaling",

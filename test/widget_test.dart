@@ -1,5 +1,5 @@
-import 'package:bloomstep/core/garden_store.dart';
-import 'package:bloomstep/features/garden/garden_screen.dart';
+import 'package:budlark/core/garden_store.dart';
+import 'package:budlark/features/garden/garden_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
@@ -69,8 +69,8 @@ void main() {
     await tester.tap(find.text('I practiced my celebration'));
     await tester.pumpAndSettle();
     await tester.tap(find.text('Plant this seed'));
-    await waitForReady(find.text('See my seed'));
-    await tester.tap(find.text('See my seed'));
+    await waitForReady(find.text('See my garden'));
+    await tester.tap(find.text('See my garden'));
     await tester.pumpAndSettle();
     await waitForReady(
       find.text('Did it'),

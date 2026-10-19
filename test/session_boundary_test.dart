@@ -1,4 +1,4 @@
-import 'package:bloomstep/app/session_boundary.dart';
+import 'package:budlark/app/session_boundary.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
@@ -27,6 +27,7 @@ void main() {
   testWidgets(
     'failed session clock checkpoint hides data and reports the failure',
     (tester) async {
+      final semantics = tester.ensureSemantics();
       var expirations = 0;
       await tester.pumpWidget(
         MaterialApp(
@@ -44,11 +45,50 @@ void main() {
       );
       await tester.pump();
       expect(find.text('Private test garden'), findsNothing);
-      expect(find.textContaining('test clock storage failure'), findsOneWidget);
+      expect(find.textContaining('test clock storage failure'), findsNothing);
+      expect(
+        find.textContaining(
+          'Your session couldn’t be saved. Please sign in again; your saved garden was not deleted.',
+        ),
+        findsOneWidget,
+      );
+      expect(
+        tester
+            .getSemantics(find.byType(SelectableText))
+            .flagsCollection.isLiveRegion,
+        isTrue,
+      );
       expect(expirations, 1);
+      semantics.dispose();
       await tester.pumpWidget(const SizedBox.shrink());
     },
   );
+  testWidgets('cleanup exception is replaced with safe actionable guidance', (
+    tester,
+  ) async {
+    await tester.pumpWidget(
+      MaterialApp(
+        home: SessionBoundary(
+          expiresAt: DateTime.now().subtract(const Duration(seconds: 1)),
+          isValid: () => false,
+          onExpired: (_) async =>
+              throw StateError('private_cleanup_token_and_path'),
+          child: const Text('Private test garden'),
+        ),
+      ),
+    );
+    await tester.pump();
+    await tester.pump();
+    expect(find.text('Private test garden'), findsNothing);
+    expect(find.textContaining('private_cleanup_token_and_path'), findsNothing);
+    expect(
+      find.textContaining(
+        'Your saved sign-in couldn’t be cleared. Keep this Windows account private until you can clear it.',
+      ),
+      findsOneWidget,
+    );
+    await tester.pumpWidget(const SizedBox.shrink());
+  });
   testWidgets('expiry hides the garden while credential cleanup is pending', (
     tester,
   ) async {

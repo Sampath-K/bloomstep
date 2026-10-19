@@ -7,7 +7,7 @@ jobs:
   verify:
     if: github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
-    environment: bloomstep-operations
+    environment: budlark-operations
     timeout-minutes: 10
     permissions:
       contents: read

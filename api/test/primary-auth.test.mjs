@@ -6,7 +6,7 @@ import { ServiceError } from '../src/backend.mjs';
 import { createPrimaryAuthenticator } from '../src/primary-auth.mjs';
 
 const issuer = 'https://identity.example.test/tenant/v2.0';
-const audience = 'bloomstep-api';
+const audience = 'budlark-api';
 
 test('production garden authentication accepts RS256 and rejects test HS256 keys and unprovisioned paths', async () => {
   const { privateKey, publicKey } = await generateKeyPair('RS256');
@@ -35,7 +35,7 @@ test('production garden authentication accepts RS256 and rejects test HS256 keys
     .sign(secret);
   const syntheticAdmin = await new SignJWT({
     scp: 'Garden.ReadWrite',
-    roles: ['Bloomstep.Admin'],
+    roles: ['Budlark.Admin'],
   })
     .setProtectedHeader({ alg: 'HS256' })
     .setIssuer(issuer)
@@ -61,7 +61,7 @@ test('production garden authentication accepts RS256 and rejects test HS256 keys
   });
   const request = token => ({
     headers: new Headers({
-      'x-bloomstep-authorization': `Bearer ${token}`,
+      'x-budlark-authorization': `Bearer ${token}`,
     }),
   });
   const actor = await authenticate(request(valid));
@@ -118,16 +118,16 @@ test('release entrypoint does not import the test auth harness or contain a test
     'utf8',
   );
   assert.doesNotMatch(main, /test_only_app|test_auth_contract|local_test_api/);
-  assert.doesNotMatch(productionAuth, /BLOOMSTEP_TEST|HS256|testIssuer|testAudience/);
+  assert.doesNotMatch(productionAuth, /BUDLARK_TEST|HS256|testIssuer|testAudience/);
   assert.match(functionIgnore, /^test\/$/m);
   assert.match(productionAuth, /algorithms:\s*\[\s*'RS256'\s*\]/);
   assert.match(functions, /createRemoteJWKSet\(new URL\(jwks\)\)/);
   assert.match(functions, /jwks\?\.startsWith\('https:\/\/'\)/);
-  assert.match(workflow, /BLOOMSTEP_TEST_BUILD=true/);
+  assert.match(workflow, /BUDLARK_TEST_BUILD=true/);
   const releaseStep = workflow.indexOf('name: Build real provider-backed release');
   assert.notEqual(releaseStep, -1, 'Production build step must exist.');
   const releaseBuild = workflow.slice(releaseStep);
-  assert.doesNotMatch(releaseBuild, /BLOOMSTEP_TEST_BUILD|BLOOMSTEP_TEST_AUTH_SECRET/);
+  assert.doesNotMatch(releaseBuild, /BUDLARK_TEST_BUILD|BUDLARK_TEST_AUTH_SECRET/);
   assert.match(releaseBuild, /build\/windows\/\$\{\{ matrix\.arch \}\}\/runner\/Release/);
-  assert.doesNotMatch(releaseBuild, /integration_test|testkit|BLOOMSTEP_TEST/);
+  assert.doesNotMatch(releaseBuild, /integration_test|testkit|BUDLARK_TEST/);
 });

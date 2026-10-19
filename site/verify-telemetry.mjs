@@ -26,7 +26,7 @@ for (const candidate of candidates.filter(Boolean)) {
   }
 }
 if (!executablePath) throw Error('CHROME_PATH must identify an installed trusted browser.');
-const temporary = await mkdtemp(join(tmpdir(), 'bloomstep-it-telemetry-'));
+const temporary = await mkdtemp(join(tmpdir(), 'budlark-it-telemetry-'));
 // The 50 simulated 61s steps plus later checks must not straddle the one-day readback window.
 let now = telemetryWindowStart(Date.now(), 2 * 60 * 60 * 1000);
 const collectorErrors = [];
@@ -53,7 +53,7 @@ const reports = [];
 const httpOutcomes = [];
 const report = async () => {
   const response = await fetch(`${server.url}/api/team/website?days=1`, {
-    headers: { 'x-bloomstep-test-admin': server.adminToken },
+    headers: { 'x-budlark-test-admin': server.adminToken },
   });
   assert.equal(response.status, 200);
   const value = await response.json();
@@ -109,7 +109,7 @@ try {
   await page.$eval('#receipt-export', button => button.click());
   assert.match(await page.$eval('#receipt-status', node => node.textContent),
     /Your browser was asked to download the receipt\. Adding it in app Settings is a separate choice\./);
-  const exported = join(temporary, 'bloomstep-website-measurement.json');
+  const exported = join(temporary, 'budlark-website-measurement.json');
   for (let i = 0; i < 100; i++) {
     try { await access(exported); break; } catch (error) {
       if (error.code !== 'ENOENT') throw error;

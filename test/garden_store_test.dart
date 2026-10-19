@@ -1,5 +1,5 @@
-import 'package:bloomstep/core/garden_store.dart';
-import 'package:bloomstep/core/models.dart';
+import 'package:budlark/core/garden_store.dart';
+import 'package:budlark/core/models.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
@@ -99,4 +99,27 @@ void main() {
     expect(await store.eventCount(), 0);
     expect(await store.voice(), isEmpty);
   });
+
+  test(
+    'general feedback accepts text or stars and returns its exact record id',
+    () async {
+      final id = await store.submitVoice(
+        'General',
+        'A small suggestion',
+        rating: 4,
+      );
+      final row = (await store.voice()).single;
+      expect(row['id'], id);
+      expect(row['kind'], 'General');
+      expect(row['rating'], 4);
+      expect(row['status'], 'queued');
+      await store.submitVoice('General', '', rating: 5);
+      await store.submitVoice('General', 'Text without stars');
+      await expectLater(store.submitVoice('General', ''), throwsArgumentError);
+      await expectLater(
+        store.submitVoice('General', 'Invalid stars', rating: 0),
+        throwsArgumentError,
+      );
+    },
+  );
 }

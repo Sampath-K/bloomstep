@@ -1,10 +1,10 @@
 import 'dart:convert';
 import 'dart:io';
 
-import 'package:bloomstep/core/garden_store.dart';
-import 'package:bloomstep/services/desktop_reminders.dart';
-import 'package:bloomstep/services/native_share.dart';
-import 'package:bloomstep/services/windows_toast_history.dart';
+import 'package:budlark/core/garden_store.dart';
+import 'package:budlark/services/desktop_reminders.dart';
+import 'package:budlark/services/native_share.dart';
+import 'package:budlark/services/windows_toast_history.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:tray_manager/tray_manager.dart';
@@ -35,7 +35,7 @@ class _RuntimeProbeState extends State<RuntimeProbe> {
 
   Future<void> _writeReport() async {
     report['capturedAt'] = DateTime.now().toUtc().toIso8601String();
-    final output = Platform.environment['BLOOMSTEP_RUNTIME_REPORT'];
+    final output = Platform.environment['BUDLARK_RUNTIME_REPORT'];
     if (output == null) {
       debugPrint(jsonEncode(report));
     } else {
@@ -46,7 +46,7 @@ class _RuntimeProbeState extends State<RuntimeProbe> {
   Future<void> _share() async {
     try {
       await NativeShare.share(
-        Uri.parse('https://example.com/bloomstep-synthetic-share-probe'),
+        Uri.parse('https://example.com/budlark-synthetic-share-probe'),
       );
       report['shareSurfaceRequested'] = true;
       report['shareSurfaceObserved'] = 'Requires independent OS observation';
@@ -80,7 +80,7 @@ class _RuntimeProbeState extends State<RuntimeProbe> {
     var cleanupComplete = true;
     try {
       folder = await Directory.systemTemp.createTemp(
-        'bloomstep-runtime-probe-',
+        'budlark-runtime-probe-',
       );
       store = await GardenStore.open(
         '${folder.path}${Platform.pathSeparator}synthetic.sqlite',
@@ -177,7 +177,7 @@ class _RuntimeProbeState extends State<RuntimeProbe> {
       } catch (error) {
         report['notificationSettingError'] = error.toString();
       }
-      if (Platform.environment['BLOOMSTEP_RUNTIME_SHARE'] == '1') {
+      if (Platform.environment['BUDLARK_RUNTIME_SHARE'] == '1') {
         await _share();
       }
       await _writeReport();

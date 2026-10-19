@@ -131,12 +131,12 @@ def verify():
     assert sorted(locations) == sorted([origin + "/", origin + "/releases/"])
     evidence["sitemap"] = locations
     evidence["robots"] = robots
-    social = bounded(Request(origin + "/assets/bloomstep-social.png"))[0]
+    social = bounded(Request(origin + "/assets/budlark-social.png"))[0]
     assert social[:8] == b"\x89PNG\r\n\x1a\n"
     evidence["socialImage"] = {"bytes": len(social), "sha256": hashlib.sha256(social).hexdigest()}
     for arch in ("arm64", "x64"):
         release = config["release"][arch]
-        if not re.fullmatch(r"https://github\.com/Sampath-K/bloomstep/releases/download/[A-Za-z0-9.-]+/Bloomstep-[A-Za-z0-9.-]+-windows-" + arch + r"-setup\.exe", release["url"]):
+        if not re.fullmatch(r"https://github\.com/Sampath-K/budlark/releases/download/[A-Za-z0-9.-]+/Budlark-[A-Za-z0-9.-]+-windows-" + arch + r"-setup\.exe", release["url"]):
             raise RuntimeError("Unexpected release asset")
         digest = hashlib.sha256()
         size = 0
@@ -150,7 +150,7 @@ def verify():
         assert digest.hexdigest() == release["sha256"]
         evidence["downloads"][arch] = {"url": release["url"], "sha256": digest.hexdigest(), "bytes": size}
     token = worker_token()
-    auth = {"X-Bloomstep-Authorization": "Bearer " + token}
+    auth = {"X-Budlark-Authorization": "Bearer " + token}
     for path in ("/api/sync", "/api/team/metrics", "/api/team/website"):
         try:
             bounded(Request(origin + path, headers=auth))
@@ -160,7 +160,7 @@ def verify():
     before = json_call(Request(origin + "/api/internal/website-proof", headers=auth))
     event = {"channel": "web", "event": "landing_view", "source": "unknown", "architecture": "unknown",
         "eventId": str(uuid.uuid4()), "synthetic": True}
-    headers = {"Content-Type": "application/json", "User-Agent": "Bloomstep-Synthetic-Readback"}
+    headers = {"Content-Type": "application/json", "User-Agent": "Budlark-Synthetic-Readback"}
     accepted = json_call(Request(origin + "/api/web/events", data=json.dumps(event).encode(), headers=headers))
     assert accepted == {"accepted": True, "synthetic": True}
     after = json_call(Request(origin + "/api/internal/website-proof", headers=auth))

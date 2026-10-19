@@ -30,7 +30,7 @@ export function createAggregateAuthenticator(config, primary, trustedKeys = unde
         requiredClaims: ['sub','iss','exp','iat'],
       });
       if (!payload.sub || !payload.iss) throw new Error('Missing worker subject.');
-      if (!Array.isArray(payload.roles) || !payload.roles.includes('Bloomstep.AggregateWriter')) throw new ServiceError(403, 'Explicit aggregate writer role required.');
+      if (!Array.isArray(payload.roles) || !payload.roles.includes('Budlark.AggregateWriter')) throw new ServiceError(403, 'Explicit aggregate writer role required.');
       return { userId: accountKey(payload.iss, payload.sub), roles: payload.roles };
     } catch (error) {
       if (error instanceof ServiceError) throw error;

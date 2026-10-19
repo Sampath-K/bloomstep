@@ -27,7 +27,10 @@ class _MeasurementControlsState extends State<MeasurementControls> {
   bool busy = false;
   String? status;
 
-  Future<void> _run(Future<String> Function() action) async {
+  Future<void> _run(
+    Future<String> Function() action, {
+    required String failureMessage,
+  }) async {
     if (busy) return;
     setState(() {
       busy = true;
@@ -37,8 +40,8 @@ class _MeasurementControlsState extends State<MeasurementControls> {
       widget.store.requireSyncSession(account, generation);
       final result = await action();
       if (mounted) setState(() => status = result);
-    } catch (error) {
-      if (mounted) setState(() => status = 'Receipt action failed: $error');
+    } catch (_) {
+      if (mounted) setState(() => status = failureMessage);
     } finally {
       if (mounted) setState(() => busy = false);
     }
@@ -124,17 +127,23 @@ class _MeasurementControlsState extends State<MeasurementControls> {
         enabled: widget.analytics && !busy,
         onTap: !widget.analytics || busy
             ? null
-            : () => _run(() async {
-                final text = await _pick();
-                if (text == null) return 'No receipt selected. Nothing linked.';
-                final receipt = MeasurementReceipt.parse(text);
-                if (receipt.source != 'website') {
-                  throw const FormatException(
-                    'Select a website measurement receipt.',
-                  );
-                }
-                return _link(receipt);
-              }),
+            : () => _run(
+                () async {
+                  final text = await _pick();
+                  if (text == null) {
+                    return 'No receipt selected. Nothing linked.';
+                  }
+                  final receipt = MeasurementReceipt.parse(text);
+                  if (receipt.source != 'website') {
+                    throw const FormatException(
+                      'Select a website measurement receipt.',
+                    );
+                  }
+                  return _link(receipt);
+                },
+                failureMessage:
+                    'Couldn’t link this receipt. Check that it is valid and current, and that account product-event consent is on, then try again.',
+              ),
       ),
       if (widget.installer != null) ...[
         ListTile(
@@ -142,13 +151,17 @@ class _MeasurementControlsState extends State<MeasurementControls> {
           enabled: widget.analytics && !busy,
           onTap: !widget.analytics || busy
               ? null
-              : () => _run(() async {
-                  final receipt = await widget.installer!.read();
-                  if (receipt == null) {
-                    return 'No current installer receipt. No installation history was manufactured.';
-                  }
-                  return _link(receipt);
-                }),
+              : () => _run(
+                  () async {
+                    final receipt = await widget.installer!.read();
+                    if (receipt == null) {
+                      return 'No current installer receipt. No installation history was manufactured.';
+                    }
+                    return _link(receipt);
+                  },
+                  failureMessage:
+                      'Couldn’t link the installer receipt. Check that it is available and current, and that account product-event consent is on, then try again.',
+                ),
         ),
         ListTile(
           title: const Text('Clear installer receipt / stop local observation'),
@@ -158,17 +171,24 @@ class _MeasurementControlsState extends State<MeasurementControls> {
           enabled: !busy,
           onTap: busy
               ? null
-              : () => _run(() async {
-                  await widget.installer!.clear();
-                  return 'Local installer receipt removed. No further launch/sign-in observations from that receipt.';
-                }),
+              : () => _run(
+                  () async {
+                    await widget.installer!.clear();
+                    return 'Local installer receipt removed. No further launch/sign-in observations from that receipt.';
+                  },
+                  failureMessage:
+                      'Couldn’t confirm that the local installer receipt was cleared. Check Settings and try again.',
+                ),
         ),
       ],
       if (busy) const LinearProgressIndicator(),
       if (status != null)
         Padding(
           padding: const EdgeInsets.all(16),
-          child: Text(status!, semanticsLabel: status),
+          child: Semantics(
+            liveRegion: true,
+            child: Text(status!),
+          ),
         ),
     ],
   );

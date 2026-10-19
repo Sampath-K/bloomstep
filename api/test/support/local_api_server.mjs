@@ -9,8 +9,8 @@ import { createHandlers, ServiceError } from '../../src/backend.mjs';
 import { createWebsiteHandlers } from '../../src/website-funnel.mjs';
 import { FileBackedCosmosContainer, isWithinDisposableTestDirectory } from './file_backed_cosmos.mjs';
 
-const testIssuer = 'https://bloomstep.test';
-const testAudience = 'bloomstep-test-api';
+const testIssuer = 'https://budlark.test';
+const testAudience = 'budlark-test-api';
 const maxBodyBytes = 512 * 1024;
 
 function validateKey(key) {
@@ -36,12 +36,12 @@ export async function createLocalTestServer({
   const container = reuseDatabase
     ? await FileBackedCosmosContainer.openExisting(path)
     : await FileBackedCosmosContainer.openFresh(path);
-  const environment = { BLOOMSTEP_INVITATIONS_DISABLED: 'true' };
+  const environment = { BUDLARK_INVITATIONS_DISABLED: 'true' };
   const handlers = createHandlers({
     container: () => container,
     clock,
     authenticate: async request => {
-      const authorization = request.headers.get('x-bloomstep-authorization') ?? '';
+      const authorization = request.headers.get('x-budlark-authorization') ?? '';
       const match = /^Bearer ([A-Za-z0-9_.-]+)$/.exec(authorization);
       if (!match) throw new ServiceError(401, 'Sign in required.');
       try {
@@ -74,8 +74,8 @@ export async function createLocalTestServer({
   const adminToken = randomUUID();
   const website = telemetry ? createWebsiteHandlers({ container: () => container, clock,
     authenticate: async request => {
-      if (request.headers.get('x-bloomstep-test-admin') !== adminToken) throw new ServiceError(401, 'Test admin required.');
-      return { roles: ['Bloomstep.Admin'] };
+      if (request.headers.get('x-budlark-test-admin') !== adminToken) throw new ServiceError(401, 'Test admin required.');
+      return { roles: ['Budlark.Admin'] };
     } }) : null;
   const assets = telemetry ? {
     '/': await readFile(new URL('../../../site/index.html', import.meta.url)),
@@ -173,9 +173,9 @@ export async function createLocalTestServer({
 }
 
 if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
-  const keyText = process.env.BLOOMSTEP_TEST_AUTH_SECRET;
-  const databasePath = process.env.BLOOMSTEP_TEST_DATABASE;
-  const portText = process.env.BLOOMSTEP_TEST_PORT ?? '0';
+  const keyText = process.env.BUDLARK_TEST_AUTH_SECRET;
+  const databasePath = process.env.BUDLARK_TEST_DATABASE;
+  const portText = process.env.BUDLARK_TEST_PORT ?? '0';
   if (!/^[a-f0-9]{64}$/i.test(keyText ?? '') ||
       !databasePath ||
       !/^\d{1,5}$/.test(portText)) {
@@ -187,8 +187,8 @@ if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.ur
       databasePath,
       key: Buffer.from(keyText, 'hex'),
       port: Number(portText),
-      reuseDatabase: process.env.BLOOMSTEP_TEST_REUSE_DATABASE === 'true',
-      telemetry: process.env.BLOOMSTEP_TEST_TELEMETRY === 'true',
+      reuseDatabase: process.env.BUDLARK_TEST_REUSE_DATABASE === 'true',
+      telemetry: process.env.BUDLARK_TEST_TELEMETRY === 'true',
     });
     process.stdout.write(`TEST_API_READY ${new URL(instance.url).port}\n`);
     let stopping = false;

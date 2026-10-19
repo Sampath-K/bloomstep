@@ -1,4 +1,4 @@
-function Get-BloomstepFederationCallbacks {
+function Get-BudlarkFederationCallbacks {
   param(
     [Parameter(Mandatory)][ValidatePattern('^[a-f0-9-]{36}$')][string]$TenantId,
     [Parameter(Mandatory)][ValidatePattern('^[a-z0-9-]+$')][string]$Subdomain,
@@ -12,7 +12,7 @@ function Get-BloomstepFederationCallbacks {
   )
 }
 
-function Merge-BloomstepFederationCallbacks {
+function Merge-BudlarkFederationCallbacks {
   param(
     [AllowEmptyCollection()][string[]]$Existing = @(),
     [Parameter(Mandatory)][string[]]$Required

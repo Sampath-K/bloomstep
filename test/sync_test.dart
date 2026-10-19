@@ -1,7 +1,7 @@
 import 'dart:convert';
 import 'dart:io';
 
-import 'package:bloomstep/core/garden_store.dart';
+import 'package:budlark/core/garden_store.dart';
 import 'package:crypto/crypto.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:path/path.dart' as p;
@@ -12,7 +12,7 @@ void main() {
     'legacy integer reflection fingerprint converges once across reopen',
     () async {
       final root = await Directory.systemTemp.createTemp(
-        'bloomstep-fingerprint-',
+        'budlark-fingerprint-',
       );
       final path = p.join(root.path, 'garden.sqlite');
       var store = await GardenStore.open(path, 'reflection-owner');

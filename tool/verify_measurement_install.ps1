@@ -12,10 +12,10 @@ if (-not $Target.StartsWith($root, [StringComparison]::OrdinalIgnoreCase) -or (T
   throw 'Privacy proof requires a new isolated runner target.'
 }
 . "$PSScriptRoot\universal_integrity_contract.ps1"
-if (-not (Test-BloomstepInnoProductName (Get-Item $Installer).VersionInfo.ProductName)) {
-  throw 'Privacy proof requires the genuine compiled Bloomstep package.'
+if (-not (Test-BudlarkInnoProductName (Get-Item $Installer).VersionInfo.ProductName)) {
+  throw 'Privacy proof requires the genuine compiled Budlark package.'
 }
-$receipt = Join-Path $env:LOCALAPPDATA 'Bloomstep\measurement\installer-receipt.json'
+$receipt = Join-Path $env:LOCALAPPDATA 'Budlark\measurement\installer-receipt.json'
 if ((Test-Path $receipt) -or (Test-Path ($receipt + '.pending'))) {
   throw 'Privacy proof refuses existing installer receipts.'
 }
@@ -30,13 +30,13 @@ $report = [ordered]@{ kind = 'isolated-legacy-receipt-privacy-not-app-acceptance
 function Install-PrivacyFixture([string]$Stage) {
   $process = Start-CaptureProcess $Installer "/VERYSILENT /SUPPRESSMSGBOXES /NORESTART /DIR=`"$Target`"" $Stage
   Wait-CaptureTree $Stage
-  if ($process.ExitCode -ne 0 -or -not (Test-Path "$Target\bloomstep.exe")) { throw 'Privacy proof silent install failed.' }
+  if ($process.ExitCode -ne 0 -or -not (Test-Path "$Target\budlark.exe")) { throw 'Privacy proof silent install failed.' }
   if (Test-Path "$Target\measurement-owner.txt") { throw 'Installer observations must not exist: new owner marker.' }
 }
 function Uninstall-PrivacyFixture([string]$Stage) {
   $process = Start-CaptureProcess "$Target\unins000.exe" '/VERYSILENT /SUPPRESSMSGBOXES /NORESTART' $Stage
   Wait-CaptureTree $Stage
-  if ($process.ExitCode -ne 0 -or (Test-Path "$Target\bloomstep.exe")) { throw 'Privacy proof owned uninstall failed.' }
+  if ($process.ExitCode -ne 0 -or (Test-Path "$Target\budlark.exe")) { throw 'Privacy proof owned uninstall failed.' }
   # unins000.exe hands off to a temporary copy that removes unins000.exe last; never start the next stage before that.
   $handoff = [Diagnostics.Stopwatch]::StartNew()
   while ((Test-Path "$Target\unins000.exe") -and $handoff.ElapsedMilliseconds -lt 30000) { Start-Sleep -Milliseconds 200 }

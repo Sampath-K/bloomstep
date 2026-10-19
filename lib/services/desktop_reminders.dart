@@ -57,8 +57,8 @@ class WindowsReminderGateway implements ReminderGateway {
     final initialized = await notifications.initialize(
       settings: const InitializationSettings(
         windows: WindowsInitializationSettings(
-          appName: 'Bloomstep',
-          appUserModelId: 'Bloomstep.Garden',
+          appName: 'Budlark',
+          appUserModelId: 'Budlark.Garden',
           guid: 'dc9b4d34-b0de-4df7-aead-690d8a5304a2',
         ),
       ),
@@ -122,6 +122,7 @@ class DesktopReminders with TrayListener, WindowListener {
     this.reportError, {
     ReminderGateway? gateway,
     DateTime Function()? clock,
+    this.onPositiveCheckIn,
   }) : gateway = gateway ?? WindowsReminderGateway(),
        clock = clock ?? DateTime.now,
        _native = gateway == null {
@@ -131,6 +132,7 @@ class DesktopReminders with TrayListener, WindowListener {
   final GardenStore store;
   final Future<void> Function() changed;
   final void Function(String) reportError;
+  final Future<void> Function(String habitId)? onPositiveCheckIn;
   final ReminderGateway gateway;
   final DateTime Function() clock;
   final bool _native;
@@ -138,7 +140,9 @@ class DesktopReminders with TrayListener, WindowListener {
   int? _generation;
   Timer? timer;
   bool enabled = false;
+  bool requestedEnabled = false;
   bool ticking = false;
+  int _enableAttempt = 0;
   Future<void> _actions = Future.value();
   final Set<String> _withdrawnRecipes = {};
   RemoteConfig config = RemoteConfig.defaults;
@@ -185,12 +189,22 @@ class DesktopReminders with TrayListener, WindowListener {
     if (_native && !Platform.isWindows) return;
     if (_native) {
       launchAtStartup.setup(
-        appName: 'Bloomstep',
+        appName: 'Budlark',
         appPath: Platform.resolvedExecutable,
       );
     }
-    if (await store.setting('reminders') == 'true') {
+    final preference = await store.setting('reminders');
+    requestedEnabled = preference != 'false';
+    if (preference == null) {
+      await store.saveReminderPreference(
+        true,
+        explicitChoice: false,
+        now: clock(),
+      );
+    }
+    if (requestedEnabled) {
       await enable(explicitChoice: false);
+      await changed();
     }
   }
 
@@ -202,50 +216,73 @@ class DesktopReminders with TrayListener, WindowListener {
       );
     }
     final account = store.account, generation = store.syncGeneration;
+    final attempt = ++_enableAttempt;
     _account = account;
     _generation = generation;
-    await gateway.initialize((payload) async {
-      try {
-        await handleAction(payload);
-      } catch (e) {
-        reportError('Reminder action failed: $e');
-      }
-    });
-    if (_native) {
-      await trayManager.setIcon(
-        p.join(
-          p.dirname(Platform.resolvedExecutable),
-          'data',
-          'flutter_assets',
-          'windows',
-          'runner',
-          'resources',
-          'app_icon.ico',
-        ),
-      );
-      await trayManager.setToolTip('Bloomstep - a little is enough');
-      trayManager.addListener(this);
-      windowManager.addListener(this);
-      await windowManager.setPreventClose(true);
-    }
-    store.requireSyncSession(account, generation);
-    _requireAccount();
-    await store.saveReminderPreference(
-      true,
-      explicitChoice: explicitChoice,
-      now: clock(),
-    );
-    store.requireSyncSession(account, generation);
-    enabled = true;
-    _withdrawnRecipes.clear();
-    await _removeDeletedRecipes();
-    if (_native) {
-      await _menu();
-      timer = Timer.periodic(const Duration(seconds: 30), (_) {
-        tick().catchError(
-          (Object e) => reportError('Reminder request failed: $e'),
-        );
+    try {
+      await gateway.initialize((payload) async {
+        try {
+          await handleAction(payload);
+        } catch (e) {
+          reportError('Reminder action failed: $e');
+        }
       });
+      if (attempt != _enableAttempt) {
+        throw StateError('Reminder setup was superseded.');
+      }
+      if (_native) {
+        await trayManager.setIcon(
+          p.join(
+            p.dirname(Platform.resolvedExecutable),
+            'data',
+            'flutter_assets',
+            'windows',
+            'runner',
+            'resources',
+            'app_icon.ico',
+          ),
+        );
+        await trayManager.setToolTip('Budlark - a little is enough');
+        trayManager.addListener(this);
+        windowManager.addListener(this);
+        await windowManager.setPreventClose(true);
+      }
+      store.requireSyncSession(account, generation);
+      _requireAccount();
+      await store.saveReminderPreference(
+        true,
+        explicitChoice: explicitChoice,
+        now: clock(),
+      );
+      requestedEnabled = true;
+      store.requireSyncSession(account, generation);
+      enabled = true;
+      _withdrawnRecipes.clear();
+      await _removeDeletedRecipes();
+      if (_native) {
+        await _menu();
+        timer = Timer.periodic(const Duration(seconds: 30), (_) {
+          tick().catchError(
+            (Object e) => reportError('Reminder request failed: $e'),
+          );
+        });
+      }
+    } catch (_) {
+      if (attempt == _enableAttempt) {
+        timer?.cancel();
+        timer = null;
+        enabled = false;
+        if (_native) {
+          trayManager.removeListener(this);
+          windowManager.removeListener(this);
+        }
+        try {
+          await gateway.shutdown();
+        } catch (_) {
+          // Preserve the setup error for the caller.
+        }
+      }
+      rethrow;
     }
   }
 
@@ -279,6 +316,7 @@ class DesktopReminders with TrayListener, WindowListener {
           explicitChoice: explicitChoice,
           now: clock(),
         );
+        requestedEnabled = false;
         if (explicitChoice && wasEnabled) {
           await _track(
             'notif_disabled',
@@ -428,6 +466,7 @@ class DesktopReminders with TrayListener, WindowListener {
         );
         await practiced(habitId);
         await changed();
+        if (action == 'did') await onPositiveCheckIn?.call(habitId);
       case 'snooze':
         await snoozeHabit(habitId);
       case 'fewer':
@@ -741,7 +780,7 @@ class DesktopReminders with TrayListener, WindowListener {
           ),
           MenuItem(key: 'fewer', label: 'Fewer reminders'),
           MenuItem(key: 'off', label: 'Turn reminders off'),
-          MenuItem(key: 'exit', label: 'Exit Bloomstep'),
+          MenuItem(key: 'exit', label: 'Exit Budlark'),
         ],
       ),
     );
@@ -781,6 +820,7 @@ class DesktopReminders with TrayListener, WindowListener {
       await store.checkIn(habitId, CheckInResult.did, now: clock().toLocal());
       await practiced(habitId);
       await changed();
+      await onPositiveCheckIn?.call(habitId);
       await gateway.showAndFocus();
     } else if (key == 'snooze') {
       await snooze();

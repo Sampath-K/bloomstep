@@ -2,7 +2,7 @@
 
 This source adds no paid resources, secrets, customer M2M, external email or
 paid alerts. A separate **personal resource-directory** single-tenant app has
-only enabled Application-role `Bloomstep.SpendGuard`, explicit self-SP assignment
+only enabled Application-role `Budlark.SpendGuard`, explicit self-SP assignment
 and one GitHub environment FIC. It is distinct from the AggregateWriter and
 customer SPA/API registrations. No customer client_credentials request is made.
 
@@ -14,16 +14,16 @@ After source deployment, run with the existing approved Cosmos account name:
 .\infra\configure-spend-guard.ps1 `
   -ResourceTenantId '<approved personal resource tenant GUID>' `
   -SubscriptionId '<approved personal subscription GUID>' `
-  -ResourceGroup bloomstep-free -SwaName bloomstep-free `
+  -ResourceGroup budlark-free -SwaName budlark-free `
   -CosmosName '<existing approved Cosmos account name>' `
-  -CustomerDirectoryName bloomstepcustomers261004 `
-  -Repository Sampath-K/bloomstep -Environment bloomstep-operations `
+  -CustomerDirectoryName budlarkcustomers261004 `
+  -Repository Sampath-K/budlark -Environment budlark-operations `
   -ConfirmPersonalResourceTenant
 ```
 
 No cloud mutation was performed by the source author. The script validates the
 enabled explicit subscription/tenant, Free SWA, one-region Cosmos free tier,
-manual400 RU on existing bloomstep/data container or shared database, approved
+manual400 RU on existing budlark/data container or shared database, approved
 `FreeTrial_2014-09-01` spendingLimit On, existing repository API_ORIGIN, and existing
 operations environment restricted exactly to main and approved feature branch.
 It refuses unexpected/custom OIDC policy, trust, credentials, role grants or
@@ -32,7 +32,7 @@ repository OIDC migration; that remains owner-owned.
 
 GitHub repository REST supplies immutable owner/repository IDs. For the approved
 repository the resulting FIC subject is exactly:
-`repo:Sampath-K@72682617/bloomstep@1404357574:environment:bloomstep-operations`.
+`repo:Sampath-K@72682617/budlark@1404357574:environment:budlark-operations`.
 No IDs are hardcoded in provisioning/runtime source. Issuer is
 `https://token.actions.githubusercontent.com`, audience
 `api://AzureADTokenExchange`. Runtime checks those assertion claims before
@@ -67,7 +67,7 @@ broadly or deleting resources.
 
 `.github/workflows/spend-guard.yml`: manual `workflow_dispatch`, reusable
 `workflow_call`, every6hours cron,5-minute timeout, serialized finite concurrency,
-only approved repository/main/feature branch, environment bloomstep-operations.
+only approved repository/main/feature branch, environment budlark-operations.
 Scheduled runs become active only after default-branch merge. No PR/tag FIC
 authorization; environment policy must be kept restricted.
 
@@ -81,7 +81,7 @@ Read checks:
 - Approved trial quota and spendingLimit ON.
 - Exactly three inspected RG resources: Free SWA, free-tier Cosmos, and the
   explicitly pinned existing customer ARM `Microsoft.AzureActiveDirectory/ciamDirectories`
-  resource `bloomstepcustomers261004` with **SKU Base/tier A0**. Another directory,
+  resource `budlarkcustomers261004` with **SKU Base/tier A0**. Another directory,
   duplicate directory resource or non-Base/A0 SKU is not approved.
 - Customer directory metadata uses documented read-only ARM
   `GET .../ciamDirectories/<pinnedName>?api-version=2023-05-17-preview`.
@@ -141,9 +141,9 @@ The real approved resource group includes the existing basic customer directory,
 not just SWA and Cosmos. Runtime now pins its name and requires Base/A0, preserving
 the strict three-type inventory and unknown-cost warning. Before first guard
 dispatch, rerun the same provisioning invocation with
-`-CustomerDirectoryName bloomstepcustomers261004`; it validates the ARM resource
+`-CustomerDirectoryName budlarkcustomers261004`; it validates the ARM resource
 and adds public operations-environment variable
-`GUARD_CUSTOMER_DIRECTORY_NAME=bloomstepcustomers261004`. Existing app/SP/self-role/
+`GUARD_CUSTOMER_DIRECTORY_NAME=budlarkcustomers261004`. Existing app/SP/self-role/
 FIC/RBAC remain idempotent; no new permissions, customer changes or API settings
 are needed. Alternatively owner can set that single public environment variable
 after independently verifying Base/A0. Source author made no live mutations.

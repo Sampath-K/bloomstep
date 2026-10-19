@@ -1,10 +1,10 @@
-import 'package:bloomstep/services/analytics_sandbox.dart';
+import 'package:budlark/services/analytics_sandbox.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:sentry_flutter/sentry_flutter.dart';
 import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
 import 'package:flutter/material.dart';
-import 'package:bloomstep/features/garden/analytics_sandbox_controls.dart';
+import 'package:budlark/features/garden/analytics_sandbox_controls.dart';
 
 class FakeBackend implements SandboxBackend {
   int starts = 0, events = 0, crashes = 0, stops = 0;

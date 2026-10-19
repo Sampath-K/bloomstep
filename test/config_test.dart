@@ -2,8 +2,8 @@ import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 
-import 'package:bloomstep/core/garden_store.dart';
-import 'package:bloomstep/services/remote_config.dart';
+import 'package:budlark/core/garden_store.dart';
+import 'package:budlark/services/remote_config.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';

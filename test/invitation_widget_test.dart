@@ -1,15 +1,40 @@
 import 'dart:convert';
 import 'dart:io';
 
-import 'package:bloomstep/core/garden_store.dart';
-import 'package:bloomstep/features/garden/garden_screen.dart';
-import 'package:bloomstep/services/invitation_intent.dart';
-import 'package:bloomstep/services/invitation_service.dart';
+import 'package:budlark/core/garden_store.dart';
+import 'package:budlark/features/garden/garden_screen.dart';
+import 'package:budlark/features/garden/invitation_dialog.dart';
+import 'package:budlark/services/invitation_intent.dart';
+import 'package:budlark/services/invitation_service.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:budlark/features/garden/plant_art.dart';
 import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
+import 'package:budlark/app/theme.dart';
+
+import 'support/visual_capture.dart';
+
+Widget syntheticInvitationFrame(GlobalKey key, Widget home) => RepaintBoundary(
+  key: key,
+  child: MaterialApp(
+    debugShowCheckedModeBanner: false,
+    theme: BudlarkTheme.light(),
+    builder: (context, child) => MediaQuery(
+      data: MediaQuery.of(context).copyWith(disableAnimations: true),
+      child: Column(
+        children: [
+          const Material(
+            child: Text('SYNTHETIC UI - mock invitation service, no sending'),
+          ),
+          Expanded(child: child!),
+        ],
+      ),
+    ),
+    home: home,
+  ),
+);
 
 Future<void> waitInvitation(WidgetTester tester, Finder finder) async {
   final watch = Stopwatch()..start();
@@ -23,10 +48,266 @@ Future<void> waitInvitation(WidgetTester tester, Finder finder) async {
   fail('Invitation readiness timed out: $finder');
 }
 
+Future<void> waitInvitationCondition(
+  WidgetTester tester,
+  bool Function() ready,
+) async {
+  final watch = Stopwatch()..start();
+  while (watch.elapsed < const Duration(seconds: 10)) {
+    if (ready()) return;
+    await tester.runAsync(
+      () => Future<void>.delayed(const Duration(milliseconds: 50)),
+    );
+    await tester.pump(const Duration(milliseconds: 50));
+  }
+  fail('Invitation operation timed out.');
+}
+
 void main() {
   final token = base64Url
       .encode(List<int>.generate(32, (i) => i))
       .replaceAll('=', '');
+  testWidgets(
+    'service rejection and native handoff failure show distinct safe retry errors',
+    (tester) async {
+      final store = (await tester.runAsync(
+        () => GardenStore.open(':memory:', 'synthetic-failure-ui'),
+      ))!;
+      addTearDown(() => tester.runAsync(store.close));
+      var status = 503;
+      var requests = 0;
+      final card = <String, dynamic>{
+        'explicitChoice': true,
+        'aspiration': 'My chosen calm recipe',
+        'anchor': 'After tea',
+        'behavior': 'One breath',
+        'celebration': 'Smile',
+        'species': 'Fern',
+      };
+      String? copiedSupport;
+      tester.binding.defaultBinaryMessenger.setMockMethodCallHandler(
+        SystemChannels.platform,
+        (call) async {
+          if (call.method == 'Clipboard.setData') {
+            copiedSupport = (call.arguments as Map)['text'] as String;
+          }
+          return null;
+        },
+      );
+      addTearDown(
+        () => tester.binding.defaultBinaryMessenger.setMockMethodCallHandler(
+          SystemChannels.platform,
+          null,
+        ),
+      );
+      final service = InvitationService(
+        store,
+        tokenProvider: () async => 'synthetic',
+        origin: 'https://approved.example',
+        client: MockClient((request) async {
+          requests++;
+          final body = jsonDecode(request.body) as Map;
+          expect(body['recipeCard'], card);
+          expect(
+            (body['recipeCard'] as Map).containsKey('templateCategory'),
+            isFalse,
+          );
+          return http.Response(
+            status == 200
+                ? jsonEncode({
+                    'invitationId': body['requestId'],
+                    'token': token,
+                    'channel': body['channel'],
+                    'recipeCard': body['recipeCard'],
+                    'expiresAt': DateTime.now()
+                        .toUtc()
+                        .add(const Duration(days: 7))
+                        .toIso8601String(),
+                  })
+                : 'private server details',
+            status,
+          );
+        }),
+      );
+      const bridge = MethodChannel('budlark/native_share');
+      TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+          .setMockMethodCallHandler(bridge, (_) async {
+            throw PlatformException(
+              code: 'private',
+              message: 'private platform details',
+            );
+          });
+      addTearDown(
+        () => TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+            .setMockMethodCallHandler(bridge, null),
+      );
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Builder(
+            builder: (context) => TextButton(
+              onPressed: () => showDialog<void>(
+                context: context,
+                builder: (_) => InvitationDialog(
+                  store: store,
+                  service: service,
+                  hasRecipes: true,
+                  chooseCard: () async => card,
+                ),
+              ),
+              child: const Text('Open invitation'),
+            ),
+          ),
+        ),
+      );
+      await tester.tap(find.text('Open invitation'));
+      await tester.pumpAndSettle();
+      await tester.ensureVisible(find.text('Include a recipe? Optional'));
+      await tester.tap(find.text('Include a recipe? Optional'));
+      await tester.pumpAndSettle();
+      await tester.ensureVisible(find.text('Choose and approve a recipe card'));
+      await tester.tap(find.text('Choose and approve a recipe card'));
+      await tester.pumpAndSettle();
+      expect(find.text('Chosen recipe: My chosen calm recipe'), findsOneWidget);
+      expect(
+        find.text(
+          'Your chosen recipe is included in the link for email, QR and Windows share.',
+        ),
+        findsOneWidget,
+      );
+      await tester.ensureVisible(find.text('Copy link'));
+      await tester.tap(find.text('Copy link'));
+      final backendError = invitationErrorMessage(
+        const InvitationFailure(
+          InvitationFailureKind.backend,
+          InvitationPhase.creation,
+          httpStatus: 503,
+        ),
+        includeSupportCode: false,
+      );
+      await waitInvitation(tester, find.text(backendError));
+      expect(requests, 1);
+      expect(find.textContaining('private'), findsNothing);
+      expect(find.textContaining('invite-creation-backend'), findsNothing);
+      await tester.ensureVisible(find.text('Privacy and link details'));
+      await tester.tap(find.text('Privacy and link details'));
+      await tester.pumpAndSettle();
+      await tester.ensureVisible(find.text('Copy support info'));
+      await tester.tap(find.text('Copy support info'));
+      await tester.pumpAndSettle();
+      expect(copiedSupport, 'invite-creation-backend-http503');
+      expect(copiedSupport, isNot(contains(card['aspiration'])));
+      status = 200;
+      await tester.ensureVisible(find.text('More ways to invite'));
+      await tester.tap(find.text('More ways to invite'));
+      await tester.pumpAndSettle();
+      expect(
+        find.text(
+          'The email link includes your chosen recipe. You choose the recipient and send.',
+        ),
+        findsOneWidget,
+      );
+      expect(
+        find.text('The QR link includes your chosen recipe.'),
+        findsOneWidget,
+      );
+      expect(
+        find.text(
+          'The shared link includes your chosen recipe. Choose an app and where to share.',
+        ),
+        findsOneWidget,
+      );
+      await tester.ensureVisible(find.text('Windows share'));
+      await tester.tap(find.text('Windows share'));
+      final handoffError = invitationErrorMessage(
+        StateError('ignored'),
+        phase: InvitationPhase.handoff,
+        includeSupportCode: false,
+      );
+      await waitInvitation(tester, find.text(handoffError));
+      expect(find.text('Windows share panel requested'), findsNothing);
+      expect(requests, 2);
+      await tester.ensureVisible(find.text('Windows share'));
+      await tester.tap(find.text('Windows share'));
+      await waitInvitation(tester, find.text(handoffError));
+      expect(
+        requests,
+        2,
+        reason: 'Retry reuses the server receipt after handoff failure.',
+      );
+      expect(find.textContaining('private platform'), findsNothing);
+      await tester.pumpWidget(const SizedBox.shrink());
+    },
+  );
+
+  testWidgets('visual invitation contract: quiet, private and dismissible', (
+    tester,
+  ) async {
+    final store = (await tester.runAsync(
+      () => GardenStore.open(':memory:', 'synthetic-visual-invite'),
+    ))!;
+    addTearDown(() => tester.runAsync(store.close));
+    var requests = 0;
+    final service = InvitationService(
+      store,
+      tokenProvider: () async => 'synthetic',
+      origin: 'https://approved.example',
+      client: MockClient((_) async {
+        requests++;
+        return http.Response('{}', 503);
+      }),
+    );
+    await loadVisualFonts(tester);
+    final boundary = GlobalKey();
+    await tester.pumpWidget(
+      syntheticInvitationFrame(
+        boundary,
+        GardenScreen(store: store, invitationService: service),
+      ),
+    );
+    await waitInvitation(tester, find.text('Plant a habit'));
+    await tester.tap(find.byTooltip('Invite a friend'));
+    await tester.pumpAndSettle();
+    final dialog = find.byType(AlertDialog);
+    expect(
+      find.descendant(of: dialog, matching: find.byType(PlantArt)),
+      findsNWidgets(2),
+    );
+    expect(
+      find.descendant(of: dialog, matching: find.byType(FilledButton)),
+      findsOneWidget,
+    );
+    expect(
+      DefaultTextStyle.of(tester.element(find.text('Copy link')))
+          .style
+          .fontFamily,
+      'Segoe UI',
+      reason: 'Primary-action emphasis must preserve the application typeface.',
+    );
+    expect(
+      find.text(
+        'Anyone with the link can open it. No one is contacted automatically.',
+      ),
+      findsOneWidget,
+    );
+    expect(find.text('Email invite').hitTestable(), findsNothing);
+    await tester.ensureVisible(find.text('Privacy and link details'));
+    await tester.tap(find.text('Privacy and link details'));
+    await tester.pumpAndSettle();
+    expect(
+      find.text(
+        'Optional analytics is off by default; when enabled, Budlark records '
+        'invitation creation and the sharing method. Recipe cards show only '
+        'the fields you approve—not your name, email, or practice history.',
+      ),
+      findsOneWidget,
+    );
+    expect(requests, 0);
+    await tester.sendKeyEvent(LogicalKeyboardKey.escape);
+    await tester.pumpAndSettle();
+    expect(dialog, findsNothing);
+    expect(requests, 0);
+    await tester.pumpWidget(const SizedBox.shrink());
+  });
   testWidgets(
     'sharing creates distinct attributed codes only on gestures and native invokes real bridge',
     (tester) async {
@@ -38,7 +319,7 @@ void main() {
       addTearDown(() => tester.binding.setSurfaceSize(null));
       final requests = <Map>[];
       final nativeCalls = <MethodCall>[];
-      const channel = MethodChannel('bloomstep/native_share');
+      const channel = MethodChannel('budlark/native_share');
       TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
           .setMockMethodCallHandler(channel, (call) async {
             nativeCalls.add(call);
@@ -71,16 +352,21 @@ void main() {
           );
         }),
       );
+      await loadVisualFonts(tester);
+      final boundary = GlobalKey();
       await tester.pumpWidget(
-        MaterialApp(
-          home: GardenScreen(store: store, invitationService: service),
+        syntheticInvitationFrame(
+          boundary,
+          GardenScreen(store: store, invitationService: service),
         ),
       );
       await waitInvitation(tester, find.text('Plant a habit'));
       await tester.tap(find.byTooltip('Invite a friend'));
-      await waitInvitation(tester, find.text('Show QR'));
+      await waitInvitation(tester, find.text('More ways to invite'));
       expect(requests, isEmpty);
       expect(nativeCalls, isEmpty);
+      await tester.tap(find.text('More ways to invite'));
+      await tester.pumpAndSettle();
       await tester.tap(find.text('Show QR'));
       await waitInvitation(
         tester,
@@ -92,6 +378,15 @@ void main() {
       );
       expect(requests.single['channel'], 'qr');
       expect(nativeCalls, isEmpty);
+      await waitInvitation(
+        tester,
+        find.byWidgetPredicate(
+          (widget) =>
+              widget is FilledButton &&
+              widget.key == const ValueKey('invite-copy') &&
+              widget.onPressed != null,
+        ),
+      );
       await tester.tap(find.text('Windows share'));
       final watch = Stopwatch()..start();
       while (nativeCalls.isEmpty &&
@@ -108,6 +403,17 @@ void main() {
         'channel': 'native',
       });
       expect((await tester.runAsync(store.habits))!, isEmpty);
+      await waitInvitation(
+        tester,
+        find.byWidgetPredicate(
+          (widget) =>
+              widget is FilledButton &&
+              widget.key == const ValueKey('invite-copy') &&
+              widget.onPressed != null,
+        ),
+      );
+      await tester.pump();
+      await captureVisual(tester, boundary, 'invite-native-requested');
       await tester.pumpWidget(const SizedBox.shrink());
       await tester.runAsync(
         () => Future<void>.delayed(const Duration(milliseconds: 50)),
@@ -145,9 +451,12 @@ void main() {
       await tester.runAsync(
         () => inbox.save(InvitationIntent(token, 'native')),
       );
+      await loadVisualFonts(tester);
+      final boundary = GlobalKey();
       await tester.pumpWidget(
-        MaterialApp(
-          home: GardenScreen(
+        syntheticInvitationFrame(
+          boundary,
+          GardenScreen(
             store: store,
             invitationInbox: inbox,
             invitationService: service,
@@ -155,6 +464,8 @@ void main() {
         ),
       );
       await waitInvitation(tester, find.text('Decline invitation'));
+      await tester.pumpAndSettle();
+      await captureVisual(tester, boundary, 'incoming-invitation');
       expect(requests, 0);
       await tester.ensureVisible(find.text('Decline invitation'));
       await tester.tap(find.text('Decline invitation'));
@@ -205,6 +516,7 @@ void main() {
         'species': 'Fern',
       };
       var redeemed = 0;
+      var statusRequests = 0;
       final service = InvitationService(
         store,
         tokenProvider: () async => 'ciam',
@@ -230,9 +542,21 @@ void main() {
               200,
             );
           }
+          statusRequests++;
           return http.Response(
             jsonEncode({
-              'invitations': [],
+              'invitations': [
+                {
+                  'invitationId': '22222222-2222-4222-8222-222222222222',
+                  'direction': 'outgoing',
+                  'channel': 'link',
+                  'acceptedAt': null,
+                  'expiresAt': now
+                      .add(const Duration(days: 30))
+                      .toIso8601String(),
+                  'status': 'created',
+                },
+              ],
               'rewards': [
                 {
                   'id': 'a' * 64,
@@ -247,9 +571,12 @@ void main() {
         }),
       );
       await tester.runAsync(() => inbox.save(InvitationIntent(token, 'link')));
+      await loadVisualFonts(tester);
+      final boundary = GlobalKey();
       await tester.pumpWidget(
-        MaterialApp(
-          home: GardenScreen(
+        syntheticInvitationFrame(
+          boundary,
+          GardenScreen(
             store: store,
             invitationInbox: inbox,
             invitationService: service,
@@ -261,13 +588,48 @@ void main() {
       await tester.tap(find.text('Accept invitation'));
       await waitInvitation(
         tester,
-        find.text('Rare flower — server-granted cosmetic'),
+        find.text('Review shared recipe before planting'),
       );
       expect(redeemed, 1);
       expect((await tester.runAsync(store.habits))!, isEmpty);
+      await waitInvitationCondition(tester, () {
+        final settings = tester.widget<IconButton>(
+          find.byWidgetPredicate((widget) =>
+              widget is IconButton && widget.tooltip == 'Settings and privacy'),
+        );
+        return settings.onPressed != null;
+      });
+      await tester.tap(find.byTooltip('Settings and privacy'));
+      await waitInvitation(tester, find.text('Garden & data'));
+      await tester.ensureVisible(find.text('Garden & data'));
+      await tester.tap(find.text('Garden & data'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Invitation status'));
+      await tester.pumpAndSettle();
+      expect(
+        find.text('Rare flower — server-granted cosmetic'),
+        findsOneWidget,
+      );
+      expect(find.text('Refresh invitation receipts'), findsNothing);
+      expect(find.text('Invitation status'), findsOneWidget);
+      expect(find.text('Private invitation receipts'), findsNothing);
+      expect(statusRequests, 1);
+      await tester.tap(find.text('Garden & data'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('App & support'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Refresh invitation status'));
+      await waitInvitationCondition(tester, () => statusRequests == 2);
+      expect(statusRequests, 2);
+      await tester.pumpAndSettle();
+      await captureVisual(tester, boundary, 'incoming-accepted-cosmetic');
+      await tester.tap(find.text('Done'));
+      await tester.pumpAndSettle();
       await tester.tap(find.text('Review shared recipe before planting'));
       await waitInvitation(tester, find.text('Open recipe builder'));
       expect(find.textContaining('After I tea'), findsOneWidget);
+      await tester.pumpAndSettle();
+      await captureVisual(tester, boundary, 'incoming-recipe-review');
       await tester.tap(find.text('Open recipe builder'));
       await waitInvitation(tester, find.text('Save recipe'));
       expect(find.text('tea'), findsOneWidget);

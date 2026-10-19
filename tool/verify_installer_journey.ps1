@@ -6,8 +6,8 @@ param(
   [string]$Mode = 'unchecked-launch'
 )
 $ErrorActionPreference = 'Stop'
-if ($env:GITHUB_ACTIONS -ne 'true' -or $env:BLOOMSTEP_ISOLATED_JOURNEY_FIXTURE -ne 'true' -or
-    $env:BLOOMSTEP_DISPOSABLE_VM -ne 'true') {
+if ($env:GITHUB_ACTIONS -ne 'true' -or $env:BUDLARK_ISOLATED_JOURNEY_FIXTURE -ne 'true' -or
+    $env:BUDLARK_DISPOSABLE_VM -ne 'true') {
   throw 'This proof runs only on an explicitly authorized disposable CI host with an inert fixture, never the local host.'
 }
 New-Item -ItemType Directory -Path $EvidenceDir -Force | Out-Null
@@ -20,8 +20,8 @@ if ($compiledFixture.kind -ne 'inert-journey-fixture-v1' -or
     $compiledFixture.sourceRevision -ne (git rev-parse HEAD) -or
     $compiledFixture.installerFile -ne [IO.Path]::GetFileName($Installer) -or
     $compiledFixture.installerSha256 -ne $hash -or
-    -not ([IO.Path]::GetFileName($Installer) -eq 'Bloomstep-0.0.0-contract-windows-x64-setup.exe' -or
-      ([IO.Path]::GetFileName($Installer) -eq 'Bloomstep-0.0.0-contract-windows-universal-setup.exe' -and
+    -not ([IO.Path]::GetFileName($Installer) -eq 'Budlark-0.0.0-contract-windows-x64-setup.exe' -or
+      ([IO.Path]::GetFileName($Installer) -eq 'Budlark-0.0.0-contract-windows-universal-setup.exe' -and
         $compiledFixture.fixtureArch -eq 'universal'))) {
   throw 'Only the exact hash-authorized compiled inert journey fixture may be installed by this proof.'
 }
@@ -34,9 +34,9 @@ if (-not [Environment]::UserInteractive) { throw 'An actual interactive disposab
 if (-not [OnboardingWizard]::SetProcessDpiAwarenessContext([IntPtr](-4))) {
   throw 'Per-monitor physical capture coordinates unavailable.'
 }
-$target = Join-Path $EvidenceDir ('Bloomstep-Inert-Journey-' + [Guid]::NewGuid())
-$receipt = Join-Path $env:LOCALAPPDATA 'Bloomstep\measurement\installer-receipt.json'
-$protocol = 'Registry::HKEY_CURRENT_USER\Software\Classes\bloomstep\shell\open\command'
+$target = Join-Path $EvidenceDir ('Budlark-Inert-Journey-' + [Guid]::NewGuid())
+$receipt = Join-Path $env:LOCALAPPDATA 'Budlark\measurement\installer-receipt.json'
+$protocol = 'Registry::HKEY_CURRENT_USER\Software\Classes\budlark\shell\open\command'
 if ((Test-Path $target) -or (Test-Path $receipt) -or (Test-Path $protocol)) {
   throw 'Fixture proof requires absent target, protocol and receipt.'
 }
@@ -52,7 +52,7 @@ $journey = New-StandardWizardJourney
 $report = [ordered]@{
   schemaVersion = 2; sourceRevision = $compiledFixture.sourceRevision; installerSha256 = $hash
   mode = $Mode; fixture = $true; customerData = $false; outcome = 'UNVERIFIED'
-  payload = 'Inert launch-token/count probe, not Bloomstep app or a public release'
+  payload = 'Inert launch-token/count probe, not Budlark app or a public release'
   proofAutomation = 'Explicit Install/Finish test-driver input; no Next or customer automatic behavior claim'
   requestedOsScales = $requestedScales; states = $states; journey = $journey
   tokenElevated = $admin; userInteractive = [Environment]::UserInteractive
@@ -142,7 +142,7 @@ try {
     if ($launches[0].sid -ne $sid -or $launches[0].elevated) { throw 'Installing user or non-elevated launch token mismatch.' }
   }
   if (Test-Path $receipt) { throw 'Default-off fixture manufactured an observation.' }
-  if ($Mode -in @('cancel','failure') -and (Test-Path "$target\bloomstep.exe")) {
+  if ($Mode -in @('cancel','failure') -and (Test-Path "$target\budlark.exe")) {
     throw 'Canceled or failed fixture installed a payload.'
   }
   $actualScales = @($states | ForEach-Object { [int]($_.dpi * 100 / 96) } | Sort-Object -Unique)

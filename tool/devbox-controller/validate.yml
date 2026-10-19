@@ -1,0 +1,95 @@
+name: Supplemental Dev Box validation
+run-name: Supplemental ${{ inputs.candidate }} on ${{ inputs.architecture }}
+on:
+  workflow_dispatch:
+    inputs:
+      candidate:
+        description: Committed reviewed candidate identity (no URL or script input)
+        required: true
+        type: choice
+        options:
+          - bd5ad93-owner-trial
+      architecture:
+        description: Native VM architecture; emulation is not accepted
+        required: true
+        type: choice
+        options:
+          - x64
+          - arm64
+permissions:
+  contents: read
+concurrency:
+  group: dedicated-devbox-supplemental
+  cancel-in-progress: false
+jobs:
+  authorize:
+    runs-on: windows-latest
+    timeout-minutes: 10
+    outputs:
+      candidate: ${{ steps.verify.outputs.candidate }}
+    steps:
+      - name: Require the private approved controller default branch
+        shell: pwsh
+        env:
+          PRIVATE_REPOSITORY: ${{ github.event.repository.private }}
+        run: |
+          if ($env:GITHUB_REPOSITORY -cne 'Sampath-K/budlark-vm-controller' -or
+              $env:PRIVATE_REPOSITORY -cne 'true' -or
+              $env:GITHUB_REF -cne 'refs/heads/main' -or
+              $env:GITHUB_EVENT_NAME -cne 'workflow_dispatch') {
+            throw 'Only explicit private-controller main dispatch is authorized.'
+          }
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          persist-credentials: false
+          ref: ${{ github.sha }}
+      - name: Validate committed approval and exact upstream build provenance
+        id: verify
+        shell: pwsh
+        env:
+          CANDIDATE_ID: ${{ inputs.candidate }}
+          GITHUB_TOKEN: ${{ github.token }}
+        run: |
+          ./controller/Verify-Candidate.ps1 -CandidateId $env:CANDIDATE_ID -OutputDirectory "$env:RUNNER_TEMP/approved-candidate"
+          "candidate=$env:CANDIDATE_ID" >> $env:GITHUB_OUTPUT
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: approved-candidate
+          path: ${{ runner.temp }}/approved-candidate
+          if-no-files-found: error
+          retention-days: 3
+  trial:
+    needs: authorize
+    # Activation is owner-audited setup, NOT a security boundary against controller writers.
+    if: vars.DEVBOX_CONNECTION_AUDITED == 'true'
+    runs-on: [self-hosted, Windows, budlark-private-controller, "${{ inputs.architecture }}"]
+    timeout-minutes: 15
+    steps:
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093
+        with:
+          name: approved-candidate
+          path: ${{ runner.temp }}/budlark-controller-input
+      - name: Invoke only the locally pinned controller harness
+        shell: powershell
+        env:
+          APPROVED_CANDIDATE: ${{ needs.authorize.outputs.candidate }}
+          EXPECTED_NATIVE_ARCHITECTURE: ${{ inputs.architecture }}
+          CONTROLLER_SOURCE: ${{ github.sha }}
+          PRIVATE_REPOSITORY: ${{ github.event.repository.private }}
+          CONTROLLER_TOKEN: ${{ github.token }}
+        run: |
+          $entry = Join-Path $env:LOCALAPPDATA 'BudlarkController\Invoke-ControllerTrial.ps1'
+          if (-not (Test-Path -LiteralPath $entry)) { throw 'Pinned local harness is not installed; no installer execution.' }
+          $native = if ($env:PROCESSOR_ARCHITEW6432) { $env:PROCESSOR_ARCHITEW6432 } else { $env:PROCESSOR_ARCHITECTURE }
+          $arch = switch ($native) { 'AMD64' {'x64'} 'ARM64' {'arm64'} default { throw 'Unsupported native architecture.' } }
+          $runtime = Join-Path $env:LOCALAPPDATA "BudlarkController\pwsh-$arch\pwsh.exe"
+          if (-not (Test-Path -LiteralPath $runtime)) { throw 'Pinned portable runtime is unavailable.' }
+          & $runtime -NoProfile -File $entry
+          if ($LASTEXITCODE -ne 0) { throw 'Supplemental trial failed; inspect sanitized result.' }
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        if: always()
+        with:
+          name: supplemental-devbox-${{ inputs.architecture }}-${{ github.run_id }}
+          path: ${{ runner.temp }}/budlark-controller-receipts/*.json
+          if-no-files-found: error
+          retention-days: 7

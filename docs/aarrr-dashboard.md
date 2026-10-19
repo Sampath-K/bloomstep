@@ -4,7 +4,7 @@ The existing private `site/console.html` now defaults to a dark executive
 overview, with keyboard-operable definition, denominator, cohort and observed
 gap drilldowns. **Load private AARRR overview** uses the existing authenticated
 `GET /api/team/metrics?days=1..30`. No private request happens on page load.
-`Bloomstep.Admin`, same-origin HTTPS, memory-only tokens, bounded reads and
+`Budlark.Admin`, same-origin HTTPS, memory-only tokens, bounded reads and
 explicit operator sign-in remain required. The separate website window includes
 today; account reports use completed UTC dates. Neither silently substitutes
 for the other.

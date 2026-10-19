@@ -7,7 +7,7 @@
   "sources": [
     {
       "path": "tool/installer_art_export_test.dart",
-      "sha256": "51395c5ec32f6e36b8c35c86ddc9fa0bfe7787d12e787e2c44f48edc2525987c"
+      "sha256": "8c6ef6625f97375592f3532b3ab7fc60936e3b698e18564c721cd109801623dd"
     },
     {
       "path": "lib/features/garden/plant_art.dart",
@@ -15,7 +15,7 @@
     },
     {
       "path": "lib/app/theme.dart",
-      "sha256": "50b63e8a956fff4f2f2e31230334d8cb99381e320b546e0bb1167f5cfa5c1aa3"
+      "sha256": "5431c92473b8d081bfaba1c6dffdeb51c591abaa9de83108f4ef3bfca4ab1207"
     }
   ],
   "assets": [
@@ -23,13 +23,13 @@
       "file": "welcome-steps.bmp",
       "width": 1000,
       "height": 200,
-      "sha256": "a2bf78a4f8358795198a6ca0809b4891919f6c09902a549c2c5bd9565410ddbb"
+      "sha256": "bf41c2da2cc2714c072402e27e3345d464180949fe043f91af639fdf577ae98e"
     },
     {
       "file": "welcome-garden.bmp",
       "width": 1000,
       "height": 300,
-      "sha256": "1beef1aba02f80b21c755515e97b49293486fd6dbe153f64f93f7728578734d1"
+      "sha256": "84e5ce13b9fa118aadad91ffc361a152fbe57c8729e1a5ec0b72e98b00688a37"
     }
   ]
 }

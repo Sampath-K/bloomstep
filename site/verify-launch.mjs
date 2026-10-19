@@ -7,9 +7,9 @@ import { execFileSync } from 'node:child_process';
 import puppeteer from 'puppeteer-core';
 import { createLocalTestServer } from '../api/test/support/local_api_server.mjs';
 
-const out = resolve(process.env.EVIDENCE_DIR ?? join(tmpdir(), 'bloomstep-public-launch-evidence'));
+const out = resolve(process.env.EVIDENCE_DIR ?? join(tmpdir(), 'budlark-public-launch-evidence'));
 await mkdir(out, { recursive: true });
-const temp = await mkdtemp(join(tmpdir(), 'bloomstep-it-launch-'));
+const temp = await mkdtemp(join(tmpdir(), 'budlark-it-launch-'));
 const databasePath = join(temp, 'website.json');
 const errors = [], requests = [], screenshots = {}, linkReview = [];
 let server, browser;
@@ -52,7 +52,7 @@ try {
   const daily = disk.documents.find(row => row.type === 'website_daily');
   assert.equal(daily.accepted, 3);
   const response = await fetch(server.url + '/api/team/website?days=1',
-    { headers: { 'x-bloomstep-test-admin': server.adminToken } });
+    { headers: { 'x-budlark-test-admin': server.adminToken } });
   assert.equal(response.status, 200);
   const report = await response.json();
   assert.equal(report.stages.landing_view, null, 'Small cells stay suppressed; no lead count inferred');

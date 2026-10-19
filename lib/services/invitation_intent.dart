@@ -38,12 +38,12 @@ class InvitationIntent {
   }
 
   static InvitationIntent parseNative(Uri uri) {
-    if (uri.scheme != 'bloomstep' ||
+    if (uri.scheme != 'budlark' ||
         uri.host != 'invite' ||
         uri.hasPort ||
         (uri.path.isNotEmpty && uri.path != '/')) {
       throw const FormatException(
-        'This is not a supported Bloomstep invitation.',
+        'This is not a supported Budlark invitation.',
       );
     }
     return _query(uri, 'code');
@@ -61,7 +61,7 @@ class InvitationIntent {
   }
 
   Uri get nativeUri => Uri(
-    scheme: 'bloomstep',
+    scheme: 'budlark',
     host: 'invite',
     queryParameters: {'code': code, 'channel': channel},
   );
