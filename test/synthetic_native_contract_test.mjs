@@ -4,6 +4,98 @@ import { readFileSync } from 'node:fs';
 import { execFileSync } from 'node:child_process';
 
 const read = name => readFileSync(new URL(`../${name}`, import.meta.url), 'utf8');
+const keyboardScript = keyboard => keyboard.match(/final script =\s*'''\n([\s\S]*?)\n''';/)[1]
+  .replace(/\$\{(?:control|shift).*?\}/g, '$false').replaceAll('\\$', '$');
+
+test('owned keyboard activation stays bounded and checks exact foreground before every key', () => {
+  const keyboard = read('integration_test/support/windows_keyboard.dart').replaceAll('\r\n', '\n');
+  assert.match(keyboard, /'AllowSetForegroundWindow'/);
+  assert.match(keyboard, /permit\(helper\.pid\)/);
+  assert.match(keyboard, /MainWindowHandle/);
+  assert.match(keyboard, /foreground -ne \\\$owned -or \\\$owner -ne \$pid/);
+  assert.match(keyboard, /IsIconic/);
+  assert.match(keyboard, /IsWindowVisible/);
+  assert.match(keyboard, /foregroundLockTimeout/);
+  assert.match(keyboard, /GetClassName/);
+  assert.match(keyboard, /if \(-not \\\$ready\) \{[\s\S]*AttachThreadInput/);
+  assert.match(keyboard, /finally \{[\s\S]*AttachThreadInput\(\\\$currentThread, \\\$targetThread, \\\$false\)/);
+  assert.match(keyboard, /ElapsedMilliseconds -lt 2000/);
+  assert.doesNotMatch(keyboard, /SwitchDesktop|SetThreadDesktop|ASFW_ANY/);
+  if (process.platform === 'win32') {
+    const script = keyboardScript(keyboard);
+    execFileSync('powershell.exe', ['-NoProfile', '-NonInteractive', '-Command',
+      `$tokens = $null; $parseErrors = $null
+      [void][Management.Automation.Language.Parser]::ParseInput(
+        [Console]::In.ReadToEnd(), [ref]$tokens, [ref]$parseErrors)
+      if ($parseErrors.Count -gt 0) { throw ($parseErrors | Out-String) }`],
+    { input: script, stdio: ['pipe', 'pipe', 'pipe'], timeout: 20000 });
+  }
+});
+test('actual PowerShell activation flow restores, detaches and refuses input after ownership loss', {
+  skip: process.platform !== 'win32',
+}, () => {
+  const source = keyboardScript(read('integration_test/support/windows_keyboard.dart').replaceAll('\r\n', '\n'));
+  for (const mode of ['normal', 'attach', 'denied', 'lost']) {
+    const mock = `using System;
+      using System.Text;
+      using System.Collections.Generic;
+      public static class OwnedInput {
+        public struct Keyboard { public ushort vk, scan; public uint flags, time; public UIntPtr extra; }
+        public struct Input { public uint type; public Keyboard keyboard; }
+        public struct Message { public IntPtr hwnd; }
+        public static int Reads, Sent, Attached, Detached, Restored, Activated, Raised;
+        static bool QueueReady;
+        static string Mode = "${mode}";
+        public static IntPtr Foreground = new IntPtr(99);
+        static HashSet<uint> threads = new HashSet<uint>();
+        public static IntPtr GetForegroundWindow() {
+          Reads++;
+          return Mode == "lost" && Reads >= 5 ? new IntPtr(99) : Foreground;
+        }
+        public static uint GetWindowThreadProcessId(IntPtr h, out uint p) { p = h.ToInt64() == 42 ? 424242u : 333u; return h.ToInt64() == 42 ? 7u : 3u; }
+        public static int GetClassName(IntPtr h, StringBuilder name, int size) { name.Append("mock"); return 4; }
+        public static bool IsIconic(IntPtr h) { return false; }
+        public static bool IsWindowVisible(IntPtr h) { return true; }
+        public static bool SystemParametersInfo(uint a, uint p, out uint v, uint f) { v = 200000; return true; }
+        static void CheckOwned(IntPtr h) { if (h.ToInt64() != 42) throw new Exception("activated non-owned HWND"); }
+        public static bool ShowWindow(IntPtr h, int command) { CheckOwned(h); if (command != 9) throw new Exception("not SW_RESTORE"); Restored++; return true; }
+        public static bool SetForegroundWindow(IntPtr h) {
+          CheckOwned(h); Activated++;
+          if (Mode == "normal" || Mode == "lost" || (Mode == "attach" && threads.Count == 2)) Foreground = h;
+          return Foreground == h;
+        }
+        public static bool BringWindowToTop(IntPtr h) { CheckOwned(h); Raised++; return true; }
+        public static uint GetCurrentThreadId() { return 1; }
+        public static bool PeekMessage(out Message message, IntPtr window, uint min, uint max, uint remove) {
+          message = new Message(); QueueReady = true; return false;
+        }
+        public static bool AttachThreadInput(uint from, uint to, bool attach) {
+          if (!QueueReady) throw new Exception("missing helper message queue");
+          if (from != 1 || (to != 3 && to != 7)) throw new Exception("unexpected thread");
+          if (attach) { threads.Add(to); Attached++; } else { threads.Remove(to); Detached++; }
+          return true;
+        }
+        public static uint MapVirtualKey(uint vk, uint type) { return vk; }
+        public static uint SendInput(uint count, Input[] input, int size) {
+          if (GetForegroundWindow().ToInt64() != 42 || threads.Count != 0) throw new Exception("unsafe input");
+          Sent++; return 1;
+        }
+      }`;
+    const script = source.replace(/Add-Type @'\n[\s\S]*?\n'@/, `Add-Type @'\n${mock}\n'@`)
+      .replace("[Console]::ReadLine()", "'activate-owned-window'")
+      .replace('[Diagnostics.Process]::GetProcessById($pid).MainWindowHandle', '[IntPtr]42')
+      .replaceAll('$pid', '424242').replace('$sequence', 'Key 65 0\nKey 65 2');
+    const output = execFileSync('powershell.exe', ['-NoProfile', '-NonInteractive', '-Command',
+      `try { ${script} } catch { Write-Output ("caught=" + $_.Exception.Message) }
+      Write-Output ("counts={0},{1},{2},{3},{4},{5}" -f [OwnedInput]::Sent, [OwnedInput]::Attached, [OwnedInput]::Detached, [OwnedInput]::Restored, [OwnedInput]::Activated, [OwnedInput]::Raised)`],
+    { encoding: 'utf8', timeout: 15000 });
+    const fallback = mode === 'attach' || mode === 'denied';
+    const sends = mode === 'normal' || mode === 'attach' ? 2 : 0;
+    assert.match(output, new RegExp(`counts=${sends},${fallback ? '2,2,2,2,2' : '0,0,1,1,1'}`), mode);
+    if (sends) assert.doesNotMatch(output, /caught=/, mode);
+    else assert.match(output, /caught=Owned test (?:HWND could not become|window is not) foreground; no keys sent\./, mode);
+  }
+});
 test('integration keyboard parameters bind in Windows PowerShell without C# type aliases', () => {
   const keyboard = read('integration_test/support/windows_keyboard.dart').replaceAll('\r\n', '\n');
   const parameters = keyboard.match(/function Key\(([^)]+)\)/)[1].replaceAll('\\$', '$');
