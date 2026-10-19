@@ -89,9 +89,11 @@ try {
   assert.equal(links.length, unified ? 3 : 2);
   if (unified) {
     assert.equal(await offline.$eval('[data-universal-download] a', link => link.dataset.download), 'unknown');
-    assert.equal(await offline.$eval('[data-universal-download] a', link => link.textContent.trim()), 'Owner-test download (designated testers only)');
+    assert.equal(await offline.$eval('[data-universal-download] a', link => link.textContent.trim()), 'Internal dogfood preview (unsigned; designated testers only)');
   }
-  assert.ok(links.every(link => link.startsWith('https://github.com/Sampath-K/budlark/releases/download/')));
+  assert.ok(links.every(link =>
+    link.startsWith('https://github.com/Sampath-K/budlark/releases/download/') ||
+    link === 'https://budlark.com/downloads/Budlark-0.1.0-windows-universal-setup.exe'));
   await offline.click('#primary-cta');
   assert.equal(await offline.evaluate(() => location.hash), '#download');
   assert.equal(await offline.evaluate(() => localStorage.length), 0);

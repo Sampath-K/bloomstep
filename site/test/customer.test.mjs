@@ -53,7 +53,7 @@ test('customer and engineering surfaces are separated with honest SEO', () => {
   assert.match(home, /SoftwareApplication/);
   assert.doesNotMatch(home, /aggregateRating/);
 });
-test('owner-test downloads match the exact preview.14 release without implying general availability', () => {
+test('hosted dogfood and legacy preview.14 downloads are labeled without implying general availability', () => {
   const read = file => readFileSync(new URL('../' + file, import.meta.url), 'utf8');
   const config = JSON.parse(read('customer-config.json'));
   const home = read('index.html'), releases = read('releases/index.html');
@@ -66,13 +66,14 @@ test('owner-test downloads match the exact preview.14 release without implying g
       label: 'x64',
       sha256: 'f452014788d88eed80f1609180dc89660fe26dceec5598e843d2ec51a088b9cf',
     },
-    universal: {
-      label: 'Universal',
-      sha256: '7ad56cc3c71a40d78dd7cb043b43aa42ea884cb0484da982cffa386c9384b094',
-    },
   };
   assert.equal(config.release.tag, 'v0.1.0-preview.14');
-  assert.equal(config.release.universal.bytes, 22261590);
+  assert.equal(config.release.universal.url, 'https://budlark.com/downloads/Budlark-0.1.0-windows-universal-setup.exe');
+  assert.equal(config.release.universal.sha256, 'b53767c405fa9b704fb828d221f883b81d14231e3ebf65dd8820d3812fd42a2c');
+  assert.equal(config.release.universal.bytes, 22392273);
+  assert.ok(home.includes(config.release.universal.url));
+  assert.ok(releases.includes(config.release.universal.url));
+  assert.ok(releases.includes(config.release.universal.sha256));
   for (const [architecture, asset] of Object.entries(assets)) {
     const filename = `Budlark-0.1.0-preview.14-windows-${architecture}-setup.exe`;
     const url = `https://github.com/Sampath-K/budlark/releases/download/v0.1.0-preview.14/${filename}`;
@@ -82,16 +83,14 @@ test('owner-test downloads match the exact preview.14 release without implying g
     assert.ok(releases.includes(url));
     assert.ok(releases.includes(`${asset.label} SHA-256: ${asset.sha256}`));
   }
-  assert.match(home, /id="download-version">0\.1\.0-preview\.14</);
   for (const page of [home, releases]) {
     assert.equal((page.match(/data-universal-download/g) ?? []).length, 1);
-    assert.match(page, /22\.26 MB \(22,261,590 bytes\)/);
+    assert.match(page, /22\.39 MB \(22,392,273 bytes\)/);
     assert.match(page, /Version 0\.1\.0-preview\.12 is an older, superseded owner-test build/);
     assert.doesNotMatch(page, /href="[^"]*download\/v0\.1\.0-preview\.12/);
     assert.doesNotMatch(page, /href="[^"]*download\/v0\.1\.0-preview\.9/);
-    assert.match(page, /Early preview — not yet verified for general use/);
-    assert.match(page, /owner-test candidate, not a general customer release/);
-    assert.match(page, /Owner-test download \(designated testers only\)/);
+    assert.match(page, /Internal dogfood preview — not verified for general use/);
+    assert.match(page, /Internal dogfood preview \(unsigned; designated testers only\)/);
   }
   assert.match(releases, /Launch after installation and the complete app journey have not been verified/);
   assert.match(releases, /Recent preview changes/);

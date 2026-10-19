@@ -12,10 +12,11 @@ const fixture = {
     sha256: 'a'.repeat(64),
   }])),
 };
-test('universal rendering fixture never changes the verified preview14 config', () => {
+test('universal rendering fixture does not change the hosted dogfood installer config', () => {
   assert.equal(current.release.tag, 'v0.1.0-preview.14');
-  assert.equal(current.release.universal.sha256, '7ad56cc3c71a40d78dd7cb043b43aa42ea884cb0484da982cffa386c9384b094');
-  assert.equal(current.release.universal.bytes, 22261590);
+  assert.equal(current.release.universal.url, 'https://budlark.com/downloads/Budlark-0.1.0-windows-universal-setup.exe');
+  assert.equal(current.release.universal.sha256, 'b53767c405fa9b704fb828d221f883b81d14231e3ebf65dd8820d3812fd42a2c');
+  assert.equal(current.release.universal.bytes, 22392273);
 });
 test('both customer pages mark the current downloads as owner-test only and preserve the verified pointers', () => {
   for (const name of ['index.html', 'releases/index.html']) {
@@ -25,13 +26,13 @@ test('both customer pages mark the current downloads as owner-test only and pres
     assert.equal(renderDownloads(unified, fixture), unified);
     assert.equal((unified.match(/data-universal-download/g) ?? []).length, 1);
     assert.match(unified, /data-download="unknown"/);
-    assert.match(unified, /Owner-test download \(designated testers only\)/);
+    assert.match(unified, /Internal dogfood preview \(unsigned; designated testers only\)/);
     assert.match(unified, /<details><summary>Other files \(owner testing only\)/);
     assert.doesNotMatch(unified, /<details open><summary>Other files/);
     assert.match(unified, /designated testers/);
     assert.match(unified, /32-bit Windows is not supported/);
     if (name.startsWith('releases/')) {
-      assert.match(unified, /Universal SHA-256: a{64}/);
+      assert.match(unified, /SHA-256: a{64}/);
       assert.match(unified, /Other owner-test file fingerprints/);
       assert.doesNotMatch(unified, /href="https:\/\/github\.com\/Sampath-K\/budlark\/releases\/tag\//);
     }
@@ -39,12 +40,12 @@ test('both customer pages mark the current downloads as owner-test only and pres
 });
 test('malformed unified entry cannot silently fall back to architecture downloads', () => {
   for (const universal of [null, {}, { ...fixture.universal, sha256: '' }, { ...fixture.universal, url: fixture.x64.url }]) {
-    assert.throws(() => validateRelease({ ...fixture, universal }), /Verified release/);
+    assert.throws(() => validateRelease({ ...fixture, universal }), /Verified (?:hosted dogfood installer|release)/);
   }
 });
 test('published universal size is rendered exactly and malformed sizes fail closed', () => {
   const original = readFileSync(new URL('../index.html', import.meta.url), 'utf8');
-  assert.match(renderDownloads(original, current.release), /22\.26 MB \(22,261,590 bytes\)/);
+  assert.match(renderDownloads(original, current.release), /22\.39 MB \(22,392,273 bytes\)/);
   for (const bytes of [0, -1, 1.5, '22261590', null]) {
     assert.throws(() => validateRelease({
       ...current.release, universal: { ...current.release.universal, bytes },
@@ -57,7 +58,8 @@ test('download pointers are labeled for owner testing, with platform details in 
   const intro = /<p id="architecture-guidance">([^<]+)<\/p>/.exec(html)[1];
   assert.match(intro, /chooses the right version for your PC/);
   assert.doesNotMatch(intro, /x64|ARM64|emulation|32-bit|bytes/);
-  assert.match(html, /Download size: 22\.26 MB\.<\/p>/);
-  assert.match(html, /Owner-test download \(designated testers only\)/);
-  assert.match(html, /<details><summary>Other files \(owner testing only\)[\s\S]*?32-bit Windows is not supported[\s\S]*?22,261,590 bytes/);
+  assert.match(html, /Download size: 22\.39 MB\.<\/p>/);
+  assert.match(html, /Exact download size: 22\.39 MB \(22,392,273 bytes\)/);
+  assert.match(html, /Internal dogfood preview \(unsigned; designated testers only\)/);
+  assert.match(html, /<details><summary>Other files \(owner testing only\)[\s\S]*?32-bit Windows is not supported/);
 });

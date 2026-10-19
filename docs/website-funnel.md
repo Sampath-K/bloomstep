@@ -90,17 +90,18 @@ Build inserts verification meta tags only for bounded valid tokens supplied
 through deployment variables or that config. The owner must sign into Bing
 Webmaster Tools and Google Search Console to obtain/verify those values and
 submit `/sitemap.xml`. No real verification secret is committed. The configured
-website download pointer is the already-published `v0.1.0-preview.14` unsigned
-universal installer (22,261,590 bytes,
-`7ad56cc3c71a40d78dd7cb043b43aa42ea884cb0484da982cffa386c9384b094`,
-`https://github.com/Sampath-K/budlark/releases/download/v0.1.0-preview.14/Budlark-0.1.0-preview.14-windows-universal-setup.exe`);
-ARM64/x64 links are collapsed troubleshooting options only. This records the
-configured pointer, not a newer owner-test candidate or approval to upgrade the
-website pointer. The current download remains for designated owner testing;
-launch after Finish and the full owner journey remain unverified, with no
-customer-ready or safety claim following from publication. `site/build.mjs`
-keeps the home and releases pages aligned. The customer-site contract test pins
-the configured release URLs and SHA-256 values. Preview.8 warning screenshots
+website download pointer is the hosted internal dogfood installer
+`https://budlark.com/downloads/Budlark-0.1.0-windows-universal-setup.exe`
+(22,392,273 bytes, SHA-256
+`b53767c405fa9b704fb828d221f883b81d14231e3ebf65dd8820d3812fd42a2c`).
+The owner confirmed its public HEAD returns 200 and downloaded bytes match
+that hash; Authenticode reports `NotSigned`. It is labeled unsigned, internal
+dogfood and designated-testers-only, not a general release. Legacy
+`v0.1.0-preview.14`
+ARM64/x64 GitHub links remain collapsed troubleshooting options with original
+filenames and checksums. Publication does not establish successful installation,
+launch or safety. `site/build.mjs` keeps both pages aligned, and the customer-site
+contract test pins this hosted file and the legacy links. Preview.8 warning screenshots
 are historical evidence only, not evidence about preview.14 or the current
 download.
 

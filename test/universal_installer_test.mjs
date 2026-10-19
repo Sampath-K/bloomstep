@@ -96,7 +96,7 @@ test('unified customer download is fail-closed after the owner-authorized previe
   const { renderDownloads, validateRelease } = await import('../site/release-downloads.mjs');
   const current = JSON.parse(read('site/customer-config.json'));
   assert.equal(current.release.tag, 'v0.1.0-preview.14');
-  assert.equal(current.release.universal.sha256, '7ad56cc3c71a40d78dd7cb043b43aa42ea884cb0484da982cffa386c9384b094');
+  assert.equal(current.release.universal.sha256, 'b53767c405fa9b704fb828d221f883b81d14231e3ebf65dd8820d3812fd42a2c');
   const release = {
     ...current.release, tag: 'v0.1.0-preview.11',
     ...Object.fromEntries(['arm64','x64','universal'].map(arch => [arch, {
@@ -111,7 +111,7 @@ test('unified customer download is fail-closed after the owner-authorized previe
   assert.equal(renderDownloads(original, current.release), original);
   const html = renderDownloads(original, release);
   assert.match(html, /data-universal-download/);
-  assert.match(html, /data-download="unknown"[^>]*>Owner-test download \(designated testers only\)/);
+  assert.match(html, /data-download="unknown"[^>]*>Internal dogfood preview \(unsigned; designated testers only\)/);
   assert.match(html, /secondary x64 and ARM64 installers are for troubleshooting by designated testers/);
   assert.match(html, /<details><summary>Other files \(owner testing only\)<\/summary>[\s\S]*secondary x64 and ARM64 installers are for troubleshooting by designated testers/);
   assert.doesNotMatch(html, /data-universal-download[\s\S]*?<div class="choices"/);

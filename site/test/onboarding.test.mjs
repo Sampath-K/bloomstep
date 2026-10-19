@@ -93,8 +93,7 @@ test('both customer entry paths explain the early-preview limits and official le
     assert.match(page, /designated owner testing only; it has not been verified for general use/);
     assert.match(page, /You can plant in a local device garden without signing in; account gardens and sync require sign-in/);
     assert.doesNotMatch(page, /Sign-in is required, and some features/);
-    assert.match(page, /Early preview — not yet verified for general use/);
-    assert.match(page, /owner-test candidate, not a general customer release/);
+    assert.match(page, /Internal dogfood preview — not verified for general use/);
     assert.match(page, /Launch after installation and the complete app journey have not been verified/);
     assert.match(page, /not affiliated with or endorsed by BJ Fogg or Tiny Habits/);
     assert.match(page, /href="https:\/\/tinyhabits.com"/);
