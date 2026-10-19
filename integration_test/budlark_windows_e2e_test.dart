@@ -91,7 +91,10 @@ void main() {
     await tester.pumpAndSettle();
     final field = find.widgetWithText(TextField, 'Your feedback');
     await tester.tap(field);
-    await tester.pump();
+    await tester.showKeyboard(field);
+    await tester.pumpAndSettle();
+    final editable = find.descendant(of: field, matching: find.byType(EditableText));
+    expect(tester.widget<EditableText>(editable).focusNode.hasFocus, isTrue);
     final nativeEvents = <String>[];
     bool recordNativeKey(KeyEvent event) {
       nativeEvents.add('${event.runtimeType}:${event.logicalKey.keyLabel}');

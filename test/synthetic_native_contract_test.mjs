@@ -10,6 +10,8 @@ test('integration keyboard parameters bind in Windows PowerShell without C# type
   const owner = keyboard.match(/  (\[[^\]]+\])\\\$owner = 0/)[1];
   assert.equal(parameters, '[uint16]$vk, [uint32]$flags');
   assert.equal(owner, '[uint32]');
+  assert.match(keyboard, /if \(control\) 'Key 162 0'/);
+  assert.match(keyboard, /if \(shift\) 'Key 160 0'/);
   const nativeTypes = keyboard.split("Add-Type @'\n")[1].split("\n'@")[0];
   const input = keyboard.split('  \\$input =')[1].split('  if ([OwnedInput]::SendInput')[0];
   assert.ok(input, 'Construct the native INPUT payload before sending it.');
@@ -22,7 +24,7 @@ ${nativeTypes}
         ${owner}$owner = 0
         if ($vk -ne 65 -or $flags -ne 2 -or $owner -ne 0) { throw 'Incorrect typed input' }
         $input =${input.replaceAll('\\$', '$')}
-        if ($input.type -ne 1 -or $input.keyboard.vk -ne 65 -or $input.keyboard.flags -ne 2) {
+        if ($input.type -ne 1 -or $input.keyboard.vk -ne 65 -or $input.keyboard.flags -ne 2 -or $input.keyboard.scan -eq 0) {
           throw 'Native INPUT discarded its keyboard fields'
         }
       }; Key 65 2`],

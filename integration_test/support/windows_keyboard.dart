@@ -14,11 +14,11 @@ Future<void> windowsKeys(
     throw ArgumentError.value(keys, 'keys', 'Expected virtual-key codes.');
   }
   final sequence = [
-    if (control) 'Key 17 0',
-    if (shift) 'Key 16 0',
+    if (control) 'Key 162 0',
+    if (shift) 'Key 160 0',
     for (final key in keys) ...['Key $key 0', 'Key $key 2'],
-    if (control) 'Key 17 2',
-    if (shift) 'Key 16 2',
+    if (control) 'Key 162 2',
+    if (shift) 'Key 160 2',
   ].join('\n');
   final script = '''
 \$ErrorActionPreference = 'Stop'
@@ -38,6 +38,7 @@ public static class OwnedInput {
     [FieldOffset(8)] public Keyboard keyboard;
   }
   [DllImport("user32.dll")] public static extern IntPtr GetForegroundWindow();
+  [DllImport("user32.dll")] public static extern uint MapVirtualKey(uint code, uint mapType);
   [DllImport("user32.dll")] public static extern uint GetWindowThreadProcessId(IntPtr h, out uint p);
   [DllImport("user32.dll", SetLastError=true)]
   public static extern uint SendInput(uint n, Input[] input, int size);
@@ -52,6 +53,7 @@ function Key([uint16]\$vk, [uint32]\$flags) {
   \$input.type = 1
   \$keyboard = New-Object OwnedInput+Keyboard
   \$keyboard.vk = \$vk
+  \$keyboard.scan = [uint16][OwnedInput]::MapVirtualKey(\$vk, 0)
   \$keyboard.flags = \$flags
   \$input.keyboard = \$keyboard
   if ([OwnedInput]::SendInput(1, @(\$input), 40) -ne 1) { throw 'Win32 rejected native keyboard input.' }
@@ -61,8 +63,8 @@ try {
 $sequence
 } finally {
   # Release the modifier only while the same owned window still has focus.
-  if (${control ? '\$true' : '\$false'}) { Key 17 2 }
-  if (${shift ? '\$true' : '\$false'}) { Key 16 2 }
+  if (${control ? '\$true' : '\$false'}) { Key 162 2 }
+  if (${shift ? '\$true' : '\$false'}) { Key 160 2 }
 }
 ''';
   final result = await Process.run(

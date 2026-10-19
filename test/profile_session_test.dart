@@ -142,9 +142,16 @@ void main() {
         await tester.pump();
         receipt = await tester.runAsync<MeasurementReceipt?>(() async {
           final file = File(collector.path);
-          return await file.exists()
-              ? MeasurementReceipt.parse(await file.readAsString())
-              : null;
+          if (!await file.exists()) return null;
+          for (var attempt = 0; ; attempt++) {
+            try {
+              return MeasurementReceipt.parse(await file.readAsString());
+            } on FileSystemException catch (error) {
+              if (error.osError?.errorCode != 32 || attempt >= 4) rethrow;
+              debugPrint('Receipt observation overlapped a write; retrying read.');
+              await Future<void>.delayed(const Duration(milliseconds: 25));
+            }
+          }
         });
         if (scenario == 'consented guest' &&
             receipt?.events.any((event) => event.name == 'signin_view') ==
