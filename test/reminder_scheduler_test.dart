@@ -260,6 +260,7 @@ void main() {
     gateway.failInitialize = true;
     await expectLater(reminders.enable(), throwsStateError);
     expect(reminders.enabled, isFalse);
+    expect(reminders.unavailableReason, 'Synthetic initialization failed');
     expect(await store.setting('reminders'), 'false');
     expect(
       ((await store.export())['events'] as List).where(
@@ -268,6 +269,10 @@ void main() {
       ),
       isEmpty,
     );
+    gateway.failInitialize = false;
+    await reminders.enable();
+    expect(reminders.enabled, isTrue);
+    expect(reminders.unavailableReason, isNull);
   });
 
   test('overlapping enables retain the initiating owner guard after another account initializes', () async {

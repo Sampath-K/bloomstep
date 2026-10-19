@@ -1,6 +1,7 @@
 import 'package:budlark/services/windows_toast_history.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
@@ -45,6 +46,96 @@ void main() {
       WindowsToastHistory.requireEnabled(),
       throwsA(isA<StateError>()),
     );
+  });
+  test('registration uses the native identity-only adapter', () async {
+    await WindowsToastHistory.registerApp();
+    expect(calls.single.method, 'registerApp');
+    expect(calls.single.arguments, isNull);
+  });
+  test('registration errors remain failures rather than a success flag', () {
+    TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+        .setMockMethodCallHandler(channel, (_) async {
+          throw PlatformException(
+            code: 'notification_registration_failed',
+            message: 'Repair or reinstall Budlark, then retry.',
+            details: -2147024891,
+          );
+        });
+    expect(
+      WindowsToastHistory.registerApp(),
+      throwsA(
+        isA<PlatformException>().having(
+          (error) => error.code,
+          'code',
+          'notification_registration_failed',
+        ),
+      ),
+    );
+  });
+  test('invalid native availability is not treated as enabled', () async {
+    TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+        .setMockMethodCallHandler(channel, (_) async => 5);
+    await expectLater(
+      WindowsToastHistory.requireEnabled(),
+      throwsA(isA<FormatException>()),
+    );
+  });
+  for (final entry in {
+    1: 'disabled for Budlark',
+    2: 'disabled for this Windows user',
+    3: 'device policy',
+    4: 'registration',
+  }.entries) {
+    test('Windows setting ${entry.key} has an actionable cause', () async {
+      TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+          .setMockMethodCallHandler(channel, (call) async {
+            calls.add(call);
+            return entry.key;
+          });
+      await expectLater(
+        WindowsToastHistory.requireEnabled(),
+        throwsA(
+          isA<StateError>().having(
+            (error) => error.message,
+            'cause',
+            contains(entry.value),
+          ),
+        ),
+      );
+      await expectLater(
+        WindowsToastHistory.show(
+          id: 123,
+          title: 'Reminder',
+          body: 'A tiny step',
+          payload: '{}',
+          actions: {},
+        ),
+        throwsA(isA<StateError>()),
+      );
+      expect(calls.where((call) => call.method == 'show'), isEmpty);
+    });
+  }
+  test('settings launch failure is surfaced without claiming permission', () async {
+    await expectLater(
+      WindowsToastHistory.openNotificationSettings(
+        launcher: (uri, mode) async {
+          expect(uri.toString(), 'ms-settings:notifications');
+          expect(mode, LaunchMode.externalApplication);
+          return false;
+        },
+      ),
+      throwsA(isA<StateError>()),
+    );
+  });
+  test('opening settings does not claim notifications were enabled', () async {
+    await WindowsToastHistory.openNotificationSettings(
+      launcher: (uri, mode) async {
+        expect(uri.toString(), 'ms-settings:notifications');
+        expect(mode, LaunchMode.externalApplication);
+        return true;
+      },
+    );
+    expect(calls, isEmpty);
   });
   test(
     'native toast preserves escaped text and actual action payloads',

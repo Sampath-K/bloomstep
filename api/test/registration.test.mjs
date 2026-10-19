@@ -24,7 +24,7 @@ test('actual ESM entrypoint registers only host-valid routes and guarded handler
   const results = JSON.parse(execFileSync(process.execPath, ['--input-type=module', '-e', script], {
     cwd: new URL('../', import.meta.url), encoding: 'utf8',
   }));
-  assert.equal(results.length, 23);
+  assert.equal(results.length, 24);
   for (const entry of results) {
     // Mirrors ScriptHost.ValidateHttpFunction: prefix check precedes host api prefix.
     assert.equal(/^(admin|runtime)/i.test(entry.route.replace(/^\/+|\/+$/g, '')), false, entry.route);
@@ -33,7 +33,7 @@ test('actual ESM entrypoint registers only host-valid routes and guarded handler
     assert.equal(entry.authLevel, 'anonymous');
   }
   assert.deepEqual(results.map(entry => entry.route), [
-    'sync', 'account/isolation', 'account', 'team/feedback/{userId?}', 'team/metrics', 'internal/aggregates',
+    'sync', 'feedback/anonymous', 'account/isolation', 'account', 'team/feedback/{userId?}', 'team/metrics', 'internal/aggregates',
     'invitations', 'invitations/redeem', 'invitations/status',
     'internal/operational-pause',
     'team/operational-resume',
@@ -67,8 +67,13 @@ test('configured entrypoint rejects platform-only auth on every served handler b
   const results = JSON.parse(execFileSync(process.execPath, ['--input-type=module', '-e', script], {
     cwd: new URL('../', import.meta.url), encoding: 'utf8', timeout: 30000,
   }));
-  assert.equal(results.length, 46);
+  assert.equal(results.length, 48);
   for (const entry of results) {
+    if (entry.route === 'feedback/anonymous') {
+      assert.equal(entry.status, 503);
+      assert.equal(entry.error, 'Anonymous feedback is not configured.');
+      continue;
+    }
     assert.equal(entry.status, publicStatus[entry.route] ?? 401, entry.route);
     assert.equal(entry.error, entry.route === 'web/experiments' ? undefined : publicStatus[entry.route] ? 'JSON required.' : 'Sign in required.', entry.route);
   }

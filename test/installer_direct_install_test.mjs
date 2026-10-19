@@ -13,7 +13,8 @@ test('one native Ready Install commitment leads to progress and Finish', () => {
   assert.match(setup, /DisableFinishedPage=no/);
   assert.match(setup, /DisableDirPage=yes/);
   assert.match(setup, /DefaultDirName=\{localappdata\}\\Programs\\Budlark/);
-  assert.match(setup, /UsePreviousAppDir=yes/);
+  assert.doesNotMatch(setup, /UsePreviousAppDir=yes/);
+  assert.match(setup, /UsePreviousGroup=no/);
   assert.doesNotMatch(setup, /msgButtonInstall|NextButton\.Caption/);
   assert.match(read('tool/verify_onboarding_wizard.ps1'), /expectedOrder = @\('ready'\)/);
   assert.doesNotMatch(setup, /CreateCustomPage\(|MeasurementCheckBox|MeasurementEvent|WriteMeasurement|SaveStringToFile/);
