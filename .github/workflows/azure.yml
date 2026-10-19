@@ -48,7 +48,7 @@ jobs:
         uses: actions/download-artifact@v4
         with:
           github-token: ${{ github.token }}
-          repository: Sampath-K/bloomstep
+          repository: ${{ github.repository }}
           run-id: 39134443648
           artifact-ids: 12140076664
           merge-multiple: true

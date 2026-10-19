@@ -2,7 +2,7 @@
   "channel": "internal-dogfood",
   "acceptance": "manual-FAIL-not-an-accepted-release",
   "source": {
-    "repository": "Sampath-K/bloomstep",
+    "repositoryId": 1404357574,
     "runId": 39134443648,
     "artifactId": 12140076664,
     "artifactName": "budlark-universal-installer",

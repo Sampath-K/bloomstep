@@ -14,7 +14,7 @@ const copy = () => structuredClone(manifest);
 test('dogfood manifest pins the authorized source and exact installer', () => {
   validateManifest(manifest);
   assert.deepEqual(manifest.source, {
-    repository: 'Sampath-K/bloomstep', runId: 39134443648, artifactId: 12140076664,
+    repositoryId: 1404357574, runId: 39134443648, artifactId: 12140076664,
     artifactName: 'budlark-universal-installer',
     headSha: '2d762c487e496ca2d856e8b160390fe3e9a7b2b7',
   });
@@ -23,6 +23,7 @@ test('dogfood manifest pins the authorized source and exact installer', () => {
   assert.equal(manifest.files[0].publicName, 'Budlark-0.1.0-windows-universal-setup.exe');
   assert.match(workflow, new RegExp(`run-id: ${manifest.source.runId}`));
   assert.match(workflow, new RegExp(`artifact-ids: ${manifest.source.artifactId}`));
+  assert.match(workflow, /repository: \$\{\{ github\.repository \}\}/);
   assert.ok(workflow.indexOf('--verify-source') < workflow.indexOf('uses: actions/download-artifact'));
   assert.ok(workflow.indexOf('deploy-site/downloads') < workflow.indexOf('uses: Azure/static-web-apps-deploy'));
 });
@@ -31,7 +32,8 @@ test('manifest rejects release promotion, traversal, duplicates, invalid hashes 
   for (const mutate of [
     m => { m.channel = 'stable'; },
     m => { m.acceptance = 'PASS'; },
-    m => { m.source.repository = 'other/repository'; },
+    m => { m.source.repositoryId = '1404357574'; },
+    m => { m.source.repositoryId = 1; },
     m => { m.source.runId = 'latest'; },
     m => { m.source.artifactId = 0; },
     m => { m.source.headSha = 'main'; },
@@ -55,12 +57,13 @@ function metadata() {
       workflow_run: { id: source.runId, head_sha: source.headSha,
         repository_id: 1404357574, head_repository_id: 1404357574 } },
     run: { id: source.runId, head_sha: source.headSha, status: 'completed', conclusion: 'success',
-      path: '.github/workflows/ci.yml', repository: { id: 1404357574, full_name: source.repository } },
+      path: '.github/workflows/ci.yml', repository: { id: 1404357574 } },
   };
 }
 
 test('source verification binds artifact ID, run, repository, commit and successful CI', async () => {
   const fetchMetadata = data => async (url, options) => {
+    assert.ok(url.startsWith('https://api.github.com/repositories/1404357574/actions/'));
     assert.equal(options.redirect, 'error');
     assert.equal(options.headers.Authorization, 'Bearer test-token');
     return Response.json(url.includes('/artifacts/') ? data.artifact : data.run);
@@ -75,7 +78,7 @@ test('source verification binds artifact ID, run, repository, commit and success
     d => { d.artifact.workflow_run.head_repository_id++; },
     d => { d.run.id++; },
     d => { d.run.head_sha = '0'.repeat(40); },
-    d => { d.run.repository.full_name = 'other/repository'; },
+    d => { d.run.repository.id++; },
     d => { d.run.path = '.github/workflows/other.yml'; },
     d => { d.run.status = 'in_progress'; },
     d => { d.run.conclusion = 'failure'; },

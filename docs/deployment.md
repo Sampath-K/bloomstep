@@ -561,7 +561,8 @@ release acceptance: manual acceptance remains **FAIL**, and no owner PASS,
 release gate override, new tag, or new workflow dispatch is implied. Public
 release pointers and download-page acceptance labels are not changed.
 
-The source is Actions run `39134443648`, artifact `12140076664`
+The source is immutable GitHub repository ID `1404357574`,
+Actions run `39134443648`, artifact `12140076664`
 (`budlark-universal-installer`), commit
 `2d762c487e496ca2d856e8b160390fe3e9a7b2b7`. Before download, the deployment
 checks GitHub metadata for the exact artifact, run, repository, commit,
@@ -592,7 +593,7 @@ Local staging verification (run from the repository root):
 ```sh
 node --test site/test/hosted-downloads.test.mjs
 GH_TOKEN="$(gh auth token)" node site/stage-downloads.mjs --verify-source
-gh run download 39134443648 --repo Sampath-K/bloomstep \
+gh run download 39134443648 \
   --name budlark-universal-installer --dir release-output/dogfood-source
 node site/stage-downloads.mjs release-output/dogfood-source release-output/dogfood-staged
 ```

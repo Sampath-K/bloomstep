@@ -9,7 +9,7 @@ export function validateManifest(manifest) {
     throw Error('Only explicitly unaccepted internal dogfood downloads may be staged.');
   }
   const source = manifest.source;
-  if (source?.repository !== 'Sampath-K/bloomstep' ||
+  if (source?.repositoryId !== 1404357574 ||
       !Number.isSafeInteger(source.runId) || source.runId <= 0 ||
       !Number.isSafeInteger(source.artifactId) || source.artifactId <= 0 ||
       source.artifactName !== 'budlark-universal-installer' ||
@@ -39,7 +39,7 @@ export async function verifySource(manifest, token, fetchImpl = fetch) {
   const { source } = validateManifest(manifest);
   if (!token) throw Error('Actions read token required.');
   const get = async path => {
-    const response = await fetchImpl(`https://api.github.com/repos/${source.repository}/${path}`, {
+    const response = await fetchImpl(`https://api.github.com/repositories/${source.repositoryId}/${path}`, {
       headers: { Authorization: `Bearer ${token}`, Accept: 'application/vnd.github+json',
         'X-GitHub-Api-Version': '2022-11-28' },
       redirect: 'error',
@@ -56,7 +56,7 @@ export async function verifySource(manifest, token, fetchImpl = fetch) {
       artifact.workflow_run?.head_sha !== source.headSha ||
       artifact.workflow_run?.repository_id !== run.repository?.id ||
       artifact.workflow_run?.head_repository_id !== run.repository?.id ||
-      run.repository?.full_name !== source.repository ||
+      run.repository?.id !== source.repositoryId ||
       run.id !== source.runId || run.head_sha !== source.headSha ||
       run.path !== '.github/workflows/ci.yml' ||
       run.status !== 'completed' || run.conclusion !== 'success') {
