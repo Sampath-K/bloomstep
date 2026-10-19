@@ -53,8 +53,13 @@ function Key([uint16]\$vk, [uint32]\$flags) {
   \$input.type = 1
   \$keyboard = New-Object OwnedInput+Keyboard
   \$keyboard.vk = \$vk
-  \$keyboard.scan = [uint16][OwnedInput]::MapVirtualKey(\$vk, 0)
+  \$scan = [OwnedInput]::MapVirtualKey(\$vk, 4)
+  \$keyboard.scan = [uint16](\$scan -band 255)
   \$keyboard.flags = \$flags
+  # Navigation keys share keypad scan codes; preserve their extended-key identity.
+  if ((\$scan -band 65280) -eq 57344 -or \$vk -in @(33, 34, 35, 36, 37, 38, 39, 40, 45, 46)) {
+    \$keyboard.flags = \$keyboard.flags -bor 1
+  }
   \$input.keyboard = \$keyboard
   if ([OwnedInput]::SendInput(1, @(\$input), 40) -ne 1) { throw 'Win32 rejected native keyboard input.' }
   Start-Sleep -Milliseconds 60

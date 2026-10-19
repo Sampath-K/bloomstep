@@ -22,12 +22,13 @@ ${nativeTypes}
 '@
       function Key(${parameters}) {
         ${owner}$owner = 0
-        if ($vk -ne 65 -or $flags -ne 2 -or $owner -ne 0) { throw 'Incorrect typed input' }
+        if ($vk -lt 1 -or $flags -ne 2 -or $owner -ne 0) { throw 'Incorrect typed input' }
         $input =${input.replaceAll('\\$', '$')}
-        if ($input.type -ne 1 -or $input.keyboard.vk -ne 65 -or $input.keyboard.flags -ne 2 -or $input.keyboard.scan -eq 0) {
-          throw 'Native INPUT discarded its keyboard fields'
+        $expectedFlags = if ($vk -in @(36, 46, 35, 37, 39)) { 3 } else { 2 }
+        if ($input.type -ne 1 -or $input.keyboard.vk -ne $vk -or $input.keyboard.flags -ne $expectedFlags -or $input.keyboard.scan -eq 0) {
+          throw "Native INPUT mismatch: vk=$vk scan=$scan flags=$($input.keyboard.flags) expected=$expectedFlags"
         }
-      }; Key 65 2`],
+      }; foreach ($vk in @(65, 36, 46, 35, 37, 39, 162, 160)) { Key $vk 2 }`],
     { stdio: 'pipe', timeout: 20000 });
   }
 });
