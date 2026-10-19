@@ -160,7 +160,7 @@ void main() {
     });
   }
 
-  testWidgets('device feedback clearly cannot send', (tester) async {
+  testWidgets('device feedback accepts text without sign-in', (tester) async {
     final (store, _) = await fixture(tester);
     await tester.pumpWidget(
       MaterialApp(
@@ -174,17 +174,15 @@ void main() {
     await settleDatabase(tester);
     await tester.tap(find.byTooltip('Help us grow'));
     await tester.pumpAndSettle();
-    expect(
-      find.textContaining('This device garden cannot send feedback.'),
-      findsOneWidget,
-    );
+    await tester.enterText(find.byType(TextField), 'Signed-out feedback');
+    await tester.pump();
     expect(
       tester
           .widget<FilledButton>(
             find.widgetWithText(FilledButton, 'Send feedback'),
           )
           .onPressed,
-      isNull,
+      isNotNull,
     );
   });
 
