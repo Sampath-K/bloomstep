@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 
@@ -14,9 +15,10 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:sqflite_common_ffi/sqflite_ffi.dart';
 
 class FakeUpdates extends UpdateService {
-  FakeUpdates(this.result, {this.failure});
+  FakeUpdates(this.result, {this.failure, this.pending});
   final UpdateInfo? result;
   final Object? failure;
+  final Future<void>? pending;
   int checks = 0;
 
   @override
@@ -24,6 +26,7 @@ class FakeUpdates extends UpdateService {
     String currentVersion = UpdateService.bundledVersion,
   }) async {
     checks++;
+    await pending;
     if (failure != null) throw failure!;
     return result;
   }
@@ -567,11 +570,12 @@ void main() {
     },
   );
 
-  for (final scenario in ['none', 'preview', 'error']) {
+  for (final scenario in ['none', 'preview', 'error', 'checking']) {
     testWidgets(
       'manual update check shows $scenario without launching installers',
       (tester) async {
         final (store, _) = await fixture(tester);
+        final pending = Completer<void>();
         final updates = FakeUpdates(
           scenario == 'preview'
               ? UpdateInfo(
@@ -585,6 +589,7 @@ void main() {
           failure: scenario == 'error'
               ? StateError('Release service unavailable')
               : null,
+          pending: scenario == 'checking' ? pending.future : null,
         );
         await tester.pumpWidget(
           MaterialApp(
@@ -599,13 +604,18 @@ void main() {
         await tester.pumpAndSettle();
         await tester.ensureVisible(find.text('Check for updates'));
         await tester.tap(find.text('Check for updates'));
+        if (scenario == 'checking') {
+          await tester.pump();
+          expect(find.text('Checking GitHub Releases…'), findsOneWidget);
+          pending.complete();
+        }
         await tester.pumpAndSettle();
         expect(updates.checks, 1);
         expect(
           find.textContaining(UpdateService.bundledVersion),
           findsOneWidget,
         );
-        if (scenario == 'none') {
+        if (scenario == 'none' || scenario == 'checking') {
           expect(find.text('No newer published release found'), findsOneWidget);
           expect(find.text('Open release page'), findsNothing);
         } else if (scenario == 'error') {
@@ -615,7 +625,7 @@ void main() {
           );
           expect(
             find.textContaining('Release service unavailable'),
-            findsNothing,
+            findsOneWidget,
           );
           expect(find.text('Open release page'), findsNothing);
         } else {

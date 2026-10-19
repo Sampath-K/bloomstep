@@ -13,6 +13,7 @@ import 'package:budlark/core/garden_store.dart';
 import 'package:budlark/core/models.dart';
 import 'package:budlark/features/garden/garden_screen.dart';
 import 'package:budlark/services/sync_service.dart';
+import 'package:budlark/services/remote_config.dart';
 
 import 'support/local_test_api.dart';
 import 'support/test_only_app.dart';
@@ -29,6 +30,36 @@ DateTime syntheticJourneyStart(DateTime runStartedAt) {
 
 void main() {
   IntegrationTestWidgetsFlutterBinding.ensureInitialized();
+
+  testWidgets('signed-out Windows garden offers reminder setup', (tester) async {
+    final store = await GardenStore.open(':memory:', 'signed-out-reminders');
+    addTearDown(store.close);
+    await tester.pumpWidget(MaterialApp(
+      home: GardenScreen(
+        store: store,
+        deviceGuest: true,
+        configLoader: (_) async => const RemoteConfigResult(RemoteConfig.defaults),
+      ),
+    ));
+    for (var i = 0; i < 3; i++) {
+      await tester.runAsync(
+        () => Future<void>.delayed(const Duration(milliseconds: 150)),
+      );
+      await tester.pump();
+    }
+    await tester.tap(find.byTooltip('Settings and privacy'));
+    for (var i = 0; i < 3; i++) {
+      await tester.runAsync(
+        () => Future<void>.delayed(const Duration(milliseconds: 150)),
+      );
+      await tester.pump();
+    }
+    await tester.tap(find.text('Reminders'));
+    await tester.pumpAndSettle();
+    expect(find.text('Gentle Windows reminders'), findsOneWidget);
+    expect(find.text('Windows reminders are unavailable here.'), findsNothing);
+    await tester.pumpWidget(const SizedBox.shrink());
+  });
 
   for (final deviceGuest in [false, true]) {
   testWidgets('Win32 feedback editing works ${deviceGuest ? "signed out" : "in an account garden"}', (tester) async {
