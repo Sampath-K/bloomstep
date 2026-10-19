@@ -1,0 +1,128 @@
+{
+  "schema": "budlark.motion-spec.v1",
+  "playableLottie": false,
+  "description": "Rive-style layer/state timeline specification; not a runtime animation file.",
+  "trigger": "durable-unique-completion",
+  "replayOnBuildOrSync": false,
+  "inputBlocking": false,
+  "soundDefault": false,
+  "units": "logical pixels; normalized opacity and scale; rotation in degrees",
+  "easing": {
+    "landing": [
+      0.22,
+      1,
+      0.36,
+      1
+    ],
+    "growth": [
+      0.2,
+      0,
+      0,
+      1
+    ]
+  },
+  "budGrowth": {
+    "durationMs": 300,
+    "loop": false,
+    "stageOrder": [
+      "seed",
+      "sprout",
+      "bud",
+      "bloom"
+    ],
+    "stageSource": "persisted-before-and-after-stage; never manufacture progress",
+    "saturateAtFinalStage": true,
+    "layers": {
+      "before": "persisted before-stage raster",
+      "after": "persisted after-stage raster"
+    },
+    "frames": [
+      {
+        "timeMs": 0,
+        "beforeOpacity": 1,
+        "afterOpacity": 0,
+        "afterScale": 0.96
+      },
+      {
+        "timeMs": 150,
+        "beforeOpacity": 0.4,
+        "afterOpacity": 0.6,
+        "afterScale": 0.99
+      },
+      {
+        "timeMs": 300,
+        "beforeOpacity": 0,
+        "afterOpacity": 1,
+        "afterScale": 1
+      }
+    ],
+    "reducedMotion": {
+      "condition": "appReducedMotion || osReducedMotion",
+      "durationMs": 0,
+      "skipAllTweens": true,
+      "still": "assets/garden_themes/rain-forest/bud-growth-still.svg",
+      "rasterStill": "assets/garden_themes/rain-forest/bud-growth-still.png",
+      "onPreferenceChange": "cancel-in-flight-and-show-final-state",
+      "stageOverride": "use persisted after-stage raster, not bloom still when after-stage differs"
+    }
+  },
+  "larkCelebration": {
+    "durationMs": 1000,
+    "loop": false,
+    "layerAsset": "assets/garden_themes/rain-forest/bird.png",
+    "pivot": [
+      80,
+      140
+    ],
+    "songLayer": "assets/garden_themes/rain-forest/song.png",
+    "songOriginRelativeToBird": [
+      128,
+      -24
+    ],
+    "frames": [
+      {
+        "timeMs": 0,
+        "translateX": 20,
+        "translateY": -28,
+        "rotation": -8,
+        "songVisible": false
+      },
+      {
+        "timeMs": 300,
+        "translateX": 0,
+        "translateY": 0,
+        "rotation": 0,
+        "songVisible": true
+      },
+      {
+        "timeMs": 550,
+        "translateX": 0,
+        "translateY": 0,
+        "rotation": -2,
+        "songVisible": true
+      },
+      {
+        "timeMs": 800,
+        "translateX": 0,
+        "translateY": 0,
+        "rotation": 0,
+        "songVisible": false
+      },
+      {
+        "timeMs": 1000,
+        "translateX": 0,
+        "translateY": 0,
+        "rotation": 0,
+        "songVisible": false
+      }
+    ],
+    "reducedMotion": {
+      "condition": "appReducedMotion || osReducedMotion",
+      "durationMs": 0,
+      "skipAllTweens": true,
+      "still": "assets/garden_themes/rain-forest/lark-celebration-still.svg",
+      "rasterStill": "assets/garden_themes/rain-forest/lark-celebration-still.png",
+      "onPreferenceChange": "cancel-in-flight-and-show-final-state"
+    }
+  }
+}

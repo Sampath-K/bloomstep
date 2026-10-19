@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 64 64" role="img" aria-labelledby="title description">
+<title id="title">Budlark Desert Bloom: song</title>
+<desc id="description">Original vector artwork. Finch companion. Decorative layer; exclude from app semantics.</desc>
+<defs>
+<linearGradient id="sky" x2="0" y2="1"><stop stop-color="#F1DFC4"/><stop offset="1" stop-color="#FBF1E4"/></linearGradient>
+<linearGradient id="petal" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#AB3F55"/><stop offset="1" stop-color="#A14F34"/></linearGradient>
+<linearGradient id="feather" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#EDC181"/><stop offset="1" stop-color="#A14F34"/></linearGradient>
+</defs>
+<g id="artwork"><g id="song-notes"><path d="M20 42V15L46 9V36H41V16L25 20V42Z" fill="#A14F34"/><path d="M9 44C9 37 25 34 25 40C26 48 10 52 9 44ZM30 38C30 31 46 28 46 34C47 42 31 46 30 38Z" fill="#A14F34"/></g></g>
+</svg>

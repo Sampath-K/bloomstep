@@ -1,0 +1,1663 @@
+{
+  "schema": "budlark.theme-assets.v1",
+  "defaultThemeId": "meadow-dawn",
+  "runtimeRenderer": "Flutter Image.asset; SVG is canonical source",
+  "decorativeSemantics": "exclude; announce check-in success separately",
+  "picker": {
+    "allImmediatelySelectable": true,
+    "maxTapsFromProfileOrSettings": 2,
+    "persistenceOwner": "release session; selected theme id in existing garden settings/sync"
+  },
+  "layout": {
+    "garden": [
+      640,
+      320
+    ],
+    "plantOrigin": [
+      240,
+      142
+    ],
+    "birdOrigin": [
+      366,
+      104
+    ]
+  },
+  "seasonal": {
+    "renderedSeason": "autumn",
+    "otherSeasons": "same permanent selectable theme; additional seasonal variants not exported in this pack"
+  },
+  "themes": [
+    {
+      "id": "meadow-dawn",
+      "name": "Meadow Dawn",
+      "bird": "Skylark",
+      "available": true,
+      "price": 0,
+      "unlockDays": 0,
+      "defaultBrightness": "light",
+      "palettes": {
+        "light": {
+          "canvas": "#F7F4EF",
+          "surface": "#FFFFFF",
+          "text": "#242424",
+          "muted": "#5C5C5C",
+          "accent": "#2F6F4E",
+          "onAccent": "#FFFFFF"
+        },
+        "dark": {
+          "canvas": "#17232D",
+          "surface": "#22313C",
+          "text": "#F2F4F0",
+          "muted": "#C0CBCD",
+          "accent": "#B5D9B2",
+          "onAccent": "#17232D"
+        }
+      },
+      "art": {
+        "canvas": "#F7F4EF",
+        "surface": "#FFFFFF",
+        "text": "#242424",
+        "muted": "#5C5C5C",
+        "accent": "#2F6F4E",
+        "onAccent": "#FFFFFF",
+        "sky": "#E8EEE0",
+        "ground": "#D3DFC3",
+        "plant": "#2F6F4E",
+        "bloom": "#A04758",
+        "bird": "#775334",
+        "wing": "#EDC995",
+        "detail": "#242424"
+      },
+      "motion": "assets/garden_themes/meadow-dawn/motion.json",
+      "contrastProof": {
+        "light": {
+          "text/canvas": 14.1491,
+          "text/surface": 15.5229,
+          "muted/canvas": 6.0951,
+          "muted/surface": 6.6869,
+          "onAccent/accent": 5.992,
+          "accent/canvas": 5.4617,
+          "accent/surface": 5.992
+        },
+        "dark": {
+          "text/canvas": 14.4318,
+          "text/surface": 12.0654,
+          "muted/canvas": 9.6333,
+          "muted/surface": 8.0537,
+          "onAccent/accent": 10.2931,
+          "accent/canvas": 10.2931,
+          "accent/surface": 8.6054
+        }
+      },
+      "assets": {
+        "garden": {
+          "svg": "assets/garden_themes/meadow-dawn/garden.svg",
+          "svgSha256": "7d2b7c5bd7efd979482ffdef57c56fe0f22c6544020dd1f28cc2745ee95ff270",
+          "width": 640,
+          "height": 320,
+          "rasters": [
+            {
+              "scale": 1,
+              "path": "assets/garden_themes/meadow-dawn/garden.png",
+              "sha256": "1aaba17d4cffe43215585d06c5c5bf0ac352e735db0019fe6fba0220c452f939"
+            },
+            {
+              "scale": 2,
+              "path": "assets/garden_themes/meadow-dawn/2.0x/garden.png",
+              "sha256": "08e0c57051e7e7b72623aac957ce79d3b7f9561d63921ca6f131141ffbca57ea"
+            },
+            {
+              "scale": 3,
+              "path": "assets/garden_themes/meadow-dawn/3.0x/garden.png",
+              "sha256": "46d9e9a3ec1938c358d0896efbd37679e64daf1922b8cafacab5d55479a68d67"
+            }
+          ]
+        },
+        "bird": {
+          "svg": "assets/garden_themes/meadow-dawn/bird.svg",
+          "svgSha256": "520303df402436b4be951e78199f1f1b1d5af6919bd3589ef034e6bc69f14fde",
+          "width": 160,
+          "height": 160,
+          "rasters": [
+            {
+              "scale": 1,
+              "path": "assets/garden_themes/meadow-dawn/bird.png",
+              "sha256": "11db401687c33c50692ed83f82b21612191f5796788b3385661089365bae233d"
+            },
+            {
+              "scale": 2,
+              "path": "assets/garden_themes/meadow-dawn/2.0x/bird.png",
+              "sha256": "3e4013a7e34679acb95d06733d2c9d33c1d37410ea7affed4ec8680694261e99"
+            },
+            {
+              "scale": 3,
+              "path": "assets/garden_themes/meadow-dawn/3.0x/bird.png",
+              "sha256": "085d4338f9b59239b47c09bc04b5973e3d636184fe37d976a695e8c4fb3aab9b"
+            }
+          ]
+        },
+        "song": {
+          "svg": "assets/garden_themes/meadow-dawn/song.svg",
+          "svgSha256": "bb383e58c3a263455e355ec4c00d849a67104d888036506654f488b6dc65e6bf",
+          "width": 64,
+          "height": 64,
+          "rasters": [
+            {
+              "scale": 1,
+              "path": "assets/garden_themes/meadow-dawn/song.png",
+              "sha256": "6ab1b04a93270eb3be19cd67ab67292a6eb1d15d55ee818c8eb3b4cf5235a0db"
+            },
+            {
+              "scale": 2,
+              "path": "assets/garden_themes/meadow-dawn/2.0x/song.png",
+              "sha256": "5ec136527df7f3b0023dfde7c14e21e117151b39f6c06d3a7fa675ff7d7d8f43"
+            },
+            {
+              "scale": 3,
+              "path": "assets/garden_themes/meadow-dawn/3.0x/song.png",
+              "sha256": "e767117e225fb340fe5411fdd0588088bf869b203e6ce1e557b83087c7dafb6f"
+            }
+          ]
+        },
+        "seed": {
+          "svg": "assets/garden_themes/meadow-dawn/seed.svg",
+          "svgSha256": "84faf5946e37aac810df4ed17e42ad7124012bf7119d2cb93ab9c238ab41d207",
+          "width": 160,
+          "height": 160,
+          "rasters": [
+            {
+              "scale": 1,
+              "path": "assets/garden_themes/meadow-dawn/seed.png",
+              "sha256": "b79fc454793283511e99aed831495fdf11147dde8e3b6bcef6738878c87bc616"
+            },
+            {
+              "scale": 2,
+              "path": "assets/garden_themes/meadow-dawn/2.0x/seed.png",
+              "sha256": "7d3cb4d39123202d8009e6365002d958c494e2317b1c4a7c782c7603cf2cf038"
+            },
+            {
+              "scale": 3,
+              "path": "assets/garden_themes/meadow-dawn/3.0x/seed.png",
+              "sha256": "c58c8438ced1c16f8ae3d9cd4a0c46fc06b848ec4581388d305630f62fca903d"
+            }
+          ]
+        },
+        "sprout": {
+          "svg": "assets/garden_themes/meadow-dawn/sprout.svg",
+          "svgSha256": "f766b0120e1d58dd81c19f30a35d44b2df8530d0f8a360b1a3255acc07f21b1e",
+          "width": 160,
+          "height": 160,
+          "rasters": [
+            {
+              "scale": 1,
+              "path": "assets/garden_themes/meadow-dawn/sprout.png",
+              "sha256": "d85904eb2240373f398eab5fe034a94b143eb4a0f06af16a525fd86168d3a914"
+            },
+            {
+              "scale": 2,
+              "path": "assets/garden_themes/meadow-dawn/2.0x/sprout.png",
+              "sha256": "4e83aeb62bba0192ac21bdd398ee2794203b95b6d2e564047c88f53c9d00b715"
+            },
+            {
+              "scale": 3,
+              "path": "assets/garden_themes/meadow-dawn/3.0x/sprout.png",
+              "sha256": "e88a195fb637ec18de9b82dce55143d2de7d5eb70cc817af0a8a767a54a4db93"
+            }
+          ]
+        },
+        "bud": {
+          "svg": "assets/garden_themes/meadow-dawn/bud.svg",
+          "svgSha256": "17a88cf1bc52cc1573178c19611dc40038e9ccdb763e2b4caa584978e3914d5e",
+          "width": 160,
+          "height": 160,
+          "rasters": [
+            {
+              "scale": 1,
+              "path": "assets/garden_themes/meadow-dawn/bud.png",
+              "sha256": "d6f9b8f24ae860a1018fd80b3dfa5f8794c163de1097125f96bd746b957d6ac5"
+            },
+            {
+              "scale": 2,
+              "path": "assets/garden_themes/meadow-dawn/2.0x/bud.png",
+              "sha256": "8653b6b835870da9c9a8b3cd13f6de7d5f3e78338217ada595c01313066b1bd6"
+            },
+            {
+              "scale": 3,
+              "path": "assets/garden_themes/meadow-dawn/3.0x/bud.png",
+              "sha256": "11fed6c8d6bf9482f107b8627ba62e1b79f0e2c5c893d5e03a7494b6fb5d8f21"
+            }
+          ]
+        },
+        "bloom": {
+          "svg": "assets/garden_themes/meadow-dawn/bloom.svg",
+          "svgSha256": "b9a32fab396149a6cc4a4b17ca11d89df888ef1936d96a841e48f69ef55d2b10",
+          "width": 160,
+          "height": 160,
+          "rasters": [
+            {
+              "scale": 1,
+              "path": "assets/garden_themes/meadow-dawn/bloom.png",
+              "sha256": "bb9dbf82a31944e0a89cb607318b6d419febdb896f556b78a46793c0e29a17ed"
+            },
+            {
+              "scale": 2,
+              "path": "assets/garden_themes/meadow-dawn/2.0x/bloom.png",
+              "sha256": "47c563914f7a6a988b7ceaf4556d8182871986cec8dbb63ef3e4dbacfb2f12d6"
+            },
+            {
+              "scale": 3,
+              "path": "assets/garden_themes/meadow-dawn/3.0x/bloom.png",
+              "sha256": "6abee1b61b8778f5a12a8bcfbb78b46532f5f6f387c23546e43f8d2db0bd18a9"
+            }
+          ]
+        },
+        "bud-growth-still": {
+          "svg": "assets/garden_themes/meadow-dawn/bud-growth-still.svg",
+          "svgSha256": "ce1fd7ed8bab9b7aef557ecdc1347e5d5a93bbb38cd45dc8358c4078cac4d01e",
+          "width": 160,
+          "height": 160,
+          "rasters": [
+            {
+              "scale": 1,
+              "path": "assets/garden_themes/meadow-dawn/bud-growth-still.png",
+              "sha256": "bb9dbf82a31944e0a89cb607318b6d419febdb896f556b78a46793c0e29a17ed"
+            },
+            {
+              "scale": 2,
+              "path": "assets/garden_themes/meadow-dawn/2.0x/bud-growth-still.png",
+              "sha256": "47c563914f7a6a988b7ceaf4556d8182871986cec8dbb63ef3e4dbacfb2f12d6"
+            },
+            {
+              "scale": 3,
+              "path": "assets/garden_themes/meadow-dawn/3.0x/bud-growth-still.png",
+              "sha256": "6abee1b61b8778f5a12a8bcfbb78b46532f5f6f387c23546e43f8d2db0bd18a9"
+            }
+          ]
+        },
+        "lark-celebration-still": {
+          "svg": "assets/garden_themes/meadow-dawn/lark-celebration-still.svg",
+          "svgSha256": "b9bc11d29f69b9c950cd38a54f375a4c1b127c25cde232bf1542ce542226854b",
+          "width": 320,
+          "height": 240,
+          "rasters": [
+            {
+              "scale": 1,
+              "path": "assets/garden_themes/meadow-dawn/lark-celebration-still.png",
+              "sha256": "e346d3aeae5607508bb8a223759edf3bcacf2abdac609199d4323a4b3d12fb7c"
+            },
+            {
+              "scale": 2,
+              "path": "assets/garden_themes/meadow-dawn/2.0x/lark-celebration-still.png",
+              "sha256": "9ff53e953d9a13568c79ef42f6a28a74f445d02d8005b19b3cefbc6e7ed61ea8"
+            },
+            {
+              "scale": 3,
+              "path": "assets/garden_themes/meadow-dawn/3.0x/lark-celebration-still.png",
+              "sha256": "63f6ae6391097eb8b2f815c489edf3b14eab2991962eb78640f03f97e7e018f8"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "zen-garden",
+      "name": "Zen Garden",
+      "bird": "Wren",
+      "available": true,
+      "price": 0,
+      "unlockDays": 0,
+      "defaultBrightness": "light",
+      "palettes": {
+        "light": {
+          "canvas": "#F2F0E8",
+          "surface": "#FFFFFF",
+          "text": "#292D29",
+          "muted": "#535B52",
+          "accent": "#4C6043",
+          "onAccent": "#FFFFFF"
+        },
+        "dark": {
+          "canvas": "#17232D",
+          "surface": "#22313C",
+          "text": "#F2F4F0",
+          "muted": "#C0CBCD",
+          "accent": "#B5D9B2",
+          "onAccent": "#17232D"
+        }
+      },
+      "art": {
+        "canvas": "#F2F0E8",
+        "surface": "#FFFFFF",
+        "text": "#292D29",
+        "muted": "#535B52",
+        "accent": "#4C6043",
+        "onAccent": "#FFFFFF",
+        "sky": "#E4E8DE",
+        "ground": "#DDD5C0",
+        "plant": "#4C6043",
+        "bloom": "#AA573C",
+        "bird": "#73513E",
+        "wing": "#D8AD83",
+        "detail": "#292D29"
+      },
+      "motion": "assets/garden_themes/zen-garden/motion.json",
+      "contrastProof": {
+        "light": {
+          "text/canvas": 12.2563,
+          "text/surface": 13.9846,
+          "muted/canvas": 6.1635,
+          "muted/surface": 7.0326,
+          "onAccent/accent": 6.8594,
+          "accent/canvas": 6.0117,
+          "accent/surface": 6.8594
+        },
+        "dark": {
+          "text/canvas": 14.4318,
+          "text/surface": 12.0654,
+          "muted/canvas": 9.6333,
+          "muted/surface": 8.0537,
+          "onAccent/accent": 10.2931,
+          "accent/canvas": 10.2931,
+          "accent/surface": 8.6054
+        }
+      },
+      "assets": {
+        "garden": {
+          "svg": "assets/garden_themes/zen-garden/garden.svg",
+          "svgSha256": "3c86ae19f222d38f78ec67046d14a764d91ac42e863e0d14683324be7ca87575",
+          "width": 640,
+          "height": 320,
+          "rasters": [
+            {
+              "scale": 1,
+              "path": "assets/garden_themes/zen-garden/garden.png",
+              "sha256": "90505dc3b7bf84cf7eea0a18d432fc871c0d650283e33f5ee2fba856f0727862"
+            },
+            {
+              "scale": 2,
+              "path": "assets/garden_themes/zen-garden/2.0x/garden.png",
+              "sha256": "5a85ce9c63d5315280c188335d239ffe9ecff642f79dff489049d027d1936c69"
+            },
+            {
+              "scale": 3,
+              "path": "assets/garden_themes/zen-garden/3.0x/garden.png",
+              "sha256": "b9c27b49daa9df10714c6e29ec842e67b14647794947317bf5a57378ed5ac84f"
+            }
+          ]
+        },
+        "bird": {
+          "svg": "assets/garden_themes/zen-garden/bird.svg",
+          "svgSha256": "8181ac78683001a31c2ac1b1ba10209dfed737f9a49ad66100bb4aa5402dc09f",
+          "width": 160,
+          "height": 160,
+          "rasters": [
+            {
+              "scale": 1,
+              "path": "assets/garden_themes/zen-garden/bird.png",
+              "sha256": "1ce42c987bc77a0818710b75b05b83a136544b27a0a7066f07f851a85e1aa1f2"
+            },
+            {
+              "scale": 2,
+              "path": "assets/garden_themes/zen-garden/2.0x/bird.png",
+              "sha256": "39bc1d9ee2347fddd212478045584cbcffca5044c4366884c01c836dbb64d23d"
+            },
+            {
+              "scale": 3,
+              "path": "assets/garden_themes/zen-garden/3.0x/bird.png",
+              "sha256": "487a06d6ddd70424fc18ce576ffa4c756378ea67d6ffc91a66deb51d192a6777"
+            }
+          ]
+        },
+        "song": {
+          "svg": "assets/garden_themes/zen-garden/song.svg",
+          "svgSha256": "353d125318b24a198757d514027379670a1748ec1c14ffb80a7eb1477591c46f",
+          "width": 64,
+          "height": 64,
+          "rasters": [
+            {
+              "scale": 1,
+              "path": "assets/garden_themes/zen-garden/song.png",
+              "sha256": "af941985fe3145e2f887ced3693c5b039e99dc0a43ef0cf86dd0a445e487bdc0"
+            },
+            {
+              "scale": 2,
+              "path": "assets/garden_themes/zen-garden/2.0x/song.png",
+              "sha256": "8ee1e4e8cd5dde523874072a0fc178f436643483220d528a2c027df993590ee2"
+            },
+            {
+              "scale": 3,
+              "path": "assets/garden_themes/zen-garden/3.0x/song.png",
+              "sha256": "c2b604952bc08e8d357e9ba4ca021713553e0b0d31b7885a4bc0bea826ca3a97"
+            }
+          ]
+        },
+        "seed": {
+          "svg": "assets/garden_themes/zen-garden/seed.svg",
+          "svgSha256": "205a341a5e081610df402244fbbb1884605bd70fada314b3dd1be4159b7eb10d",
+          "width": 160,
+          "height": 160,
+          "rasters": [
+            {
+              "scale": 1,
+              "path": "assets/garden_themes/zen-garden/seed.png",
+              "sha256": "426138c2b34251055917c7035fa1321a3c0f88481886956d0ede71755a74a0bf"
+            },
+            {
+              "scale": 2,
+              "path": "assets/garden_themes/zen-garden/2.0x/seed.png",
+              "sha256": "e141c3e5eb2439a79b6248055f0901da43f03b80c36ad36ce9d6396a70253098"
+            },
+            {
+              "scale": 3,
+              "path": "assets/garden_themes/zen-garden/3.0x/seed.png",
+              "sha256": "0c3aa06d3cab8ffe1bc5cafcf800fb972ee3c2addb9ba1a50cff8f328e8cec1b"
+            }
+          ]
+        },
+        "sprout": {
+          "svg": "assets/garden_themes/zen-garden/sprout.svg",
+          "svgSha256": "9033efc71cb1015d669c519fdfd9280f0b9133a09bad78143038b1aeed856540",
+          "width": 160,
+          "height": 160,
+          "rasters": [
+            {
+              "scale": 1,
+              "path": "assets/garden_themes/zen-garden/sprout.png",
+              "sha256": "3bb8c0dba96971bfd7bbb92e1f90548ba90b435f7e525792b7aa2e47c3dbcd46"
+            },
+            {
+              "scale": 2,
+              "path": "assets/garden_themes/zen-garden/2.0x/sprout.png",
+              "sha256": "c42c3627bc309ce44523e45b56e18b4db41ab1191fe6607a4b50206b4c2f7a90"
+            },
+            {
+              "scale": 3,
+              "path": "assets/garden_themes/zen-garden/3.0x/sprout.png",
+              "sha256": "56c83b0f29d8615bb3b9032c6cb698bbe4b44e8072e27d5df5b043b28ff2bd4c"
+            }
+          ]
+        },
+        "bud": {
+          "svg": "assets/garden_themes/zen-garden/bud.svg",
+          "svgSha256": "75a0d23f327a81ce4ea2fd5219ce7a2f59bd23e001c7188d568e55c72c99e7ec",
+          "width": 160,
+          "height": 160,
+          "rasters": [
+            {
+              "scale": 1,
+              "path": "assets/garden_themes/zen-garden/bud.png",
+              "sha256": "036ba2ab59fe30a38489409c3f2df774df6703f3d6b171abebf23d93dc65af0a"
+            },
+            {
+              "scale": 2,
+              "path": "assets/garden_themes/zen-garden/2.0x/bud.png",
+              "sha256": "98b89b3746dbe9593ca8dfe379685f77224d44a8c3710e8214e75a62571bd572"
+            },
+            {
+              "scale": 3,
+              "path": "assets/garden_themes/zen-garden/3.0x/bud.png",
+              "sha256": "c875062c2da34361ec678d72edb851ddca6613a3217a3d1f12a6c376a733fd78"
+            }
+          ]
+        },
+        "bloom": {
+          "svg": "assets/garden_themes/zen-garden/bloom.svg",
+          "svgSha256": "a1ebe1302d9703382496d9a82bf57a4b0ffb6b9b806bd0c33840d9d39796e318",
+          "width": 160,
+          "height": 160,
+          "rasters": [
+            {
+              "scale": 1,
+              "path": "assets/garden_themes/zen-garden/bloom.png",
+              "sha256": "79bf56b32db8728c17a2ab34eab6b647324c875eb2afb64a47db59d2debf1ccc"
+            },
+            {
+              "scale": 2,
+              "path": "assets/garden_themes/zen-garden/2.0x/bloom.png",
+              "sha256": "5a784cf9b5e85bef48b3d67f9d252af4ebe3ee09d6a5eb5a8c8cd0a708de66f8"
+            },
+            {
+              "scale": 3,
+              "path": "assets/garden_themes/zen-garden/3.0x/bloom.png",
+              "sha256": "01621003e56e8c106a8d654255c422b4d5c12c78a54aee0f0ebfd767428a0e19"
+            }
+          ]
+        },
+        "bud-growth-still": {
+          "svg": "assets/garden_themes/zen-garden/bud-growth-still.svg",
+          "svgSha256": "441200c2014afb656c8008b67daf54526cc28e6489e3a872f7e049a04525254a",
+          "width": 160,
+          "height": 160,
+          "rasters": [
+            {
+              "scale": 1,
+              "path": "assets/garden_themes/zen-garden/bud-growth-still.png",
+              "sha256": "79bf56b32db8728c17a2ab34eab6b647324c875eb2afb64a47db59d2debf1ccc"
+            },
+            {
+              "scale": 2,
+              "path": "assets/garden_themes/zen-garden/2.0x/bud-growth-still.png",
+              "sha256": "5a784cf9b5e85bef48b3d67f9d252af4ebe3ee09d6a5eb5a8c8cd0a708de66f8"
+            },
+            {
+              "scale": 3,
+              "path": "assets/garden_themes/zen-garden/3.0x/bud-growth-still.png",
+              "sha256": "01621003e56e8c106a8d654255c422b4d5c12c78a54aee0f0ebfd767428a0e19"
+            }
+          ]
+        },
+        "lark-celebration-still": {
+          "svg": "assets/garden_themes/zen-garden/lark-celebration-still.svg",
+          "svgSha256": "153e5d10fed2f442fd8d009ebd460c5c20b6aacb47047f0ef081e34b78a1d18e",
+          "width": 320,
+          "height": 240,
+          "rasters": [
+            {
+              "scale": 1,
+              "path": "assets/garden_themes/zen-garden/lark-celebration-still.png",
+              "sha256": "64946e4a44e5d80441d05344cdfb9dbb3d949ccb33e6257e3ff8547ded9fc6eb"
+            },
+            {
+              "scale": 2,
+              "path": "assets/garden_themes/zen-garden/2.0x/lark-celebration-still.png",
+              "sha256": "e9d21bb34fa9ed42f71ae9c61725d5103fe04407409a26244b54550fb5c693fd"
+            },
+            {
+              "scale": 3,
+              "path": "assets/garden_themes/zen-garden/3.0x/lark-celebration-still.png",
+              "sha256": "65eda3bf723bb663201a7d072fbfc1939f3f517cfa9ee4222457392efb236167"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "night-garden",
+      "name": "Night Garden",
+      "bird": "Nightingale",
+      "available": true,
+      "price": 0,
+      "unlockDays": 0,
+      "defaultBrightness": "dark",
+      "palettes": {
+        "light": {
+          "canvas": "#F7F4EF",
+          "surface": "#FFFFFF",
+          "text": "#242424",
+          "muted": "#5C5C5C",
+          "accent": "#2F6F4E",
+          "onAccent": "#FFFFFF"
+        },
+        "dark": {
+          "canvas": "#17232D",
+          "surface": "#22313C",
+          "text": "#F2F4F0",
+          "muted": "#C0CBCD",
+          "accent": "#B5D9B2",
+          "onAccent": "#17232D"
+        }
+      },
+      "art": {
+        "canvas": "#17232D",
+        "surface": "#22313C",
+        "text": "#F2F4F0",
+        "muted": "#C0CBCD",
+        "accent": "#B5D9B2",
+        "onAccent": "#17232D",
+        "sky": "#263A4A",
+        "ground": "#344C46",
+        "plant": "#B5D9B2",
+        "bloom": "#E5B7CA",
+        "bird": "#D7AF8C",
+        "wing": "#785544",
+        "detail": "#17232D"
+      },
+      "motion": "assets/garden_themes/night-garden/motion.json",
+      "contrastProof": {
+        "light": {
+          "text/canvas": 14.1491,
+          "text/surface": 15.5229,
+          "muted/canvas": 6.0951,
+          "muted/surface": 6.6869,
+          "onAccent/accent": 5.992,
+          "accent/canvas": 5.4617,
+          "accent/surface": 5.992
+        },
+        "dark": {
+          "text/canvas": 14.4318,
+          "text/surface": 12.0654,
+          "muted/canvas": 9.6333,
+          "muted/surface": 8.0537,
+          "onAccent/accent": 10.2931,
+          "accent/canvas": 10.2931,
+          "accent/surface": 8.6054
+        }
+      },
+      "assets": {
+        "garden": {
+          "svg": "assets/garden_themes/night-garden/garden.svg",
+          "svgSha256": "64e137593516be14f162b0a37a196d6280f2b94d7e7e3ec937a8db20708b6f59",
+          "width": 640,
+          "height": 320,
+          "rasters": [
+            {
+              "scale": 1,
+              "path": "assets/garden_themes/night-garden/garden.png",
+              "sha256": "2e7c0d815ba5689ded2f823f7b5ceee7989162600eb81c81510d00e297ff892f"
+            },
+            {
+              "scale": 2,
+              "path": "assets/garden_themes/night-garden/2.0x/garden.png",
+              "sha256": "09d0755468e383740c48950f63e67fa6105812a0801bc2ee6648508e502a9b08"
+            },
+            {
+              "scale": 3,
+              "path": "assets/garden_themes/night-garden/3.0x/garden.png",
+              "sha256": "a10a2044020638b60f7f84cdb4bb65b685c669d0867417c92afd4a2dc3004dd1"
+            }
+          ]
+        },
+        "bird": {
+          "svg": "assets/garden_themes/night-garden/bird.svg",
+          "svgSha256": "742d9595f1e26fbadad7306d0bb1552067a32821520dce3e7163273fdaefa1cd",
+          "width": 160,
+          "height": 160,
+          "rasters": [
+            {
+              "scale": 1,
+              "path": "assets/garden_themes/night-garden/bird.png",
+              "sha256": "a2edcd5671c88102138bb52c41d3a1839a2a7d90c03a7ab78d48cab1e2cd2f75"
+            },
+            {
+              "scale": 2,
+              "path": "assets/garden_themes/night-garden/2.0x/bird.png",
+              "sha256": "95d9a928a5713d83cadd93f388603662ee9d5d6fa7aff8c53a77c4540e560b83"
+            },
+            {
+              "scale": 3,
+              "path": "assets/garden_themes/night-garden/3.0x/bird.png",
+              "sha256": "b3717271ba9826d9d359bb259bc2699d9c9a6583aad942f8a7dea869b151f420"
+            }
+          ]
+        },
+        "song": {
+          "svg": "assets/garden_themes/night-garden/song.svg",
+          "svgSha256": "25340de306c3ca411abf46c89ea1e1d3524b2008122cfd2fd210474f8c92e919",
+          "width": 64,
+          "height": 64,
+          "rasters": [
+            {
+              "scale": 1,
+              "path": "assets/garden_themes/night-garden/song.png",
+              "sha256": "74348bf7ca020e8bd7e03ce3449cba735bc058148c17e586775afce2016d4de6"
+            },
+            {
+              "scale": 2,
+              "path": "assets/garden_themes/night-garden/2.0x/song.png",
+              "sha256": "08daf492cf3f549605b7054227eeb76b306728c3c39f7785d67fb26beab79f50"
+            },
+            {
+              "scale": 3,
+              "path": "assets/garden_themes/night-garden/3.0x/song.png",
+              "sha256": "eaefa03d66651d5094d54b2084dbe9575ddb027c50cc7129f059dd50ca456e03"
+            }
+          ]
+        },
+        "seed": {
+          "svg": "assets/garden_themes/night-garden/seed.svg",
+          "svgSha256": "faadbb0811dead9e2339f45d4311b8b6336a1439c8a8883a3bfe3b9a5518096b",
+          "width": 160,
+          "height": 160,
+          "rasters": [
+            {
+              "scale": 1,
+              "path": "assets/garden_themes/night-garden/seed.png",
+              "sha256": "d5cc56c641db6b5b5b3552da03b91c2871706ef7f7c2612d713e6f5658065656"
+            },
+            {
+              "scale": 2,
+              "path": "assets/garden_themes/night-garden/2.0x/seed.png",
+              "sha256": "fd801480c06fed06674f70a140560de5aaefafb21e2cf455fb0bb3bf1e63a355"
+            },
+            {
+              "scale": 3,
+              "path": "assets/garden_themes/night-garden/3.0x/seed.png",
+              "sha256": "9ce739d06f031b1f1becfe08eedf00fb412bec20eb301772c91163166f7b3a4e"
+            }
+          ]
+        },
+        "sprout": {
+          "svg": "assets/garden_themes/night-garden/sprout.svg",
+          "svgSha256": "c33d8db2c8b8f9865d30a23ada845e8f00042ac6dad08fefb57842521e14becc",
+          "width": 160,
+          "height": 160,
+          "rasters": [
+            {
+              "scale": 1,
+              "path": "assets/garden_themes/night-garden/sprout.png",
+              "sha256": "bb76f17534b11fef4e52b0ce849c493496b26a0cd1b5ac4fff9ef7553090add4"
+            },
+            {
+              "scale": 2,
+              "path": "assets/garden_themes/night-garden/2.0x/sprout.png",
+              "sha256": "bc70f9ea651b7903fe3bfab55e10c753a281a9bdaea8352e8b4cc9b76351b5e7"
+            },
+            {
+              "scale": 3,
+              "path": "assets/garden_themes/night-garden/3.0x/sprout.png",
+              "sha256": "87e315fcf7cfbaaff2687e08709aa1dd9f5768fb51360469458361694ee0bfed"
+            }
+          ]
+        },
+        "bud": {
+          "svg": "assets/garden_themes/night-garden/bud.svg",
+          "svgSha256": "d8243281ff15ef3675d11592fe758c3676d3dd1ef9cc31a3e52615489e93d552",
+          "width": 160,
+          "height": 160,
+          "rasters": [
+            {
+              "scale": 1,
+              "path": "assets/garden_themes/night-garden/bud.png",
+              "sha256": "f7faeefc4f953460ec1a1c84a6156c539482698352ffa1eabfa759afca6ac6eb"
+            },
+            {
+              "scale": 2,
+              "path": "assets/garden_themes/night-garden/2.0x/bud.png",
+              "sha256": "45f03eb9d2c00d662f3e7d7c1b4068a060edf40847b28e5f226e50f451baf3dc"
+            },
+            {
+              "scale": 3,
+              "path": "assets/garden_themes/night-garden/3.0x/bud.png",
+              "sha256": "588db0b6fdbd8c4d0d0e3d6e08d73be980b30b491b0312ce92fc0bec9d8bef02"
+            }
+          ]
+        },
+        "bloom": {
+          "svg": "assets/garden_themes/night-garden/bloom.svg",
+          "svgSha256": "495dbe409ba8f8ecd6879fe9e5a024ce40f8b67a5f932f1070fc8a29c87db2f5",
+          "width": 160,
+          "height": 160,
+          "rasters": [
+            {
+              "scale": 1,
+              "path": "assets/garden_themes/night-garden/bloom.png",
+              "sha256": "41301d73a08bc032ab529de807be23d7121872e32b41e13162a3b50ae8667be2"
+            },
+            {
+              "scale": 2,
+              "path": "assets/garden_themes/night-garden/2.0x/bloom.png",
+              "sha256": "638a9b1dfaf5e629a646e3a191407f06b90f1093e127ec297992a662d29a69e1"
+            },
+            {
+              "scale": 3,
+              "path": "assets/garden_themes/night-garden/3.0x/bloom.png",
+              "sha256": "f84e32d853b20597d6c31c25fa9158f10dd39671b645f91c721d0d49876e18fe"
+            }
+          ]
+        },
+        "bud-growth-still": {
+          "svg": "assets/garden_themes/night-garden/bud-growth-still.svg",
+          "svgSha256": "3bed291cc6da5ae0761733694b8e3d3976e445696f66963dc64cf6dee2f19081",
+          "width": 160,
+          "height": 160,
+          "rasters": [
+            {
+              "scale": 1,
+              "path": "assets/garden_themes/night-garden/bud-growth-still.png",
+              "sha256": "41301d73a08bc032ab529de807be23d7121872e32b41e13162a3b50ae8667be2"
+            },
+            {
+              "scale": 2,
+              "path": "assets/garden_themes/night-garden/2.0x/bud-growth-still.png",
+              "sha256": "638a9b1dfaf5e629a646e3a191407f06b90f1093e127ec297992a662d29a69e1"
+            },
+            {
+              "scale": 3,
+              "path": "assets/garden_themes/night-garden/3.0x/bud-growth-still.png",
+              "sha256": "f84e32d853b20597d6c31c25fa9158f10dd39671b645f91c721d0d49876e18fe"
+            }
+          ]
+        },
+        "lark-celebration-still": {
+          "svg": "assets/garden_themes/night-garden/lark-celebration-still.svg",
+          "svgSha256": "172fcaabceaa25e3e4db7183c27f130798bd1e70c405e0231aca9a3d80b93cd0",
+          "width": 320,
+          "height": 240,
+          "rasters": [
+            {
+              "scale": 1,
+              "path": "assets/garden_themes/night-garden/lark-celebration-still.png",
+              "sha256": "65d40df005a3d43d6535782ab2f176f0f94149fcd311ebbfa2dc6eacd936debb"
+            },
+            {
+              "scale": 2,
+              "path": "assets/garden_themes/night-garden/2.0x/lark-celebration-still.png",
+              "sha256": "271f328c7842f8986c54a5b8abe278767fb34c427218a22034b4e420d92cbdbe"
+            },
+            {
+              "scale": 3,
+              "path": "assets/garden_themes/night-garden/3.0x/lark-celebration-still.png",
+              "sha256": "48fe610257688c517d950e88fe7e9a3cc265052a2c4422eeb1024365d85b1559"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "rain-forest",
+      "name": "Rain Forest",
+      "bird": "Hummingbird",
+      "available": true,
+      "price": 0,
+      "unlockDays": 0,
+      "defaultBrightness": "light",
+      "palettes": {
+        "light": {
+          "canvas": "#EEF4EC",
+          "surface": "#FFFFFF",
+          "text": "#203329",
+          "muted": "#4D6053",
+          "accent": "#256044",
+          "onAccent": "#FFFFFF"
+        },
+        "dark": {
+          "canvas": "#17232D",
+          "surface": "#22313C",
+          "text": "#F2F4F0",
+          "muted": "#C0CBCD",
+          "accent": "#B5D9B2",
+          "onAccent": "#17232D"
+        }
+      },
+      "art": {
+        "canvas": "#EEF4EC",
+        "surface": "#FFFFFF",
+        "text": "#203329",
+        "muted": "#4D6053",
+        "accent": "#256044",
+        "onAccent": "#FFFFFF",
+        "sky": "#D8EADD",
+        "ground": "#BBD4BD",
+        "plant": "#256044",
+        "bloom": "#A63B50",
+        "bird": "#256044",
+        "wing": "#9CBF6D",
+        "detail": "#203329"
+      },
+      "motion": "assets/garden_themes/rain-forest/motion.json",
+      "contrastProof": {
+        "light": {
+          "text/canvas": 11.9894,
+          "text/surface": 13.4017,
+          "muted/canvas": 6.0338,
+          "muted/surface": 6.7446,
+          "onAccent/accent": 7.4067,
+          "accent/canvas": 6.6261,
+          "accent/surface": 7.4067
+        },
+        "dark": {
+          "text/canvas": 14.4318,
+          "text/surface": 12.0654,
+          "muted/canvas": 9.6333,
+          "muted/surface": 8.0537,
+          "onAccent/accent": 10.2931,
+          "accent/canvas": 10.2931,
+          "accent/surface": 8.6054
+        }
+      },
+      "assets": {
+        "garden": {
+          "svg": "assets/garden_themes/rain-forest/garden.svg",
+          "svgSha256": "3e101e7333bea0cfa05eafbfaf6f9f3687ca7a30256f82a73247acfb3f7cfeb7",
+          "width": 640,
+          "height": 320,
+          "rasters": [
+            {
+              "scale": 1,
+              "path": "assets/garden_themes/rain-forest/garden.png",
+              "sha256": "2fcbf38d17b81b7d36d86400e72a9b52f233e6417f9e2413601e782b297c7693"
+            },
+            {
+              "scale": 2,
+              "path": "assets/garden_themes/rain-forest/2.0x/garden.png",
+              "sha256": "f51cf947e51da5d4cc1f25f5cbfb7b052ed8dc886f14a57c82d9cf76148e07f0"
+            },
+            {
+              "scale": 3,
+              "path": "assets/garden_themes/rain-forest/3.0x/garden.png",
+              "sha256": "8565462d7ed4123ef57ca87c27be87acbdbdc5371aa2d06afdf4cee1a43db729"
+            }
+          ]
+        },
+        "bird": {
+          "svg": "assets/garden_themes/rain-forest/bird.svg",
+          "svgSha256": "cd89be201bff859a4e570945eedf2cce5fb5cb81675876d596e18b93b91eebcb",
+          "width": 160,
+          "height": 160,
+          "rasters": [
+            {
+              "scale": 1,
+              "path": "assets/garden_themes/rain-forest/bird.png",
+              "sha256": "1a137106c767923a90d2cc78d0070f6abe8d09b9b436401a8a02d750855f4f1f"
+            },
+            {
+              "scale": 2,
+              "path": "assets/garden_themes/rain-forest/2.0x/bird.png",
+              "sha256": "d283abfb564b562cbb970133a65e05ad52270b7bb2695f70a493501d73886011"
+            },
+            {
+              "scale": 3,
+              "path": "assets/garden_themes/rain-forest/3.0x/bird.png",
+              "sha256": "15755b93e6d6561296b083d6083787dbfa0c7cd9f1fe76d3a01846d039a1c60f"
+            }
+          ]
+        },
+        "song": {
+          "svg": "assets/garden_themes/rain-forest/song.svg",
+          "svgSha256": "1a707e6500a6372b5cca6e7b099805e8d48899142cff8df68346cbe8f1528ecc",
+          "width": 64,
+          "height": 64,
+          "rasters": [
+            {
+              "scale": 1,
+              "path": "assets/garden_themes/rain-forest/song.png",
+              "sha256": "755f3065c1784ff1662339d1cf6a9bddb4ced725cabe3c02cccc7719369bbe8f"
+            },
+            {
+              "scale": 2,
+              "path": "assets/garden_themes/rain-forest/2.0x/song.png",
+              "sha256": "ca57318aef73f3774d860e97e6bda73b9dd403487d61cbd8efae5b2ac0ab7536"
+            },
+            {
+              "scale": 3,
+              "path": "assets/garden_themes/rain-forest/3.0x/song.png",
+              "sha256": "594d06c06e1e18319c1881f09e04543a9a71ea2fe60d9d1cbad38d91bf6e46e6"
+            }
+          ]
+        },
+        "seed": {
+          "svg": "assets/garden_themes/rain-forest/seed.svg",
+          "svgSha256": "67167f530e20e7d1ae02e748614f9509a6465e8694c1362c1a2b80e0a3958708",
+          "width": 160,
+          "height": 160,
+          "rasters": [
+            {
+              "scale": 1,
+              "path": "assets/garden_themes/rain-forest/seed.png",
+              "sha256": "406384d67579e6df28f7d0636dded2c84f389f59aab91fc0f9deeee80f75c9b5"
+            },
+            {
+              "scale": 2,
+              "path": "assets/garden_themes/rain-forest/2.0x/seed.png",
+              "sha256": "f5f2653253e9c8a2934e32139ef4620ae73caec878d1e193cfe913469505106d"
+            },
+            {
+              "scale": 3,
+              "path": "assets/garden_themes/rain-forest/3.0x/seed.png",
+              "sha256": "c27c576e3960f1298ec836781335561a67caf2d421c7b45f1649cde2a7d48328"
+            }
+          ]
+        },
+        "sprout": {
+          "svg": "assets/garden_themes/rain-forest/sprout.svg",
+          "svgSha256": "880e17706e562c06ba4715384c64ed876e56e76169bea88be7990331c1c324cf",
+          "width": 160,
+          "height": 160,
+          "rasters": [
+            {
+              "scale": 1,
+              "path": "assets/garden_themes/rain-forest/sprout.png",
+              "sha256": "fe6991910e5aa1baeddcc2bcb2495cb9471d814a8a992990c43a34114ab1b257"
+            },
+            {
+              "scale": 2,
+              "path": "assets/garden_themes/rain-forest/2.0x/sprout.png",
+              "sha256": "afbc11dab24c84afe46b6eb88e97b9d0d02576a11a9bcc3a04097bb0f09b337e"
+            },
+            {
+              "scale": 3,
+              "path": "assets/garden_themes/rain-forest/3.0x/sprout.png",
+              "sha256": "54f36f6deeb3d1b25c0d902b39e56ca04f5966890e03f15fe59c2ed1265494d6"
+            }
+          ]
+        },
+        "bud": {
+          "svg": "assets/garden_themes/rain-forest/bud.svg",
+          "svgSha256": "cfea8cde80a6cebf830985833da1ffda14a76e77f580c139093ec3733e59d550",
+          "width": 160,
+          "height": 160,
+          "rasters": [
+            {
+              "scale": 1,
+              "path": "assets/garden_themes/rain-forest/bud.png",
+              "sha256": "aae8d82a801cb32e8b4563249b2b27fa54b2c01e6cc4c5394da2fab84477006b"
+            },
+            {
+              "scale": 2,
+              "path": "assets/garden_themes/rain-forest/2.0x/bud.png",
+              "sha256": "ed9ebb74fbda88112e8429211c784ac24cf028e0e1e0a62471d99c337065101f"
+            },
+            {
+              "scale": 3,
+              "path": "assets/garden_themes/rain-forest/3.0x/bud.png",
+              "sha256": "25d6e3309f87c64f48debc666b958e671517fcdc8e35fa5e99e90719e5aa66af"
+            }
+          ]
+        },
+        "bloom": {
+          "svg": "assets/garden_themes/rain-forest/bloom.svg",
+          "svgSha256": "7cb7a55f85c76b2a81b2e9d5350d1f77bea0b6f6e18792bdcfc81f5b535506f3",
+          "width": 160,
+          "height": 160,
+          "rasters": [
+            {
+              "scale": 1,
+              "path": "assets/garden_themes/rain-forest/bloom.png",
+              "sha256": "28a6b330d7f5f2facd1041180620e19dd47bff446c32ac017f43fb70ac9e20d0"
+            },
+            {
+              "scale": 2,
+              "path": "assets/garden_themes/rain-forest/2.0x/bloom.png",
+              "sha256": "d6fc9a49ab5262cf29d84d5eeb4bed96efffde9109e5c23ec194d2ffb8a9a078"
+            },
+            {
+              "scale": 3,
+              "path": "assets/garden_themes/rain-forest/3.0x/bloom.png",
+              "sha256": "15445d8812e0e2341bcef8884de6bca50157c1f258c796dd73b00b496e75a2fb"
+            }
+          ]
+        },
+        "bud-growth-still": {
+          "svg": "assets/garden_themes/rain-forest/bud-growth-still.svg",
+          "svgSha256": "f4ac57a6b86267b430f56f77ec0875f935de9406fd1711fb82629e3da6c4417b",
+          "width": 160,
+          "height": 160,
+          "rasters": [
+            {
+              "scale": 1,
+              "path": "assets/garden_themes/rain-forest/bud-growth-still.png",
+              "sha256": "28a6b330d7f5f2facd1041180620e19dd47bff446c32ac017f43fb70ac9e20d0"
+            },
+            {
+              "scale": 2,
+              "path": "assets/garden_themes/rain-forest/2.0x/bud-growth-still.png",
+              "sha256": "d6fc9a49ab5262cf29d84d5eeb4bed96efffde9109e5c23ec194d2ffb8a9a078"
+            },
+            {
+              "scale": 3,
+              "path": "assets/garden_themes/rain-forest/3.0x/bud-growth-still.png",
+              "sha256": "15445d8812e0e2341bcef8884de6bca50157c1f258c796dd73b00b496e75a2fb"
+            }
+          ]
+        },
+        "lark-celebration-still": {
+          "svg": "assets/garden_themes/rain-forest/lark-celebration-still.svg",
+          "svgSha256": "b688c552813892f42ae5f7b5ad0faaae3c99d11ae736c5f738b3e21fa4d9611d",
+          "width": 320,
+          "height": 240,
+          "rasters": [
+            {
+              "scale": 1,
+              "path": "assets/garden_themes/rain-forest/lark-celebration-still.png",
+              "sha256": "4a6136f9e02593d9671b0a7ab7084c07f94ac011f24856190d8a54cd71ba2687"
+            },
+            {
+              "scale": 2,
+              "path": "assets/garden_themes/rain-forest/2.0x/lark-celebration-still.png",
+              "sha256": "2707a081210e98ca6ab77e978a4d22a5fde31993ad9bc0c3e08c34d4acd304cb"
+            },
+            {
+              "scale": 3,
+              "path": "assets/garden_themes/rain-forest/3.0x/lark-celebration-still.png",
+              "sha256": "c1bd2b246ba4de528521dd6f2f6db590442a3d3050332f672b759263edbef000"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "desert-bloom",
+      "name": "Desert Bloom",
+      "bird": "Finch",
+      "available": true,
+      "price": 0,
+      "unlockDays": 0,
+      "defaultBrightness": "light",
+      "palettes": {
+        "light": {
+          "canvas": "#FBF1E4",
+          "surface": "#FFFFFF",
+          "text": "#3D3028",
+          "muted": "#685546",
+          "accent": "#884328",
+          "onAccent": "#FFFFFF"
+        },
+        "dark": {
+          "canvas": "#17232D",
+          "surface": "#22313C",
+          "text": "#F2F4F0",
+          "muted": "#C0CBCD",
+          "accent": "#B5D9B2",
+          "onAccent": "#17232D"
+        }
+      },
+      "art": {
+        "canvas": "#FBF1E4",
+        "surface": "#FFFFFF",
+        "text": "#3D3028",
+        "muted": "#685546",
+        "accent": "#884328",
+        "onAccent": "#FFFFFF",
+        "sky": "#F1DFC4",
+        "ground": "#DBB48F",
+        "plant": "#526B3D",
+        "bloom": "#AB3F55",
+        "bird": "#A14F34",
+        "wing": "#EDC181",
+        "detail": "#3D3028"
+      },
+      "motion": "assets/garden_themes/desert-bloom/motion.json",
+      "contrastProof": {
+        "light": {
+          "text/canvas": 11.3838,
+          "text/surface": 12.7131,
+          "muted/canvas": 6.3177,
+          "muted/surface": 7.0554,
+          "onAccent/accent": 7.2908,
+          "accent/canvas": 6.5285,
+          "accent/surface": 7.2908
+        },
+        "dark": {
+          "text/canvas": 14.4318,
+          "text/surface": 12.0654,
+          "muted/canvas": 9.6333,
+          "muted/surface": 8.0537,
+          "onAccent/accent": 10.2931,
+          "accent/canvas": 10.2931,
+          "accent/surface": 8.6054
+        }
+      },
+      "assets": {
+        "garden": {
+          "svg": "assets/garden_themes/desert-bloom/garden.svg",
+          "svgSha256": "1d667af31244198940532a674f63c6f5d51953f5f5a8612d4358cc189cff726b",
+          "width": 640,
+          "height": 320,
+          "rasters": [
+            {
+              "scale": 1,
+              "path": "assets/garden_themes/desert-bloom/garden.png",
+              "sha256": "8c8f3483feac3163920749dc1dbb82e7cab19ed25ea25d366450e6cfafc1f744"
+            },
+            {
+              "scale": 2,
+              "path": "assets/garden_themes/desert-bloom/2.0x/garden.png",
+              "sha256": "b124d31f68e2796822d15fbccac25402dadaa40256f90dff7c7635664c044e2f"
+            },
+            {
+              "scale": 3,
+              "path": "assets/garden_themes/desert-bloom/3.0x/garden.png",
+              "sha256": "b7e37a4a77702ae420b19be49a9085cc9e359164cfd95cf2f19e3d1a8681facf"
+            }
+          ]
+        },
+        "bird": {
+          "svg": "assets/garden_themes/desert-bloom/bird.svg",
+          "svgSha256": "d2857915c2b904cd496f37c192fe3e3b4c2dd6f02125d50ebd0d64e511846be7",
+          "width": 160,
+          "height": 160,
+          "rasters": [
+            {
+              "scale": 1,
+              "path": "assets/garden_themes/desert-bloom/bird.png",
+              "sha256": "7e701e57bf5e7fb7e66826cd10ec6208fe6b85ad18a36786e8cd8323dc178496"
+            },
+            {
+              "scale": 2,
+              "path": "assets/garden_themes/desert-bloom/2.0x/bird.png",
+              "sha256": "feba4b7f3f294c79dfe9ecf80e9bcc8f09b15b8d949abfd8c88c92e0b7ee50e0"
+            },
+            {
+              "scale": 3,
+              "path": "assets/garden_themes/desert-bloom/3.0x/bird.png",
+              "sha256": "5a086c1a937dee1442fb346853c3b835b30b0f576059442aa3d7d1d201d3a957"
+            }
+          ]
+        },
+        "song": {
+          "svg": "assets/garden_themes/desert-bloom/song.svg",
+          "svgSha256": "90282cfce0cac04e932b3b5020cee489b4e517c84f8aa37e587a83c2c747a27e",
+          "width": 64,
+          "height": 64,
+          "rasters": [
+            {
+              "scale": 1,
+              "path": "assets/garden_themes/desert-bloom/song.png",
+              "sha256": "68168039af1d4951720bc405b272e0485315f7b998f7ee5d3399a335a9a93001"
+            },
+            {
+              "scale": 2,
+              "path": "assets/garden_themes/desert-bloom/2.0x/song.png",
+              "sha256": "1be7f49341e28516212d33a53ceb2a4c5ea04a281d9a5451d8a99d3106401559"
+            },
+            {
+              "scale": 3,
+              "path": "assets/garden_themes/desert-bloom/3.0x/song.png",
+              "sha256": "34b5a3789096895fd40128d77befd5b302a91ef16e6471e80f228d1a4b6d06e5"
+            }
+          ]
+        },
+        "seed": {
+          "svg": "assets/garden_themes/desert-bloom/seed.svg",
+          "svgSha256": "67e3b18705787483a6c7e27918d3b8472332d1ca32a82cddc818ed42bcc97d7a",
+          "width": 160,
+          "height": 160,
+          "rasters": [
+            {
+              "scale": 1,
+              "path": "assets/garden_themes/desert-bloom/seed.png",
+              "sha256": "2d1f02177660187cd93f25cca79ee610bb967402b4a71bbfd829659b62ad1f59"
+            },
+            {
+              "scale": 2,
+              "path": "assets/garden_themes/desert-bloom/2.0x/seed.png",
+              "sha256": "01c9fba21e402682eec87d3b8a16c607872e689caccd243b4974b6c274bf1f35"
+            },
+            {
+              "scale": 3,
+              "path": "assets/garden_themes/desert-bloom/3.0x/seed.png",
+              "sha256": "45d49435b7745853d72f7b39c8a4db4537d48431e87093bd01c854ca9383667d"
+            }
+          ]
+        },
+        "sprout": {
+          "svg": "assets/garden_themes/desert-bloom/sprout.svg",
+          "svgSha256": "d9540a78e6423782fee1ad8c22ae18da36c57e5110d229ac0dad7241311ad567",
+          "width": 160,
+          "height": 160,
+          "rasters": [
+            {
+              "scale": 1,
+              "path": "assets/garden_themes/desert-bloom/sprout.png",
+              "sha256": "6f640869df4e6cfebda40dd88dbe7bd836a5412b20989752d48695e41f953201"
+            },
+            {
+              "scale": 2,
+              "path": "assets/garden_themes/desert-bloom/2.0x/sprout.png",
+              "sha256": "1a5139728a32fb5dd2610804280d1e4e621770859842e893b97c2902ad250a51"
+            },
+            {
+              "scale": 3,
+              "path": "assets/garden_themes/desert-bloom/3.0x/sprout.png",
+              "sha256": "f540bba6989785ad995d7b34962538122115862b97346e02fde90f622d4357c5"
+            }
+          ]
+        },
+        "bud": {
+          "svg": "assets/garden_themes/desert-bloom/bud.svg",
+          "svgSha256": "c826ef8bc08079f103b0a2b387c5582ebcbe9838e0f234aaae6adea356438087",
+          "width": 160,
+          "height": 160,
+          "rasters": [
+            {
+              "scale": 1,
+              "path": "assets/garden_themes/desert-bloom/bud.png",
+              "sha256": "51ed967fe0d08ca1c74b5d10620fd94b3ebc3a7db8ee2ff6adb0bfcc4e58806c"
+            },
+            {
+              "scale": 2,
+              "path": "assets/garden_themes/desert-bloom/2.0x/bud.png",
+              "sha256": "325fbf3d5ac4eaaa362202052baf7e5470a95a93558f4b7b4a3f697d705f9845"
+            },
+            {
+              "scale": 3,
+              "path": "assets/garden_themes/desert-bloom/3.0x/bud.png",
+              "sha256": "007b4a28f7708bc5153aae963739dcc9d49b1192ff2c93303f198511e3461da8"
+            }
+          ]
+        },
+        "bloom": {
+          "svg": "assets/garden_themes/desert-bloom/bloom.svg",
+          "svgSha256": "a26318a92337599b6c394d58f191aa396949fbd0fb8adca69d9b5546dd408df7",
+          "width": 160,
+          "height": 160,
+          "rasters": [
+            {
+              "scale": 1,
+              "path": "assets/garden_themes/desert-bloom/bloom.png",
+              "sha256": "1e85967cb04ecade698803275064ad79c531e9ea462c838322047e21883f1bdc"
+            },
+            {
+              "scale": 2,
+              "path": "assets/garden_themes/desert-bloom/2.0x/bloom.png",
+              "sha256": "899d2eb4f3f1f3c4bb5d71013970ce5ebe3925231aaa3027a24527d57ca5e925"
+            },
+            {
+              "scale": 3,
+              "path": "assets/garden_themes/desert-bloom/3.0x/bloom.png",
+              "sha256": "512e00909575c905b5ed6dea232d5e9adbf9f45ea51f6aebb9fd4d5edb0038db"
+            }
+          ]
+        },
+        "bud-growth-still": {
+          "svg": "assets/garden_themes/desert-bloom/bud-growth-still.svg",
+          "svgSha256": "ce2ad9fe7349011706f7dd38e67373346de02e7d6ad563f7a7ab05b10f38c826",
+          "width": 160,
+          "height": 160,
+          "rasters": [
+            {
+              "scale": 1,
+              "path": "assets/garden_themes/desert-bloom/bud-growth-still.png",
+              "sha256": "1e85967cb04ecade698803275064ad79c531e9ea462c838322047e21883f1bdc"
+            },
+            {
+              "scale": 2,
+              "path": "assets/garden_themes/desert-bloom/2.0x/bud-growth-still.png",
+              "sha256": "899d2eb4f3f1f3c4bb5d71013970ce5ebe3925231aaa3027a24527d57ca5e925"
+            },
+            {
+              "scale": 3,
+              "path": "assets/garden_themes/desert-bloom/3.0x/bud-growth-still.png",
+              "sha256": "512e00909575c905b5ed6dea232d5e9adbf9f45ea51f6aebb9fd4d5edb0038db"
+            }
+          ]
+        },
+        "lark-celebration-still": {
+          "svg": "assets/garden_themes/desert-bloom/lark-celebration-still.svg",
+          "svgSha256": "5e85217707f8321d54d025d2b5e2d3b710c8f323b43f3e52f7545308c099d354",
+          "width": 320,
+          "height": 240,
+          "rasters": [
+            {
+              "scale": 1,
+              "path": "assets/garden_themes/desert-bloom/lark-celebration-still.png",
+              "sha256": "3c6feafbb9c1d4d1cc2c1f9571abf8506a9c81d8a622dddd7e75b7622b7d25a3"
+            },
+            {
+              "scale": 2,
+              "path": "assets/garden_themes/desert-bloom/2.0x/lark-celebration-still.png",
+              "sha256": "8248562ac1fd9c4e9381fe9373e51b8b80dedfe9fe7ebb4b8270eaf7f21963f5"
+            },
+            {
+              "scale": 3,
+              "path": "assets/garden_themes/desert-bloom/3.0x/lark-celebration-still.png",
+              "sha256": "4c0797182e802c9861a548fd3cc566a314fb6c471779770e9ef5a823764e1290"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "seasonal",
+      "name": "Seasonal",
+      "bird": "Skylark",
+      "available": true,
+      "price": 0,
+      "unlockDays": 0,
+      "defaultBrightness": "light",
+      "palettes": {
+        "light": {
+          "canvas": "#FAF1E6",
+          "surface": "#FFFFFF",
+          "text": "#352D26",
+          "muted": "#655747",
+          "accent": "#7D4529",
+          "onAccent": "#FFFFFF"
+        },
+        "dark": {
+          "canvas": "#17232D",
+          "surface": "#22313C",
+          "text": "#F2F4F0",
+          "muted": "#C0CBCD",
+          "accent": "#B5D9B2",
+          "onAccent": "#17232D"
+        }
+      },
+      "art": {
+        "canvas": "#FAF1E6",
+        "surface": "#FFFFFF",
+        "text": "#352D26",
+        "muted": "#655747",
+        "accent": "#7D4529",
+        "onAccent": "#FFFFFF",
+        "sky": "#F3DFC3",
+        "ground": "#DBBD88",
+        "plant": "#657442",
+        "bloom": "#A54530",
+        "bird": "#775334",
+        "wing": "#EDC995",
+        "detail": "#352D26"
+      },
+      "motion": "assets/garden_themes/seasonal/motion.json",
+      "contrastProof": {
+        "light": {
+          "text/canvas": 12.0855,
+          "text/surface": 13.5073,
+          "muted/canvas": 6.2473,
+          "muted/surface": 6.9823,
+          "onAccent/accent": 7.6218,
+          "accent/canvas": 6.8195,
+          "accent/surface": 7.6218
+        },
+        "dark": {
+          "text/canvas": 14.4318,
+          "text/surface": 12.0654,
+          "muted/canvas": 9.6333,
+          "muted/surface": 8.0537,
+          "onAccent/accent": 10.2931,
+          "accent/canvas": 10.2931,
+          "accent/surface": 8.6054
+        }
+      },
+      "assets": {
+        "garden": {
+          "svg": "assets/garden_themes/seasonal/garden.svg",
+          "svgSha256": "5b1420156d2b4091c5088aef53684b4b1f756a2fefd80b4c227d8145fab38bf9",
+          "width": 640,
+          "height": 320,
+          "rasters": [
+            {
+              "scale": 1,
+              "path": "assets/garden_themes/seasonal/garden.png",
+              "sha256": "74458dd4927f7ab37aee9fa0885fef4b7db9a606f95b12b2102b4c56a6236f68"
+            },
+            {
+              "scale": 2,
+              "path": "assets/garden_themes/seasonal/2.0x/garden.png",
+              "sha256": "353cfc94290f94276acf16e9b9c46d7e029586f83ba76792f3a5c38b6396c4a8"
+            },
+            {
+              "scale": 3,
+              "path": "assets/garden_themes/seasonal/3.0x/garden.png",
+              "sha256": "c52870e65b7f03f499b09e0e232d2a5fac6d94f2e556972a77f19fee571dde5d"
+            }
+          ]
+        },
+        "bird": {
+          "svg": "assets/garden_themes/seasonal/bird.svg",
+          "svgSha256": "8695537e07af02620a582e9acde08467d9771b9eef8fea575d2d6b9e59a1dead",
+          "width": 160,
+          "height": 160,
+          "rasters": [
+            {
+              "scale": 1,
+              "path": "assets/garden_themes/seasonal/bird.png",
+              "sha256": "0b2d255d530a9542f3b14dc5226035f7a31c71b7df471725f0bd4003dff8488e"
+            },
+            {
+              "scale": 2,
+              "path": "assets/garden_themes/seasonal/2.0x/bird.png",
+              "sha256": "c5ed4269b1a66347705c5947e3079835743ba74ed272cb16582b0a1f32076a82"
+            },
+            {
+              "scale": 3,
+              "path": "assets/garden_themes/seasonal/3.0x/bird.png",
+              "sha256": "93b1e069b70f473594a4ddb7f8a70d4e2da58d660776dadc23792cd20f91992d"
+            }
+          ]
+        },
+        "song": {
+          "svg": "assets/garden_themes/seasonal/song.svg",
+          "svgSha256": "cdf3458bd15907a801d5de250ce4a35d32b5d19878f2dd78a891b2790db073c6",
+          "width": 64,
+          "height": 64,
+          "rasters": [
+            {
+              "scale": 1,
+              "path": "assets/garden_themes/seasonal/song.png",
+              "sha256": "6ab1b04a93270eb3be19cd67ab67292a6eb1d15d55ee818c8eb3b4cf5235a0db"
+            },
+            {
+              "scale": 2,
+              "path": "assets/garden_themes/seasonal/2.0x/song.png",
+              "sha256": "5ec136527df7f3b0023dfde7c14e21e117151b39f6c06d3a7fa675ff7d7d8f43"
+            },
+            {
+              "scale": 3,
+              "path": "assets/garden_themes/seasonal/3.0x/song.png",
+              "sha256": "e767117e225fb340fe5411fdd0588088bf869b203e6ce1e557b83087c7dafb6f"
+            }
+          ]
+        },
+        "seed": {
+          "svg": "assets/garden_themes/seasonal/seed.svg",
+          "svgSha256": "6e3bc61e163782bee37cf91e13cccdbf90a5fd340113e0c29ebaa931e92e3e8d",
+          "width": 160,
+          "height": 160,
+          "rasters": [
+            {
+              "scale": 1,
+              "path": "assets/garden_themes/seasonal/seed.png",
+              "sha256": "3af1e6df35e9af6189409991b6e0af77bff1f6de5f940eb174e34cd79b4cf24a"
+            },
+            {
+              "scale": 2,
+              "path": "assets/garden_themes/seasonal/2.0x/seed.png",
+              "sha256": "74133dc6eb221185a25fe49be30b53c72b7f24079295ab785d3740b570e33266"
+            },
+            {
+              "scale": 3,
+              "path": "assets/garden_themes/seasonal/3.0x/seed.png",
+              "sha256": "48b5f55a2865725a34dcbea5e7abf6201125c8f4612f22a8aec64ae8a25f0321"
+            }
+          ]
+        },
+        "sprout": {
+          "svg": "assets/garden_themes/seasonal/sprout.svg",
+          "svgSha256": "aaa0eb3ee6f9b2f85a5b487d81c28123c206aee9482de53d3ad52c0a05c1e39a",
+          "width": 160,
+          "height": 160,
+          "rasters": [
+            {
+              "scale": 1,
+              "path": "assets/garden_themes/seasonal/sprout.png",
+              "sha256": "dc6d608c99cc0ea514c5803bc32b867b430e82c7b82b6c0287ae1fd4a6d47565"
+            },
+            {
+              "scale": 2,
+              "path": "assets/garden_themes/seasonal/2.0x/sprout.png",
+              "sha256": "630084d555d3111a4255265036f3bfcb8511926dfb8e9c4037162027b92b4991"
+            },
+            {
+              "scale": 3,
+              "path": "assets/garden_themes/seasonal/3.0x/sprout.png",
+              "sha256": "be2f9f0a735681c12ce25227609f183bf8c11bd19fe4e2f7a9b99ef3b29ed16a"
+            }
+          ]
+        },
+        "bud": {
+          "svg": "assets/garden_themes/seasonal/bud.svg",
+          "svgSha256": "883b0fba88b39ce8b8e021c23488c563600da467cd8d718065138f7cf27a1dc6",
+          "width": 160,
+          "height": 160,
+          "rasters": [
+            {
+              "scale": 1,
+              "path": "assets/garden_themes/seasonal/bud.png",
+              "sha256": "68cca9300422db0796b8c464c84ec783bab5f9bce72c66d300685f1cbc14d6e5"
+            },
+            {
+              "scale": 2,
+              "path": "assets/garden_themes/seasonal/2.0x/bud.png",
+              "sha256": "f2a5e0f84cd8847b3deda91e5b24cfef80fcd80ae35ae7d38048b7f4296ce81d"
+            },
+            {
+              "scale": 3,
+              "path": "assets/garden_themes/seasonal/3.0x/bud.png",
+              "sha256": "91e3d4c399586d78270002406c3982b3ea5cb4d286ccb93c8aa106782e6acd4f"
+            }
+          ]
+        },
+        "bloom": {
+          "svg": "assets/garden_themes/seasonal/bloom.svg",
+          "svgSha256": "cf377ae78ae11bbe681001d99f733752e5ed4e9207be540c2f3224cf08587dda",
+          "width": 160,
+          "height": 160,
+          "rasters": [
+            {
+              "scale": 1,
+              "path": "assets/garden_themes/seasonal/bloom.png",
+              "sha256": "1117eb538802c84a497358701cf005184e2d801efe2b23783d1aa21c4da33dd3"
+            },
+            {
+              "scale": 2,
+              "path": "assets/garden_themes/seasonal/2.0x/bloom.png",
+              "sha256": "6d22dc63ed654af55d47e5439e003edf50f977c1e8ea9e6a8fb15b22048b289c"
+            },
+            {
+              "scale": 3,
+              "path": "assets/garden_themes/seasonal/3.0x/bloom.png",
+              "sha256": "7a71ab051cafcaf2325dc59c6c7b7068d4e0a0984c7eb46782b49d6f86933123"
+            }
+          ]
+        },
+        "bud-growth-still": {
+          "svg": "assets/garden_themes/seasonal/bud-growth-still.svg",
+          "svgSha256": "bc18378e097d394d39815f7558e9555904ed66cdbadd3174fef27673cf62b4e6",
+          "width": 160,
+          "height": 160,
+          "rasters": [
+            {
+              "scale": 1,
+              "path": "assets/garden_themes/seasonal/bud-growth-still.png",
+              "sha256": "1117eb538802c84a497358701cf005184e2d801efe2b23783d1aa21c4da33dd3"
+            },
+            {
+              "scale": 2,
+              "path": "assets/garden_themes/seasonal/2.0x/bud-growth-still.png",
+              "sha256": "6d22dc63ed654af55d47e5439e003edf50f977c1e8ea9e6a8fb15b22048b289c"
+            },
+            {
+              "scale": 3,
+              "path": "assets/garden_themes/seasonal/3.0x/bud-growth-still.png",
+              "sha256": "7a71ab051cafcaf2325dc59c6c7b7068d4e0a0984c7eb46782b49d6f86933123"
+            }
+          ]
+        },
+        "lark-celebration-still": {
+          "svg": "assets/garden_themes/seasonal/lark-celebration-still.svg",
+          "svgSha256": "166510f4e4345cdb3052f70cd0d822e117678700968126a43158d9ce7d2eb3d3",
+          "width": 320,
+          "height": 240,
+          "rasters": [
+            {
+              "scale": 1,
+              "path": "assets/garden_themes/seasonal/lark-celebration-still.png",
+              "sha256": "2c969a3bfcb93bd34dae90cf203737bb1d67a41e80f02691dcb5b3a406faf1a7"
+            },
+            {
+              "scale": 2,
+              "path": "assets/garden_themes/seasonal/2.0x/lark-celebration-still.png",
+              "sha256": "2279e1486c861ddb185748f506de00b1381361b66f71acf8f29d61c1f54f6e09"
+            },
+            {
+              "scale": 3,
+              "path": "assets/garden_themes/seasonal/3.0x/lark-celebration-still.png",
+              "sha256": "3de1a7d66e6409fa80fb29de2b4b38930c6beedc2c549af58bd6196c04a69d75"
+            }
+          ]
+        }
+      }
+    }
+  ]
+}

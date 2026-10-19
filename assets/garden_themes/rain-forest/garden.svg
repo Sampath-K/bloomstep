@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="640" height="320" viewBox="0 0 640 320" role="img" aria-labelledby="title description">
+<title id="title">Budlark Rain Forest: garden</title>
+<desc id="description">Original vector artwork. Hummingbird companion. Decorative layer; exclude from app semantics.</desc>
+<defs>
+<linearGradient id="sky" x2="0" y2="1"><stop stop-color="#D8EADD"/><stop offset="1" stop-color="#EEF4EC"/></linearGradient>
+<linearGradient id="petal" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#A63B50"/><stop offset="1" stop-color="#256044"/></linearGradient>
+<linearGradient id="feather" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#9CBF6D"/><stop offset="1" stop-color="#256044"/></linearGradient>
+</defs>
+<g id="artwork"><g id="scenery"><path d="M0 0H640V320H0Z" fill="url(#sky)"/><path d="M0 254C109 195 204 233 320 242C454 251 537 188 640 223V320H0Z" fill="#BBD4BD"/><path d="M0 286C152 257 218 295 375 267C495 246 583 263 640 279V320H0Z" fill="#256044" opacity=".12"/><path d="M0 207C4 98 64 57 119 85C112 158 53 200 0 207ZM640 205C548 202 513 118 552 63C622 74 650 134 640 205Z" fill="#256044"/><path d="M9 196L98 95M633 190L563 80" fill="none" stroke="#BBD4BD" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" /><path d="M34 163L27 126M49 147L68 144M73 121L71 97M594 139L614 129M578 111L578 89" fill="none" stroke="#BBD4BD" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round" /><path d="M143 154C129 173 131 186 143 186C155 186 157 174 143 154ZM504 130C494 145 493 154 503 155C514 153 514 146 504 130Z" fill="#256044" opacity=".6"/><g id="perch"><path d="M416 246Q459 240 500 246" fill="none" stroke="#256044" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" /></g></g></g>
+</svg>

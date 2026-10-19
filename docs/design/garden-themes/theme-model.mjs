@@ -16,17 +16,17 @@ export const themes = [
     palette: { canvas: '#17232D', surface: '#22313C', text: '#F2F4F0', muted: '#C0CBCD', accent: '#B5D9B2', onAccent: '#17232D', sky: '#263A4A', ground: '#344C46', plant: '#B5D9B2', bloom: '#E5B7CA', bird: '#D7AF8C', wing: '#785544', detail: '#17232D' },
   },
   {
-    id: 'rain-forest', name: 'Rain Forest', bird: 'Hummingbird', unlockDays: 7,
+    id: 'rain-forest', name: 'Rain Forest', bird: 'Hummingbird', unlockDays: 0,
     background: 'Broad leaves, layered canopy and still raindrops',
     palette: { canvas: '#EEF4EC', surface: '#FFFFFF', text: '#203329', muted: '#4D6053', accent: '#256044', onAccent: '#FFFFFF', sky: '#D8EADD', ground: '#BBD4BD', plant: '#256044', bloom: '#A63B50', bird: '#256044', wing: '#9CBF6D', detail: '#203329' },
   },
   {
-    id: 'desert-bloom', name: 'Desert Bloom', bird: 'Finch', unlockDays: 21,
+    id: 'desert-bloom', name: 'Desert Bloom', bird: 'Finch', unlockDays: 0,
     background: 'Terracotta dunes, a flowering cactus and warm light',
     palette: { canvas: '#FBF1E4', surface: '#FFFFFF', text: '#3D3028', muted: '#685546', accent: '#884328', onAccent: '#FFFFFF', sky: '#F1DFC4', ground: '#DBB48F', plant: '#526B3D', bloom: '#AB3F55', bird: '#A14F34', wing: '#EDC181', detail: '#3D3028' },
   },
   {
-    id: 'seasonal', name: 'Seasonal', bird: 'Skylark', unlockDays: 45,
+    id: 'seasonal', name: 'Seasonal', bird: 'Skylark', unlockDays: 0,
     background: 'A four-season garden; autumn shown, every season stays selectable',
     palette: { canvas: '#FAF1E6', surface: '#FFFFFF', text: '#352D26', muted: '#655747', accent: '#7D4529', onAccent: '#FFFFFF', sky: '#F3DFC3', ground: '#DBBD88', plant: '#657442', bloom: '#A54530', bird: '#775334', wing: '#EDC995', detail: '#352D26' },
   },
@@ -59,9 +59,7 @@ export function resolveThemeAccess({ practiceDays, unlockedThemeIds = [] }) {
   for (const id of unlockedThemeIds) {
     if (!themes.some(theme => theme.id === id)) throw new TypeError(`Unknown theme: ${id}`);
   }
-  const count = new Set(practiceDays).size;
-  const retained = new Set(unlockedThemeIds);
-  return themes.filter(theme => theme.unlockDays <= count || retained.has(theme.id)).map(theme => theme.id);
+  return themes.map(theme => theme.id);
 }
 
 export function celebrationPolicy({

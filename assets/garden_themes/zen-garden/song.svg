@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 64 64" role="img" aria-labelledby="title description">
+<title id="title">Budlark Zen Garden: song</title>
+<desc id="description">Original vector artwork. Wren companion. Decorative layer; exclude from app semantics.</desc>
+<defs>
+<linearGradient id="sky" x2="0" y2="1"><stop stop-color="#E4E8DE"/><stop offset="1" stop-color="#F2F0E8"/></linearGradient>
+<linearGradient id="petal" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#AA573C"/><stop offset="1" stop-color="#73513E"/></linearGradient>
+<linearGradient id="feather" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#D8AD83"/><stop offset="1" stop-color="#73513E"/></linearGradient>
+</defs>
+<g id="artwork"><g id="song-notes"><path d="M20 42V15L46 9V36H41V16L25 20V42Z" fill="#73513E"/><path d="M9 44C9 37 25 34 25 40C26 48 10 52 9 44ZM30 38C30 31 46 28 46 34C47 42 31 46 30 38Z" fill="#73513E"/></g></g>
+</svg>

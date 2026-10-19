@@ -1,4 +1,4 @@
-import { writeFileSync } from 'node:fs';
+import { readFileSync, writeFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { resolve } from 'node:path';
 import { themes } from './theme-model.mjs';
@@ -218,12 +218,15 @@ export function renderContactSheet() {
   })();
 </script>
 <style>${shellCss}</style></head>
-<body><main><header><div class="badge">Owner review / design only / not in dogfood</div>
+<body><main><header><div class="badge">Approved theme direction / asset review / not released</div>
 <h1>A bud to grow. A bird to celebrate.</h1>
-<p>The habit grows from seed to bloom. Your companion lands, sings for one second and rests. No lost growth, no streak pressure, no shopping.</p>
+<p>The habit grows from seed to bloom. Your companion lands, sings for one second and rests. All six themes are immediately selectable. No lost growth, no streak pressure, no shopping.</p>
 <p class="note">24 original SVG concepts, not app screenshots. Each main frame has one heading, one action and nine visible words. Compare completion growth, the one-second song and a calm return cue across six settings.</p>
 <nav aria-label="Theme families">${themes.map(t => `<a href="#${t.id}">${t.name}</a>`).join('')}</nav>
 <p class="legend">Motion equivalent: with app or OS reduced motion, use a still perched bird and the same success text. Sound is off by default. All fireflies, rain and leaves are static.</p></header>
+<section id="production" aria-labelledby="production-title"><h2 id="production-title">Production asset compositions</h2>
+<p class="note">Refined original vector layers, rendered with the supplied high-DPI pack. These are composition previews, not the running Flutter app. The earlier journey and icon concepts follow below.</p>
+<div class="grid">${themes.map(t => `<figure><img width="960" height="640" src="data:image/png;base64,${readFileSync(new URL(`./production-previews/${t.id}.png`, import.meta.url)).toString('base64')}" alt="${t.name}: refined production asset composition"><figcaption>${t.name} / all six included immediately</figcaption></figure>`).join('')}</div></section>
 ${themes.map(t => `<section id="${t.id}" aria-labelledby="${t.id}-title">
 <div class="theme-heading"><div><h2 id="${t.id}-title">${t.name}</h2>
 <p class="note">${t.bird} / ${t.unlockDays === 0 ? 'Included from the start' : `${t.unlockDays} lifetime practice days; need not be consecutive; never revoked or sold`}<br>${escape(t.background)}</p>
@@ -233,7 +236,7 @@ ${themes.map(t => `<section id="${t.id}" aria-labelledby="${t.id}-title">
 <figure>${image(t, 'completion')}<figcaption>Complete / bud to bloom, lark lands and sings for 1s; reduced motion uses this still frame</figcaption></figure>
 <figure>${image(t, 'return')}<figcaption>Return / a still coffee-cup cue for the next anchor, not another task</figcaption></figure>
 </div></section>`).join('\n')}
-<footer>Proposed unlock thresholds: 7 / 21 / 45 distinct practice days. Rest does not reset them. Seasonal shows autumn; all four seasons remain selectable after unlock. Native accessibility, reduced-motion behavior and small-icon legibility still require implementation review.</footer>
+<footer>Owner-approved P15: all six themes are available immediately, with Meadow Dawn as default. No milestone gates or purchases. Seasonal artwork shows autumn. Native accessibility, reduced-motion behavior and small-icon legibility still require implementation review.</footer>
 </main></body></html>
 `;
 }

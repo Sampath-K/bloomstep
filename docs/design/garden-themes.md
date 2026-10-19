@@ -1,8 +1,11 @@
 # Budlark: a bud to grow, a bird to celebrate
 
-**Draft design proposal for owner review. Not approved, implemented, or included
-in the dogfood release.** This branch changes only design artifacts and their
-Node contract tests, based on `origin/main` at `8e8bf58`.
+**Owner-approved theme direction (P15); PR ready for review, not released.**
+All six themes are immediately selectable, with Meadow Dawn as default.
+The [production asset pack and integration contract](garden-themes/production-assets.md)
+now supplement these design frames. App picker, settings/sync and real animation
+playback remain owned by the release session. No merge or release is implied.
+The branch began at `origin/main` `8e8bf58`.
 
 ## Expected experience
 
@@ -82,34 +85,21 @@ no production Flutter widget; `celebrationPolicy` is a Node contract fixture onl
 | Meadow Dawn (default) | Skylark, raised crest and warm wing | Sunrise, meadow grasses, seed heads | Free immediately |
 | Zen Garden | Wren, compact body and upright short tail | Raked sand, stones, maple | Free immediately |
 | Night Garden | Nightingale, long tail | Moonlight, quiet foliage, still fireflies | Free immediately; always available as the dark garden |
-| Rain Forest | Hummingbird, long beak and pointed wing | Layered leaves, rain beads | 7 distinct practice days |
-| Desert Bloom | Finch, stout beak and compact wing | Dunes, flowering cactus | 21 distinct practice days |
-| Seasonal | Skylark | Spring buds, summer canopy, autumn leaves, winter evergreens | 45 distinct practice days; all four seasons stay selectable |
+| Rain Forest | Hummingbird, long beak and pointed wing | Layered leaves, rain beads | Free immediately |
+| Desert Bloom | Finch, stout beak and compact wing | Dunes, flowering cactus | Free immediately |
+| Seasonal | Skylark | Autumn foliage in the current pack | Free immediately |
 
-Thresholds are **coordinator-proposed review defaults**, not owner-approved
-requirements. A practice day is any local calendar date with at least one
-accepted habit completion, across all habits; multiple check-ins that day count
-once. Days need not be consecutive. Store the local date with the completion;
-do not recalculate past dates when time zone changes. This is a lifetime
-consistency milestone, not a streak, speed challenge or purchase.
+Owner P15 supersedes the earlier 7/21/45-day proposal: **no milestone gating**.
+All six themes are free immediately, independent of practice history or account.
+Misses, edits, deleted history and clock/season changes cannot remove access.
+No subscription, currency, random drops, advertising or limited-time offer.
+Autumn is the rendered Seasonal artwork; additional season illustrations are
+not claimed as delivered by this pack.
 
-Unlocks are persisted entitlements, unioned with newly earned themes, never
-recomputed downward. Misses, edits, deleting a habit/history entry and clock or
-season changes cannot revoke them. Unlocking is free, permanent and never sold;
-no subscription gate, currency, random drops, advertising or limited-time offer.
-Seasonal offers a manual season selection; it never locks because a month ends.
-Autumn is the one rendered seasonal example here, not four additional families.
-
-Entitlements belong to the currently selected device/account garden, matching
-existing storage boundaries. Switching gardens reads that garden's state without
-merging. For a later explicit device-to-account copy, union earned unlocks only
-within the already-confirmed copy transaction; never copy theme preferences,
-consent or settings automatically. A failed save/copy reports an error and offers
-retry; do not announce an unlock before it is durably retained. No account is
-required to use free themes or earn device-garden milestones. Account sync,
-schema migration and export format require a separately approved implementation.
-Explicit deletion of the whole garden/account is data erasure, not a punishment;
-do not retain hidden unlock records after the user's requested erasure.
+The selected theme id is persisted/synced through the existing garden settings
+by the release session. Switching gardens must respect account/device ownership;
+do not merge their data or copy settings without the existing explicit boundary.
+A failed settings write exposes an error/retry rather than claiming success.
 
 ## Theme model and boundaries
 
@@ -127,10 +117,9 @@ availability or selection. Seasonal's palette represents autumn; the other
 three palettes need the same contract before implementation.
 
 Theme selection lives under the existing Settings surface: preview, Apply,
-Cancel; only Apply persists. Show availability as text ("Included" / "7 practice
-days") rather than color or a shopping lock. Unlock acknowledgement never opens
-the picker automatically. The main-window mockups show the active theme as
-secondary, non-interactive context; they add no theme button to the habit flow.
+Cancel; only Apply persists. All six choices show "Included", with no lock or
+counter. Reach the picker in at most two taps from profile card/settings.
+The minimal main-window mockups add no theme choice to the primary habit flow.
 
 The profile, recipes, reminders, privacy, sync errors, deletion warnings,
 invitations and the anchor/action/celebration builder keep their existing
@@ -159,8 +148,8 @@ theme-gallery badges, not automatic OS shortcut/taskbar identity changes.
   surfaces before replacing assets. The contact sheet's 32px sample is a
   design aid, not a passed legibility/usability test.
 
-Owner review is required for companion prominence, the six visual directions,
-copy and milestone thresholds. Later implementation needs real Flutter
+The owner approved the six theme directions and immediate access. Production
+art quality and integrated behavior still need review. Implementation needs real Flutter
 light/dark/high-contrast, 200% text, keyboard/Narrator and reduced-motion captures,
 plus small-icon review. None of those app acceptance checks are claimed here.
 
@@ -177,12 +166,12 @@ The generator has no dependencies, clocks, randomness, remote fonts, downloaded
 images or third-party art. It writes exactly 24 SVG files and one self-contained
 HTML contact sheet with inline image data. Each completion image is the
 singing/perched keyframe, not an animated recording. SVG is the canonical render;
-no PNG export or Flutter golden is needed for this vector-only proposal.
+the separate production pack includes PNG density exports and motion specs.
 
 The HTML review shell uses the Clawpilot light/dark tokens; the embedded SVG
 artwork intentionally uses the proposed Budlark palettes. Regeneration must be
 byte-identical. Tests cover contrast, finite/reduced motion, free access,
-threshold boundaries, day deduplication, invalid inputs, retained unlocks,
+all-six immediate access, invalid inputs, non-revocation,
 deterministic renders and contact-sheet coverage. They do not establish native
-app behavior. No changes to app imports, shipping assets, release branches,
-installer packaging, deployment or release workflow are part of this proposal.
+app behavior. The production asset pack adds original assets only, no app imports,
+pubspec changes, release-branch edits, installer changes, deployment or release.

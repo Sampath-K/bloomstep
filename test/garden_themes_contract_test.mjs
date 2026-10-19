@@ -7,13 +7,13 @@ import { renderSvg, renderContactSheet } from '../docs/design/garden-themes/rend
 const directory = new URL('../docs/design/garden-themes/', import.meta.url);
 const days = count => Array.from({ length: count }, (_, i) =>
   new Date(Date.UTC(2026, 0, i * 2 + 1)).toISOString().slice(0, 10));
-const free = ['meadow-dawn', 'zen-garden', 'night-garden'];
+const free = ['meadow-dawn', 'zen-garden', 'night-garden', 'rain-forest', 'desert-bloom', 'seasonal'];
 
 test('six theme families have complete opaque tokens and the agreed companions', () => {
   assert.deepEqual(themes.map(t => [t.name, t.bird, t.unlockDays]), [
     ['Meadow Dawn', 'Skylark', 0], ['Zen Garden', 'Wren', 0],
-    ['Night Garden', 'Nightingale', 0], ['Rain Forest', 'Hummingbird', 7],
-    ['Desert Bloom', 'Finch', 21], ['Seasonal', 'Skylark', 45],
+    ['Night Garden', 'Nightingale', 0], ['Rain Forest', 'Hummingbird', 0],
+    ['Desert Bloom', 'Finch', 0], ['Seasonal', 'Skylark', 0],
   ]);
   assert.equal(new Set(themes.map(t => t.id)).size, 6);
   for (const theme of themes) {
@@ -55,13 +55,13 @@ test('free themes, including dark, need neither practice nor an account', () => 
   assert.deepEqual(resolveThemeAccess({ practiceDays: [] }), free);
 });
 
-test('distinct nonconsecutive practice days unlock exactly at 7, 21 and 45', () => {
-  for (const [count, expected] of [[6, 3], [7, 4], [20, 4], [21, 5], [44, 5], [45, 6]]) {
-    assert.equal(resolveThemeAccess({ practiceDays: days(count) }).length, expected, `${count} days`);
+test('all six remain available at every former milestone boundary without gating', () => {
+  for (const count of [0, 6, 7, 20, 21, 44, 45]) {
+    assert.deepEqual(resolveThemeAccess({ practiceDays: days(count) }), free, `${count} days`);
   }
   assert.deepEqual(resolveThemeAccess({ practiceDays: Array(100).fill('2026-01-01') }), free);
   assert.deepEqual(resolveThemeAccess({ practiceDays: days(7).reverse() }),
-    [...free, 'rain-forest']);
+    free);
 });
 
 test('every earned theme survives missing history and all later lower practice totals', () => {
@@ -69,9 +69,9 @@ test('every earned theme survives missing history and all later lower practice t
   for (let count = 0; count <= 45; count++) {
     assert.deepEqual(resolveThemeAccess({ practiceDays: days(count), unlockedThemeIds: earned }), earned);
   }
-  assert.deepEqual(resolveThemeAccess({ practiceDays: [], unlockedThemeIds: ['seasonal'] }), [...free, 'seasonal']);
+  assert.deepEqual(resolveThemeAccess({ practiceDays: [], unlockedThemeIds: ['seasonal'] }), free);
   assert.deepEqual(resolveThemeAccess({ practiceDays: days(7), unlockedThemeIds: ['desert-bloom', 'desert-bloom'] }),
-    [...free, 'rain-forest', 'desert-bloom']);
+    free);
 });
 
 test('invalid entitlement inputs fail explicitly instead of fabricating success', () => {
@@ -159,7 +159,8 @@ test('P14 frames have one heading, one action, at most twelve words and an hones
 test('self-contained contact sheet includes every state and a small icon study', () => {
   const actual = readFileSync(new URL('contact-sheet.html', directory), 'utf8');
   assert.equal(actual, renderContactSheet(), 'Regenerate stale contact sheet');
-  assert.equal((actual.match(/<section /g) || []).length, 6);
+  assert.equal((actual.match(/<section /g) || []).length, 7);
+  assert.equal((actual.match(/data:image\/png;base64,/g) || []).length, 6);
   assert.equal((actual.match(/data:image\/svg\+xml;base64,/g) || []).length, 30);
   for (const theme of themes) {
     assert.ok(actual.includes(`id="${theme.id}"`));

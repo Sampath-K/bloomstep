@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="640" height="320" viewBox="0 0 640 320" role="img" aria-labelledby="title description">
+<title id="title">Budlark Desert Bloom: garden</title>
+<desc id="description">Original vector artwork. Finch companion. Decorative layer; exclude from app semantics.</desc>
+<defs>
+<linearGradient id="sky" x2="0" y2="1"><stop stop-color="#F1DFC4"/><stop offset="1" stop-color="#FBF1E4"/></linearGradient>
+<linearGradient id="petal" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#AB3F55"/><stop offset="1" stop-color="#A14F34"/></linearGradient>
+<linearGradient id="feather" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#EDC181"/><stop offset="1" stop-color="#A14F34"/></linearGradient>
+</defs>
+<g id="artwork"><g id="scenery"><path d="M0 0H640V320H0Z" fill="url(#sky)"/><path d="M0 254C109 195 204 233 320 242C454 251 537 188 640 223V320H0Z" fill="#DBB48F"/><path d="M0 286C152 257 218 295 375 267C495 246 583 263 640 279V320H0Z" fill="#526B3D" opacity=".12"/><path d="M478 80a37 37 0 1 0 74 0a37 37 0 1 0-74 0" fill="#EDC181"/><path d="M0 230Q142 158 283 233Q452 151 640 214V289H0Z" fill="#DBB48F"/><path d="M87 267V156M87 214H58V184M88 233H113V198" fill="none" stroke="#526B3D" stroke-width="16" stroke-linecap="round" stroke-linejoin="round" /><path d="M84 253V174M59 203V191M109 223V204" fill="none" stroke="#DBB48F" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round" /><path d="M80 157C65 146 73 133 85 140C91 122 106 136 98 147C112 154 101 167 89 157Z" fill="#AB3F55"/><path d="M560 275Q551 243 561 216Q568 245 578 257Q592 240 594 233Q607 264 596 279Z" fill="#526B3D"/><g id="perch"><path d="M416 246Q459 240 500 246" fill="none" stroke="#A14F34" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" /></g></g></g>
+</svg>
