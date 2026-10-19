@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="640" height="320" viewBox="0 0 640 320" role="img" aria-labelledby="title description">
+<title id="title">Budlark Seasonal: garden</title>
+<desc id="description">Original vector artwork. Skylark companion. Decorative layer; exclude from app semantics.</desc>
+<defs>
+<linearGradient id="sky" x2="0" y2="1"><stop stop-color="#F3DFC3"/><stop offset="1" stop-color="#FAF1E6"/></linearGradient>
+<linearGradient id="petal" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#A54530"/><stop offset="1" stop-color="#775334"/></linearGradient>
+<linearGradient id="feather" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#EDC995"/><stop offset="1" stop-color="#775334"/></linearGradient>
+</defs>
+<g id="artwork"><g id="scenery"><path d="M0 0H640V320H0Z" fill="url(#sky)"/><path d="M0 254C109 195 204 233 320 242C454 251 537 188 640 223V320H0Z" fill="#DBBD88"/><path d="M0 286C152 257 218 295 375 267C495 246 583 263 640 279V320H0Z" fill="#657442" opacity=".12"/><path d="M96 269V152M96 207L66 182M97 186L126 156" fill="none" stroke="#775334" stroke-width="6" stroke-linecap="round" stroke-linejoin="round" /><path d="M43 170C21 145 40 116 63 120C62 94 96 87 110 112C135 92 159 121 143 145C169 162 145 193 121 183C103 209 69 199 65 182C55 187 48 180 43 170Z" fill="#A54530"/><path d="M56 150L71 164M93 124L97 150M125 133L112 154" fill="none" stroke="#EDC995" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" /><path d="M514 266C523 252 537 253 548 257C542 273 524 274 514 266ZM565 278C574 261 585 263 596 268C588 281 576 285 565 278Z" fill="#EDC995"/><path d="M520 266L540 258M572 277L590 269" fill="none" stroke="#775334" stroke-width="1" stroke-linecap="round" stroke-linejoin="round" /><g id="perch"><path d="M416 246Q459 240 500 246" fill="none" stroke="#775334" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" /></g></g></g>
+</svg>

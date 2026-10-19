@@ -1,0 +1,56 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="960" height="640" viewBox="0 0 960 640" role="img" aria-labelledby="title description">
+  <title id="title">Budlark - Desert Bloom - main window</title>
+  <desc id="description">Terracotta dunes, a flowering cactus and warm light. A calm companion accompanies the main habit action. Original vector concept, not a running app.</desc>
+  <metadata>Original deterministic Budlark proposal artwork. No third-party assets.</metadata>
+  <g font-family="Segoe UI, Aptos, Calibri, sans-serif"><rect width="960" height="640" rx="16" fill="#FBF1E4"/>
+       <rect x="0" y="0" width="960" height="48" rx="16" fill="#FFFFFF"/>
+       <text x="24" y="31" font-size="18" fill="#3D3028" font-weight="650">Budlark</text>
+       <g data-role="heading"><text x="64" y="107" font-size="32" fill="#3D3028" font-weight="650">Your garden</text></g>
+       <rect x="64" y="144" width="832" height="252" rx="16" fill="#F1DFC4"/>
+    <ellipse cx="480" cy="370" rx="392" ry="30" fill="#DBB48F"/>
+    <circle cx="778" cy="204" r="39" fill="#EDC181"/>
+        <path d="M84 350 Q300 259 490 358 Q687 280 876 343 L876 390 L84 390 Z" fill="#DBB48F" />
+        <path d="M197 345 V247 M197 291 H172 V268 M197 313 H223 V282" stroke="#526B3D" stroke-width="19" fill="none" stroke-linecap="round"/>
+        <circle cx="198" cy="240" r="14" fill="#AB3F55"/>
+    <g data-growth="sprout" transform="translate(365 364) scale(0.66)">
+    <ellipse cy="6" rx="43" ry="10" fill="#DBB48F"/>
+    <path d="M0 0 Q-5-45 0 -70" stroke="#526B3D" stroke-width="7" fill="none" stroke-linecap="round"/>
+    <path d="M-2-33 Q-52-75-51-36 Q-34-7-2-22 Z" fill="#526B3D" />
+    <path d="M1-55 Q47-92 48-56 Q33-31 1-44 Z" fill="#526B3D" />
+
+
+  </g>
+    <g data-growth="bud" transform="translate(493 365) scale(1)">
+    <ellipse cy="6" rx="43" ry="10" fill="#DBB48F"/>
+    <path d="M0 0 Q-5-45 0 -115" stroke="#526B3D" stroke-width="7" fill="none" stroke-linecap="round"/>
+    <path d="M-2-33 Q-52-75-51-36 Q-34-7-2-22 Z" fill="#526B3D" />
+    <path d="M1-55 Q47-92 48-56 Q33-31 1-44 Z" fill="#526B3D" />
+
+    <path d="M0-93 Q-35-136 0-153 Q35-136 0-93 Z" fill="#AB3F55" />
+  </g>
+    <g data-growth="bloom" transform="translate(628 367) scale(0.7)">
+    <ellipse cy="6" rx="43" ry="10" fill="#DBB48F"/>
+    <path d="M0 0 Q-5-45 0 -115" stroke="#526B3D" stroke-width="7" fill="none" stroke-linecap="round"/>
+    <path d="M-2-33 Q-52-75-51-36 Q-34-7-2-22 Z" fill="#526B3D" />
+    <path d="M1-55 Q47-92 48-56 Q33-31 1-44 Z" fill="#526B3D" />
+    <g fill="#AB3F55"><ellipse cy="-115" rx="21" ry="31"/><ellipse cx="-21" cy="-101" rx="22" ry="18"/><ellipse cx="21" cy="-101" rx="22" ry="18"/><ellipse cy="-86" rx="23" ry="18"/></g><circle cy="-104" r="12" fill="#EDC181"/>
+
+  </g>
+    <path d="M564 292 Q629 284 689 292" stroke="#A14F34" stroke-width="6" fill="none" stroke-linecap="round"/>
+    <g data-bird="Finch" transform="translate(624 252) scale(0.9)">
+    <path d="M-18 8 L-53 25 L-46 38 L-10 25 Z" fill="#A14F34" />
+    <ellipse cx="0" cy="8" rx="30" ry="22" fill="#A14F34"/>
+    <circle cx="24" cy="-13" r="19" fill="#A14F34"/>
+    <path d="M39-22 L59-11 L39-5 Z" fill="#A14F34" />
+    <path d="M-19 1 Q-7-8 17 8 Q1 28-19 1 Z" fill="#EDC181" />
+
+    <circle cx="29" cy="-17" r="3" fill="#3D3028"/>
+    <path d="M-4 27 L-3 40 L5 40 M11 27 L12 40 L20 40" fill="none" stroke="#A14F34" stroke-width="4" stroke-linecap="round"/>
+
+  </g>
+
+       <rect x="64" y="420" width="832" height="137" rx="16" fill="#FFFFFF"/>
+       <text x="88" y="494" font-size="26" fill="#3D3028" font-weight="600">After coffee, stretch once.</text>
+       <g data-role="primary-action"><rect x="696" y="463" width="176" height="48" rx="10" fill="#884328"/>
+       <text x="716" y="493" font-size="17" fill="#FFFFFF" font-weight="600">Mark complete</text></g></g>
+</svg>

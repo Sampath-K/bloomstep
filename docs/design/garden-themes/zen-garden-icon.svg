@@ -1,0 +1,26 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="256" height="256" viewBox="0 0 256 256" role="img" aria-labelledby="title description">
+  <title id="title">Budlark - Zen Garden - icon</title>
+  <desc id="description">Visible wren perched above a bud. Original vector concept.</desc>
+  <metadata>Original deterministic Budlark proposal artwork. No third-party assets.</metadata>
+  <g font-family="Segoe UI, Aptos, Calibri, sans-serif"><rect width="256" height="256" rx="48" fill="#F2F0E8"/>
+       <g data-growth="bud" transform="translate(118 224) scale(0.72)">
+    <ellipse cy="6" rx="43" ry="10" fill="#DDD5C0"/>
+    <path d="M0 0 Q-5-45 0 -115" stroke="#4C6043" stroke-width="7" fill="none" stroke-linecap="round"/>
+    <path d="M-2-33 Q-52-75-51-36 Q-34-7-2-22 Z" fill="#4C6043" />
+    <path d="M1-55 Q47-92 48-56 Q33-31 1-44 Z" fill="#4C6043" />
+
+    <path d="M0-93 Q-35-136 0-153 Q35-136 0-93 Z" fill="#AA573C" />
+  </g>
+       <path d="M126 132 H214" stroke="#4C6043" stroke-width="7" stroke-linecap="round"/>
+       <g data-bird="Wren" transform="translate(173 101) scale(0.76)">
+    <path d="M-17 12 L-46-27 L-37 18 Z" fill="#73513E" />
+    <ellipse cx="0" cy="8" rx="24" ry="22" fill="#73513E"/>
+    <circle cx="24" cy="-13" r="19" fill="#73513E"/>
+    <path d="M40-17 L56-11 L40-8 Z" fill="#73513E" />
+    <path d="M-19 1 Q-7-8 17 8 Q1 28-19 1 Z" fill="#D8AD83" />
+
+    <circle cx="29" cy="-17" r="3" fill="#292D29"/>
+    <path d="M-4 27 L-3 40 L5 40 M11 27 L12 40 L20 40" fill="none" stroke="#73513E" stroke-width="4" stroke-linecap="round"/>
+
+  </g></g>
+</svg>

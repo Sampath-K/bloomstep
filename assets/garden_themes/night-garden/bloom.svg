@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="160" height="160" viewBox="0 0 160 160" role="img" aria-labelledby="title description">
+<title id="title">Budlark Night Garden: bloom</title>
+<desc id="description">Original vector artwork. Nightingale companion. Decorative layer; exclude from app semantics.</desc>
+<defs>
+<linearGradient id="sky" x2="0" y2="1"><stop stop-color="#263A4A"/><stop offset="1" stop-color="#17232D"/></linearGradient>
+<linearGradient id="petal" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#E5B7CA"/><stop offset="1" stop-color="#D7AF8C"/></linearGradient>
+<linearGradient id="feather" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#785544"/><stop offset="1" stop-color="#D7AF8C"/></linearGradient>
+</defs>
+<g id="artwork"><g id="plant-bloom"><path d="M35 143C54 134 107 134 126 143C109 152 54 152 35 143Z" fill="#344C46"/><path d="M80 140C76 114 84 88 80 48" fill="none" stroke="#B5D9B2" stroke-width="5" stroke-linecap="round" stroke-linejoin="round" /><g id="leaves"><path d="M80 116C61 115 39 102 38 82C59 80 77 93 80 109Z" fill="#B5D9B2"/><path d="M81 95C89 73 107 68 123 71C122 90 103 104 81 102Z" fill="#B5D9B2"/><path d="M48 89L76 110M88 96L114 78" fill="none" stroke="#344C46" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" /></g><g id="petals"><path d="M80 57C56 62 39 49 44 34C48 24 61 25 69 31C56 6 78 0 86 21C96 0 116 13 105 31C131 24 138 47 115 55C115 78 91 80 80 57Z" fill="url(#petal)"/><path d="M83 43L66 36M85 42L86 24M90 45L106 37M91 50L105 61" fill="none" stroke="#785544" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" opacity=".65"/><path d="M77 43a12 12 0 1 0 24 0a12 12 0 1 0-24 0" fill="#785544"/><path d="M85 39a2 2 0 1 0 4 0a2 2 0 1 0-4 0M91 45a2 2 0 1 0 4 0a2 2 0 1 0-4 0" fill="#E5B7CA"/></g></g></g>
+</svg>

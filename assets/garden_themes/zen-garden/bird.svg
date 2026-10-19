@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="160" height="160" viewBox="0 0 160 160" role="img" aria-labelledby="title description">
+<title id="title">Budlark Zen Garden: bird</title>
+<desc id="description">Original vector artwork. Wren companion. Decorative layer; exclude from app semantics.</desc>
+<defs>
+<linearGradient id="sky" x2="0" y2="1"><stop stop-color="#E4E8DE"/><stop offset="1" stop-color="#F2F0E8"/></linearGradient>
+<linearGradient id="petal" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#AA573C"/><stop offset="1" stop-color="#73513E"/></linearGradient>
+<linearGradient id="feather" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#D8AD83"/><stop offset="1" stop-color="#73513E"/></linearGradient>
+</defs>
+<g id="artwork"><g id="bird"><g id="tail"><path d="M50 96C36 79 31 58 25 48C20 67 24 97 41 113Z" fill="#73513E"/><path d="M30 65L42 101" fill="none" stroke="#D8AD83" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" /></g><g id="feet"><path d="M70 116L68 136L59 140M68 136L77 139M91 116L94 136L85 140M94 136L104 139" fill="none" stroke="#73513E" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" /></g><g id="body"><path d="M43 94C41 74 57 64 78 66C94 68 103 60 109 54C120 69 118 88 103 107C88 126 57 123 43 106C41 102 41 98 43 94Z" fill="#73513E"/><path d="M51 99C66 111 87 115 103 98C94 121 67 125 51 109Z" fill="#D8AD83" opacity=".7"/></g><g id="wing"><path d="M51 87C64 75 86 78 97 89C89 107 65 114 51 87Z" fill="url(#feather)"/><path d="M60 90Q74 99 88 92M62 97Q73 103 82 98" fill="none" stroke="#73513E" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" /></g><g id="head"><path d="M88 61C84 44 93 30 109 30C127 30 137 44 132 58C128 69 117 75 104 71Z" fill="#73513E"/><path d="M99 58Q112 60 125 53Q120 69 106 68Z" fill="#D8AD83"/><path d="M112 42a3.5 3.5 0 1 0 7 0a3.5 3.5 0 1 0-7 0" fill="#292D29"/><path d="M114 41a1 1 0 1 0 2 0a1 1 0 1 0-2 0" fill="#FFFFFF"/></g><g id="beak"><path d="M131 44L147 49L130 52Z" fill="#73513E"/></g></g></g>
+</svg>

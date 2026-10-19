@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="160" height="160" viewBox="0 0 160 160" role="img" aria-labelledby="title description">
+<title id="title">Budlark Rain Forest: sprout</title>
+<desc id="description">Original vector artwork. Hummingbird companion. Decorative layer; exclude from app semantics.</desc>
+<defs>
+<linearGradient id="sky" x2="0" y2="1"><stop stop-color="#D8EADD"/><stop offset="1" stop-color="#EEF4EC"/></linearGradient>
+<linearGradient id="petal" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#A63B50"/><stop offset="1" stop-color="#256044"/></linearGradient>
+<linearGradient id="feather" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#9CBF6D"/><stop offset="1" stop-color="#256044"/></linearGradient>
+</defs>
+<g id="artwork"><g id="plant-sprout"><path d="M35 143C54 134 107 134 126 143C109 152 54 152 35 143Z" fill="#BBD4BD"/><path d="M80 140C76 114 84 88 80 78" fill="none" stroke="#256044" stroke-width="5" stroke-linecap="round" stroke-linejoin="round" /><g id="leaves"><path d="M80 116C61 115 39 102 38 82C59 80 77 93 80 109Z" fill="#256044"/><path d="M81 95C89 73 107 68 123 71C122 90 103 104 81 102Z" fill="#256044"/><path d="M48 89L76 110M88 96L114 78" fill="none" stroke="#BBD4BD" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" /></g></g></g>
+</svg>
