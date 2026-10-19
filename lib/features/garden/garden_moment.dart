@@ -57,6 +57,7 @@ class _GardenMomentState extends State<GardenMoment>
     value: 1,
   );
   String? _played;
+  String? _finished;
 
   @override
   void initState() {
@@ -67,8 +68,11 @@ class _GardenMomentState extends State<GardenMoment>
   }
 
   void _finish() {
+    final completion = widget.completion;
+    if (!widget.animate || completion == null || completion == _finished) return;
+    _finished = completion;
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (mounted) widget.onFinished?.call();
+      if (mounted && widget.completion == completion) widget.onFinished?.call();
     });
   }
 

@@ -20,8 +20,12 @@ void main() {
     for (final accepted in [false, true]) {
       testWidgets('anonymous feedback ${accepted ? "receipt" : "queue"} is honest, guest=$guest', (tester) async {
         final (store, _) = await fixture(tester);
-        final directory = await Directory.systemTemp.createTemp('feedback-ui-');
-        addTearDown(() => directory.delete(recursive: true));
+        final directory = (await tester.runAsync(
+          () => Directory.systemTemp.createTemp('feedback-ui-'),
+        ))!;
+        addTearDown(() => tester.runAsync(
+          () => directory.delete(recursive: true),
+        ));
         var requests = 0;
         final feedback = AnonymousFeedback(
           directory.path,
@@ -54,7 +58,9 @@ void main() {
         await tester.tap(find.byTooltip('Help us grow'));
         await tester.pumpAndSettle();
         await tester.enterText(find.byType(TextField), 'Synthetic feedback only');
-        await tester.tap(find.widgetWithText(FilledButton, 'Send feedback'));
+        await tester.runAsync(
+          () => tester.tap(find.widgetWithText(FilledButton, 'Send feedback')),
+        );
         await settleDatabase(tester);
         expect(requests, 1);
         expect(find.text('Received by the team.'), accepted ? findsOneWidget : findsNothing);
@@ -95,7 +101,10 @@ void main() {
       expect(find.text(signedIn ? 'Alex Rivera' : 'Not signed in'), findsOneWidget);
       expect(find.text("Your account doesn't include a name."), findsNothing);
       final card = find.byTooltip('Profile and account');
-      expect(tester.getCenter(card).dx, greaterThan(tester.view.physicalSize.width / 2));
+      expect(
+        tester.getCenter(card).dx,
+        greaterThan(tester.getSize(find.byType(Scaffold)).width / 2),
+      );
       await tester.tap(card);
       expect(actions, 1);
       expect(tester.takeException(), isNull);
@@ -299,7 +308,7 @@ void main() {
     expect(find.text('Received by the team.'), findsNothing);
     expect(find.text('Retry sending'), findsNothing);
     expect(transportCalls, 0);
-    final rows = await store.voice();
+    final rows = (await tester.runAsync(store.voice))!;
     expect(rows, hasLength(1));
     expect(rows.single['body'], 'Signed-out feedback');
     expect(rows.single['status'], isNot('received'));

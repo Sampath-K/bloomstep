@@ -2138,11 +2138,11 @@ class _GardenScreenState extends State<GardenScreen>
         ? 'Check-in time not set · choose in More'
         : 'Check-in ${_minuteLabel(minute)} · $delivery';
     final warnings = <String>{
-      if (error != null) error!,
-      if (reminderSetupError != null) reminderSetupError!,
-      if (configWarning != null) configWarning!,
-      if (startupWarning != null) startupWarning!,
-      if (invitationWarning != null) invitationWarning!,
+      ?error,
+      ?reminderSetupError,
+      ?configWarning,
+      ?startupWarning,
+      ?invitationWarning,
     };
     return Scaffold(
       appBar: AppBar(

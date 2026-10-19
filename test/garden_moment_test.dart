@@ -59,11 +59,12 @@ void main() {
           await tester.pump(const Duration(milliseconds: 200));
           expect(progress(), 1);
         }
-        await tester.pump();
+        await tester.pumpAndSettle();
         expect(finished, 1);
         await tester.pumpWidget(scene());
         expect(progress(), 1, reason: 'A rebuild must not replay the moment.');
         await tester.pumpAndSettle();
+        expect(finished, 1, reason: 'A rebuild must not repeat completion.');
         expect(tester.binding.hasScheduledFrame, isFalse);
         expect(tester.takeException(), isNull);
       });
