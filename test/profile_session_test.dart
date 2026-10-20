@@ -142,9 +142,16 @@ void main() {
         await tester.pump();
         receipt = await tester.runAsync<MeasurementReceipt?>(() async {
           final file = File(collector.path);
-          return await file.exists()
-              ? MeasurementReceipt.parse(await file.readAsString())
-              : null;
+          if (!await file.exists()) return null;
+          for (var attempt = 0; ; attempt++) {
+            try {
+              return MeasurementReceipt.parse(await file.readAsString());
+            } on FileSystemException catch (error) {
+              if (error.osError?.errorCode != 32 || attempt >= 4) rethrow;
+              debugPrint('Receipt observation overlapped a write; retrying read.');
+              await Future<void>.delayed(const Duration(milliseconds: 25));
+            }
+          }
         });
         if (scenario == 'consented guest' &&
             receipt?.events.any((event) => event.name == 'signin_view') ==
@@ -199,20 +206,14 @@ void main() {
     await tester.tap(find.text('Plant a habit'));
     await tester.pumpAndSettle();
     expect(find.text('Sign in securely'), findsNothing);
-    expect(find.text('pour my morning drink'), findsOneWidget);
-    await tester.ensureVisible(find.text('pour my morning drink'));
-    await tester.tap(find.text('pour my morning drink'));
-    await tester.pumpAndSettle();
-    await tester.ensureVisible(find.text('take one slow breath'));
-    await tester.tap(find.text('take one slow breath'));
-    await tester.pumpAndSettle();
-    await tester.ensureVisible(find.text('relax my shoulders and smile'));
-    await tester.tap(find.text('relax my shoulders and smile'));
+    expect(find.text('Plant a Seed').hitTestable(), findsOneWidget);
+    expect(find.text('coffee'), findsOneWidget);
+    await tester.tap(find.text('More'));
     await tester.pumpAndSettle();
     await tester.ensureVisible(find.text('I practiced my celebration'));
     await tester.tap(find.text('I practiced my celebration'));
     await tester.pumpAndSettle();
-    await tester.tap(find.text('Plant this seed'));
+    await tester.tap(find.text('Plant a Seed'));
     await _ready(tester, find.text('See my garden'));
     await tester.tap(find.text('See my garden'));
     await _ready(tester, find.text('Did it'));
@@ -302,14 +303,14 @@ void main() {
     await _screenshot(tester, boundaryKey, 'profile-signed-out.png');
     await _ready(tester, find.text('Sign in with Microsoft or Google'));
     await _tapTextButton(tester, 'Sign in with Microsoft or Google');
-    await _ready(tester, find.text('ST'));
+    await _ready(tester, find.widgetWithText(TextButton, 'Sign out'));
     expect(find.text('Signed in'), findsNothing);
     expect(find.text('Synthetic Garden Tester'), findsOneWidget);
     expect(find.textContaining('synthetic@example.invalid'), findsNothing);
     expect(find.textContaining('Google'), findsNothing);
     expect(find.textContaining('unknown'), findsNothing);
     expect(find.text('ST'), findsOneWidget);
-    expect(find.byTooltip('Settings and privacy'), findsOneWidget);
+    expect(find.widgetWithText(TextButton, 'Sign out'), findsOneWidget);
     expect(find.text('Did it'), findsNothing);
     expect(find.textContaining('Device garden stays separate'), findsOneWidget);
     expect(find.byType(BackButton), findsNothing);
@@ -435,7 +436,7 @@ void main() {
           ),
         ),
       );
-      await _ready(tester, find.text('Plant a habit'));
+      await _ready(tester, find.byTooltip('Settings and privacy').hitTestable());
       expect(find.byTooltip('Settings and privacy'), findsOneWidget);
       await tester.tap(find.byTooltip('Settings and privacy'));
       await _ready(tester, find.text('Garden & data'));
@@ -490,8 +491,10 @@ void main() {
     await tester.pumpWidget(
       MaterialApp(
         builder: (context, child) => MediaQuery(
-          data: MediaQuery.of(context)
-              .copyWith(textScaler: const TextScaler.linear(2)),
+          data: MediaQuery.of(context).copyWith(
+            size: const Size(360, 600),
+            textScaler: const TextScaler.linear(2),
+          ),
           child: child!,
         ),
         home: HabitHome(
@@ -554,7 +557,8 @@ void main() {
       await tester.pumpAndSettle();
       await tester.tap(find.text('Plant a habit'));
       await tester.pumpAndSettle();
-      expect(find.text('pour my morning drink'), findsOneWidget);
+      expect(find.text('Plant a Seed').hitTestable(), findsOneWidget);
+      expect(find.text('coffee'), findsOneWidget);
       await tester.pumpWidget(const SizedBox());
       await tester.runAsync(
         () => Future<void>.delayed(const Duration(milliseconds: 150)),

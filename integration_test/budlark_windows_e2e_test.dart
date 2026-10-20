@@ -9,13 +9,19 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:crypto/crypto.dart';
 import 'package:integration_test/integration_test.dart';
 import 'package:path/path.dart' as p;
+import 'package:window_manager/window_manager.dart';
 import 'package:budlark/core/garden_store.dart';
 import 'package:budlark/core/models.dart';
 import 'package:budlark/features/garden/garden_screen.dart';
 import 'package:budlark/services/sync_service.dart';
+import 'package:budlark/services/remote_config.dart';
 
 import 'support/local_test_api.dart';
 import 'support/test_only_app.dart';
+import 'support/windows_keyboard.dart';
+import 'garden_moment_native_test.dart' as moment_acceptance;
+import 'recipe_builder_quick_plant_test.dart' as planting_acceptance;
+import '../test/support/garden_navigation.dart';
 
 DateTime syntheticJourneyStart(DateTime runStartedAt) {
   final utc = runStartedAt.toUtc();
@@ -28,13 +34,57 @@ DateTime syntheticJourneyStart(DateTime runStartedAt) {
 
 void main() {
   IntegrationTestWidgetsFlutterBinding.ensureInitialized();
+  final hostedArm64Feedback = hostedArm64FeedbackInputEnabled();
+  final feedbackInputLabel = hostedArm64Feedback ? 'Hosted ARM64 Flutter-key' : 'Win32';
+  moment_acceptance.main();
+  planting_acceptance.main();
 
-  testWidgets('Windows clipboard paste reaches the feedback field', (tester) async {
+  testWidgets('signed-out Windows garden offers reminder setup', (tester) async {
+    final store = await GardenStore.open(':memory:', 'signed-out-reminders');
+    addTearDown(store.close);
+    await tester.pumpWidget(MaterialApp(
+      home: GardenScreen(
+        store: store,
+        deviceGuest: true,
+        configLoader: (_) async => const RemoteConfigResult(RemoteConfig.defaults),
+      ),
+    ));
+    for (var i = 0; i < 3; i++) {
+      await tester.runAsync(
+        () => Future<void>.delayed(const Duration(milliseconds: 150)),
+      );
+      await tester.pump();
+    }
+    await openGardenMore(tester);
+    await tester.tap(find.byTooltip('Settings and privacy'));
+    for (var i = 0; i < 3; i++) {
+      await tester.runAsync(
+        () => Future<void>.delayed(const Duration(milliseconds: 150)),
+      );
+      await tester.pump();
+    }
+    await tester.tap(find.text('Reminders'));
+    await tester.pumpAndSettle();
+    expect(find.text('Gentle Windows reminders'), findsOneWidget);
+    expect(find.text('Windows reminders are unavailable here.'), findsNothing);
+    await tester.pumpWidget(const SizedBox.shrink());
+  });
+
+  for (final deviceGuest in [false, true]) {
+  testWidgets('$feedbackInputLabel feedback editing works ${deviceGuest ? "signed out" : "in an account garden"}', (tester) async {
+    if (hostedArm64Feedback) {
+      tester.testTextInput.register();
+      addTearDown(tester.testTextInput.unregister);
+    }
     final store = await GardenStore.open(':memory:', 'clipboard-test');
     addTearDown(store.close);
     addTearDown(() => Clipboard.setData(const ClipboardData(text: '')));
     await tester.pumpWidget(
-      MaterialApp(home: GardenScreen(store: store, testDisableServices: true)),
+      MaterialApp(home: GardenScreen(
+        store: store,
+        deviceGuest: deviceGuest,
+        testDisableServices: true,
+      )),
     );
     for (var i = 0; i < 3; i++) {
       await tester.runAsync(
@@ -42,21 +92,90 @@ void main() {
       );
       await tester.pumpAndSettle();
     }
-    await Clipboard.setData(const ClipboardData(text: 'Synthetic paste check'));
+    await Clipboard.setData(const ClipboardData(text: 'abcd'));
+    await openGardenMore(tester);
     await tester.tap(find.byTooltip('Help us grow'));
     await tester.pumpAndSettle();
     final field = find.widgetWithText(TextField, 'Your feedback');
+    await windowManager.ensureInitialized();
+    await windowManager.focus();
     await tester.tap(field);
-    await tester.pump();
-    await tester.sendKeyDownEvent(LogicalKeyboardKey.controlLeft);
-    await tester.sendKeyEvent(LogicalKeyboardKey.keyV);
-    await tester.sendKeyUpEvent(LogicalKeyboardKey.controlLeft);
+    await tester.showKeyboard(field);
     await tester.pumpAndSettle();
-    expect(tester.widget<TextField>(field).controller!.text, 'Synthetic paste check');
+    final editable = find.descendant(of: field, matching: find.byType(EditableText));
+    expect(tester.widget<EditableText>(editable).focusNode.hasFocus, isTrue);
+    final nativeEvents = <String>[];
+    bool recordNativeKey(KeyEvent event) {
+      nativeEvents.add('${event.runtimeType}:${event.logicalKey.keyLabel}');
+      return false;
+    }
+    HardwareKeyboard.instance.addHandler(recordNativeKey);
+    addTearDown(() => HardwareKeyboard.instance.removeHandler(recordNativeKey));
+    Future<void> keys(
+      List<int> codes, {
+      bool control = false,
+      bool shift = false,
+      bool Function()? applied,
+    }) async {
+      nativeEvents.clear();
+      if (hostedArm64Feedback) {
+        await hostedArm64FeedbackKeys(tester, field, codes, control: control, shift: shift);
+      } else {
+        await windowManager.focus();
+        await tester.pumpAndSettle();
+        await tester.runAsync(() => windowsKeys(codes, control: control, shift: shift));
+      }
+      await tester.pumpAndSettle();
+      if (applied != null) {
+        final elapsed = Stopwatch()..start();
+        while (!applied() && elapsed.elapsed < const Duration(seconds: 5)) {
+          await tester.runAsync(
+            () => Future<void>.delayed(const Duration(milliseconds: 20)),
+          );
+          await tester.pump();
+        }
+        expect(applied(), isTrue,
+            reason: 'Native editing did not finish; events: $nativeEvents; '
+                'focus: ${FocusManager.instance.primaryFocus?.debugLabel}');
+      }
+    }
+    TextEditingController controller() => tester.widget<TextField>(field).controller!;
+    await keys([0x56], control: true, applied: () => controller().text == 'abcd');
+    expect(controller().text, 'abcd');
+    await keys([0x08], applied: () => controller().text == 'abc');
+    expect(controller().text, 'abc');
+    await keys([0x24, 0x2e], applied: () => controller().text == 'bc');
+    expect(controller().text, 'bc');
+    await keys([0x23, 0x25, 0x08], applied: () => controller().text == 'c');
+    expect(controller().text, 'c');
+    await keys([0x24, 0x27],
+        applied: () => controller().selection == const TextSelection.collapsed(offset: 1));
+    expect(controller().selection, const TextSelection.collapsed(offset: 1));
+    await keys([0x41], control: true,
+        applied: () => controller().selection.textInside(controller().text) == 'c');
+    expect(controller().selection.textInside(controller().text), 'c');
+    await keys([0x43], control: true);
+    expect((await Clipboard.getData(Clipboard.kTextPlain))!.text, 'c');
+    await keys([0x58], control: true, applied: () => controller().text.isEmpty);
+    expect(controller().text, isEmpty);
+    await keys([0x56], control: true, applied: () => controller().text == 'c');
+    expect(controller().text, 'c');
+    await keys([0x24], shift: true,
+        applied: () => controller().selection.textInside(controller().text) == 'c');
+    expect(controller().selection.textInside(controller().text), 'c');
+    await keys([0x5a], applied: () => controller().text.toLowerCase() == 'z');
+    expect(controller().text.toLowerCase(), 'z');
+    expect(
+      tester.widget<FilledButton>(
+        find.widgetWithText(FilledButton, 'Send feedback'),
+      ).onPressed,
+      isNotNull,
+    );
     await tester.tap(find.widgetWithText(TextButton, 'Close'));
     await tester.pumpAndSettle();
     await tester.pumpWidget(const SizedBox.shrink());
   });
+  }
 
   testWidgets(
     'synthetic sign-in, real desktop UI, production sync handlers, isolation, export, restart and cleanup',
@@ -209,7 +328,9 @@ void main() {
       );
       var recipes = await activeStore!.habits();
       final firstRecipe = recipes.single;
-      expect(firstRecipe.behavior, 'take one slow breath');
+      expect(firstRecipe.anchor, 'drink coffee');
+      expect(firstRecipe.behavior, 'take one breath');
+      expect(firstRecipe.celebration, 'smile');
       await syncService().sync();
       expect((await activeStore!.habits()).single.id, firstRecipe.id);
       expect((await activeStore!.syncPayload())['habits'], isEmpty);
@@ -685,37 +806,25 @@ Future<void> _plant(
   String? behavior,
   GlobalKey? captureBoundary,
 }) async {
+  final plantingTime = Stopwatch()..start();
   await tester.tap(find.text('Plant a habit'));
   await tester.pumpAndSettle();
+  expect(find.text('Plant a Seed').hitTestable(), findsOneWidget);
+  expect(find.text('coffee'), findsOneWidget);
+  expect(find.text('take one breath'), findsOneWidget);
+  expect(find.byType(TextFormField), findsNothing);
   if (captureBoundary != null) {
-    await _captureBuilderFrame(tester, captureBoundary, 'picker-1-anchor');
+    await _captureBuilderFrame(tester, captureBoundary, 'P14-quick-plant');
   }
-  await tester.ensureVisible(find.text('pour my morning drink'));
-  await tester.tap(find.text('pour my morning drink'));
-  await tester.pumpAndSettle();
-  if (captureBoundary != null) {
-    await _captureBuilderFrame(tester, captureBoundary, 'picker-2-action');
-  }
-  if (behavior == null) {
-    await tester.ensureVisible(find.text('take one slow breath'));
-    await tester.tap(find.text('take one slow breath'));
-  } else {
+  if (behavior != null) {
+    await tester.tap(find.text('More'));
+    await tester.pumpAndSettle();
     await tester.ensureVisible(find.widgetWithText(TextFormField, 'I will...'));
     await tester.enterText(
       find.widgetWithText(TextFormField, 'I will...'),
       behavior,
     );
     await tester.pumpAndSettle();
-    await tester.tap(find.text('Choose a celebration'));
-  }
-  await tester.pumpAndSettle();
-  if (captureBoundary != null) {
-    await _captureBuilderFrame(tester, captureBoundary, 'picker-3-celebration');
-  }
-  await tester.ensureVisible(find.text('relax my shoulders and smile'));
-  await tester.tap(find.text('relax my shoulders and smile'));
-  await tester.pumpAndSettle();
-  if (behavior != null) {
     await tester.ensureVisible(find.text('I practiced my celebration'));
     await tester.tap(find.text('I practiced my celebration'));
     await tester.pumpAndSettle();
@@ -724,16 +833,21 @@ Future<void> _plant(
     await _captureBuilderFrame(
       tester,
       captureBoundary,
-      'picker-complete-optional-practice-off',
+      'P14-before-plant',
     );
   }
-  await tester.tap(find.text('Plant this seed'));
+  await tester.tap(find.text('Plant a Seed'));
   await _waitFor(tester, find.text('See my garden'));
   if (captureBoundary != null) {
     await _captureBuilderFrame(tester, captureBoundary, 'planted-next-step');
   }
   await tester.tap(find.text('See my garden'));
   await tester.pumpAndSettle();
+  plantingTime.stop();
+  if (behavior == null) {
+    expect(plantingTime.elapsed, lessThan(const Duration(seconds: 10)),
+        reason: 'P14 native UI default plant and confirmation wallclock time.');
+  }
 }
 
 Future<void> _captureBuilderFrame(
@@ -800,6 +914,7 @@ Future<void> _naturalnessReflection(
 }
 
 Future<void> _openRecipeMenu(WidgetTester tester) async {
+  await openGardenMore(tester);
   final menu = find.byType(PopupMenuButton<String>);
   await tester.ensureVisible(menu);
   await tester.tap(menu);
@@ -837,6 +952,7 @@ Future<void> _waitFor(
       () => Future<void>.delayed(const Duration(milliseconds: 50)),
     );
     await tester.pump(const Duration(milliseconds: 50));
+    await openGardenMore(tester);
     modelReady = ready == null || await tester.runAsync(ready) == true;
     if (finder.evaluate().isNotEmpty && modelReady) {
       // SQLite may finish before _load has rebuilt and re-enabled UI actions.

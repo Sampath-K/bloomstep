@@ -361,9 +361,14 @@ jobs:
           $key = [BitConverter]::ToString($bytes).Replace('-', '').ToLowerInvariant()
           Write-Output "::add-mask::$key"
           $env:BUDLARK_TEST_AUTH_SECRET = $key
+          $feedbackKeyboardMode = '--dart-define=BUDLARK_HOSTED_ARM64_FOREGROUND_RESTRICTED=false'
+          if ('${{ matrix.runner }}' -eq 'windows-11-arm') {
+            Write-Output '::notice::Hosted ARM64 feedback editing uses Flutter key events: foreground lock timeout=2147483647, SetForegroundWindow and foreground-thread AttachThreadInput denied. All editing assertions remain; x64 is the native SendInput gate.'
+            $feedbackKeyboardMode = '--dart-define=BUDLARK_HOSTED_ARM64_FOREGROUND_RESTRICTED=true'
+          }
           $exitCode = 1
           try {
-            & flutter test integration_test/budlark_windows_e2e_test.dart -d windows --dart-define=BUDLARK_TEST_BUILD=true --reporter expanded
+            & flutter test integration_test/budlark_windows_e2e_test.dart -d windows --dart-define=BUDLARK_TEST_BUILD=true $feedbackKeyboardMode --reporter expanded
             $exitCode = $LASTEXITCODE
           } finally {
             Remove-Item Env:\BUDLARK_TEST_AUTH_SECRET -ErrorAction SilentlyContinue

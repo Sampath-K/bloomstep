@@ -1,13 +1,126 @@
+import 'dart:convert';
+import 'dart:io';
+
 import 'package:budlark/app/theme.dart';
 import 'package:budlark/features/garden/garden_screen.dart';
 import 'package:budlark/features/garden/profile_section.dart';
+import 'package:budlark/services/identity.dart';
+import 'package:budlark/services/anonymous_feedback.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:http/http.dart' as http;
+import 'package:http/testing.dart';
 
 import 'garden_learning_test.dart' show fixture, settleDatabase;
 import 'support/visual_capture.dart';
+import 'support/garden_navigation.dart';
 
 void main() {
+  for (final guest in [false, true]) {
+    for (final accepted in [false, true]) {
+      testWidgets('anonymous feedback ${accepted ? "receipt" : "queue"} is honest, guest=$guest', (tester) async {
+        final (store, _) = await fixture(tester);
+        final directory = (await tester.runAsync(
+          () => Directory.systemTemp.createTemp('feedback-ui-'),
+        ))!;
+        addTearDown(() => tester.runAsync(
+          () => directory.delete(recursive: true),
+        ));
+        var requests = 0;
+        final feedback = AnonymousFeedback(
+          directory.path,
+          origin: 'https://api.example.invalid/api',
+          client: MockClient((request) async {
+            requests++;
+            expect(request.headers.keys.map((key) => key.toLowerCase()), isNot(contains('authorization')));
+            final payload = jsonDecode(request.body) as Map<String, dynamic>;
+            expect(payload.keys.toSet(), {'consent', 'deviceId', 'requestId', 'text'});
+            expect(payload['consent'], isTrue);
+            return accepted
+                ? http.Response(jsonEncode({
+                    'status': 'received',
+                    'receiptId': '11111111-1111-4111-8111-111111111111',
+                    'receivedAt': DateTime.now().toUtc().toIso8601String(),
+                  }), 201)
+                : http.Response('', 503);
+          }),
+        );
+        await tester.pumpWidget(MaterialApp(
+          home: GardenScreen(
+            store: store,
+            deviceGuest: guest,
+            testDisableServices: true,
+            anonymousFeedback: feedback,
+          ),
+        ));
+        await settleDatabase(tester);
+        await openGardenMore(tester);
+        await tester.tap(find.byTooltip('Help us grow'));
+        await tester.pumpAndSettle();
+        await tester.enterText(find.byType(TextField), 'Synthetic feedback only');
+        await tester.runAsync(
+          () => tester.tap(find.widgetWithText(FilledButton, 'Send feedback')),
+        );
+        final submission = Stopwatch()..start();
+        final finished = accepted
+            ? find.text('Received by the team.')
+            : find.textContaining('Saved on this device — not received.');
+        while (finished.evaluate().isEmpty &&
+            submission.elapsed < const Duration(seconds: 10)) {
+          await tester.runAsync(
+            () => Future<void>.delayed(const Duration(milliseconds: 25)),
+          );
+          await tester.pump();
+        }
+        expect(finished, findsOneWidget);
+        expect(requests, 1);
+        expect(find.text('Received by the team.'), accepted ? findsOneWidget : findsNothing);
+        expect(await tester.runAsync(feedback.pendingCount), accepted ? 0 : 1);
+        if (!accepted) {
+          expect(find.textContaining('Saved on this device — not received.'), findsOneWidget);
+        }
+        await tester.tap(find.widgetWithText(TextButton, accepted ? 'Done' : 'Close'));
+        await tester.pumpAndSettle();
+      });
+    }
+  }
+  for (final signedIn in [false, true]) {
+    testWidgets('main window exposes ${signedIn ? "profile" : "sign-in"}', (
+      tester,
+    ) async {
+      final (store, _) = await fixture(tester);
+      var actions = 0;
+      await tester.pumpWidget(MaterialApp(
+        home: GardenScreen(
+          store: store,
+          testDisableServices: true,
+          profileSummaryBuilder: (_, _) => ProfileSection(
+            signedIn: signedIn,
+            configured: true,
+            busy: false,
+            compactSummary: true,
+            profile: signedIn
+                ? const IdentityProfile(displayName: 'Alex Rivera')
+                : null,
+            onSignIn: () async { actions++; },
+            onSignOut: () async { actions++; },
+            onManage: () { actions++; },
+          ),
+        ),
+      ));
+      await settleDatabase(tester);
+      expect(find.text(signedIn ? 'Alex Rivera' : 'Not signed in'), findsOneWidget);
+      expect(find.text("Your account doesn't include a name."), findsNothing);
+      final card = find.byTooltip('Profile and account');
+      expect(
+        tester.getCenter(card).dx,
+        greaterThan(tester.getSize(find.byType(Scaffold)).width / 2),
+      );
+      await tester.tap(card);
+      expect(actions, 1);
+      expect(tester.takeException(), isNull);
+    });
+  }
   for (final dark in [false, true]) {
     testWidgets('owner garden surfaces render in ${dark ? "dark" : "light"}', (
       tester,
@@ -46,6 +159,7 @@ void main() {
       await settleDatabase(tester);
       expect(find.text('Signed-in account'), findsNothing);
       expect(find.text('Sync now'), findsNothing);
+      await openGardenMore(tester);
       final actions = ['Did it', 'Did more', 'Not today'];
       for (final action in actions) {
         expect(find.widgetWithText(OutlinedButton, action), findsOneWidget);
@@ -113,6 +227,12 @@ void main() {
       );
       expect(tester.widget<SwitchListTile>(counts).value, isFalse);
       expect(
+        find.textContaining('Turning off stops future sharing and clears unsent counts'),
+        findsNothing,
+      );
+      await tester.tap(find.text('What these counts include'));
+      await tester.pumpAndSettle();
+      expect(
         find.textContaining(
           'Turning off stops future sharing and clears unsent counts',
         ),
@@ -160,32 +280,49 @@ void main() {
     });
   }
 
-  testWidgets('device feedback clearly cannot send', (tester) async {
+  testWidgets('device feedback accepts text without sign-in', (tester) async {
     final (store, _) = await fixture(tester);
+    var transportCalls = 0;
     await tester.pumpWidget(
       MaterialApp(
         home: GardenScreen(
           store: store,
           deviceGuest: true,
           testDisableServices: true,
+          feedbackSender: (_) async {
+            transportCalls++;
+            return true;
+          },
         ),
       ),
     );
     await settleDatabase(tester);
+    await openGardenMore(tester);
     await tester.tap(find.byTooltip('Help us grow'));
     await tester.pumpAndSettle();
-    expect(
-      find.textContaining('This device garden cannot send feedback.'),
-      findsOneWidget,
-    );
+    await tester.enterText(find.byType(TextField), 'Signed-out feedback');
+    await tester.pump();
     expect(
       tester
           .widget<FilledButton>(
             find.widgetWithText(FilledButton, 'Send feedback'),
           )
           .onPressed,
-      isNull,
+      isNotNull,
     );
+    await tester.tap(find.widgetWithText(FilledButton, 'Send feedback'));
+    await settleDatabase(tester);
+    expect(
+      find.text('Saved on this device — not sent to the team.'),
+      findsOneWidget,
+    );
+    expect(find.text('Received by the team.'), findsNothing);
+    expect(find.text('Retry sending'), findsNothing);
+    expect(transportCalls, 0);
+    final rows = (await tester.runAsync(store.voice))!;
+    expect(rows, hasLength(1));
+    expect(rows.single['body'], 'Signed-out feedback');
+    expect(rows.single['status'], isNot('received'));
   });
 
   testWidgets('feedback controller survives the closing route transition', (
@@ -199,6 +336,7 @@ void main() {
     );
     await settleDatabase(tester);
     for (var i = 0; i < 2; i++) {
+      await openGardenMore(tester);
       await tester.tap(find.byTooltip('Help us grow'));
       await tester.pumpAndSettle();
       final field = find.widgetWithText(TextField, 'Your feedback');

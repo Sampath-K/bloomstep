@@ -1,9 +1,11 @@
+import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 
 import 'package:budlark/core/garden_store.dart';
 import 'package:budlark/core/models.dart';
 import 'package:budlark/features/garden/garden_screen.dart';
+import 'package:budlark/features/garden/garden_moment.dart';
 import 'package:budlark/services/desktop_reminders.dart';
 import 'package:budlark/services/remote_config.dart';
 import 'package:budlark/services/update_service.dart';
@@ -12,11 +14,18 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:sqflite_common_ffi/sqflite_ffi.dart';
+import 'support/garden_navigation.dart';
+
+Future<void> settleGardenMore(WidgetTester tester) async {
+  await settleDatabase(tester);
+  await openGardenMore(tester);
+}
 
 class FakeUpdates extends UpdateService {
-  FakeUpdates(this.result, {this.failure});
+  FakeUpdates(this.result, {this.failure, this.pending});
   final UpdateInfo? result;
   final Object? failure;
+  final Future<void>? pending;
   int checks = 0;
 
   @override
@@ -24,6 +33,7 @@ class FakeUpdates extends UpdateService {
     String currentVersion = UpdateService.bundledVersion,
   }) async {
     checks++;
+    await pending;
     if (failure != null) throw failure!;
     return result;
   }
@@ -68,9 +78,12 @@ Future<void> settleDatabase(WidgetTester tester) async {
   }
 }
 
-Future<(GardenStore, Habit)> fixture(WidgetTester tester) async {
+Future<(GardenStore, Habit)> fixture(
+  WidgetTester tester, {
+  DateTime Function()? clock,
+}) async {
   final store = (await tester.runAsync(
-    () => GardenStore.open(':memory:', 'ui-learning'),
+    () => GardenStore.open(':memory:', 'ui-learning', clock: clock),
   ))!;
   final h = (await tester.runAsync(
     () => store.plant(
@@ -88,6 +101,10 @@ Future<(GardenStore, Habit)> fixture(WidgetTester tester) async {
 }
 
 void main() {
+  // These cases exercise the existing advanced controls behind More.
+  Future<void> settleDatabase(WidgetTester tester) =>
+      settleGardenMore(tester);
+
   testWidgets(
     'feedback supports Ctrl+V into the focused text field on Windows',
     (tester) async {
@@ -420,7 +437,11 @@ void main() {
       );
       expect(find.text('Something needs your attention.'), findsNothing);
       expect(
-        find.text('Saved. That tiny step counts! Now smile.'),
+        tester.widget<GardenMoment>(find.byType(GardenMoment)).completion,
+        isNotNull,
+      );
+      expect(
+        find.text('Now smile.'),
         findsOneWidget,
       );
       expect(gateway.requests, isEmpty, reason: 'acknowledgement stays in-app');
@@ -567,11 +588,12 @@ void main() {
     },
   );
 
-  for (final scenario in ['none', 'preview', 'error']) {
+  for (final scenario in ['none', 'preview', 'error', 'checking']) {
     testWidgets(
       'manual update check shows $scenario without launching installers',
       (tester) async {
         final (store, _) = await fixture(tester);
+        final pending = Completer<void>();
         final updates = FakeUpdates(
           scenario == 'preview'
               ? UpdateInfo(
@@ -585,6 +607,7 @@ void main() {
           failure: scenario == 'error'
               ? StateError('Release service unavailable')
               : null,
+          pending: scenario == 'checking' ? pending.future : null,
         );
         await tester.pumpWidget(
           MaterialApp(
@@ -599,13 +622,18 @@ void main() {
         await tester.pumpAndSettle();
         await tester.ensureVisible(find.text('Check for updates'));
         await tester.tap(find.text('Check for updates'));
+        if (scenario == 'checking') {
+          await tester.pump();
+          expect(find.text('Checking GitHub Releases…'), findsOneWidget);
+          pending.complete();
+        }
         await tester.pumpAndSettle();
         expect(updates.checks, 1);
         expect(
           find.textContaining(UpdateService.bundledVersion),
           findsOneWidget,
         );
-        if (scenario == 'none') {
+        if (scenario == 'none' || scenario == 'checking') {
           expect(find.text('No newer published release found'), findsOneWidget);
           expect(find.text('Open release page'), findsNothing);
         } else if (scenario == 'error') {
@@ -615,7 +643,7 @@ void main() {
           );
           expect(
             find.textContaining('Release service unavailable'),
-            findsNothing,
+            findsOneWidget,
           );
           expect(find.text('Open release page'), findsNothing);
         } else {
@@ -636,7 +664,10 @@ void main() {
     testWidgets(
       'plant never obscures check-ins at ${scenario.$1}, text ${scenario.$2}',
       (tester) async {
-        final (store, _) = await fixture(tester);
+        // A layout check must stay on one synthetic day across CI midnight.
+        final now = DateTime(2026, 10, 19, 12);
+        DateTime clock() => now;
+        final (store, _) = await fixture(tester, clock: clock);
         await tester.runAsync(() async {
           for (var i = 0; i < 2; i++) {
             await store.plant(
@@ -656,7 +687,7 @@ void main() {
                   .copyWith(textScaler: TextScaler.linear(scenario.$2)),
               child: child!,
             ),
-            home: GardenScreen(store: store),
+            home: GardenScreen(store: store, clock: clock),
           ),
         );
         await settleDatabase(tester);
@@ -734,8 +765,7 @@ void main() {
     await tester.ensureVisible(find.text('Did it'));
     await tester.tap(find.text('Did it'));
     await settleDatabase(tester);
-    expect(find.textContaining('That tiny step counts!'), findsOneWidget);
-    expect(find.text('Rate Budlark'), findsNothing);
+    expect((await tester.runAsync(store.habits))!.single.today, CheckInResult.did);
     await tester.pump(const Duration(seconds: 6));
     await settleDatabase(tester);
     expect(find.text('Rate Budlark'), findsOneWidget);

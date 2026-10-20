@@ -10,6 +10,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'support/garden_navigation.dart';
 
 void main() {
   testWidgets('garden and all five stages render with accessible controls', (
@@ -63,6 +64,7 @@ void main() {
       () => Future<void>.delayed(const Duration(milliseconds: 200)),
     );
     await tester.pumpAndSettle();
+    await openGardenMore(tester);
     expect(find.text('Did it'), findsNWidgets(3));
     expect(tester.takeException(), isNull);
     await expectLater(tester, meetsGuideline(labeledTapTargetGuideline));

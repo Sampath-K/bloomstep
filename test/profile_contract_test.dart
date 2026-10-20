@@ -40,7 +40,7 @@ void main() {
         'email': 'private@example.invalid',
         'sub': 'private-subject',
       }).displayName,
-      isNull,
+      'private@example.invalid',
     );
     for (final picture in [
       'http://images.example.invalid/profile.png',
@@ -184,7 +184,7 @@ void main() {
   });
 
   testWidgets(
-    'absent name explains the provider gap without invented initials',
+    'absent name never blames the account or invents initials',
     (tester) async {
       await tester.pumpWidget(
         MaterialApp(
@@ -201,7 +201,7 @@ void main() {
         ),
       );
       expect(find.text('Signed-in account'), findsOneWidget);
-      expect(find.text("Your account doesn't include a name."), findsOneWidget);
+      expect(find.text("Your account doesn't include a name."), findsNothing);
       expect(find.text('U'), findsNothing);
       expect(find.text('private-subject'), findsNothing);
       expect(find.text('Sign out'), findsOneWidget);

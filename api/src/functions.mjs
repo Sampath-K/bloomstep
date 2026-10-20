@@ -8,6 +8,7 @@ import { createSpendAuthenticator } from './spend-auth.mjs';
 import { createWebsiteHandlers } from './website-funnel.mjs';
 import { createExperimentHandlers, websiteStageSummary } from './experiments.mjs';
 import { storageTarget } from './storage-target.mjs';
+import { createAnonymousFeedbackHandler } from './anonymous-feedback.mjs';
 const { app } = azureFunctions;
 
 const issuer = process.env.OIDC_ISSUER;
@@ -38,6 +39,7 @@ const authenticateSpend = createSpendAuthenticator({
   jwksUri: process.env.SPEND_GUARD_OIDC_JWKS_URI,
 });
 const handlers = createHandlers({ container, authenticate, authenticateAggregate, authenticateSpend });
+const anonymousFeedback = createAnonymousFeedbackHandler({ container, settings: () => process.env });
 const website = createWebsiteHandlers({ container, authenticate, authenticateProof: authenticateAggregate, operationalEnabled: websiteOperational });
 async function websiteOperational() {
   if (['true','1'].includes((process.env.BUDLARK_API_DISABLED ?? '').toLowerCase()) ||
@@ -70,6 +72,7 @@ function guarded(handler) {
 }
 
 app.http('sync', { route: 'sync', methods: ['GET', 'POST'], authLevel: 'anonymous', handler: guarded(handlers.sync) });
+app.http('anonymousFeedback', { route: 'feedback/anonymous', methods: ['POST'], authLevel: 'anonymous', handler: guarded(anonymousFeedback) });
 app.http('isolationCheck', { route: 'account/isolation', methods: ['GET', 'POST'], authLevel: 'anonymous', handler: guarded(handlers.isolationCheck) });
 app.http('deleteAccount', { route: 'account', methods: ['DELETE'], authLevel: 'anonymous', handler: guarded(handlers.deleteAccount) });
 app.http('adminFeedback', { route: 'team/feedback/{userId?}', methods: ['GET', 'POST'], authLevel: 'anonymous', handler: guarded(handlers.admin) });

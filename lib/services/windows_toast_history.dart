@@ -1,9 +1,27 @@
 import 'dart:convert';
 
 import 'package:flutter/services.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 class WindowsToastHistory {
   static const _channel = MethodChannel('budlark/toast_history');
+
+  static Future<void> registerApp() => _channel.invokeMethod<void>('registerApp');
+
+  static Future<void> openNotificationSettings({
+    Future<bool> Function(Uri uri, LaunchMode mode)? launcher,
+  }) async {
+    final uri = Uri.parse('ms-settings:notifications');
+    final opened = await (launcher != null
+        ? launcher(uri, LaunchMode.externalApplication)
+        : launchUrl(uri, mode: LaunchMode.externalApplication));
+    if (!opened) {
+      throw StateError(
+        'Windows notification settings could not be opened. '
+        'Open Windows Settings > System > Notifications manually.',
+      );
+    }
+  }
 
   static Future<int> notificationSetting() async {
     final value = await _channel.invokeMethod<Object?>('getSetting');
@@ -18,11 +36,16 @@ class WindowsToastHistory {
   static Future<void> requireEnabled() async {
     final setting = await notificationSetting();
     if (setting == 0) return;
-    throw StateError(
-      setting == 3
-          ? 'Windows notifications are blocked by device policy. Reminders remain off; contact your device administrator.'
-          : 'Windows notifications are disabled (setting $setting). Reminders cannot be requested. Review Windows Settings > System > Notifications.',
-    );
+    throw StateError(switch (setting) {
+      1 => 'Notifications are disabled for Budlark. Reminders remain inactive. '
+          'Open Windows Settings > System > Notifications and review Budlark.',
+      2 => 'Notifications are disabled for this Windows user. Reminders remain '
+          'inactive. Open Windows Settings > System > Notifications.',
+      3 => 'Windows notifications are blocked by device policy. Reminders remain '
+          'inactive; contact your device administrator.',
+      _ => 'Windows rejected the Budlark notification registration. Reminders '
+          'remain inactive. Repair or reinstall Budlark, then retry.',
+    });
   }
 
   static Future<void> show({

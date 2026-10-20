@@ -56,8 +56,9 @@ submission or third-party binary upload is authorized.
 
 The owner rejected extra Next screens in the conventional baseline. The corrected
 source shows one visible native **Ready** page with the same branded value-prop
-art and **Install**, uses the default per-user location (existing installs retain
-their folder), then progress and Finish. **Launch Budlark** is **checked by
+art and **Install**, uses the default per-user `Programs\Budlark` location and
+`Budlark` Start Menu group (without inheriting an earlier product folder/group),
+then progress and Finish. **Launch Budlark** is **checked by
 default** on Finish and the user can freely untick it before selecting Finish.
 No destination choice is required; standard settings disable Welcome, directory
 and program-group pages and the Ready memo. Cancel remains native.
@@ -70,6 +71,55 @@ withheld for silent or suppressed invocation using Inno's own state/arguments.
 Setup performs no custom window-station inspection or autorun cleanup.
 The native `runasoriginaluser` flag remains; no independent token/desktop
 runtime guarantee is inferred from source.
+
+### Follow-up installer identity migration (not native-verified)
+
+The public AppId remains `{99BE7E95-0565-4C72-A4DD-46D1D5B6C679}`.
+Before setup replaces that identity's HKCU uninstall registration, it reads
+Inno's prior app path, install location, display executable, uninstaller and icon
+group. Cleanup is restricted to consistent metadata for an ordinary direct
+child of the current user's `Programs` installation directory, with a matching
+directory/executable stem or `budlark.exe` and an Inno `uninsNNN.exe`. A prior
+renamed release may already have put `budlark.exe` beside the original
+directory-stem executable; both bounded executable identities are retired.
+Custom locations,
+inconsistent identity metadata and reparse paths are not deleted; setup logs
+that they require manual review. No retired product name is embedded or
+reconstructed in source.
+
+Only **after successful installation**, the prior executable is retired and
+Start Menu/desktop `.lnk` files are removed only when their targets match the
+captured prior executable or uninstaller. Newly installed targets and unrelated
+links are excluded. An old group is removed only if empty. Running prior
+executables are registered with Inno's normal Close Applications handling.
+Cleanup failure is reported as an error, suppresses launch, and returns custom
+setup exit code 10 rather than a success-shaped result.
+The Budlark shortcut carries `Budlark.Garden` and the existing toast activator
+CLSID.
+
+Setup never invokes the prior uninstaller or recursively removes a prior
+installation directory. Owner data, credentials, garden files, local observation
+receipts and unknown files are left unchanged; old runtime files and the old
+uninstaller may remain in the prior directory and must not be run as a cleanup
+step. This preserves bytes; it
+does **not** prove the application can find or decrypt data saved under an
+earlier storage identity. That compatibility requires separate application
+validation and real prior-release upgrade evidence.
+
+`node --test test/installer_upgrade_test.mjs test/installer_direct_install_test.mjs`
+checks source contracts. On an already authorized disposable protected Windows
+CI desktop, run
+`pwsh -File tool/verify_installer_upgrade.ps1 -Iscc <ISCC.exe> -EvidenceDir <new-checkout-subdirectory>`.
+The script compiles a generic prior-product fixture and the actual current
+installer with the **isolated journey AppId**, refuses existing product state,
+uses the existing Defender/owned-process checks, and verifies failed-install
+preservation, an intermediate renamed executable in the prior location, new
+default directory/group, targeted shortcut/executable removal,
+same-product reinstall, unrelated-link preservation and synthetic data hashes
+through uninstall. Its receipt explicitly excludes real owner-data, real
+prior-release and application acceptance. This script has not been run on
+Windows as part of the Linux implementation; no native migration result is
+claimed.
 
 This is a legitimate design change, **not an established Defender remediation**.
 The possible link between zero-click behavior and detection remains an untested

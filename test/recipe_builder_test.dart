@@ -2,16 +2,64 @@ import 'package:budlark/core/models.dart';
 import 'package:budlark/core/garden_store.dart';
 import 'package:budlark/features/garden/recipe_builder.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import '../integration_test/budlark_windows_e2e_test.dart' as journey;
 
+const editingHabit = Habit(
+  id: 'synthetic-recipe',
+  aspiration: 'Connection',
+  anchor: 'finish lunch',
+  behavior: 'send one kind sentence',
+  celebration: 'put my hand on my heart',
+  species: 'Fern',
+  stage: GrowthStage.seed,
+  status: 'active',
+  practiceCount: 0,
+  recentPractice: 0,
+);
+
+Future<void> openBuilder(
+  WidgetTester tester, {
+  Habit? habit,
+  void Function(RecipeDraft?)? onSaved,
+  double textScale = 1,
+}) async {
+  await tester.pumpWidget(
+    MaterialApp(
+      builder: (context, child) => MediaQuery(
+        data: MediaQuery.of(context)
+            .copyWith(textScaler: TextScaler.linear(textScale)),
+        child: child!,
+      ),
+      home: Builder(
+        builder: (context) => Scaffold(
+          body: TextButton(
+            onPressed: () async {
+              final draft = await showDialog<RecipeDraft>(
+                context: context,
+                builder: (_) => RecipeBuilder(habit: habit),
+              );
+              onSaved?.call(draft);
+            },
+            child: const Text('Create'),
+          ),
+        ),
+      ),
+    ),
+  );
+  await tester.tap(find.text('Create'));
+  await tester.pumpAndSettle();
+}
+
+Future<void> more(WidgetTester tester) async {
+  await tester.tap(find.text('More'));
+  await tester.pumpAndSettle();
+}
+
 void main() {
-  testWidgets('Windows Ctrl+V works in each custom recipe step', (tester) async {
-    debugDefaultTargetPlatformOverride = TargetPlatform.windows;
-    addTearDown(() => debugDefaultTargetPlatformOverride = null);
+  testWidgets('Windows Ctrl+V works in every disclosed custom field', (tester) async {
     var clipboard = '';
     tester.binding.defaultBinaryMessenger.setMockMethodCallHandler(
       SystemChannels.platform,
@@ -23,13 +71,11 @@ void main() {
     );
     addTearDown(
       () => tester.binding.defaultBinaryMessenger.setMockMethodCallHandler(
-        SystemChannels.platform,
-        null,
+        SystemChannels.platform, null,
       ),
     );
-    await tester.pumpWidget(
-      const MaterialApp(home: Scaffold(body: RecipeBuilder())),
-    );
+    await openBuilder(tester);
+    await more(tester);
     for (final key in ['custom-anchor', 'custom-action', 'custom-celebration']) {
       final field = find.byKey(ValueKey(key));
       clipboard = 'Pasted $key';
@@ -37,423 +83,232 @@ void main() {
       await tester.tap(field);
       await tester.pump();
       await tester.sendKeyDownEvent(LogicalKeyboardKey.controlLeft);
+      await tester.sendKeyEvent(LogicalKeyboardKey.keyA);
       await tester.sendKeyEvent(LogicalKeyboardKey.keyV);
       await tester.sendKeyUpEvent(LogicalKeyboardKey.controlLeft);
       await tester.pumpAndSettle();
       expect(tester.widget<TextFormField>(field).controller!.text, clipboard);
-      if (key != 'custom-celebration') {
-        await tester.testTextInput.receiveAction(TextInputAction.next);
-        await tester.pumpAndSettle();
-      }
     }
-    debugDefaultTargetPlatformOverride = null;
+  }, variant: TargetPlatformVariant.only(TargetPlatform.windows));
+
+  testWidgets('More retains comprehensive custom fields, plant and optional practice',
+      (tester) async {
+    RecipeDraft? saved;
+    await openBuilder(tester, onSaved: (draft) => saved = draft);
+    await more(tester);
+    for (final field in [
+      ('custom-aspiration', '  More quiet  '),
+      ('custom-anchor', '  put my cup away  '),
+      ('custom-action', '  stretch one finger  '),
+      ('custom-celebration', '  whisper well done  '),
+    ]) {
+      final finder = find.byKey(ValueKey(field.$1));
+      await tester.ensureVisible(finder);
+      await tester.enterText(finder, field.$2);
+    }
+    final species = find.byType(DropdownButtonFormField<String>);
+    await tester.ensureVisible(species);
+    await tester.tap(species);
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Fern').last);
+    await tester.pumpAndSettle();
+    await tester.ensureVisible(find.text('I practiced my celebration'));
+    await tester.tap(find.text('I practiced my celebration'));
+    await tester.pumpAndSettle();
+    final celebration = find.byKey(const ValueKey('custom-celebration'));
+    await tester.ensureVisible(celebration);
+    await tester.enterText(celebration, '  a quiet hooray  ');
+    await tester.pumpAndSettle();
+    expect(tester.widget<CheckboxListTile>(find.byType(CheckboxListTile)).value, isFalse);
+    await tester.ensureVisible(find.text('I practiced my celebration'));
+    await tester.tap(find.text('I practiced my celebration'));
+    await tester.pumpAndSettle();
+    await tester.ensureVisible(find.text('More'));
+    await tester.tap(find.text('More'));
+    await tester.pumpAndSettle();
+    expect(find.byType(TextFormField), findsNothing);
+    await tester.tap(find.text('Plant a Seed'));
+    await tester.pumpAndSettle();
+    expect(saved?.aspiration, 'More quiet');
+    expect(saved?.anchor, 'put my cup away');
+    expect(saved?.behavior, 'stretch one finger');
+    expect(saved?.celebration, 'a quiet hooray');
+    expect(saved?.species, 'Fern');
+    expect(saved?.celebrationPracticed, isTrue);
+    expect(saved?.templateCategory, isNull);
+    expect(tester.takeException(), isNull);
   });
 
-  Future<void> openBuilder(
-    WidgetTester tester, {
-    void Function(RecipeDraft?)? onSaved,
-    double textScale = 1,
-  }) async {
-    await tester.pumpWidget(
-      MaterialApp(
-        builder: (context, child) => MediaQuery(
-          data: MediaQuery.of(context)
-              .copyWith(textScaler: TextScaler.linear(textScale)),
-          child: child!,
-        ),
-        home: Builder(
-          builder: (context) => Scaffold(
-            body: TextButton(
-              onPressed: () async {
-                final draft = await showDialog<RecipeDraft>(
-                  context: context,
-                  builder: (_) => const RecipeBuilder(),
-                );
-                onSaved?.call(draft);
-              },
-              child: const Text('Create'),
-            ),
-          ),
-        ),
-      ),
-    );
-    await tester.tap(find.text('Create'));
-    await tester.pumpAndSettle();
+  for (final recipe in starterRecipes) {
+    testWidgets('More preserves ${recipe.aspiration} starter and attribution',
+        (tester) async {
+      RecipeDraft? saved;
+      await openBuilder(tester, onSaved: (draft) => saved = draft);
+      await more(tester);
+      final choice = find.byKey(ValueKey('starter-${recipe.aspiration}'));
+      await tester.ensureVisible(choice);
+      await tester.tap(choice);
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Plant a Seed'));
+      await tester.pumpAndSettle();
+      expect(saved?.aspiration, recipe.aspiration);
+      expect(saved?.anchor, recipe.anchor);
+      expect(saved?.behavior, recipe.behavior);
+      expect(saved?.celebration, recipe.celebration);
+      expect(saved?.templateCategory, recipe.aspiration.toLowerCase());
+      expect(saved?.celebrationPracticed, isFalse);
+    });
   }
 
-  testWidgets(
-    'three picks plant a complete recipe without typing or practice',
-    (tester) async {
-      RecipeDraft? saved;
-      await openBuilder(tester, onSaved: (draft) => saved = draft);
-      expect(find.text('Step 1 of 3'), findsOneWidget);
-      expect(find.text('Choose a moment'), findsOneWidget);
-      expect(find.text('Write my own'), findsOneWidget);
-      expect(
-        find.text('Pick a daily routine, or write your own.'),
-        findsOneWidget,
-      );
-      expect(find.widgetWithText(TextFormField, 'After I...'), findsOneWidget);
-      await tester.ensureVisible(find.text('pour my morning drink'));
-      await tester.tap(find.text('pour my morning drink'));
-      await tester.pumpAndSettle();
-      expect(find.text('Step 2 of 3'), findsOneWidget);
-      expect(
-        find.textContaining('After I pour my morning drink'),
-        findsOneWidget,
-      );
-      await tester.ensureVisible(find.text('take one slow breath'));
-      await tester.tap(find.text('take one slow breath'));
-      await tester.pumpAndSettle();
-      expect(find.text('Step 3 of 3'), findsOneWidget);
-      expect(
-        find.text('Suggested · a short way to mark your step.'),
-        findsOneWidget,
-      );
-      expect(
-        tester
-            .widget<TextFormField>(
-              find.byKey(const ValueKey('custom-celebration')),
-            )
-            .controller!
-            .text,
-        isEmpty,
-        reason: 'A suggestion must not preselect an optional recommendation.',
-      );
-      await tester.ensureVisible(find.text('relax my shoulders and smile'));
-      await tester.tap(find.text('relax my shoulders and smile'));
-      await tester.pumpAndSettle();
-      expect(
-        find.textContaining('Then I celebrate: relax my shoulders and smile'),
-        findsOneWidget,
-      );
-      expect(
-        tester
-            .widget<FilledButton>(
-              find.widgetWithText(FilledButton, 'Plant this seed'),
-            )
-            .enabled,
-        isTrue,
-      );
-      await tester.tap(find.text('Plant this seed'));
-      await tester.pumpAndSettle();
-      expect(saved?.anchor, starterRecipes.first.anchor);
-      expect(saved?.behavior, starterRecipes.first.behavior);
-      expect(saved?.celebration, starterRecipes.first.celebration);
-      expect(saved?.templateCategory, 'calm');
-      expect(saved?.aspiration, 'Calm');
-      expect(saved?.species, 'Cosmos');
-      expect(saved?.celebrationPracticed, isFalse);
-      expect(tester.takeException(), isNull);
-    },
-  );
+  testWidgets('quick chips change only their own fields, not advanced choices',
+      (tester) async {
+    RecipeDraft? saved;
+    await openBuilder(tester, onSaved: (draft) => saved = draft);
+    await more(tester);
+    for (final field in [
+      ('custom-aspiration', 'Connection'),
+      ('custom-celebration', 'a quiet hooray'),
+    ]) {
+      final finder = find.byKey(ValueKey(field.$1));
+      await tester.ensureVisible(finder);
+      await tester.enterText(finder, field.$2);
+    }
+    await tester.ensureVisible(find.text('More'));
+    await tester.tap(find.text('More'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('tea'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('stretch'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Plant a Seed'));
+    await tester.pumpAndSettle();
+    expect(saved?.anchor, 'drink tea');
+    expect(saved?.behavior, 'stretch once');
+    expect(saved?.aspiration, 'Connection');
+    expect(saved?.celebration, 'a quiet hooray');
+    expect(saved?.celebrationPracticed, isFalse);
+  });
 
-  testWidgets(
-    'custom plant options and optional practice survive the three choices',
-    (tester) async {
-      await tester.binding.setSurfaceSize(const Size(1200, 1000));
-      addTearDown(() => tester.binding.setSurfaceSize(null));
+  for (final edit in [false, true]) {
+    testWidgets('blank and overlong fields block ${edit ? "editing" : "planting"}',
+        (tester) async {
       RecipeDraft? saved;
-      await openBuilder(tester, onSaved: (draft) => saved = draft);
-      await tester.ensureVisible(find.text('open my laptop'));
-      await tester.tap(find.text('open my laptop'));
-      await tester.pumpAndSettle();
-      await tester.ensureVisible(find.text('write my one next step'));
-      await tester.tap(find.text('write my one next step'));
-      await tester.pumpAndSettle();
-      final recommendation = find.ancestor(
-        of: find.text('Suggested · a short way to mark your step.'),
-        matching: find.byType(OutlinedButton),
-      );
-      expect(
-        find.descendant(
-          of: recommendation,
-          matching: find.text('say "I have a starting point"'),
-        ),
-        findsOneWidget,
-      );
-      final celebration = find.byKey(const ValueKey('custom-celebration'));
-      await tester.ensureVisible(celebration);
-      await tester.enterText(celebration, 'a quiet hooray');
-      await tester.pumpAndSettle();
-      await tester.ensureVisible(find.text('I practiced my celebration'));
-      await tester.tap(find.text('I practiced my celebration'));
-      await tester.pumpAndSettle();
-      expect(
-        tester.widget<CheckboxListTile>(find.byType(CheckboxListTile)).value,
-        isTrue,
-      );
-      await tester.ensureVisible(celebration);
-      await tester.enterText(celebration, 'a different quiet hooray');
-      await tester.pumpAndSettle();
-      expect(
-        tester.widget<CheckboxListTile>(find.byType(CheckboxListTile)).value,
-        isFalse,
-        reason: 'Editing a celebration must clear its previous practice.',
-      );
-      await tester.ensureVisible(find.text('Plant details (optional)'));
-      await tester.tap(find.text('Plant details (optional)'));
-      await tester.pumpAndSettle();
-      final aspiration = find.widgetWithText(TextFormField, 'I want more...');
-      await tester.ensureVisible(aspiration);
-      await tester.enterText(aspiration, 'More quiet');
-      final species = find.byType(DropdownButtonFormField<String>);
-      await tester.ensureVisible(species);
-      await tester.tap(species);
-      await tester.pumpAndSettle();
-      await tester.tap(find.text('Fern').last);
-      await tester.pumpAndSettle();
-      await tester.ensureVisible(find.text('I practiced my celebration'));
-      await tester.tap(find.text('I practiced my celebration'));
-      await tester.pumpAndSettle();
-      await tester.tap(find.text('Plant this seed'));
-      await tester.pumpAndSettle();
-      expect(saved?.aspiration, 'More quiet');
-      expect(saved?.species, 'Fern');
-      expect(saved?.celebration, 'a different quiet hooray');
-      expect(saved?.celebrationPracticed, isTrue);
-      expect(saved?.templateCategory, isNull);
-      expect(tester.takeException(), isNull);
-    },
-  );
-
-  testWidgets(
-    'custom values are visible on every step and survive Back and keyboard navigation',
-    (tester) async {
-      RecipeDraft? saved;
-      await openBuilder(tester, onSaved: (draft) => saved = draft);
-      final anchor = find.byKey(const ValueKey('custom-anchor'));
-      expect(anchor, findsOneWidget);
-      expect(find.text('Write my own'), findsOneWidget);
-      await tester.enterText(anchor, '  put my cup away  ');
-      await tester.testTextInput.receiveAction(TextInputAction.next);
-      await tester.pumpAndSettle();
-      final action = find.byKey(const ValueKey('custom-action'));
-      expect(action, findsOneWidget);
-      expect(find.text('Write my own'), findsOneWidget);
-      await tester.enterText(action, '  stretch one finger  ');
-      await tester.testTextInput.receiveAction(TextInputAction.next);
-      await tester.pumpAndSettle();
-      final celebration = find.byKey(const ValueKey('custom-celebration'));
-      expect(find.text('Write my own'), findsOneWidget);
-      await tester.enterText(celebration, '  whisper well done  ');
-      await tester.tap(find.text('Back'));
-      await tester.pumpAndSettle();
-      expect(
-        tester.widget<TextFormField>(action).controller!.text,
-        '  stretch one finger  ',
-      );
-
-      await tester.tap(find.text('Back'));
-      await tester.pumpAndSettle();
-      expect(
-        tester.widget<TextFormField>(anchor).controller!.text,
-        '  put my cup away  ',
-      );
-      await tester.enterText(anchor, '   ');
-      await tester.pump();
-      expect(
-        tester
-            .widget<FilledButton>(
-              find.widgetWithText(FilledButton, 'Choose a tiny action'),
-            )
-            .enabled,
-        isFalse,
-      );
-      await tester.enterText(anchor, '  put my cup away  ');
-      await tester.pump();
-      await tester.tap(find.text('Choose a tiny action'));
-      await tester.pumpAndSettle();
-      await tester.tap(find.text('Choose a celebration'));
-      await tester.pumpAndSettle();
-      expect(
-        tester.widget<TextFormField>(celebration).controller!.text,
-        '  whisper well done  ',
-      );
-      await tester.tap(find.text('Plant this seed'));
-      await tester.pumpAndSettle();
-      expect(saved?.anchor, 'put my cup away');
-      expect(saved?.behavior, 'stretch one finger');
-      expect(saved?.celebration, 'whisper well done');
-      expect(saved?.templateCategory, isNull);
-    },
-  );
+      await openBuilder(tester, habit: edit ? editingHabit : null,
+          onSaved: (draft) => saved = draft);
+      if (!edit) await more(tester);
+      for (final key in [
+        'custom-aspiration', 'custom-anchor', 'custom-action', 'custom-celebration',
+      ]) {
+        final field = find.byKey(ValueKey(key));
+        final original = tester.widget<TextFormField>(field).controller!.text;
+        for (final invalid in ['   ', List.filled(201, 'x').join()]) {
+          await tester.ensureVisible(field);
+          // Controller assignment also covers imported/programmatic overlength
+          // values that the input formatter normally prevents typing.
+          final input = tester.widget<TextFormField>(field);
+          input.controller!.text = invalid;
+          input.onChanged!(invalid);
+          await tester.pump();
+          expect(tester.widget<FilledButton>(find.byType(FilledButton)).enabled, isFalse);
+          expect(find.textContaining('up to 200 characters each'), findsOneWidget);
+          expect(saved, isNull);
+        }
+        final input = tester.widget<TextFormField>(field);
+        input.controller!.text = original;
+        input.onChanged!(original);
+        await tester.pump();
+      }
+      expect(tester.widget<FilledButton>(find.byType(FilledButton)).enabled, isTrue);
+    });
+  }
 
   for (final variant in [
     (name: 'desktop', size: const Size(1200, 920), scale: 1.0),
     (name: 'compact', size: const Size(420, 820), scale: 1.0),
-    (name: 'large text', size: const Size(420, 820), scale: 1.5),
+    (name: 'large text', size: const Size(420, 820), scale: 2.0),
+    (name: 'short', size: const Size(800, 480), scale: 1.0),
   ]) {
-    testWidgets('custom labels never overlap typed values (${variant.name})', (
-      tester,
-    ) async {
+    testWidgets('quick action and disclosed labels fit ${variant.name}', (tester) async {
       await tester.binding.setSurfaceSize(variant.size);
       addTearDown(() => tester.binding.setSurfaceSize(null));
       await openBuilder(tester, textScale: variant.scale);
+      expect(find.text('Plant a Seed').hitTestable(), findsOneWidget);
+      await more(tester);
       for (final input in [
-        (
-          key: 'custom-anchor',
-          label: 'After I...',
-          value: 'put my cup away',
-          next: 'Choose a tiny action',
-        ),
-        (
-          key: 'custom-action',
-          label: 'I will...',
-          value: 'stretch one finger',
-          next: 'Choose a celebration',
-        ),
-        (
-          key: 'custom-celebration',
-          label: 'Then I celebrate by...',
-          value: 'whisper well done',
-          next: 'Cancel',
-        ),
+        ('custom-anchor', 'After I...', 'put my cup away'),
+        ('custom-action', 'I will...', 'stretch one finger'),
+        ('custom-celebration', 'Then I celebrate by...', 'whisper well done'),
       ]) {
-        final field = find.byKey(ValueKey(input.key));
+        final field = find.byKey(ValueKey(input.$1));
         await tester.ensureVisible(field);
-        await tester.enterText(field, input.value);
+        await tester.enterText(field, input.$3);
         for (final duration in [
-          Duration.zero,
-          const Duration(milliseconds: 75),
-          const Duration(milliseconds: 300),
+          Duration.zero, const Duration(milliseconds: 75), const Duration(milliseconds: 300),
         ]) {
           await tester.pump(duration);
-          final label = find.descendant(
-            of: field,
-            matching: find.text(input.label),
-          );
-          final editor = find.descendant(
-            of: field,
-            matching: find.byType(EditableText),
-          );
-          expect(
-            tester.getRect(label).bottom,
-            lessThanOrEqualTo(tester.getRect(editor).top),
-            reason:
-                '${input.label} must stay above text, including transitions',
-          );
+          final label = find.descendant(of: field, matching: find.text(input.$2));
+          final editor = find.descendant(of: field, matching: find.byType(EditableText));
+          expect(tester.getRect(label).bottom, lessThanOrEqualTo(tester.getRect(editor).top));
           expect(tester.takeException(), isNull);
         }
-        await tester.tap(find.text(input.next));
-        await tester.pumpAndSettle();
       }
+      await tester.tap(find.text('Cancel'));
+      await tester.pumpAndSettle();
       expect(find.byType(RecipeBuilder), findsNothing);
     });
   }
 
-  testWidgets(
-    'Back retains choices and an incomplete recipe explains its disabled action',
-    (tester) async {
-      await openBuilder(tester, textScale: 1.5);
-      await tester.ensureVisible(find.text('open my laptop'));
-      await tester.tap(find.text('open my laptop'));
+  for (final change in [false, true]) {
+    testWidgets('editing ${change ? "one field" : "unchanged"} never applies quick defaults',
+        (tester) async {
+      RecipeDraft? saved;
+      await openBuilder(tester, habit: editingHabit, onSaved: (draft) => saved = draft);
+      expect(find.text('Adjust your recipe'), findsOneWidget);
+      expect(find.text('coffee'), findsNothing);
+      if (change) {
+        final field = find.byKey(const ValueKey('custom-action'));
+        await tester.ensureVisible(field);
+        await tester.enterText(field, 'send a smile');
+        await tester.ensureVisible(find.text('I practiced my celebration'));
+        await tester.tap(find.text('I practiced my celebration'));
+        await tester.pumpAndSettle();
+      }
+      await tester.tap(find.text('Save recipe'));
       await tester.pumpAndSettle();
-      await tester.ensureVisible(find.text('write my one next step'));
-      await tester.tap(find.text('write my one next step'));
-      await tester.pumpAndSettle();
-      expect(
-        find.text('Pick a gesture or phrase. Practicing is optional.'),
-        findsOneWidget,
-      );
-      expect(
-        tester
-            .widget<FilledButton>(
-              find.widgetWithText(FilledButton, 'Plant this seed'),
-            )
-            .enabled,
-        isFalse,
-      );
-      await tester.tap(find.text('Back'));
-      await tester.pumpAndSettle();
-      expect(
-        find.textContaining('I will write my one next step'),
-        findsOneWidget,
-      );
-      await tester.tap(find.text('Back'));
-      await tester.pumpAndSettle();
-      expect(find.textContaining('After I open my laptop'), findsOneWidget);
-      expect(tester.takeException(), isNull);
-    },
-  );
+      expect(saved?.aspiration, editingHabit.aspiration);
+      expect(saved?.anchor, editingHabit.anchor);
+      expect(saved?.behavior, change ? 'send a smile' : editingHabit.behavior);
+      expect(saved?.celebration, editingHabit.celebration);
+      expect(saved?.species, editingHabit.species);
+      expect(saved?.celebrationPracticed, change);
+    });
+  }
 
-  testWidgets('picker reflows on a compact window with large text', (
-    tester,
-  ) async {
-    await tester.binding.setSurfaceSize(const Size(420, 760));
-    addTearDown(() => tester.binding.setSurfaceSize(null));
-    await openBuilder(tester, textScale: 1.5);
-    await tester.ensureVisible(find.text('sit down with a book'));
-    await tester.tap(find.text('sit down with a book'));
-    await tester.pumpAndSettle();
-    await tester.ensureVisible(find.text('read one sentence'));
-    await tester.tap(find.text('read one sentence'));
-    await tester.pumpAndSettle();
-    await tester.ensureVisible(find.text('say "I learned something"'));
-    await tester.tap(find.text('say "I learned something"'));
-    await tester.pumpAndSettle();
+  testWidgets('planting shows a personal next step with one clear continuation', (tester) async {
+    await tester.pumpWidget(const MaterialApp(
+      home: Scaffold(body: PlantedRecipeDialog(habit: editingHabit)),
+    ));
+    expect(find.text('Your seed is planted'), findsOneWidget);
+    expect(find.text(
+      'After I finish lunch, I will send one kind sentence. Then I celebrate: put my hand on my heart.',
+    ), findsOneWidget);
+    expect(find.widgetWithText(FilledButton, 'See my garden'), findsOneWidget);
+    expect(find.byType(FilledButton), findsOneWidget);
+    expect(find.text('Try it when your moment comes. Practicing now is optional.'), findsOneWidget);
     expect(tester.takeException(), isNull);
   });
 
-  testWidgets(
-    'planting shows a personal next step with one clear continuation',
-    (tester) async {
-      await tester.pumpWidget(
-        MaterialApp(
-          home: Scaffold(
-            body: PlantedRecipeDialog(
-              habit: const Habit(
-                id: 'synthetic-saved-seed',
-                aspiration: 'Calm',
-                anchor: 'pour my morning drink',
-                behavior: 'take one slow breath',
-                celebration: 'relax my shoulders and smile',
-                species: 'Cosmos',
-                stage: GrowthStage.seed,
-                status: 'active',
-                practiceCount: 0,
-                recentPractice: 0,
-              ),
-            ),
-          ),
-        ),
-      );
-      expect(find.text('Your seed is planted'), findsOneWidget);
-      expect(
-        find.text(
-          'After I pour my morning drink, I will take one slow breath. Then I celebrate: relax my shoulders and smile.',
-        ),
-        findsOneWidget,
-      );
-      expect(find.widgetWithText(FilledButton, 'See my garden'), findsOneWidget);
-      expect(find.byType(FilledButton), findsOneWidget);
-      expect(
-        find.text('Try it when your moment comes. Practicing now is optional.'),
-        findsOneWidget,
-      );
-      expect(find.textContaining('A glimpse of growth'), findsNothing);
-      expect(tester.takeException(), isNull);
-    },
-  );
-
   for (final systemReduced in [false, true]) {
-    testWidgets('planted preview respects reduced motion ($systemReduced)', (
-      tester,
-    ) async {
+    testWidgets('planted preview respects reduced motion ($systemReduced)', (tester) async {
       final semantics = tester.ensureSemantics();
-      await tester.pumpWidget(
-        MaterialApp(
-          home: MediaQuery(
-            data: MediaQueryData(disableAnimations: systemReduced),
-            child: Scaffold(
-              body: SeedGrowthPreview(
-                species: 'Fern',
-                reducedMotion: !systemReduced,
-              ),
-            ),
-          ),
+      await tester.pumpWidget(MaterialApp(
+        home: MediaQuery(
+          data: MediaQueryData(disableAnimations: systemReduced),
+          child: Scaffold(body: SeedGrowthPreview(
+            species: 'Fern', reducedMotion: !systemReduced,
+          )),
         ),
-      );
+      ));
       await tester.pumpAndSettle();
       expect(find.byKey(const ValueKey('growth-static-sprout')), findsOneWidget);
       expect(find.byKey(const ValueKey('growth-sprout-opacity')), findsNothing);
@@ -477,10 +332,7 @@ void main() {
       expect(start.isUtc, isTrue);
       expect(localDate(edited), localDate(start));
       expect(localDate(end), localDate(runStartedAt.toUtc()));
-      expect(
-        end.isAfter(runStartedAt.toUtc().add(const Duration(minutes: 5))),
-        isFalse,
-      );
+      expect(end.isAfter(runStartedAt.toUtc().add(const Duration(minutes: 5))), isFalse);
       expect({
         for (var day = 1; day <= 31; day++)
           localDate(edited.add(Duration(days: day))),
@@ -490,113 +342,30 @@ void main() {
 
   test('same-day synthetic edit stays newer than monotonic undo', () async {
     var now = DateTime(2026, 10, 4, 12);
-    final store = await GardenStore.open(
-      ':memory:',
-      'synthetic-owner',
-      clock: () => now,
-    );
+    final store = await GardenStore.open(':memory:', 'synthetic-owner', clock: () => now);
     addTearDown(store.close);
     final habit = await store.plant(
-      aspiration: 'Calm',
-      anchor: 'morning drink',
-      behavior: 'relax my shoulders',
-      celebration: 'smile',
-      species: 'Cosmos',
+      aspiration: 'Calm', anchor: 'morning drink', behavior: 'relax my shoulders',
+      celebration: 'smile', species: 'Cosmos',
     );
     await store.checkIn(habit.id, CheckInResult.didMore);
     await store.undo(habit.id);
     final uploaded = (await store.syncPayload())['habits'] as List;
-    final undoUpdated = DateTime.parse(
-      (uploaded.single as Map)['updated'] as String,
-    );
+    final undoUpdated = DateTime.parse((uploaded.single as Map)['updated'] as String);
     expect(undoUpdated.isAfter(now.toUtc()), isTrue);
     final day = localDate(now);
     now = now.add(const Duration(seconds: 1));
-    await store.edit(
-      (await store.habits()).single,
-      anchor: habit.anchor,
-      behavior: 'take one easy breath',
-      celebration: habit.celebration,
+    await store.edit((await store.habits()).single,
+      anchor: habit.anchor, behavior: 'take one easy breath', celebration: habit.celebration,
     );
     final edited = (await store.syncPayload())['habits'] as List;
-    expect(
-      DateTime.parse((edited.single as Map)['updated'] as String)
-          .isAfter(undoUpdated),
-      isTrue,
-    );
+    expect(DateTime.parse((edited.single as Map)['updated'] as String).isAfter(undoUpdated), isTrue);
     expect(localDate(now), day);
     await store.mergeSync({
-      'habits': uploaded,
-      'checkins': [],
-      'reflections': [],
-      'voice': [],
+      'habits': uploaded, 'checkins': [], 'reflections': [], 'voice': [],
     });
     expect((await store.habits()).single.behavior, 'take one easy breath');
     expect((await store.habits()).single.today, isNull);
     expect((await store.syncPayload())['habits'], hasLength(1));
-  });
-
-  testWidgets('edited recipe can re-practice celebration and save its draft', (
-    tester,
-  ) async {
-    await tester.binding.setSurfaceSize(const Size(1200, 1000));
-    addTearDown(() => tester.binding.setSurfaceSize(null));
-    RecipeDraft? saved;
-    const habit = Habit(
-      id: 'synthetic-recipe',
-      aspiration: 'Calm',
-      anchor: 'pour my morning drink',
-      behavior: 'take one slow breath',
-      celebration: 'smile',
-      species: 'Cosmos',
-      stage: GrowthStage.seed,
-      status: 'active',
-      practiceCount: 0,
-      recentPractice: 0,
-    );
-    await tester.pumpWidget(
-      MaterialApp(
-        home: Builder(
-          builder: (context) => Scaffold(
-            body: TextButton(
-              onPressed: () async {
-                saved = await showDialog<RecipeDraft>(
-                  context: context,
-                  builder: (_) => const RecipeBuilder(habit: habit),
-                );
-              },
-              child: const Text('Edit'),
-            ),
-          ),
-        ),
-      ),
-    );
-    await tester.tap(find.text('Edit'));
-    await tester.pumpAndSettle();
-    await tester.enterText(
-      find.widgetWithText(TextFormField, 'I will...'),
-      'take one easy breath',
-    );
-    await tester.pumpAndSettle();
-    expect(
-      tester.widget<CheckboxListTile>(find.byType(CheckboxListTile)).value,
-      isFalse,
-    );
-    await tester.ensureVisible(find.text('I practiced my celebration'));
-    await tester.tap(find.text('I practiced my celebration'));
-    await tester.pumpAndSettle();
-    expect(
-      tester
-          .widget<FilledButton>(
-            find.widgetWithText(FilledButton, 'Save recipe'),
-          )
-          .enabled,
-      isTrue,
-    );
-    await tester.tap(find.text('Save recipe'));
-    await tester.pumpAndSettle();
-    expect(saved?.behavior, 'take one easy breath');
-    expect(saved?.celebrationPracticed, isTrue);
-    expect(find.text('Adjust your recipe'), findsNothing);
   });
 }

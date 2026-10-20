@@ -15,6 +15,7 @@ import 'package:http/testing.dart';
 import 'package:budlark/app/theme.dart';
 
 import 'support/visual_capture.dart';
+import 'support/garden_navigation.dart';
 
 Widget syntheticInvitationFrame(GlobalKey key, Widget home) => RepaintBoundary(
   key: key,
@@ -43,6 +44,8 @@ Future<void> waitInvitation(WidgetTester tester, Finder finder) async {
       () => Future<void>.delayed(const Duration(milliseconds: 50)),
     );
     await tester.pump(const Duration(milliseconds: 50));
+    // Invitation scenarios use the full garden controls, now behind More.
+    await openGardenMore(tester);
     if (finder.evaluate().isNotEmpty) return;
   }
   fail('Invitation readiness timed out: $finder');

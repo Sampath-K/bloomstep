@@ -11,6 +11,7 @@ import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
 
 import 'support/visual_capture.dart';
+import 'support/garden_navigation.dart';
 import 'support/dialog_copy_contract.dart';
 import 'garden_learning_test.dart' show FakeUpdates, settleDatabase;
 import 'invitation_widget_test.dart' show waitInvitation;
@@ -88,6 +89,7 @@ void main() {
     Future<void> capture(String name) =>
         captureVisual(tester, key, 'surface-$name');
     Future<void> tap(String label) async {
+      await openGardenMore(tester);
       await tester.ensureVisible(find.text(label).last);
       await tester.tap(find.text(label).last);
       await settleDatabase(tester);
@@ -182,12 +184,13 @@ void main() {
     await tester.tap(find.byTooltip('Settings and privacy'));
     await settleDatabase(tester);
     await tap('Privacy & measurement');
+    await tap('What these counts include');
     expect(
       find.textContaining('private account details, sensitive habit details'),
       findsOneWidget,
     );
     expect(
-      find.textContaining('Device-only gardens send nothing'),
+      find.textContaining('Device-only gardens send no counts'),
       findsOneWidget,
     );
     expect(

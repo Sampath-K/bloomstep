@@ -15,25 +15,59 @@ import 'microsoft_photo.dart';
 import 'microsoft_photo_auth.dart';
 
 class IdentityProfile {
-  const IdentityProfile({this.displayName, this.photoUrl, this.photoBytes});
+  const IdentityProfile({
+    this.displayName,
+    this.photoUrl,
+    this.photoBytes,
+    this.signInProvider,
+  });
   final String? displayName;
   final String? photoUrl;
   final Uint8List? photoBytes;
+  /// Current sign-in method when attested by ID-token claims, not a list of
+  /// linked accounts or proof that linking/unlinking is supported.
+  final String? signInProvider;
 
-  factory IdentityProfile.fromClaims(Map<String, dynamic> claims) {
+  /// Formats validated ID-token claims, optionally enriched by authenticated
+  /// issuer userinfo for the same subject. Account fallbacks are display-only.
+  factory IdentityProfile.fromClaims(
+    Map<String, dynamic> claims, {
+    Map<String, dynamic>? userInfo,
+  }) {
     String? text(dynamic value) =>
         value is String && value.trim().isNotEmpty ? value.trim() : null;
-    final picture = text(claims['picture']);
+    String? nameText(dynamic value) {
+      final result = text(value);
+      return result?.toLowerCase() == 'unknown' ? null : result;
+    }
+
+    final boundInfo = _subjectBoundUserInfo(claims, userInfo);
+    String? nameClaim(String key) =>
+        nameText(claims[key]) ?? nameText(boundInfo[key]);
+    String? firstEmail(dynamic value) {
+      if (value is! List) return null;
+      for (final email in value) {
+        final result = nameText(email);
+        if (result != null) return result;
+      }
+      return null;
+    }
+
+    final picture = text(claims['picture']) ?? text(boundInfo['picture']);
     final pictureUri = picture == null ? null : Uri.tryParse(picture);
     final parts = [
-      text(claims['given_name']),
-      text(claims['family_name']),
+      nameClaim('given_name'),
+      nameClaim('family_name'),
     ].whereType<String>().join(' ');
-    final name = text(claims['name']);
     return IdentityProfile(
-      displayName: name != null && name.toLowerCase() != 'unknown'
-          ? name
-          : (parts.isEmpty ? null : parts),
+      signInProvider: _signInProvider(claims),
+      displayName:
+          nameClaim('name') ??
+          (parts.isEmpty ? null : parts) ??
+          nameClaim('preferred_username') ??
+          nameClaim('email') ??
+          firstEmail(claims['emails']) ??
+          firstEmail(boundInfo['emails']),
       photoUrl:
           pictureUri != null &&
               pictureUri.scheme == 'https' &&
@@ -43,6 +77,135 @@ class IdentityProfile {
           ? pictureUri.toString()
           : null,
     );
+  }
+
+  static String? _signInProvider(Map<String, dynamic> claims) {
+    final idp = claims['idp'];
+    if (idp != null) {
+      return switch (idp) {
+        'google.com' || 'https://accounts.google.com' => 'Google',
+        'live.com' || 'https://login.live.com' => 'Microsoft',
+        _ => null,
+      };
+    }
+    if (claims['iss'] == 'https://accounts.google.com' ||
+        claims['iss'] == 'accounts.google.com') {
+      return 'Google';
+    }
+    return _directMicrosoftIdentity(claims) &&
+            claims['tid'] == MicrosoftPhotoIdentity.consumerTenant
+        ? 'Microsoft'
+        : null;
+  }
+
+  static bool _directMicrosoftIdentity(Map<String, dynamic> claims) {
+    final tenant = claims['tid'];
+    return tenant is String &&
+        RegExp(
+          r'^[a-fA-F0-9]{8}-[a-fA-F0-9]{4}-[a-fA-F0-9]{4}-'
+          r'[a-fA-F0-9]{4}-[a-fA-F0-9]{12}$',
+        ).hasMatch(tenant) &&
+        claims['iss'] == 'https://login.microsoftonline.com/$tenant/v2.0';
+  }
+
+  /// Uses only an existing, explicitly Graph-authorized token response after
+  /// ID-token validation. Never decodes access-token claims or requests consent.
+  static Future<Map<String, dynamic>> microsoftGraphUserInfo({
+    required Map<String, dynamic> verifiedClaims,
+    required Map<String, dynamic> tokenResponse,
+    required http.Client client,
+  }) async {
+    final objectId = verifiedClaims['oid'];
+    final subject = verifiedClaims['sub'];
+    final token = tokenResponse['access_token'];
+    final scope = tokenResponse['scope'];
+    if (!_directMicrosoftIdentity(verifiedClaims) ||
+        objectId is! String ||
+        objectId.isEmpty ||
+        subject is! String ||
+        subject.isEmpty ||
+        token is! String ||
+        token.isEmpty ||
+        tokenResponse['token_type'] is! String ||
+        (tokenResponse['token_type'] as String).toLowerCase() != 'bearer' ||
+        scope is! String ||
+        !scope.split(RegExp(r'\s+')).contains(
+          'https://graph.microsoft.com/User.Read',
+        )) {
+      return const {};
+    }
+    final abort = Completer<void>();
+    final deadline = Timer(const Duration(seconds: 5), () {
+      if (!abort.isCompleted) abort.complete();
+    });
+    try {
+      final request = http.AbortableRequest(
+        'GET',
+        Uri.parse(
+          'https://graph.microsoft.com/v1.0/me'
+          '?\$select=id,displayName,givenName,surname',
+        ),
+        abortTrigger: abort.future,
+      )
+        ..followRedirects = false
+        ..headers['Authorization'] = 'Bearer $token';
+      return await (() async {
+        final response = await client.send(request);
+        const maxBytes = 64 * 1024;
+        if (response.statusCode != 200 ||
+            (response.contentLength ?? 0) > maxBytes) {
+          return <String, dynamic>{};
+        }
+        final bytes = BytesBuilder(copy: false);
+        await for (final chunk in response.stream) {
+          if (bytes.length + chunk.length > maxBytes) {
+            return <String, dynamic>{};
+          }
+          bytes.add(chunk);
+        }
+        final decoded = jsonDecode(utf8.decode(bytes.takeBytes()));
+        if (decoded is! Map || decoded['id'] != objectId) {
+          return <String, dynamic>{};
+        }
+        return <String, dynamic>{
+          'sub': subject,
+          'name': decoded['displayName'],
+          'given_name': decoded['givenName'],
+          'family_name': decoded['surname'],
+        };
+      })().timeout(const Duration(seconds: 5));
+    } catch (_) {
+      return const {};
+    } finally {
+      deadline.cancel();
+      if (!abort.isCompleted) abort.complete();
+    }
+  }
+
+  static Map<String, dynamic> _subjectBoundUserInfo(
+    Map<String, dynamic> claims,
+    Map<String, dynamic>? userInfo,
+  ) {
+    final subject = claims['sub'];
+    if (subject is! String ||
+        subject.isEmpty ||
+        userInfo == null ||
+        userInfo['sub'] != subject) {
+      return const {};
+    }
+    return {
+      for (final key in [
+        'sub',
+        'name',
+        'given_name',
+        'family_name',
+        'preferred_username',
+        'email',
+        'emails',
+        'picture',
+      ])
+        if (userInfo.containsKey(key)) key: userInfo[key],
+    };
   }
 }
 
@@ -58,6 +221,7 @@ class IdentityService {
     wOptions: WindowsOptions(useBackwardCompatibility: false),
   );
   Credential? _credential;
+  Map<String, dynamic> _userInfo = const {};
   final _microsoftPhoto = MicrosoftPhotoConnection(
     authenticate: const MicrosoftPhotoAuthenticator().authenticate,
     client: http.Client(),
@@ -71,11 +235,13 @@ class IdentityService {
     if (!hasValidSession) return null;
     final claimed = IdentityProfile.fromClaims(
       _credential!.idToken.claims.toJson(),
+      userInfo: _userInfo,
     );
     return IdentityProfile(
       displayName: claimed.displayName,
       photoUrl: claimed.photoUrl,
       photoBytes: _microsoftPhoto.bytesFor(account),
+      signInProvider: claimed.signInProvider,
     );
   }
 
@@ -222,6 +388,12 @@ class IdentityService {
       );
     }
     _credential = credential;
+    _userInfo = IdentityProfile._subjectBoundUserInfo(
+      claims,
+      record['userInfo'] is Map
+          ? (record['userInfo'] as Map).cast<String, dynamic>()
+          : null,
+    );
     _validatedAt = DateTime.parse(record['validatedAt'] as String).toUtc();
     _lastObservedAt = observed;
     account = record['account'] as String;
@@ -332,11 +504,35 @@ class IdentityService {
           'Identity token validation failed. Sign-in was not saved.',
         );
       }
+      final userInfo = await _loadUserInfo(credential, claims);
+      final graphClient = http.Client();
+      final Map<String, dynamic> graphInfo;
+      try {
+        graphInfo = await IdentityProfile.microsoftGraphUserInfo(
+          verifiedClaims: claims,
+          tokenResponse: credential.response ?? const {},
+          client: graphClient,
+        );
+      } finally {
+        graphClient.close();
+      }
+      // Usable standard userinfo wins; blank fields must not erase Graph names.
+      final enrichedInfo = {...userInfo};
+      for (final entry in graphInfo.entries) {
+        final current = enrichedInfo[entry.key];
+        if (current is! String ||
+            current.trim().isEmpty ||
+            current.trim().toLowerCase() == 'unknown') {
+          enrichedInfo[entry.key] = entry.value;
+        }
+      }
       final previousCredential = _credential;
+      final previousUserInfo = _userInfo;
       final previousAccount = account;
       final previousValidated = _validatedAt;
       final previousObserved = _lastObservedAt;
       _credential = credential;
+      _userInfo = enrichedInfo;
       account = sha256
           .convert(utf8.encode('${claims['iss']}|${claims['sub']}'))
           .toString();
@@ -347,6 +543,7 @@ class IdentityService {
         );
       } catch (_) {
         _credential = previousCredential;
+        _userInfo = previousUserInfo;
         account = previousAccount;
         _validatedAt = previousValidated;
         _lastObservedAt = previousObserved;
@@ -355,6 +552,29 @@ class IdentityService {
     } finally {
       await subscription.cancel();
       await server.close(force: true);
+    }
+  }
+
+  Future<Map<String, dynamic>> _loadUserInfo(
+    Credential credential,
+    Map<String, dynamic> claims,
+  ) async {
+    final endpoint = credential.client.issuer.metadata.userinfoEndpoint;
+    if (endpoint == null ||
+        endpoint.scheme != 'https' ||
+        endpoint.host.isEmpty ||
+        endpoint.userInfo.isNotEmpty) {
+      return const {};
+    }
+    try {
+      // Only the validated issuer's HTTPS endpoint may enrich this identity.
+      // Userinfo is optional and must never turn successful sign-in into failure.
+      final info = await credential.getUserInfo().timeout(
+        const Duration(seconds: 5),
+      );
+      return IdentityProfile._subjectBoundUserInfo(claims, info.toJson());
+    } catch (_) {
+      return const {};
     }
   }
 
@@ -375,6 +595,7 @@ class IdentityService {
         'validatedAt': validatedAt,
         'lastObservedAt': _lastObservedAt!.toIso8601String(),
         'credential': _credential!.toJson(),
+        if (_userInfo.isNotEmpty) 'userInfo': _userInfo,
       }),
     );
     _validatedAt = DateTime.parse(validatedAt).toUtc();
@@ -424,6 +645,7 @@ class IdentityService {
   Future<void> signOut() async {
     clearMicrosoftPhoto();
     _credential = null;
+    _userInfo = const {};
     _validatedAt = null;
     _lastObservedAt = null;
     account = null;

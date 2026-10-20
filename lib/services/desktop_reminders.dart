@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'dart:io';
 
 import 'package:crypto/crypto.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:launch_at_startup/launch_at_startup.dart';
 import 'package:path/path.dart' as p;
@@ -54,6 +55,9 @@ class WindowsReminderGateway implements ReminderGateway {
 
   @override
   Future<void> initialize(Future<void> Function(String) action) async {
+    await WindowsToastHistory.registerApp();
+    // Check the real OS setting before initializing the callback package.
+    await WindowsToastHistory.requireEnabled();
     final initialized = await notifications.initialize(
       settings: const InitializationSettings(
         windows: WindowsInitializationSettings(
@@ -141,6 +145,7 @@ class DesktopReminders with TrayListener, WindowListener {
   Timer? timer;
   bool enabled = false;
   bool requestedEnabled = false;
+  String? unavailableReason;
   bool ticking = false;
   int _enableAttempt = 0;
   Future<void> _actions = Future.value();
@@ -148,6 +153,9 @@ class DesktopReminders with TrayListener, WindowListener {
   RemoteConfig config = RemoteConfig.defaults;
   static const reconnectId = 1;
   static const _uuid = Uuid();
+
+  Future<void> openNotificationSettings() =>
+      WindowsToastHistory.openNotificationSettings();
 
   static int notificationId(String account, String habitId) {
     final hash = sha256.convert(utf8.encode(jsonEncode([account, habitId])));
@@ -186,7 +194,10 @@ class DesktopReminders with TrayListener, WindowListener {
   }
 
   Future<void> initialize() async {
-    if (_native && !Platform.isWindows) return;
+    if (_native && !Platform.isWindows) {
+      unavailableReason = 'This preview supports reminders on Windows only.';
+      return;
+    }
     if (_native) {
       launchAtStartup.setup(
         appName: 'Budlark',
@@ -211,9 +222,8 @@ class DesktopReminders with TrayListener, WindowListener {
   Future<void> enable({bool explicitChoice = true}) async {
     if (enabled) return;
     if (_native && !Platform.isWindows) {
-      throw UnsupportedError(
-        'This preview supports reminders on Windows only.',
-      );
+      unavailableReason = 'This preview supports reminders on Windows only.';
+      throw UnsupportedError(unavailableReason!);
     }
     final account = store.account, generation = store.syncGeneration;
     final attempt = ++_enableAttempt;
@@ -257,6 +267,7 @@ class DesktopReminders with TrayListener, WindowListener {
       requestedEnabled = true;
       store.requireSyncSession(account, generation);
       enabled = true;
+      unavailableReason = null;
       _withdrawnRecipes.clear();
       await _removeDeletedRecipes();
       if (_native) {
@@ -267,11 +278,20 @@ class DesktopReminders with TrayListener, WindowListener {
           );
         });
       }
-    } catch (_) {
+    } catch (error) {
       if (attempt == _enableAttempt) {
         timer?.cancel();
         timer = null;
         enabled = false;
+        unavailableReason = switch (error) {
+          StateError() => error.message.toString(),
+          PlatformException() =>
+            error.message ??
+                'Windows could not initialize reminders (${error.code}). '
+                    'Repair or reinstall Budlark, then retry.',
+          _ => 'Reminders could not be initialized. '
+              'Review Windows Settings > System > Notifications, then retry.',
+        };
         if (_native) {
           trayManager.removeListener(this);
           windowManager.removeListener(this);
@@ -317,6 +337,7 @@ class DesktopReminders with TrayListener, WindowListener {
           now: clock(),
         );
         requestedEnabled = false;
+        unavailableReason = null;
         if (explicitChoice && wasEnabled) {
           await _track(
             'notif_disabled',

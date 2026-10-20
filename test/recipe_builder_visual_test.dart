@@ -125,7 +125,11 @@ void main() {
       await tester.tap(find.text('Open synthetic picker'));
       await tester.pumpAndSettle();
       expect(find.byType(RecipeBuilder), findsOneWidget);
-      await capture('1-moment-SYNTHETIC');
+      expect(find.text('Plant a Seed').hitTestable(), findsOneWidget);
+      expect(find.byType(TextFormField), findsNothing);
+      await capture('P14-quick-plant-SYNTHETIC');
+      await tester.tap(find.text('More'));
+      await tester.pumpAndSettle();
       await tester.ensureVisible(find.byKey(const ValueKey('custom-anchor')));
       await tester.enterText(
         find.byKey(const ValueKey('custom-anchor')),
@@ -133,10 +137,6 @@ void main() {
       );
       await tester.pumpAndSettle();
       await capture('1-custom-anchor-SYNTHETIC');
-      await tester.ensureVisible(find.text('pour my morning drink'));
-      await tester.tap(find.text('pour my morning drink'));
-      await tester.pumpAndSettle();
-      await capture('2-action');
       await tester.ensureVisible(find.byKey(const ValueKey('custom-action')));
       await tester.enterText(
         find.byKey(const ValueKey('custom-action')),
@@ -144,10 +144,6 @@ void main() {
       );
       await tester.pumpAndSettle();
       await capture('2-custom-action-SYNTHETIC');
-      await tester.ensureVisible(find.text('take one slow breath'));
-      await tester.tap(find.text('take one slow breath'));
-      await tester.pumpAndSettle();
-      await capture('3-celebration');
       await tester.ensureVisible(
         find.byKey(const ValueKey('custom-celebration')),
       );
@@ -157,14 +153,11 @@ void main() {
       );
       await tester.pumpAndSettle();
       await capture('3-custom-celebration-SYNTHETIC');
-      await tester.ensureVisible(find.text('relax my shoulders and smile'));
-      await tester.tap(find.text('relax my shoulders and smile'));
-      await tester.pumpAndSettle();
       await tester.ensureVisible(find.text('I practiced my celebration'));
       await tester.pumpAndSettle();
       await capture('complete');
       await expectLater(tester, meetsGuideline(labeledTapTargetGuideline));
-      await tester.tap(find.text('Plant this seed'));
+      await tester.tap(find.text('Plant a Seed'));
       await tester.pump();
       await tester.pump(const Duration(milliseconds: 300));
       expect(find.byType(PlantedRecipeDialog), findsOneWidget);

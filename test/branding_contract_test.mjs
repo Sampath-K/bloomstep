@@ -24,8 +24,8 @@ test('native user-visible titles and publisher do not retain scaffold identifier
 test('native sign-in and both callback outcomes identify Budlark without hiding security errors', () => {
   assert.match(read('lib/app/budlark_app.dart'), /profile_section\.dart/);
   const profile = read('lib/features/garden/profile_section.dart');
-  assert.match(profile, /Choose Microsoft personal account, Google or another enabled option in the system browser/);
-  assert.match(profile, /Budlark never collects your password/);
+  assert.match(profile, /Microsoft or Google.*your password stays in your browser/);
+  assert.match(read('lib/features/garden/sign_in_welcome.dart'), /Microsoft, Google or email code in your browser/);
   assert.doesNotMatch(profile, /ciamlogin\.com|login\.live\.com/);
   assert.match(read('lib/services/identity.dart'), /Budlark sign-in response is invalid/);
   assert.match(read('lib/services/identity.dart'), /Return to Budlark/);

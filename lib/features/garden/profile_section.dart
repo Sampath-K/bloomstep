@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 
 import '../../services/identity.dart';
+import '../../core/models.dart';
+import 'plant_art.dart';
 
 class ProfileSection extends StatelessWidget {
   const ProfileSection({
@@ -83,50 +85,72 @@ class ProfileSection extends StatelessWidget {
     final name = _displayName;
     final initials = _initials(name);
     return Card(
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
+      child: Tooltip(
+        message: 'Profile and account',
+        child: InkWell(
+          onTap: busy || (!signedIn && !configured && !returningToAccount)
+              ? null
+              : signedIn && onManage != null
+              ? onManage
+              : () => _runProfileAction(
+                    context,
+                    signedIn ? onSignOut : onSignIn,
+                  ),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
               children: [
                 CircleAvatar(
-                  radius: 18,
-                  child: initials.isEmpty
-                      ? const Icon(Icons.person_outline)
-                      : Text(initials),
+                  radius: 20,
+                  child: SizedBox(
+                    width: 40,
+                    height: 40,
+                    child: Stack(
+                      alignment: Alignment.center,
+                      children: [
+                        initials.isEmpty
+                            ? const Icon(Icons.person_outline)
+                            : Text(initials),
+                        if (profile?.photoBytes != null)
+                          ClipOval(child: _MemoryPhoto(profile: profile!))
+                        else if (profile?.photoUrl case final photoUrl?)
+                          ClipOval(
+                            child: Image.network(
+                              photoUrl,
+                              width: 40,
+                              height: 40,
+                              fit: BoxFit.cover,
+                              errorBuilder: (_, _, _) => const SizedBox.shrink(),
+                            ),
+                          ),
+                      ],
+                    ),
+                  ),
                 ),
-                const SizedBox(width: 10),
-                Expanded(
-                  child: Text(
-                    signedIn ? name ?? 'Signed-in account' : 'Not signed in',
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: Theme.of(context).textTheme.titleMedium,
+                const SizedBox(width: 8),
+                Flexible(
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        signedIn ? name ?? 'Signed-in account' : 'Not signed in',
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: Theme.of(context).textTheme.titleMedium,
+                      ),
+                      Text(
+                        signedIn ? 'Sync across devices.' : 'Sign in to grow',
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ],
                   ),
                 ),
               ],
             ),
-            if (signedIn && name == null)
-              const Text("Your account doesn't include a name."),
-            if (signedIn &&
-                (onCopyDeviceGarden != null || onSwitchGarden != null))
-              Semantics(
-                label: 'Device garden stays separate. Switch any time.',
-                child: const Text(
-                  'Separate gardens; switch any time.',
-                  maxLines: 2,
-                ),
-              ),
-            if (!signedIn &&
-                notice != null &&
-                notice != 'Device garden stays separate; switch any time.')
-              Semantics(liveRegion: true, child: Text(notice!)),
-            if (!signedIn)
-              const Text(
-                'Your habits stay on this device. Sign in to use an account garden.',
-              ),
-          ],
+          ),
         ),
       ),
     );
@@ -180,7 +204,7 @@ class ProfileSection extends StatelessWidget {
       const Text('Account sign-in is not configured in this build.'),
     if (configured && !returningToAccount)
       const Text(
-        'Choose Microsoft personal account, Google or another enabled option in the system browser. Budlark never collects your password.',
+        'Microsoft or Google • your password stays in your browser.',
       ),
     TextButton.icon(
       onPressed: busy || (!configured && !returningToAccount)
@@ -271,7 +295,6 @@ class ProfileSection extends StatelessWidget {
             ),
           ],
         ),
-        if (name == null) const Text("Your account doesn't include a name."),
         if (onCopyDeviceGarden != null || onSwitchGarden != null)
           const Text('Device garden stays separate; switch any time.'),
         if (notice != null &&
@@ -311,11 +334,21 @@ class ProfileSection extends StatelessWidget {
         runSpacing: 4,
         crossAxisAlignment: WrapCrossAlignment.center,
         children: [
-          const Icon(Icons.account_circle_outlined),
-          const Text('Profile'),
+          const SizedBox(
+            width: 72,
+            height: 80,
+            child: FittedBox(
+              child: SizedBox(
+                width: 160,
+                height: 180,
+                child: PlantArt(stage: GrowthStage.sprout, species: 'Fern'),
+              ),
+            ),
+          ),
+          Text('Your Budlark garden', style: Theme.of(context).textTheme.titleMedium),
           Text(
             returningToAccount ? 'Viewing device garden' : 'Not signed in',
-            style: Theme.of(context).textTheme.labelLarge,
+            style: Theme.of(context).textTheme.bodyMedium,
           ),
           TextButton.icon(
             onPressed: busy || (!configured && !returningToAccount)
@@ -340,15 +373,11 @@ class ProfileSection extends StatelessWidget {
             ),
         ],
       ),
-      Text(
-        'Plant without signing in. This device garden stays on this device; no sync or analytics.',
-        style: Theme.of(context).textTheme.bodySmall,
-      ),
       if (!configured)
         const Text('Account sign-in is not configured in this build.'),
       if (configured && !returningToAccount)
         const Text(
-          'Choose Microsoft personal account, Google or another enabled option in the system browser. Budlark never collects your password.',
+          'Microsoft or Google • your password stays in your browser.',
         ),
       if (notice != null) Text(notice!),
       if (error != null) _accountError(),

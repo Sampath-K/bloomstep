@@ -14,6 +14,7 @@ import 'package:flutter/rendering.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:path/path.dart' as p;
+import 'support/garden_navigation.dart';
 
 class _RestoringIdentity extends IdentityService {
   final restored = Completer<bool>();
@@ -91,9 +92,27 @@ Future<void> ready(
       () => Future<void>.delayed(const Duration(milliseconds: 20)),
     );
     await tester.pump(const Duration(milliseconds: 350));
+    if (find.text('Sign in to grow').evaluate().isNotEmpty &&
+        find.byType(GardenScreen).evaluate().isEmpty) {
+      final settings = find.byWidgetPredicate(
+        (widget) => widget is IconButton &&
+            widget.tooltip == 'Settings and privacy',
+      );
+      if (tester.widget<IconButton>(settings).onPressed == null) continue;
+      if (settings.hitTestable().evaluate().isEmpty) continue;
+      await tester.tap(settings);
+      await tester.pumpAndSettle();
+      if (find.text('Advanced').evaluate().isEmpty) continue;
+      await tester.tap(find.text('Advanced'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Use a device-only garden'));
+      await settleUi();
+      continue;
+    }
     if (dismissRecipeBuilder &&
         find.byType(RecipeBuilder).evaluate().isNotEmpty &&
-        (find.text('Choose a moment').evaluate().isNotEmpty ||
+        (find.text('Plant a Seed').evaluate().isNotEmpty ||
+            find.text('Plant a habit').evaluate().isNotEmpty ||
             find.text('Plant one tiny step').evaluate().isNotEmpty ||
             find.text('Adjust your recipe').evaluate().isNotEmpty)) {
       final cancel = find.descendant(
@@ -109,17 +128,27 @@ Future<void> ready(
         }
       }
     }
-    final profile = find.byType(ProfileSection);
-    if (finder.evaluate().isNotEmpty) {
+    final profile = find.byWidgetPredicate(
+      (widget) => widget is ProfileSection &&
+          !widget.compactSummary && !widget.detailsOnly,
+    );
+    await openGardenMore(tester);
+    if (finder.evaluate().isNotEmpty &&
+        (!needsProfile || profile.evaluate().isNotEmpty)) {
       missingBeforeSettings = 0;
       if (needsProfile) {
         await tester.ensureVisible(finder);
         await settleUi();
+        if (finder.evaluate().isEmpty) continue;
       }
       return;
     }
     missingBeforeSettings++;
-    final settings = find.byTooltip('Settings and privacy');
+    final settings = find.byWidgetPredicate(
+      (widget) => widget is IconButton &&
+          widget.tooltip == 'Settings and privacy' &&
+          widget.onPressed != null,
+    ).hitTestable();
     final gardens = find.byType(GardenScreen);
     final gardenReady =
         gardens.evaluate().length == 1 &&
@@ -128,7 +157,8 @@ Future<void> ready(
         gardenReady &&
         missingBeforeSettings >= 5 &&
         find.byType(AlertDialog).evaluate().isEmpty &&
-        settings.evaluate().isNotEmpty) {
+        settings.evaluate().length == 1 &&
+        ModalRoute.of(tester.element(settings))?.isCurrent == true) {
       await openSettings(settings);
       missingBeforeSettings = 0;
       await settleUi();
@@ -244,7 +274,8 @@ void main() {
       ))!,
     );
     await ready(tester, find.byType(RecipeBuilder));
-    expect(find.text('Choose a moment'), findsOneWidget);
+    expect(find.text('Plant a Seed').hitTestable(), findsOneWidget);
+    expect(find.text('More'), findsOneWidget);
     await captureFirstHabitScreen(tester, screenshotKey);
     await tester.tap(find.widgetWithText(TextButton, 'Cancel'));
     await tester.pumpAndSettle();
@@ -410,7 +441,7 @@ void main() {
         ),
       );
       await ready(tester, find.byType(RecipeBuilder));
-      expect(find.text('pour my morning drink'), findsOneWidget);
+      expect(find.widgetWithText(ChoiceChip, 'coffee'), findsOneWidget);
       final semantics = tester.ensureSemantics();
       await expectLater(tester, meetsGuideline(labeledTapTargetGuideline));
       semantics.dispose();

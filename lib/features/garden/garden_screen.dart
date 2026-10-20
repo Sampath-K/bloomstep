@@ -10,6 +10,7 @@ import '../../core/garden_store.dart';
 import '../../core/models.dart';
 import '../../core/rules.dart';
 import '../../services/identity.dart';
+import '../../services/anonymous_feedback.dart';
 import '../../services/sync_service.dart';
 import '../../services/desktop_reminders.dart';
 import '../../services/remote_config.dart';
@@ -26,6 +27,7 @@ import 'analytics_sandbox_controls.dart';
 import 'package:launch_at_startup/launch_at_startup.dart';
 
 import 'plant_art.dart';
+import 'garden_moment.dart';
 import 'recipe_builder.dart';
 import 'invitation_dialog.dart';
 import 'garden_canopy.dart';
@@ -39,6 +41,8 @@ class GardenScreen extends StatefulWidget {
     super.key,
     required this.store,
     this.identity,
+    this.anonymousFeedback,
+    this.onOpenDeviceGarden,
     this.updateService,
     this.reminderGateway,
     this.configLoader,
@@ -65,6 +69,8 @@ class GardenScreen extends StatefulWidget {
   });
   final GardenStore store;
   final IdentityService? identity;
+  final AnonymousFeedback? anonymousFeedback;
+  final VoidCallback? onOpenDeviceGarden;
   final UpdateService? updateService;
   final ReminderGateway? reminderGateway;
   final Future<RemoteConfigResult> Function(GardenStore)? configLoader;
@@ -95,12 +101,28 @@ class GardenScreen extends StatefulWidget {
   State<GardenScreen> createState() => _GardenScreenState();
 }
 
-class _GardenScreenState extends State<GardenScreen> {
+class _GardenScreenState extends State<GardenScreen>
+    with WidgetsBindingObserver {
   DateTime _now() => widget.clock?.call() ?? DateTime.now();
   List<Habit> habits = [];
   bool loading = true;
   bool working = false;
   bool reducedMotion = false;
+  bool moreOpen = false;
+  String? selectedHabitId;
+  String? returnHabitId;
+  String? returnDay;
+  bool momentAnimating = false;
+  final GlobalKey momentKey = GlobalKey();
+  int? checkInMinute;
+  bool remindersRequested = false;
+  GrowthStage? previousStage;
+  final Map<String, GrowthStage> pendingGrowth = {};
+  final Set<String> completedMoments = {};
+  String? loadedAccount;
+  GardenStore? loadedStore;
+  String? loadedDay;
+  Timer? dayTimer;
   bool weeklyDue = false;
   bool ratingInvitation = false;
   int ratingMoment = 0;
@@ -131,6 +153,7 @@ class _GardenScreenState extends State<GardenScreen> {
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     if (!_testBuild &&
         (widget.clock != null ||
             widget.testExportPathSelector != null ||
@@ -153,7 +176,9 @@ class _GardenScreenState extends State<GardenScreen> {
     });
     _load();
     if (!widget.testDisableServices &&
-        (widget.identity != null || widget.reminderGateway != null)) {
+        (Platform.isWindows ||
+            widget.identity != null ||
+            widget.reminderGateway != null)) {
       reminders = DesktopReminders(
         widget.store,
         _load,
@@ -189,6 +214,8 @@ class _GardenScreenState extends State<GardenScreen> {
 
   @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    dayTimer?.cancel();
     syncTimer?.cancel();
     widget.invitationInbox?.removeListener(_inboxChanged);
     configExpiryTimer?.cancel();
@@ -199,9 +226,34 @@ class _GardenScreenState extends State<GardenScreen> {
   }
 
   @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed && !closing) {
+      unawaited(_load());
+    }
+  }
+
+  void _scheduleDayRefresh() {
+    dayTimer?.cancel();
+    final now = _now();
+    final next = now.isUtc
+        ? DateTime.utc(now.year, now.month, now.day + 1)
+        : DateTime(now.year, now.month, now.day + 1);
+    dayTimer = Timer(next.difference(now), () {
+      if (mounted && !closing) unawaited(_load());
+    });
+  }
+
+  @override
   void didUpdateWidget(GardenScreen oldWidget) {
     super.didUpdateWidget(oldWidget);
-    if (oldWidget.contentRevision != widget.contentRevision) {
+    final changedGarden = oldWidget.store != widget.store ||
+        loadedAccount != widget.store.account;
+    if (changedGarden) {
+      loading = true;
+      momentAnimating = false;
+    }
+    if (changedGarden ||
+        oldWidget.contentRevision != widget.contentRevision) {
       unawaited(_load());
       if (widget.identity != null && !widget.testDisableServices) {
         unawaited(_sync());
@@ -344,9 +396,16 @@ class _GardenScreenState extends State<GardenScreen> {
   }
 
   Future<void> _load() async {
+    final store = widget.store;
+    final account = store.account;
+    final now = _now();
     try {
-      final data = await widget.store.habits();
+      final data = await store.habits(now: now);
       final reduce = await widget.store.setting('reducedMotion') == 'true';
+      final minute = int.tryParse(
+        await store.setting('reminderMinute') ?? '',
+      );
+      final requested = await store.setting('reminders') == 'true';
       final weekly = await widget.store.weeklyReflectionDue();
       final dates = <String, DateTime?>{};
       final paused = <String>{};
@@ -360,21 +419,56 @@ class _GardenScreenState extends State<GardenScreen> {
           paused.add(habit.id);
         }
       }
-      if (mounted) {
+      if (mounted && identical(widget.store, store) && store.account == account) {
         setState(() {
+          if (loadedDay != localDate(now)) pendingGrowth.clear();
+          if (loadedAccount == account && loadedStore == store) {
+            for (final habit in data) {
+              final previous =
+                  habits.where((old) => old.id == habit.id).firstOrNull;
+              if (previous != null && previous.stage != habit.stage) {
+                pendingGrowth[habit.id] = previous.stage;
+              }
+            }
+          }
+          if (loadedAccount != account || loadedStore != store) {
+            selectedHabitId = null;
+            returnHabitId = null;
+            returnDay = null;
+            momentAnimating = false;
+            previousStage = null;
+            pendingGrowth.clear();
+            completedMoments.clear();
+            for (final habit in data) {
+              if (habit.today == CheckInResult.did ||
+                  habit.today == CheckInResult.didMore) {
+                completedMoments.add(_completionKey(habit, day: localDate(now)));
+              }
+            }
+            moreOpen = false;
+          }
+          loadedAccount = account;
+          loadedStore = store;
+          loadedDay = localDate(now);
           habits = data;
           reducedMotion = reduce;
+          checkInMinute = minute != null && minute >= 0 && minute < 1440
+              ? minute
+              : null;
+          remindersRequested = requested;
           weeklyDue = weekly;
           naturalnessDates = dates;
           pausedReminders = paused;
           loading = false;
         });
+        _scheduleDayRefresh();
         _scheduleFirstHabit();
       }
     } catch (e) {
-      if (mounted) {
+      if (mounted && identical(widget.store, store) && store.account == account) {
         setState(() {
-          error = "Couldn't open your garden. Try again.";
+          error =
+              "Couldn't read local garden storage. Reload your garden to try again.";
           loading = false;
         });
       }
@@ -396,7 +490,8 @@ class _GardenScreenState extends State<GardenScreen> {
     } catch (e) {
       debugPrint('Garden action failed: ${e.runtimeType}');
       if (mounted) {
-        setState(() => error = "Couldn't complete that action. Try again.");
+        setState(() => error =
+            "Couldn't save the change to local storage. Try the action again.");
       }
     } finally {
       if (mounted) setState(() => working = false);
@@ -417,6 +512,20 @@ class _GardenScreenState extends State<GardenScreen> {
       }
     }
     return 'Windows reminders couldn’t be started. Check Windows Settings > System > Notifications, then try again.';
+  }
+
+  Future<void> _openNotificationSettings() async {
+    try {
+      if (reminders == null) {
+        throw StateError('Reminder setup is not available in this build.');
+      }
+      await reminders!.openNotificationSettings();
+    } catch (failure) {
+      if (mounted) {
+        setState(() => error =
+            'Could not open notification settings: $failure. Open Windows Settings > System > Notifications.');
+      }
+    }
   }
 
   Future<void> _initializeStartup() async {
@@ -525,18 +634,39 @@ class _GardenScreenState extends State<GardenScreen> {
 
   Future<void> _acknowledgeSavedPractice(String habitId) async {
     if (!mounted || closing) return;
-    final matches = habits.where((candidate) => candidate.id == habitId);
-    if (matches.isEmpty) return;
-    final habit = matches.first;
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(
-          'Saved. That tiny step counts! Now ${habit.celebration}.',
-        ),
-        duration: const Duration(seconds: 3),
-      ),
-    );
+    final account = widget.store.account;
+    final before = habits.where((habit) => habit.id == habitId).firstOrNull;
+    await _load();
+    if (!mounted || closing || account != widget.store.account) return;
+    _showSavedMoment(habitId, before?.stage);
   }
+
+  void _showSavedMoment(String habitId, GrowthStage? before) {
+    final saved = habits.where((habit) => habit.id == habitId).firstOrNull;
+    if (loadedDay != localDate(_now()) ||
+        saved == null ||
+        (saved.today != CheckInResult.did &&
+            saved.today != CheckInResult.didMore)) {
+      return;
+    }
+    final key = _completionKey(saved);
+    if (!completedMoments.add(key)) return;
+    setState(() {
+      selectedHabitId = habitId;
+      returnHabitId = habitId;
+      returnDay = localDate(_now());
+      previousStage = pendingGrowth.remove(habitId) ?? before ?? saved.stage;
+      momentAnimating = true;
+      moreOpen = false;
+    });
+  }
+
+  String _completionKey(Habit habit, {String? day}) => jsonEncode([
+    widget.store.account,
+    habit.id,
+    day ?? localDate(_now()),
+    habit.recipeRevision,
+  ]);
 
   Future<void> _plant({Habit? prefill}) async {
     if (habits.where((h) => h.status == 'active').length >= 3) {
@@ -565,12 +695,20 @@ class _GardenScreenState extends State<GardenScreen> {
         celebrationPracticed: recipe.celebrationPracticed,
       );
     });
-    if (!mounted || closing || error != null || planted == null) return;
+    if (!mounted || closing || planted == null) return;
     await showDialog<void>(
       context: context,
       builder: (_) =>
           PlantedRecipeDialog(habit: planted!, reducedMotion: reducedMotion),
     );
+    if (mounted && !closing) {
+      setState(() {
+        selectedHabitId = planted!.id;
+        returnHabitId = planted!.id;
+        returnDay = localDate(_now());
+        moreOpen = false;
+      });
+    }
   }
 
   Future<bool> _confirm(String title, String message, String action) async =>
@@ -613,7 +751,11 @@ class _GardenScreenState extends State<GardenScreen> {
   }
 
   Future<void> _check(Habit habit, CheckInResult result) async {
-    final messenger = ScaffoldMessenger.of(context);
+    if (working || closing) return;
+    final account = widget.store.account;
+    final alreadyDone = loadedDay == localDate(_now()) &&
+        (habit.today == CheckInResult.did ||
+            habit.today == CheckInResult.didMore);
     String? reason;
     if (result == CheckInResult.notToday) {
       reason = await showDialog<String>(
@@ -643,23 +785,28 @@ class _GardenScreenState extends State<GardenScreen> {
       await widget.store.checkIn(habit.id, result, reason: reason, now: _now());
       saved = true;
     });
-    if (saved) await reminders?.practiced(habit.id);
-    if (!mounted || !saved || result == CheckInResult.notToday) return;
-    final celebration = messenger.showSnackBar(
-      SnackBar(
-        content: Text(
-          '${result == CheckInResult.didMore ? 'A little extra! ' : 'That tiny step counts! '}Now ${habit.celebration}.',
-        ),
-        duration: const Duration(seconds: 5),
-      ),
-    );
-    if (saved) {
-      unawaited(_offerRatingAfterCelebration(celebration.closed, ratingMoment));
+    if (!mounted || !saved || account != widget.store.account) return;
+    if (result != CheckInResult.notToday &&
+        !alreadyDone) {
+      _showSavedMoment(habit.id, habit.stage);
     }
+    try {
+      await reminders?.practiced(habit.id);
+    } catch (failure) {
+      if (mounted) {
+        setState(() => error =
+            'Practice saved, but reminder cleanup failed. Open More → Settings and privacy to retry reminders.');
+      }
+    }
+    if (!mounted || result == CheckInResult.notToday) return;
+    unawaited(_offerRatingAfterCelebration(
+      Future<void>.delayed(GardenMoment.duration),
+      ratingMoment,
+    ));
   }
 
   Future<void> _offerRatingAfterCelebration(
-    Future<SnackBarClosedReason> closed,
+    Future<void> closed,
     int moment,
   ) async {
     await closed;
@@ -1051,6 +1198,7 @@ class _GardenScreenState extends State<GardenScreen> {
     final body = TextEditingController();
     int? rating;
     String? feedbackId;
+    String? anonymousRequestId;
     String? status;
     bool sending = false;
     bool received = false;
@@ -1095,8 +1243,10 @@ class _GardenScreenState extends State<GardenScreen> {
                     ),
                   ),
                   Text(
-                    widget.deviceGuest
-                        ? 'This device garden cannot send feedback. Sign in to send it to the team.'
+                    widget.anonymousFeedback != null
+                        ? 'Send only this feedback; never your account or habits.'
+                        : widget.deviceGuest
+                        ? 'Saved on this device only; no team delivery is connected.'
                         : 'Sent only when you choose Send feedback. Unsent feedback stays on this device until it can sync.',
                   ),
                   if (status != null)
@@ -1109,9 +1259,12 @@ class _GardenScreenState extends State<GardenScreen> {
                 onPressed: sending ? null : () => Navigator.pop(context),
                 child: Text(received ? 'Done' : 'Close'),
               ),
-              if (!received)
+              if (!received &&
+                  !(widget.deviceGuest &&
+                      widget.anonymousFeedback == null &&
+                      feedbackId != null))
                 FilledButton(
-                  onPressed: sending || widget.deviceGuest
+                  onPressed: sending
                       ? null
                       : () async {
                           if (body.text.trim().isEmpty && rating == null) {
@@ -1122,17 +1275,40 @@ class _GardenScreenState extends State<GardenScreen> {
                           }
                           update(() {
                             sending = true;
-                            status = 'Sending…';
+                            status = widget.deviceGuest ? 'Saving…' : 'Sending…';
                           });
                           try {
                             widget.store.requireSyncSession(owner, generation);
+                            final anonymous = widget.anonymousFeedback;
+                            if (anonymous != null) {
+                              anonymousRequestId ??= await anonymous.enqueue(
+                                consent: true,
+                                text: body.text.trim().isEmpty ? null : body.text,
+                                rating: rating,
+                              );
+                              feedbackId = anonymousRequestId;
+                              final receipt = await anonymous.submitNext(
+                                requestId: anonymousRequestId,
+                              );
+                              if (context.mounted) {
+                                update(() {
+                                  received = receipt?.requestId == anonymousRequestId;
+                                  status = received
+                                      ? 'Received by the team.'
+                                      : 'Saved on this device — not sent to the team.';
+                                });
+                              }
+                              return;
+                            }
                             feedbackId ??= await widget.store.submitVoice(
                               'General',
                               body.text,
                               rating: rating,
                             );
                             bool acknowledged = false;
-                            if (widget.feedbackSender != null) {
+                            if (widget.deviceGuest) {
+                              acknowledged = false;
+                            } else if (widget.feedbackSender != null) {
                               acknowledged = await widget.feedbackSender!(
                                 feedbackId!,
                               );
@@ -1152,16 +1328,21 @@ class _GardenScreenState extends State<GardenScreen> {
                             if (context.mounted) {
                               update(() {
                                 received = acknowledged;
-                                status = acknowledged
+                                status = widget.deviceGuest
+                                    ? 'Saved on this device — not sent to the team.'
+                                    : acknowledged
                                     ? 'Received by the team.'
                                     : 'Not sent — retry when you are connected.';
                               });
                             }
-                          } catch (_) {
+                          } catch (failure) {
                             if (context.mounted) {
                               update(
-                                () => status =
-                                    'Not sent — retry when you are connected.',
+                                () => status = anonymousRequestId != null
+                                    ? 'Saved on this device — not received. $failure'
+                                    : widget.deviceGuest
+                                    ? 'Could not save feedback: $failure'
+                                    : 'Not sent — retry when you are connected.',
                               );
                             }
                           } finally {
@@ -1238,12 +1419,22 @@ class _GardenScreenState extends State<GardenScreen> {
                     ],
                   ),
                   ExpansionTile(
+                    title: const Text('Advanced'),
+                    children: [
+                      if (widget.onOpenDeviceGarden != null)
+                        TextButton(
+                          onPressed: working ? null : widget.onOpenDeviceGarden,
+                          child: const Text('Use a device-only garden'),
+                        ),
+                    ],
+                  ),
+                  ExpansionTile(
                     title: const Text('Privacy & measurement'),
                     children: [
                       SwitchListTile(
                         title: const Text('Share product event counts'),
                         subtitle: const Text(
-                          'Optional, off by default. Shares up to 10 error types and 10 sign-in or session attempts per session, plus basic counts. No error messages or stacks, passwords or credentials, private account details, sensitive habit details, email or feedback. Device-only gardens send nothing. Turning off stops future sharing and clears unsent counts; sent counts follow account deletion and retention rules.',
+                          'Optional counts only; off by default. Never your private text.',
                         ),
                         value: analytics,
                         onChanged: widget.deviceGuest
@@ -1277,7 +1468,7 @@ class _GardenScreenState extends State<GardenScreen> {
                           Padding(
                             padding: EdgeInsets.fromLTRB(16, 0, 16, 16),
                             child: Text(
-                              'Counts use set categories, app stages and elapsed time for errors Budlark sees while open, plus sign-in and session attempts after sign-in. We do not collect error messages or stacks, what you type, passwords or credentials, private account details, sensitive habit details, email, feedback or which sign-in provider you use. Device-only gardens send no counts. App closures Budlark cannot observe are not included, so this is not a crash-free measure.',
+                              'Shares up to 10 error types and 10 sign-in or session attempts per session, plus basic counts. Turning off stops future sharing and clears unsent counts; sent counts follow account deletion and retention rules. Counts use set categories, app stages and elapsed time for errors Budlark sees while open, plus sign-in and session attempts after sign-in. We do not collect error messages or stacks, what you type, passwords or credentials, private account details, sensitive habit details, email, feedback or which sign-in provider you use. Device-only gardens send no counts. App closures Budlark cannot observe are not included, so this is not a crash-free measure.',
                             ),
                           ),
                         ],
@@ -1318,9 +1509,12 @@ class _GardenScreenState extends State<GardenScreen> {
                     title: const Text('Reminders'),
                     children: [
                       if (reminders == null)
-                        const ListTile(
-                          title: Text(
-                            'Windows reminders are unavailable here.',
+                        ListTile(
+                          title: const Text('Reminders need the Windows app.'),
+                          subtitle: Text(
+                            widget.testDisableServices
+                                ? 'This test build disables reminder services.'
+                                : 'Open the installed Budlark app on Windows to set up reminders.',
                           ),
                         ),
                       if (reminders != null)
@@ -1349,8 +1543,23 @@ class _GardenScreenState extends State<GardenScreen> {
                               Text(
                                 reminderSetupInProgress
                                     ? 'Windows reminders are starting.'
-                                    : 'Your reminder preference is on, but Windows delivery is not active.',
+                                    : (reminderSetupError == null
+                                          ? reminders!.unavailableReason
+                                          : null) ??
+                                          'Your reminder preference is on, but Windows delivery is not active.',
                               ),
+                              if (!reminderSetupInProgress)
+                                const Text(
+                                  'If Budlark is missing from the app list, reinstall the latest installer, open Budlark, then retry reminders.',
+                                ),
+                              if (!reminderSetupInProgress && Platform.isWindows)
+                                TextButton(
+                                  onPressed: () async {
+                                    await _openNotificationSettings();
+                                    if (context.mounted) update(() {});
+                                  },
+                                  child: const Text('Open Windows notification settings'),
+                                ),
                               if (!reminderSetupInProgress)
                                 TextButton(
                                   onPressed: working
@@ -1666,6 +1875,49 @@ class _GardenScreenState extends State<GardenScreen> {
     );
   }
 
+  Future<void> _profile() async {
+    final builder = widget.profileBuilder;
+    if (builder == null) {
+      await _settings();
+      return;
+    }
+    await showDialog<void>(
+      context: context,
+      builder: (context) => AlertDialog(
+        scrollable: true,
+        content: SizedBox(
+          width: 460,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              builder(_signOut, _settings),
+              ExpansionTile(
+                title: const Text('Linked providers'),
+                children: [
+                  Text('Current sign-in: ${widget.identity?.profile?.signInProvider ?? "Not available"}'),
+                  const Text('Linked-provider management is not available in this build.'),
+                ],
+              ),
+            ],
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () {
+              Navigator.pop(context);
+              _settings();
+            },
+            child: const Text('Account settings'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Close'),
+          ),
+        ],
+      ),
+    );
+  }
+
   Future<void> _signOut() async {
     if (working || closing || widget.identity == null) return;
     if (!await _confirm(
@@ -1748,11 +2000,12 @@ class _GardenScreenState extends State<GardenScreen> {
                       const SizedBox(height: 12),
                       if (snapshot.connectionState != ConnectionState.done)
                         const Text('Checking GitHub Releases…')
-                      else if (failure != null)
-                        _statusDetails(
-                          'Couldn’t check for updates. Please try again.',
-                          'Check your connection and retry from App & support. No installer was downloaded or started.',
-                        )
+                      else if (failure != null) ...[
+                        const Text('Couldn’t check for updates. Please try again.'),
+                        Text(
+                          '$failure\nCheck your connection and retry. No installer was downloaded.',
+                        ),
+                      ]
                       else if (release == null)
                         const Text('No newer published release found')
                       else ...[
@@ -1858,6 +2111,208 @@ class _GardenScreenState extends State<GardenScreen> {
 
   @override
   Widget build(BuildContext context) {
+    if (moreOpen) return _buildMore(context);
+    final active = habits.where((habit) => habit.status == 'active').toList();
+    final habit = active
+            .where((habit) => habit.id == selectedHabitId)
+            .firstOrNull ??
+        active.where((habit) => habit.today == null).firstOrNull ??
+        active.firstOrNull;
+    final done = loadedDay == localDate(_now()) &&
+        (habit?.today == CheckInResult.did ||
+            habit?.today == CheckInResult.didMore);
+    final returning = habit != null &&
+        (done ||
+            (returnHabitId == habit.id && returnDay == localDate(_now())));
+    final theme = Theme.of(context);
+    final viewport = MediaQuery.sizeOf(context);
+    final compact = viewport.height <= 600 ||
+        MediaQuery.textScalerOf(context).scale(1) >= 1.5;
+    final minute = checkInMinute;
+    final delivery = !remindersRequested
+        ? 'reminders off'
+        : pausedReminders.contains(habit?.id)
+            ? 'reminders paused'
+            : reminders?.enabled == true
+                ? 'reminders enabled'
+                : 'Windows delivery inactive';
+    final time = minute == null
+        ? 'Check-in time not set · choose in More'
+        : 'Check-in ${_minuteLabel(minute)} · $delivery';
+    final warnings = <String>{
+      ?error,
+      ?reminderSetupError,
+      ?configWarning,
+      ?startupWarning,
+      ?invitationWarning,
+    };
+    return Scaffold(
+      appBar: AppBar(
+        automaticallyImplyLeading: false,
+        toolbarHeight: MediaQuery.textScalerOf(context).scale(48) + 24,
+        actions: [
+          if (widget.profileSummaryBuilder != null &&
+              (ModalRoute.of(context)?.isCurrent ?? true))
+            SizedBox(
+              width: (viewport.width / 2).clamp(0, 320).toDouble(),
+              child: widget.profileSummaryBuilder!(_signOut, _profile),
+            ),
+        ],
+      ),
+      body: loading
+          ? const Center(child: CircularProgressIndicator())
+          : SingleChildScrollView(
+              padding: EdgeInsets.fromLTRB(16, compact ? 0 : 24, 16, 24),
+              child: Center(
+                child: ConstrainedBox(
+                  constraints: const BoxConstraints(maxWidth: 560),
+                  child: Column(
+                    children: [
+                      if (compact)
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            SizedBox(
+                              width: 100,
+                              height: 80,
+                              child: _momentFor(habit),
+                            ),
+                            Flexible(
+                              child: Semantics(
+                                header: true,
+                                child: Text(
+                                  habit?.aspiration ?? 'Your garden',
+                                  style: theme.textTheme.headlineMedium,
+                                  textAlign: TextAlign.center,
+                                ),
+                              ),
+                            ),
+                          ],
+                        )
+                      else
+                        Semantics(
+                          header: true,
+                          child: Text(
+                            habit?.aspiration ?? 'Your garden',
+                            style: theme.textTheme.headlineMedium,
+                            textAlign: TextAlign.center,
+                          ),
+                        ),
+                      if (!compact)
+                        SizedBox(
+                          width: 300,
+                          height: 200,
+                          child: _momentFor(habit),
+                        ),
+                      if (habit == null)
+                        const Text('Choose one tiny habit to begin.')
+                      else
+                        Column(
+                          children: [
+                            Text(
+                              done ? 'Done today' : 'After I ${habit.anchor}',
+                              textAlign: TextAlign.center,
+                            ),
+                            if (!done)
+                              Text(
+                                habit.behavior,
+                                textAlign: TextAlign.center,
+                              )
+                            else
+                              Text(
+                                'Now ${habit.celebration}.',
+                                textAlign: TextAlign.center,
+                              ),
+                          ],
+                        ),
+                      const SizedBox(height: 8),
+                      FilledButton(
+                        onPressed: working
+                            ? null
+                            : habit == null
+                                ? _plant
+                                : () => _check(habit, CheckInResult.did),
+                        child: Text(habit == null ? 'Plant a habit' : 'I did it'),
+                      ),
+                      if (returning) ...[
+                        const SizedBox(height: 8),
+                        Text(
+                          'See you tomorrow after I ${habit.anchor}.',
+                          textAlign: TextAlign.center,
+                        ),
+                        Text(time, textAlign: TextAlign.center),
+                      ],
+                      if (ModalRoute.of(context)?.isCurrent ?? true)
+                        TextButton(
+                          key: const ValueKey('garden-more'),
+                          onPressed: working
+                              ? null
+                              : () => setState(() {
+                                  momentAnimating = false;
+                                  moreOpen = true;
+                                }),
+                          child: Text(
+                            pendingInvitation != null || acceptedCard != null
+                                ? 'More · invitation'
+                                : 'More',
+                          ),
+                        ),
+                      for (final warning in warnings)
+                        Card(
+                          child: Padding(
+                            padding: const EdgeInsets.all(12),
+                            child: Column(
+                              children: [
+                                Text(warning),
+                                TextButton(
+                                  onPressed: working
+                                      ? null
+                                      : () async {
+                                          setState(() => error = null);
+                                          await _load();
+                                        },
+                                  child: const Text('Reload garden'),
+                                ),
+                                TextButton(
+                                  onPressed: working ? null : _settings,
+                                  child: const Text('Settings and privacy'),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+    );
+  }
+
+  String _minuteLabel(int minute) =>
+      '${(minute ~/ 60).toString().padLeft(2, '0')}:${(minute % 60).toString().padLeft(2, '0')}';
+
+  Widget _momentFor(Habit? habit) => GardenMoment(
+    key: momentKey,
+    stage: habit?.stage ?? GrowthStage.seed,
+    species: habit?.species ?? 'Cosmos',
+    reducedMotion: reducedMotion,
+    previousStage: previousStage,
+    animate: momentAnimating && selectedHabitId == habit?.id,
+    onFinished: () {
+      if (mounted && momentAnimating) {
+        setState(() => momentAnimating = false);
+      }
+    },
+    completion: loadedDay == localDate(_now()) &&
+            habit != null &&
+            (habit.today == CheckInResult.did ||
+                habit.today == CheckInResult.didMore)
+        ? _completionKey(habit)
+        : null,
+  );
+
+  Widget _buildMore(BuildContext context) {
     final theme = Theme.of(context);
     final viewport = MediaQuery.sizeOf(context);
     final textScale = MediaQuery.textScalerOf(context).scale(1);
@@ -1871,7 +2326,13 @@ class _GardenScreenState extends State<GardenScreen> {
     return Scaffold(
       appBar: AppBar(
         automaticallyImplyLeading: false,
-        title: const Text('Budlark'),
+        leading: IconButton(
+          tooltip: 'Back to your habit',
+          onPressed: () => setState(() => moreOpen = false),
+          icon: const Icon(Icons.arrow_back),
+        ),
+        toolbarHeight: MediaQuery.textScalerOf(context).scale(48) + 24,
+        title: widget.profileSummaryBuilder == null ? const Text('Budlark') : null,
         actions: [
           IconButton(
             tooltip: 'Invite a friend',
@@ -1888,6 +2349,12 @@ class _GardenScreenState extends State<GardenScreen> {
             onPressed: working ? null : _settings,
             icon: const Icon(Icons.settings_outlined),
           ),
+          if (widget.profileSummaryBuilder != null &&
+              (ModalRoute.of(context)?.isCurrent ?? true))
+            SizedBox(
+              width: (viewport.width - 232).clamp(0, 320).toDouble(),
+              child: widget.profileSummaryBuilder!(_signOut, _profile),
+            ),
         ],
       ),
       body: loading
@@ -1972,9 +2439,34 @@ class _GardenScreenState extends State<GardenScreen> {
                         Card(
                           child: Padding(
                             padding: const EdgeInsets.all(16),
-                            child: _statusDetails(
-                              'Something needs your attention.',
-                              error!,
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                const Text('Something needs your attention.'),
+                                SelectableText(error!),
+                                TextButton(
+                                  onPressed: working
+                                      ? null
+                                      : () async {
+                                          setState(() => error = null);
+                                          await _load();
+                                        },
+                                  child: const Text('Reload garden'),
+                                ),
+                                if (reminderSetupError != null &&
+                                    error == reminderSetupError) ...[
+                                  Text(reminderSetupError!),
+                                  TextButton(
+                                    onPressed: _settings,
+                                    child: const Text('Set up reminders'),
+                                  ),
+                                  if (Platform.isWindows && reminders != null)
+                                    TextButton(
+                                      onPressed: _openNotificationSettings,
+                                      child: const Text('Open Windows notification settings'),
+                                    ),
+                                ],
+                              ],
                             ),
                           ),
                         ),

@@ -7,6 +7,47 @@
 #include <winrt/Windows.Foundation.Collections.h>
 #include <winrt/Windows.UI.Notifications.h>
 
+namespace {
+constexpr auto kAppId = L"Budlark.Garden";
+constexpr auto kActivator = L"{dc9b4d34-b0de-4df7-aead-690d8a5304a2}";
+
+struct RegistryKey {
+  HKEY value = nullptr;
+  ~RegistryKey() {
+    if (value) RegCloseKey(value);
+  }
+};
+
+void RegisterAppIdentity() {
+  // Match flutter_local_notifications_windows' identity/activator metadata,
+  // without changing any Windows notification permission.
+  RegistryKey key;
+  winrt::check_win32(RegCreateKeyExW(
+      HKEY_CURRENT_USER, L"Software\\Classes\\AppUserModelId\\Budlark.Garden",
+      0, nullptr, 0, KEY_SET_VALUE, nullptr, &key.value, nullptr));
+  const auto write = [&key](const wchar_t* name, const std::wstring& value) {
+    winrt::check_win32(RegSetValueExW(
+        key.value, name, 0, REG_SZ,
+        reinterpret_cast<const BYTE*>(value.c_str()),
+        static_cast<DWORD>((value.size() + 1) * sizeof(wchar_t))));
+  };
+  std::wstring executable(32768, L'\0');
+  const auto length = GetModuleFileNameW(
+      nullptr, executable.data(), static_cast<DWORD>(executable.size()));
+  if (length == 0) winrt::throw_last_error();
+  if (length >= executable.size()) {
+    winrt::throw_hresult(HRESULT_FROM_WIN32(ERROR_INSUFFICIENT_BUFFER));
+  }
+  executable.resize(length);
+  const auto directory = executable.substr(0, executable.find_last_of(L"\\/"));
+  write(L"DisplayName", L"Budlark");
+  write(L"IconUri",
+        directory + L"\\data\\flutter_assets\\windows\\runner\\resources\\app_icon.ico");
+  write(L"CustomActivator", kActivator);
+  winrt::check_hresult(SetCurrentProcessExplicitAppUserModelID(kAppId));
+}
+}  // namespace
+
 ToastHistory::ToastHistory(flutter::BinaryMessenger* messenger) {
   channel_ = std::make_unique<flutter::MethodChannel<flutter::EncodableValue>>(
       messenger, "budlark/toast_history",
@@ -15,7 +56,8 @@ ToastHistory::ToastHistory(flutter::BinaryMessenger* messenger) {
       [this](const auto& call,
              std::unique_ptr<flutter::MethodResult<flutter::EncodableValue>> result) {
         if (call.method_name() != "getHistory" && call.method_name() != "cancel" &&
-            call.method_name() != "getSetting" && call.method_name() != "show") {
+            call.method_name() != "getSetting" && call.method_name() != "show" &&
+            call.method_name() != "registerApp") {
           result->NotImplemented();
           return;
         }
@@ -52,20 +94,27 @@ ToastHistory::ToastHistory(flutter::BinaryMessenger* messenger) {
             winrt::init_apartment(winrt::apartment_type::single_threaded);
             runtime_initialized_ = true;
           }
-          constexpr auto app = L"Budlark.Garden";
+          constexpr auto app = kAppId;
           winrt::check_hresult(SetCurrentProcessExplicitAppUserModelID(app));
-          const auto history =
-              winrt::Windows::UI::Notifications::ToastNotificationManager::History();
-          // Explicit AUMID overloads work without MSIX package identity.
-          constexpr auto group = L"Budlark";
-          if (call.method_name() == "cancel") {
-            history.Remove(winrt::to_hstring(id), group, app);
+          if (call.method_name() == "registerApp") {
+            RegisterAppIdentity();
             result->Success();
-          } else if (call.method_name() == "getSetting") {
+            return;
+          }
+          if (call.method_name() == "getSetting") {
             const auto notifier =
                 winrt::Windows::UI::Notifications::ToastNotificationManager::CreateToastNotifier(app);
             result->Success(flutter::EncodableValue(
                 static_cast<int32_t>(notifier.Setting())));
+            return;
+          }
+          // Explicit AUMID overloads work without MSIX package identity.
+          constexpr auto group = L"Budlark";
+          if (call.method_name() == "cancel") {
+            const auto history =
+                winrt::Windows::UI::Notifications::ToastNotificationManager::History();
+            history.Remove(winrt::to_hstring(id), group, app);
+            result->Success();
           } else if (call.method_name() == "show") {
             using namespace winrt::Windows::UI::Notifications;
             const auto notifier = ToastNotificationManager::CreateToastNotifier(app);
@@ -84,6 +133,8 @@ ToastHistory::ToastHistory(flutter::BinaryMessenger* messenger) {
             notifier.Show(notification);
             result->Success();
           } else {
+            const auto history =
+                winrt::Windows::UI::Notifications::ToastNotificationManager::History();
             flutter::EncodableList tags;
             for (const auto& notification : history.GetHistory(app)) {
               tags.emplace_back(winrt::to_string(notification.Tag()));
@@ -91,8 +142,14 @@ ToastHistory::ToastHistory(flutter::BinaryMessenger* messenger) {
             result->Success(flutter::EncodableValue(tags));
           }
         } catch (const winrt::hresult_error& error) {
+          const auto registration = call.method_name() == "registerApp";
           result->Error(
-              "history_unavailable", "The Windows notification operation failed.",
+              registration ? "notification_registration_failed" : "history_unavailable",
+              registration
+                  ? "Windows could not register Budlark for notifications. "
+                    "Reminders remain inactive. Repair or reinstall Budlark, then retry."
+                  : "Windows could not complete the notification operation. "
+                    "Review Windows Settings > System > Notifications, then retry.",
               flutter::EncodableValue(static_cast<int32_t>(error.code())));
         }
       });

@@ -19,7 +19,8 @@ test('obsolete autonomous variants are replaced by a standard native wizard', ()
   for (const page of ['Welcome', 'Dir']) assert.match(setup, new RegExp(`Disable${page}Page=yes`));
   assert.match(setup, /DefaultDirName=\{localappdata\}\\Programs\\Budlark/);
   assert.match(setup, /PrivilegesRequired=lowest/);
-  assert.match(setup, /UsePreviousAppDir=yes/);
+  assert.doesNotMatch(setup, /UsePreviousAppDir=yes/);
+  assert.match(setup, /UsePreviousGroup=no/);
   assert.doesNotMatch(setup, /InstallFlow|ExecAsOriginalUser|BackButtonClick|NextButton\.OnClick|CreateCustomPage/);
   assert.doesNotMatch(read('packaging/install-progress.iss'),
     /SetTimer|KillTimer|CreateCallback|PeekMessage|DispatchMessage|OnClick|Sleep\(/);

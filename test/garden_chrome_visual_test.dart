@@ -200,6 +200,7 @@ void main() {
             ),
             home: GardenScreen(
               store: store,
+              testDisableServices: true,
               deviceGuest: variant.device,
               profileBuilder: profile,
               profileSummaryBuilder: (signOut, manage) =>
@@ -327,7 +328,8 @@ void main() {
       await tester.pumpAndSettle();
       await tester.tap(cta);
       await tester.pumpAndSettle();
-      expect(find.text('Choose a moment'), findsOneWidget);
+      expect(find.text('Plant a Seed').hitTestable(), findsOneWidget);
+      expect(find.text('More'), findsOneWidget);
       await tester.sendKeyEvent(LogicalKeyboardKey.escape);
       await tester.pumpAndSettle();
       expect(tester.takeException(), isNull);

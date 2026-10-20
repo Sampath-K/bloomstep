@@ -74,7 +74,7 @@ test('real entrypoint binds the explicit synthetic target and rejects unsafe sta
       cwd: new URL('../', import.meta.url), encoding: 'utf8', timeout: 30000,
     }));
     assert.deepEqual(result, mode === 'safe'
-      ? { selections: [{ database: 'synthetic-pr34', container: 'synthetic-data' }], registrations: 23, rejected: false }
+      ? { selections: [{ database: 'synthetic-pr34', container: 'synthetic-data' }], registrations: 24, rejected: false }
       : { selections: [], registrations: 0, rejected: true });
   }
 });

@@ -4,6 +4,7 @@ import 'package:budlark/services/desktop_reminders.dart';
 import 'package:budlark/services/remote_config.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'support/garden_navigation.dart';
 
 class ConfigGateway implements ReminderGateway {
   @override
@@ -27,6 +28,7 @@ Future<void> ready(WidgetTester tester, Finder finder) async {
       () => Future<void>.delayed(const Duration(milliseconds: 50)),
     );
     await tester.pump(const Duration(milliseconds: 50));
+    await openGardenMore(tester);
     if (finder.evaluate().isNotEmpty) {
       await tester.pump(const Duration(milliseconds: 350));
       return;

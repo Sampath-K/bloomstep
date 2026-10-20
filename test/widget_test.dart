@@ -2,6 +2,7 @@ import 'package:budlark/core/garden_store.dart';
 import 'package:budlark/features/garden/garden_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'support/garden_navigation.dart';
 
 void main() {
   testWidgets('plant, celebrate, edit today and undo through the real UI', (
@@ -27,6 +28,7 @@ void main() {
           () => Future<void>.delayed(const Duration(milliseconds: 50)),
         );
         await tester.pump(const Duration(milliseconds: 50));
+        await openGardenMore(tester);
         final matches = finder.evaluate().toList();
         final enabled =
             matches.isNotEmpty &&
@@ -59,16 +61,17 @@ void main() {
     await waitForReady(find.text('Plant a habit'));
     await tester.tap(find.text('Plant a habit'));
     await tester.pumpAndSettle();
-    await tester.tap(find.text('pour my morning drink'));
+    expect(find.text('Plant a Seed').hitTestable(), findsOneWidget);
+    await tester.tap(find.text('More'));
     await tester.pumpAndSettle();
-    await tester.tap(find.text('take one slow breath'));
-    await tester.pumpAndSettle();
-    await tester.tap(find.text('relax my shoulders and smile'));
+    final starter = find.byKey(const ValueKey('starter-Calm'));
+    await tester.ensureVisible(starter);
+    await tester.tap(starter);
     await tester.pumpAndSettle();
     await tester.ensureVisible(find.text('I practiced my celebration'));
     await tester.tap(find.text('I practiced my celebration'));
     await tester.pumpAndSettle();
-    await tester.tap(find.text('Plant this seed'));
+    await tester.tap(find.text('Plant a Seed'));
     await waitForReady(find.text('See my garden'));
     await tester.tap(find.text('See my garden'));
     await tester.pumpAndSettle();

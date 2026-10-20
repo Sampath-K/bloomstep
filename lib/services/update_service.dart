@@ -17,9 +17,15 @@ class UpdateService {
     'BUDLARK_RELEASE_VERSION',
     defaultValue: '0.1.0-preview',
   );
+  // The immutable repository ID survives product/repository display-name changes.
+  static const _repositoryId = 1404357574;
+  static final _repository = Uri.https(
+    'api.github.com',
+    '/repositories/$_repositoryId',
+  );
   static final _endpoint = Uri.https(
     'api.github.com',
-    '/repos/Sampath-K/budlark/releases',
+    '/repositories/$_repositoryId/releases',
     {'per_page': '20'},
   );
 
@@ -27,6 +33,30 @@ class UpdateService {
     final current = Version.parse(currentVersion);
     final requestClient = client ?? http.Client();
     try {
+      final metadata = await requestClient
+          .get(_repository, headers: {'Accept': 'application/vnd.github+json'})
+          .timeout(const Duration(seconds: 20));
+      if (metadata.statusCode != 200) {
+        throw StateError(
+          'Update source unavailable (HTTP ${metadata.statusCode}). No installer was downloaded.',
+        );
+      }
+      final repository = jsonDecode(metadata.body);
+      final home = repository is Map && repository['html_url'] is String
+          ? Uri.tryParse(repository['html_url'] as String)
+          : null;
+      if (repository is! Map ||
+          repository['id'] != _repositoryId ||
+          home == null ||
+          home.scheme != 'https' ||
+          home.host != 'github.com' ||
+          home.hasPort ||
+          home.userInfo.isNotEmpty ||
+          home.hasQuery ||
+          home.hasFragment ||
+          !RegExp(r'^/Sampath-K/[A-Za-z0-9_.-]+$').hasMatch(home.path)) {
+        throw const FormatException('The update repository could not be verified.');
+      }
       final response = await requestClient
           .get(_endpoint, headers: {'Accept': 'application/vnd.github+json'})
           .timeout(const Duration(seconds: 20));
@@ -62,7 +92,7 @@ class UpdateService {
             uri.userInfo.isNotEmpty ||
             uri.hasQuery ||
             uri.hasFragment ||
-            uri.path != '/Sampath-K/budlark/releases/tag/$tag') {
+            uri.path != '${home.path}/releases/tag/$tag') {
           throw const FormatException(
             'Release link is not the approved Budlark repository.',
           );

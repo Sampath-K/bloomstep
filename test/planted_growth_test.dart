@@ -116,20 +116,23 @@ void main() {
         await ready(tester, find.text('A little is enough.'));
         await tester.tap(find.text('Plant a habit'));
         await tester.pumpAndSettle();
+        await tester.tap(find.text('More'));
+        await tester.pumpAndSettle();
+        await tester.ensureVisible(find.byKey(const ValueKey('custom-anchor')));
         await tester.enterText(
           find.byKey(const ValueKey('custom-anchor')),
           'put my cup away',
         );
         await tester.pump();
-        await tester.tap(find.text('Choose a tiny action'));
-        await tester.pumpAndSettle();
+        await tester.ensureVisible(find.byKey(const ValueKey('custom-action')));
         await tester.enterText(
           find.byKey(const ValueKey('custom-action')),
           'stretch one finger',
         );
         await tester.pump();
-        await tester.tap(find.text('Choose a celebration'));
-        await tester.pumpAndSettle();
+        await tester.ensureVisible(
+          find.byKey(const ValueKey('custom-celebration')),
+        );
         await tester.enterText(
           find.byKey(const ValueKey('custom-celebration')),
           'whisper well done',
@@ -139,7 +142,7 @@ void main() {
         if (failSave) {
           await tester.runAsync(store.close);
         }
-        await tester.tap(find.text('Plant this seed'));
+        await tester.tap(find.text('Plant a Seed'));
         if (failSave) {
           await ready(tester, find.text('Something needs your attention.'));
           expect(find.byType(PlantedRecipeDialog), findsNothing);

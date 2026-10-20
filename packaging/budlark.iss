@@ -31,9 +31,10 @@ AppId={{A6690692-4D92-475A-9EAC-1AD867AB0635}
 UsePreviousAppDir=no
 #else
 AppId={{99BE7E95-0565-4C72-A4DD-46D1D5B6C679}
-UsePreviousAppDir=yes
+UsePreviousAppDir=no
 #endif
 #endif
+UsePreviousGroup=no
 #ifdef OnboardingJourneyFixture
 AppName=Budlark isolated journey proof
 VersionInfoProductName=Budlark isolated journey proof
@@ -114,7 +115,7 @@ Filename: "{app}\budlark.exe"; Description: "Launch Budlark"; Flags: postinstall
 Type: files; Name: "{app}\measurement-owner.txt"
 
 [Icons]
-Name: "{group}\Budlark"; Filename: "{app}\budlark.exe"
+Name: "{group}\Budlark"; Filename: "{app}\budlark.exe"; AppUserModelID: "Budlark.Garden"; AppUserModelToastActivatorCLSID: "dc9b4d34-b0de-4df7-aead-690d8a5304a2"
 Name: "{group}\Uninstall Budlark"; Filename: "{uninstallexe}"
 
 [UninstallDelete]
@@ -162,6 +163,7 @@ var
   InstallationSucceeded: Boolean;
 
 #include "install-progress.iss"
+#include "upgrade-migration.iss"
 
 function CanLaunchBudlark(): Boolean;
 var
@@ -185,13 +187,16 @@ end;
 
 procedure InitializeWizard();
 begin
+  CapturePreviousInstallation();
   InitializeInstallMotion();
 end;
 
 procedure CurStepChanged(CurStep: TSetupStep);
 begin
-  if CurStep = ssPostInstall then
+  if CurStep = ssPostInstall then begin
+    CompleteUpgradeMigration();
     InstallationSucceeded := True;
+  end;
 end;
 procedure CurUninstallStepChanged(CurUninstallStep: TUninstallStep);
 var
