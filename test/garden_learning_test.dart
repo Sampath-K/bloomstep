@@ -78,9 +78,12 @@ Future<void> settleDatabase(WidgetTester tester) async {
   }
 }
 
-Future<(GardenStore, Habit)> fixture(WidgetTester tester) async {
+Future<(GardenStore, Habit)> fixture(
+  WidgetTester tester, {
+  DateTime Function()? clock,
+}) async {
   final store = (await tester.runAsync(
-    () => GardenStore.open(':memory:', 'ui-learning'),
+    () => GardenStore.open(':memory:', 'ui-learning', clock: clock),
   ))!;
   final h = (await tester.runAsync(
     () => store.plant(
@@ -661,7 +664,10 @@ void main() {
     testWidgets(
       'plant never obscures check-ins at ${scenario.$1}, text ${scenario.$2}',
       (tester) async {
-        final (store, _) = await fixture(tester);
+        // A layout check must stay on one synthetic day across CI midnight.
+        final now = DateTime(2026, 10, 19, 12);
+        DateTime clock() => now;
+        final (store, _) = await fixture(tester, clock: clock);
         await tester.runAsync(() async {
           for (var i = 0; i < 2; i++) {
             await store.plant(
@@ -681,7 +687,7 @@ void main() {
                   .copyWith(textScaler: TextScaler.linear(scenario.$2)),
               child: child!,
             ),
-            home: GardenScreen(store: store),
+            home: GardenScreen(store: store, clock: clock),
           ),
         );
         await settleDatabase(tester);
