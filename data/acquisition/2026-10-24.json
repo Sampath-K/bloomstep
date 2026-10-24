@@ -1,0 +1,437 @@
+{
+  "schemaVersion": 1,
+  "repo": "Sampath-K/bloomstep",
+  "capturedAt": "2026-10-24T07:21:35.503Z",
+  "releases": [
+    {
+      "tag": "v0.1.0-preview.14",
+      "publishedAt": "2026-10-13T01:49:58Z",
+      "assets": [
+        {
+          "id": 635556655,
+          "name": "Bloomstep-0.1.0-preview.14-windows-arm64-setup.exe",
+          "downloads": 3
+        },
+        {
+          "id": 635556627,
+          "name": "Bloomstep-0.1.0-preview.14-windows-universal-setup.exe",
+          "downloads": 9
+        },
+        {
+          "id": 635556654,
+          "name": "Bloomstep-0.1.0-preview.14-windows-x64-setup.exe",
+          "downloads": 3
+        },
+        {
+          "id": 635556709,
+          "name": "owner-trial-manifest.json",
+          "downloads": 0
+        },
+        {
+          "id": 635556628,
+          "name": "payload-manifest-arm64.json",
+          "downloads": 0
+        },
+        {
+          "id": 635556634,
+          "name": "payload-manifest-x64.json",
+          "downloads": 0
+        },
+        {
+          "id": 635556673,
+          "name": "SHA256-arm64.txt",
+          "downloads": 0
+        },
+        {
+          "id": 635556632,
+          "name": "SHA256-universal.txt",
+          "downloads": 0
+        },
+        {
+          "id": 635556672,
+          "name": "SHA256-x64.txt",
+          "downloads": 0
+        },
+        {
+          "id": 635556631,
+          "name": "universal-manifest.json",
+          "downloads": 0
+        }
+      ]
+    },
+    {
+      "tag": "v0.1.0-preview.12",
+      "publishedAt": "2026-10-07T11:31:38Z",
+      "assets": [
+        {
+          "id": 618497139,
+          "name": "actual-universal-welcome-arm64.png",
+          "downloads": 3
+        },
+        {
+          "id": 618497138,
+          "name": "actual-universal-welcome-x64.png",
+          "downloads": 3
+        },
+        {
+          "id": 618497163,
+          "name": "Bloomstep-0.1.0-preview.12-windows-arm64-setup.exe",
+          "downloads": 1
+        },
+        {
+          "id": 618497087,
+          "name": "Bloomstep-0.1.0-preview.12-windows-universal-setup.exe",
+          "downloads": 7
+        },
+        {
+          "id": 618497154,
+          "name": "Bloomstep-0.1.0-preview.12-windows-x64-setup.exe",
+          "downloads": 1
+        },
+        {
+          "id": 618497107,
+          "name": "genuine-launch-arm64.json",
+          "downloads": 2
+        },
+        {
+          "id": 618497109,
+          "name": "genuine-launch-x64.json",
+          "downloads": 2
+        },
+        {
+          "id": 618497110,
+          "name": "native-lifecycle-arm64.json",
+          "downloads": 3
+        },
+        {
+          "id": 618497113,
+          "name": "native-lifecycle-x64.json",
+          "downloads": 3
+        },
+        {
+          "id": 618497151,
+          "name": "owner-trial-checklist.md",
+          "downloads": 2
+        },
+        {
+          "id": 618497088,
+          "name": "payload-manifest-arm64.json",
+          "downloads": 1
+        },
+        {
+          "id": 618497086,
+          "name": "payload-manifest-x64.json",
+          "downloads": 1
+        },
+        {
+          "id": 618497133,
+          "name": "release-evidence.json",
+          "downloads": 3
+        },
+        {
+          "id": 618497170,
+          "name": "SHA256-arm64.txt",
+          "downloads": 1
+        },
+        {
+          "id": 618497089,
+          "name": "SHA256-universal.txt",
+          "downloads": 4
+        },
+        {
+          "id": 618497171,
+          "name": "SHA256-x64.txt",
+          "downloads": 1
+        },
+        {
+          "id": 618497090,
+          "name": "universal-manifest.json",
+          "downloads": 4
+        }
+      ]
+    },
+    {
+      "tag": "v0.1.0-preview.10",
+      "publishedAt": "2026-10-07T04:06:20Z",
+      "assets": [
+        {
+          "id": 617515828,
+          "name": "Bloomstep-0.1.0-preview.10-windows-arm64-setup.exe",
+          "downloads": 1
+        },
+        {
+          "id": 617515825,
+          "name": "Bloomstep-0.1.0-preview.10-windows-x64-setup.exe",
+          "downloads": 1
+        },
+        {
+          "id": 617515827,
+          "name": "SHA256-arm64.txt",
+          "downloads": 1
+        },
+        {
+          "id": 617515826,
+          "name": "SHA256-x64.txt",
+          "downloads": 1
+        }
+      ]
+    },
+    {
+      "tag": "v0.1.0-preview.9",
+      "publishedAt": "2026-10-06T10:48:57Z",
+      "assets": [
+        {
+          "id": 615235633,
+          "name": "Bloomstep-0.1.0-preview.9-windows-arm64-setup.exe",
+          "downloads": 5
+        },
+        {
+          "id": 615235640,
+          "name": "Bloomstep-0.1.0-preview.9-windows-x64-setup.exe",
+          "downloads": 4
+        },
+        {
+          "id": 615235637,
+          "name": "SHA256-arm64.txt",
+          "downloads": 4
+        },
+        {
+          "id": 615235634,
+          "name": "SHA256-x64.txt",
+          "downloads": 4
+        }
+      ]
+    },
+    {
+      "tag": "v0.1.0-preview.8",
+      "publishedAt": "2026-10-05T17:34:43Z",
+      "assets": [
+        {
+          "id": 613235062,
+          "name": "Bloomstep-0.1.0-preview.8-windows-arm64-setup.exe",
+          "downloads": 6
+        },
+        {
+          "id": 613235065,
+          "name": "Bloomstep-0.1.0-preview.8-windows-x64-setup.exe",
+          "downloads": 5
+        },
+        {
+          "id": 613235064,
+          "name": "SHA256-arm64.txt",
+          "downloads": 4
+        },
+        {
+          "id": 613235063,
+          "name": "SHA256-x64.txt",
+          "downloads": 4
+        }
+      ]
+    },
+    {
+      "tag": "v0.1.0-preview.7",
+      "publishedAt": "2026-10-05T16:33:55Z",
+      "assets": [
+        {
+          "id": 613099625,
+          "name": "Bloomstep-0.1.0-preview.7-windows-arm64-setup.exe",
+          "downloads": 2
+        },
+        {
+          "id": 613099628,
+          "name": "Bloomstep-0.1.0-preview.7-windows-x64-setup.exe",
+          "downloads": 2
+        },
+        {
+          "id": 613099627,
+          "name": "SHA256-arm64.txt",
+          "downloads": 2
+        },
+        {
+          "id": 613099626,
+          "name": "SHA256-x64.txt",
+          "downloads": 2
+        }
+      ]
+    },
+    {
+      "tag": "v0.1.0-preview.6",
+      "publishedAt": "2026-10-05T13:38:38Z",
+      "assets": [
+        {
+          "id": 612684216,
+          "name": "Bloomstep-0.1.0-preview.6-windows-arm64-setup.exe",
+          "downloads": 3
+        },
+        {
+          "id": 612684217,
+          "name": "Bloomstep-0.1.0-preview.6-windows-x64-setup.exe",
+          "downloads": 3
+        },
+        {
+          "id": 612684219,
+          "name": "SHA256-arm64.txt",
+          "downloads": 2
+        },
+        {
+          "id": 612684225,
+          "name": "SHA256-x64.txt",
+          "downloads": 2
+        }
+      ]
+    },
+    {
+      "tag": "v0.1.0-preview.5",
+      "publishedAt": "2026-10-05T09:08:32Z",
+      "assets": [
+        {
+          "id": 612061672,
+          "name": "Bloomstep-0.1.0-preview.5-windows-arm64-setup.exe",
+          "downloads": 1
+        },
+        {
+          "id": 612061671,
+          "name": "Bloomstep-0.1.0-preview.5-windows-x64-setup.exe",
+          "downloads": 1
+        },
+        {
+          "id": 612061675,
+          "name": "SHA256-arm64.txt",
+          "downloads": 1
+        },
+        {
+          "id": 612061674,
+          "name": "SHA256-x64.txt",
+          "downloads": 1
+        }
+      ]
+    },
+    {
+      "tag": "v0.1.0-preview.4",
+      "publishedAt": "2026-10-05T05:02:03Z",
+      "assets": [
+        {
+          "id": 611551682,
+          "name": "Bloomstep-0.1.0-preview.4-windows-arm64-setup.exe",
+          "downloads": 2
+        },
+        {
+          "id": 611551684,
+          "name": "Bloomstep-0.1.0-preview.4-windows-x64-setup.exe",
+          "downloads": 2
+        },
+        {
+          "id": 611551683,
+          "name": "SHA256-arm64.txt",
+          "downloads": 1
+        },
+        {
+          "id": 611551685,
+          "name": "SHA256-x64.txt",
+          "downloads": 1
+        }
+      ]
+    },
+    {
+      "tag": "v0.1.0-preview.3",
+      "publishedAt": "2026-10-04T20:18:27Z",
+      "assets": [
+        {
+          "id": 610581853,
+          "name": "Bloomstep-0.1.0-preview.3-windows-arm64-setup.exe",
+          "downloads": 1
+        },
+        {
+          "id": 610581845,
+          "name": "Bloomstep-0.1.0-preview.3-windows-x64-setup.exe",
+          "downloads": 1
+        },
+        {
+          "id": 610581852,
+          "name": "SHA256-arm64.txt",
+          "downloads": 1
+        },
+        {
+          "id": 610581848,
+          "name": "SHA256-x64.txt",
+          "downloads": 1
+        }
+      ]
+    },
+    {
+      "tag": "v0.1.0-preview.2",
+      "publishedAt": "2026-10-04T18:01:52Z",
+      "assets": [
+        {
+          "id": 610331008,
+          "name": "Bloomstep-0.1.0-preview.2-windows-arm64-setup.exe",
+          "downloads": 1
+        },
+        {
+          "id": 610331012,
+          "name": "Bloomstep-0.1.0-preview.2-windows-x64-setup.exe",
+          "downloads": 1
+        },
+        {
+          "id": 610331011,
+          "name": "SHA256-arm64.txt",
+          "downloads": 1
+        },
+        {
+          "id": 610331013,
+          "name": "SHA256-x64.txt",
+          "downloads": 1
+        }
+      ]
+    },
+    {
+      "tag": "v0.1.0-preview.1",
+      "publishedAt": "2026-10-04T15:21:31Z",
+      "assets": [
+        {
+          "id": 610074897,
+          "name": "Bloomstep-0.1.0-preview.1-windows-arm64-setup.exe",
+          "downloads": 1
+        },
+        {
+          "id": 610074896,
+          "name": "Bloomstep-0.1.0-preview.1-windows-x64-setup.exe",
+          "downloads": 1
+        },
+        {
+          "id": 610074895,
+          "name": "SHA256-arm64.txt",
+          "downloads": 1
+        },
+        {
+          "id": 610074893,
+          "name": "SHA256-x64.txt",
+          "downloads": 1
+        }
+      ]
+    }
+  ],
+  "traffic": {
+    "views": {
+      "available": false,
+      "status": 403,
+      "reason": "Repository traffic permission unavailable; not zero. See analytics-sandbox.md."
+    },
+    "clones": {
+      "available": false,
+      "status": 403,
+      "reason": "Repository traffic permission unavailable; not zero. See analytics-sandbox.md."
+    },
+    "referrers": {
+      "available": false,
+      "status": 403,
+      "reason": "Repository traffic permission unavailable; not zero. See analytics-sandbox.md."
+    },
+    "paths": {
+      "available": false,
+      "status": 403,
+      "reason": "Repository traffic permission unavailable; not zero. See analytics-sandbox.md."
+    }
+  },
+  "interpretation": "Cumulative asset downloads and rolling 14-day traffic; not people, installs or attributable conversions. Overlapping daily traffic must not be summed."
+}
